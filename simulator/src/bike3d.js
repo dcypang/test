@@ -46,14 +46,42 @@ function makeWheel(mats, knobby){
   return g;
 }
 
-export function buildBike(bike, colorHex){
+/* factory-paint downtube decal: paint base + brand logotype running along
+   the tube on both sides (u≈0 faces +Z, u≈0.5 faces −Z after tubeBetween's
+   minimal rotation, which preserves local Z for tubes in the XZ ride plane) */
+function makeDecalTexture(paint){
+  const W=256, H=1024;
+  const cv = document.createElement("canvas"); cv.width=W; cv.height=H;
+  const ctx = cv.getContext("2d");
+  ctx.fillStyle = paint.css; ctx.fillRect(0,0,W,H);
+  const run = (cx, flip)=>{
+    ctx.save(); ctx.translate(cx, H*0.52); ctx.rotate(-Math.PI/2);
+    if(flip) ctx.scale(1,-1);
+    ctx.font = paint.font; ctx.fillStyle = paint.logoColor;
+    ctx.textAlign="center"; ctx.textBaseline="middle";
+    ctx.fillText(paint.logo, 0, 0);
+    ctx.restore();
+  };
+  run(0,false); run(W,false);   // +Z side (strip wraps the seam)
+  run(W/2,true);                // −Z side, mirrored so it reads correctly
+  const t = new THREE.CanvasTexture(cv);
+  t.colorSpace = THREE.SRGBColorSpace;
+  t.anisotropy = 8;
+  return t;
+}
+
+export function buildBike(bike, kitHex, paint){
+  const paintProps = { color: paint.color, metalness: paint.metalness,
+    roughness: paint.roughness, clearcoat: paint.clearcoat, clearcoatRoughness: 0.3 };
   const mats = {
-    frame: new THREE.MeshStandardMaterial({ color: colorHex, metalness: 0.55, roughness: 0.35 }),
+    frame: new THREE.MeshPhysicalMaterial(paintProps),
+    decal: new THREE.MeshPhysicalMaterial({ ...paintProps, color: 0xffffff, map: makeDecalTexture(paint) }),
+    carbon:new THREE.MeshStandardMaterial({ color: 0x131417, metalness: 0.3, roughness: 0.3 }),
     dark:  new THREE.MeshStandardMaterial({ color: 0x24262a, metalness: 0.4, roughness: 0.55 }),
     tire:  new THREE.MeshStandardMaterial({ color: 0x1c1c1e, roughness: 0.95 }),
-    rim:   new THREE.MeshStandardMaterial({ color: 0x8a8f96, metalness: 0.8, roughness: 0.35 }),
+    rim:   new THREE.MeshStandardMaterial({ color: 0x3d4147, metalness: 0.75, roughness: 0.4 }),
     skin:  new THREE.MeshStandardMaterial({ color: 0xd9a87e, roughness: 0.7 }),
-    kit:   new THREE.MeshStandardMaterial({ color: colorHex, roughness: 0.6 }),
+    kit:   new THREE.MeshStandardMaterial({ color: kitHex, roughness: 0.6 }),
     pants: new THREE.MeshStandardMaterial({ color: 0x2c2f33, roughness: 0.8 }),
   };
   const root = new THREE.Group();          // placed on terrain (pitch + position)
@@ -72,7 +100,7 @@ export function buildBike(bike, colorHex){
 
   // frame
   sprung.add(tubeBetween(P.seat, P.head, 0.021, mats.frame));       // top tube
-  sprung.add(tubeBetween(P.bb, P.head, 0.026, mats.frame));         // down tube
+  sprung.add(tubeBetween(P.bb, P.head, 0.026, mats.decal));         // down tube w/ logo
   sprung.add(tubeBetween(P.bb, P.seat, 0.019, mats.frame));         // seat tube
   for(const s of [-0.05, 0.05]){
     const rA = P.rAxle.clone().setZ(s);
@@ -95,7 +123,7 @@ export function buildBike(bike, colorHex){
 
   const lowers = new THREE.Group();                                 // slides for suspension
   sprung.add(lowers);
-  const legMat = bike.susp ? mats.dark : mats.frame;
+  const legMat = bike.susp ? mats.dark : mats.carbon;               // rigid forks are carbon black
   for(const s of [-0.05, 0.05]){
     if(bike.susp){
       // upper stanchion (fixed) + lower leg (moves with wheel)

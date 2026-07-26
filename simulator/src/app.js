@@ -9,6 +9,16 @@ import { buildBike, poseBikeParts } from "./bike3d.js";
 const LANES = [-1.9, 0, 1.9];
 const BIKE_HEX = [0x3E8A4B, 0x9E3535, 0x3B7DD8];
 const BIKE_HEX_DARK = [0x49AB59, 0xB84444, 0x5B93E8];
+/* factory colorways: Quick 2 "Rally Red", Sirrus X 4.0 "Satin Dark Navy
+   Metallic", Quick CX 2 "Sabre". Rider kits keep the ID palette colors. */
+const PAINTS = [
+  { color:0xC8202A, css:"#C8202A", metalness:0.25, roughness:0.22, clearcoat:0.9,
+    logo:"cannondale", logoColor:"#FFFFFF", font:"italic 700 62px Arial, Helvetica, sans-serif" },
+  { color:0x1B2A44, css:"#1B2A44", metalness:0.65, roughness:0.46, clearcoat:0.2,
+    logo:"SPECIALIZED", logoColor:"#E9E9ED", font:"700 46px 'Arial Narrow', Arial, sans-serif" },
+  { color:0x8B927F, css:"#8B927F", metalness:0.35, roughness:0.5, clearcoat:0.25,
+    logo:"cannondale", logoColor:"#23262B", font:"italic 700 62px Arial, Helvetica, sans-serif" },
+];
 const isDark = () => matchMedia("(prefers-color-scheme: dark)").matches;
 
 const $ = id => document.getElementById(id);
@@ -221,7 +231,7 @@ let views = [];
 function buildBikes(){
   for(const v of views){ scene.remove(v.root); v.root.traverse(o=>{ if(o.geometry) o.geometry.dispose(); }); }
   const hex = isDark() ? BIKE_HEX_DARK : BIKE_HEX;
-  views = BIKES.map((b,i)=>{ const v = buildBike(b, hex[i]); scene.add(v.root); return v; });
+  views = BIKES.map((b,i)=>{ const v = buildBike(b, hex[i], PAINTS[i]); scene.add(v.root); return v; });
 }
 
 function placeBike(S, v, lane){
@@ -252,8 +262,9 @@ function resetSim(){
 }
 
 /* ================= camera ================= */
-let camMode = "auto"; // auto | 0 | 1 | 2 | orbit
+let camMode = "auto"; // auto | 0 | 1 | 2 | orbit | manual
 let snapNext = false;
+const manualP = new THREE.Vector3(), manualA = new THREE.Vector3();
 const camPos = new THREE.Vector3(-8, 3, 8), camAim = new THREE.Vector3(6, 1, 0);
 function leaderIdx(){
   let best=0, bx=-1;
@@ -262,7 +273,9 @@ function leaderIdx(){
 }
 function updateCamera(dt){
   let target;
-  if(camMode === "orbit" || (finished && camMode === "auto")){
+  if(camMode === "manual"){
+    target = { p: manualP, a: manualA };
+  } else if(camMode === "orbit" || (finished && camMode === "auto")){
     const mid = states.reduce((a,s)=>a+s.x,0)/3;
     const y = groundAt(course, clamp(mid,0,course.len));
     const t = performance.now()*0.00012;
@@ -445,6 +458,7 @@ matchMedia("(prefers-color-scheme: dark)").addEventListener?.("change", ()=>{ bu
 window.__lab = {
   states: () => states,
   snapCam(){ snapNext = true; },
+  lookAt(p, a){ camMode = "manual"; manualP.set(...p); manualA.set(...a); snapNext = true; },
   fastForward(seconds){
     const power = +$("power").value, n = Math.round(seconds/DT);
     for(let k=0;k<n && !states.every(s=>s.done);k++) for(const s of states) stepBike(s, power);
