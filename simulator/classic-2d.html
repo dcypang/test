@@ -1,0 +1,837 @@
+<title>Hybrid Bike Physics Lab — Quick 2 vs Sirrus X 4.0 vs Quick CX 2</title>
+<style>
+/* ---------- Design tokens ---------- */
+:root{
+  --paper:#F6F5F1; --paper2:#EDEBE4; --card:#FFFFFF;
+  --ink:#26241F; --ink2:#5C594F; --ink3:#8B877A;
+  --line:#DAD7CC; --line2:#C9C5B8;
+  --quick:#3E8A4B; --quickMark:#62C46F; --sirrus:#9E3535; --cx:#3B7DD8;
+  --good:#3E7A46; --warn:#9B6A1F; --crit:#A03333;
+  --disp:"Avenir Next Condensed","Helvetica Neue Condensed","Arial Narrow","Liberation Sans Narrow",ui-sans-serif,sans-serif;
+  --body:ui-sans-serif,system-ui,"Segoe UI",Helvetica,Arial,sans-serif;
+  --mono:ui-monospace,"SF Mono","Cascadia Mono",Menlo,Consolas,monospace;
+  --sky1:#DDE7EC; --sky2:#F1EFE6;
+}
+@media (prefers-color-scheme: dark){
+  :root{
+    --paper:#171A1E; --paper2:#1F2329; --card:#21262D;
+    --ink:#E8E6E0; --ink2:#A9A69C; --ink3:#787568;
+    --line:#333941; --line2:#414855;
+    --quick:#49AB59; --quickMark:#49AB59; --sirrus:#B84444; --cx:#5B93E8;
+    --good:#5CAE68; --warn:#C79A45; --crit:#CC6B5F;
+    --sky1:#20272E; --sky2:#1B2025;
+  }
+}
+:root[data-theme="light"]{
+  --paper:#F6F5F1; --paper2:#EDEBE4; --card:#FFFFFF;
+  --ink:#26241F; --ink2:#5C594F; --ink3:#8B877A;
+  --line:#DAD7CC; --line2:#C9C5B8;
+  --quick:#3E8A4B; --quickMark:#62C46F; --sirrus:#9E3535; --cx:#3B7DD8;
+  --good:#3E7A46; --warn:#9B6A1F; --crit:#A03333;
+  --sky1:#DDE7EC; --sky2:#F1EFE6;
+}
+:root[data-theme="dark"]{
+  --paper:#171A1E; --paper2:#1F2329; --card:#21262D;
+  --ink:#E8E6E0; --ink2:#A9A69C; --ink3:#787568;
+  --line:#333941; --line2:#414855;
+  --quick:#49AB59; --quickMark:#49AB59; --sirrus:#B84444; --cx:#5B93E8;
+  --good:#5CAE68; --warn:#C79A45; --crit:#CC6B5F;
+  --sky1:#20272E; --sky2:#1B2025;
+}
+*{box-sizing:border-box}
+html,body{margin:0;padding:0}
+body{background:var(--paper);color:var(--ink);font-family:var(--body);line-height:1.55;font-size:15px}
+.wrap{max-width:1060px;margin:0 auto;padding:28px 20px 60px}
+a{color:inherit}
+.eyebrow{font-family:var(--disp);font-weight:700;letter-spacing:.18em;text-transform:uppercase;font-size:12px;color:var(--ink2)}
+h1{font-family:var(--disp);font-weight:700;font-size:clamp(30px,4.6vw,46px);line-height:1.04;margin:.25em 0 .3em;text-wrap:balance;letter-spacing:.005em}
+h2{font-family:var(--disp);font-weight:700;font-size:21px;letter-spacing:.03em;text-transform:uppercase;margin:0 0 12px}
+.lede{max-width:64ch;color:var(--ink2);margin:0 0 6px}
+header{border-bottom:2px solid var(--ink);padding-bottom:20px;margin-bottom:20px}
+.bikekey{display:flex;flex-wrap:wrap;gap:14px 22px;margin-top:14px}
+.bikekey span{display:inline-flex;align-items:center;gap:8px;font-family:var(--disp);font-weight:700;letter-spacing:.06em;text-transform:uppercase;font-size:13px}
+.swatch{width:14px;height:14px;border-radius:50%;display:inline-block}
+
+/* controls */
+.controls{display:flex;flex-wrap:wrap;gap:14px 26px;align-items:flex-end;background:var(--paper2);border:1px solid var(--line);border-radius:10px;padding:14px 18px;margin-bottom:18px}
+.ctl{display:flex;flex-direction:column;gap:6px}
+.ctl label{font-family:var(--disp);font-weight:700;letter-spacing:.14em;text-transform:uppercase;font-size:11px;color:var(--ink2)}
+.tabs{display:flex;gap:6px;flex-wrap:wrap}
+.tabs button{font-family:var(--disp);font-weight:700;letter-spacing:.05em;font-size:13px;text-transform:uppercase;background:var(--card);color:var(--ink);border:1px solid var(--line2);border-radius:7px;padding:8px 12px;cursor:pointer}
+.tabs button[aria-pressed="true"]{background:var(--ink);color:var(--paper);border-color:var(--ink)}
+.tabs button:focus-visible,.btn:focus-visible,input:focus-visible{outline:2px solid var(--cx);outline-offset:2px}
+input[type=range]{width:150px;accent-color:var(--ink)}
+.ctl .val{font-family:var(--mono);font-size:13px;color:var(--ink2);font-variant-numeric:tabular-nums}
+.btn{font-family:var(--disp);font-weight:700;letter-spacing:.08em;text-transform:uppercase;font-size:14px;border-radius:8px;padding:10px 22px;cursor:pointer;border:1px solid var(--ink);background:var(--ink);color:var(--paper)}
+.btn.secondary{background:transparent;color:var(--ink)}
+.btn:disabled{opacity:.45;cursor:default}
+
+/* race view */
+.race{border:1px solid var(--line);border-radius:10px;overflow:hidden;background:var(--sky2)}
+#raceCanvas{display:block;width:100%;height:auto}
+.racefoot{display:flex;justify-content:space-between;gap:10px;padding:8px 14px;background:var(--paper2);border-top:1px solid var(--line);font-family:var(--mono);font-size:12px;color:var(--ink2);font-variant-numeric:tabular-nums;flex-wrap:wrap}
+
+/* telemetry */
+.grid2{display:grid;grid-template-columns:minmax(0,1.6fr) minmax(0,1fr);gap:18px;margin-top:18px}
+@media(max-width:860px){.grid2{grid-template-columns:1fr}}
+.card{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:16px 18px}
+.card h2{font-size:16px;color:var(--ink2);margin-bottom:10px}
+#chartWrap{position:relative}
+#chart{display:block;width:100%;height:auto;cursor:crosshair}
+#tip{position:absolute;pointer-events:none;background:var(--ink);color:var(--paper);font-family:var(--mono);font-size:11.5px;padding:7px 9px;border-radius:6px;line-height:1.5;display:none;white-space:nowrap;z-index:4;font-variant-numeric:tabular-nums}
+table{width:100%;border-collapse:collapse;font-size:13.5px}
+th{font-family:var(--disp);font-weight:700;letter-spacing:.1em;text-transform:uppercase;font-size:10.5px;color:var(--ink3);text-align:left;padding:4px 8px 6px;border-bottom:1px solid var(--line)}
+td{padding:7px 8px;border-bottom:1px solid var(--line);font-variant-numeric:tabular-nums}
+td.num{font-family:var(--mono);font-size:12.5px;text-align:right}
+th.num{text-align:right}
+.bikecell{display:flex;align-items:center;gap:8px;font-weight:600}
+.leader{font-family:var(--disp);font-weight:700;letter-spacing:.04em;font-size:11px;text-transform:uppercase;color:var(--good)}
+
+/* results */
+#verdict{margin-top:18px;display:none}
+#verdict .vhead{display:flex;align-items:baseline;gap:14px;flex-wrap:wrap}
+#verdict p{max-width:70ch;color:var(--ink2)}
+.medal{font-family:var(--disp);font-weight:700;font-size:13px;letter-spacing:.08em;text-transform:uppercase}
+
+/* specs */
+.specs{margin-top:34px}
+.speccards{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:16px}
+.spec{border-top:5px solid var(--line);padding-top:0}
+.spec .card-inner{padding:14px 16px 16px}
+.spec h3{font-family:var(--disp);font-weight:700;font-size:19px;margin:0;letter-spacing:.02em}
+.spec .cls{font-size:12px;color:var(--ink3);text-transform:uppercase;letter-spacing:.12em;font-family:var(--disp);font-weight:700;margin:2px 0 10px}
+.spec dl{margin:0;display:grid;grid-template-columns:auto 1fr;gap:3px 12px;font-size:13px}
+.spec dt{color:var(--ink3)}
+.spec dd{margin:0;font-variant-numeric:tabular-nums}
+.spec .note{font-size:12.5px;color:var(--ink2);border-top:1px dashed var(--line);margin-top:10px;padding-top:8px}
+
+footer{margin-top:40px;border-top:1px solid var(--line);padding-top:18px;font-size:13px;color:var(--ink2)}
+footer h2{font-size:14px;color:var(--ink3)}
+footer ul{padding-left:18px;margin:6px 0}
+footer .src{font-size:12px;color:var(--ink3)}
+kbd{font-family:var(--mono);background:var(--paper2);border:1px solid var(--line2);border-radius:4px;padding:0 5px;font-size:11.5px}
+@media (prefers-reduced-motion: reduce){ .btn,.tabs button{transition:none} }
+</style>
+
+<div class="wrap">
+<header>
+  <div class="eyebrow">True-spec physics simulation · flat-bar hybrids</div>
+  <h1>Three hybrids, four roads. Same rider, same watts.</h1>
+  <p class="lede">A rigid-fitness bike, a Future Shock gravel-hybrid, and a suspension-fork adventure hybrid, ridden head-to-head by identical 75&nbsp;kg riders. The engine models aerodynamic drag, tire rolling resistance, gearing, sprung-mass suspension dynamics, bump-impedance losses and traction-limited control speed — from each bike's published spec sheet.</p>
+  <div class="bikekey">
+    <span><i class="swatch" style="background:var(--quick)"></i>Cannondale Quick 2</span>
+    <span><i class="swatch" style="background:var(--sirrus)"></i>Specialized Sirrus X 4.0</span>
+    <span><i class="swatch" style="background:var(--cx)"></i>Cannondale Quick CX 2</span>
+  </div>
+</header>
+
+<div class="controls">
+  <div class="ctl">
+    <label id="terrainLbl">Course</label>
+    <div class="tabs" role="group" aria-labelledby="terrainLbl">
+      <button data-course="0" aria-pressed="true">Smooth pavement</button>
+      <button data-course="1" aria-pressed="false">Cracked pavement</button>
+      <button data-course="2" aria-pressed="false">Dirt road</button>
+      <button data-course="3" aria-pressed="false">Mountain descent</button>
+    </div>
+  </div>
+  <div class="ctl">
+    <label for="power">Rider power</label>
+    <input type="range" id="power" min="100" max="350" value="200" step="10">
+    <span class="val" id="powerVal">200 W</span>
+  </div>
+  <div class="ctl">
+    <label for="simspeed">Sim speed</label>
+    <input type="range" id="simspeed" min="0" max="3" value="1" step="1">
+    <span class="val" id="simspeedVal">2×</span>
+  </div>
+  <div class="ctl" style="flex-direction:row;gap:8px;align-items:center">
+    <button class="btn" id="startBtn">Start ride</button>
+    <button class="btn secondary" id="resetBtn">Reset</button>
+  </div>
+</div>
+
+<div class="race">
+  <canvas id="raceCanvas" width="1040" height="560" aria-label="Side-view animation of the three bikes riding the selected course"></canvas>
+  <div class="racefoot">
+    <span id="courseInfo"></span>
+    <span id="clock">t = 0.0 s</span>
+  </div>
+</div>
+
+<div class="grid2">
+  <div class="card">
+    <h2>Speed over distance</h2>
+    <div id="chartWrap">
+      <canvas id="chart" width="640" height="300" aria-label="Line chart of speed versus distance for the three bikes"></canvas>
+      <div id="tip"></div>
+    </div>
+  </div>
+  <div class="card">
+    <h2>Live standings</h2>
+    <table aria-live="polite">
+      <thead><tr><th>Bike</th><th class="num">Dist</th><th class="num">Speed</th><th class="num">Vibration</th></tr></thead>
+      <tbody id="standings"></tbody>
+    </table>
+    <p style="font-size:12px;color:var(--ink3);margin:10px 0 0">Vibration = RMS vertical acceleration felt by the rider (ISO 2631-style ride comfort; lower is smoother).</p>
+  </div>
+</div>
+
+<div class="card" id="verdict">
+  <div class="vhead"><h2 style="margin:0">Result</h2><span class="medal" id="winnerLine"></span></div>
+  <table style="margin-top:10px">
+    <thead><tr><th>Bike</th><th class="num">Time</th><th class="num">Avg speed</th><th class="num">Top speed</th><th class="num">Ride RMS</th><th class="num">Bump losses</th></tr></thead>
+    <tbody id="resultRows"></tbody>
+  </table>
+  <p id="verdictText"></p>
+</div>
+
+<section class="specs">
+  <h2>The bikes, as specced</h2>
+  <div class="speccards">
+    <div class="card spec" style="border-top-color:var(--quick)">
+      <div class="card-inner">
+        <h3>Cannondale Quick 2</h3>
+        <div class="cls">Rigid fitness hybrid · 10.8 kg</div>
+        <dl>
+          <dt>Frame / fork</dt><dd>SmartForm C3 alloy / full-carbon rigid</dd>
+          <dt>Tires</dt><dd>Schwalbe G-One Allround, 700×35c</dd>
+          <dt>Drivetrain</dt><dd>Shimano CUES U4000, 1×9, 40T × 11-46</dd>
+          <dt>Brakes</dt><dd>Shimano MT200 hydraulic disc</dd>
+          <dt>Compliance</dt><dd>tire casing only (~60 psi)</dd>
+        </dl>
+        <p class="note">The pavement specialist: lightest, lowest rolling resistance, sportiest position. Nothing between rider and road but 35&nbsp;mm of rubber.</p>
+      </div>
+    </div>
+    <div class="card spec" style="border-top-color:var(--sirrus)">
+      <div class="card-inner">
+        <h3>Specialized Sirrus X 4.0</h3>
+        <div class="cls">Gravel-capable hybrid · 11.3 kg</div>
+        <dl>
+          <dt>Frame / fork</dt><dd>A1 alloy, Future Shock 1.5 (20 mm) / rigid</dd>
+          <dt>Tires</dt><dd>Pathfinder, 700×40c (smooth center, side knobs)</dd>
+          <dt>Drivetrain</dt><dd>Shimano CUES U6000, 1×11, 42T × 11-50</dd>
+          <dt>Brakes</dt><dd>Hydraulic disc</dd>
+          <dt>Compliance</dt><dd>20 mm sprung stem + high-volume tires (~45 psi)</dd>
+        </dl>
+        <p class="note">The all-rounder: Future Shock isolates the hands, and the Pathfinder's slick center / knobby shoulder rolls fast on tarmac yet bites on dirt.</p>
+      </div>
+    </div>
+    <div class="card spec" style="border-top-color:var(--cx)">
+      <div class="card-inner">
+        <h3>Cannondale Quick CX 2</h3>
+        <div class="cls">Suspension adventure hybrid · 13.2 kg</div>
+        <dl>
+          <dt>Frame / fork</dt><dd>SmartForm C3 alloy / SR Suntour coil, 50 mm</dd>
+          <dt>Tires</dt><dd>Vittoria Terreno Dry semi-knob, 700×40c</dd>
+          <dt>Drivetrain</dt><dd>Shimano CUES U6000, 1×10, 40T × 11-48</dd>
+          <dt>Brakes</dt><dd>Hydraulic disc</dd>
+          <dt>Compliance</dt><dd>50 mm coil fork + knobby tires (~40 psi)</dd>
+        </dl>
+        <p class="note">The trail mule: heaviest and slowest-rolling on tarmac, with pedal-bob losses from the coil fork — but the only one with real suspension when the ground turns hostile.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<footer>
+  <h2>How the physics works</h2>
+  <ul>
+    <li><strong>Longitudinal:</strong> m·dv/dt = F<sub>pedal</sub> − ½ρ·C<sub>d</sub>A·v² − C<sub>rr</sub>·m·g·cosθ − m·g·sinθ − F<sub>bump</sub> − F<sub>brake</sub>. Pedal force is capped by rear-wheel traction (μ·load) and by gearing (spin-out at ~110 rpm in top gear).</li>
+    <li><strong>Rolling resistance:</strong> per-tire C<sub>rr</sub> (G-One Allround 35c ≈ 0.0045, Pathfinder 40c ≈ 0.0055, Terreno Dry ≈ 0.0070 on smooth asphalt) scaled by surface: knobs are a penalty on tarmac but an advantage on loose ground.</li>
+    <li><strong>Suspension:</strong> each bike is a sprung mass (heave + pitch) on two spring-damper corners — tire casing stiffness in series with the Suntour 50&nbsp;mm coil fork (Quick CX) — plus a separate 20&nbsp;mm Future Shock DOF at the bars (Sirrus X). Bump energy dissipated in dampers and the rider's body is charged back as impedance drag; the vertical acceleration at saddle and grips gives the ride-comfort RMS.</li>
+    <li><strong>Control envelope:</strong> on rough or loose ground each bike gets a max controllable speed from tire grip, tread and suspension travel; the rider AI brakes ahead of tree gates, rock gardens and washboard using a μ-limited braking envelope, exactly like a real rider scrubbing speed before trouble.</li>
+    <li><strong>Rider:</strong> 75 kg, steady power (slider), coasts past spin-out, brakes at up to 0.65·μ·g.</li>
+  </ul>
+  <p class="src">Spec sources: cannondale.com (Quick 2, Quick CX 2), specialized.com (Sirrus X 4.0), 99spokes.com, rei.com. Rolling-resistance figures follow bicyclerollingresistance.com test methodology for comparable casings. This is a comparative model — real-world results vary with rider, pressure and conditions.</p>
+</footer>
+</div>
+
+<script>
+"use strict";
+/* =====================================================================
+   Hybrid Bike Physics Lab
+   – deterministic seeded terrain, quarter-car-style suspension model,
+     impedance losses, traction/control envelope, rider AI.
+   ===================================================================== */
+
+const G = 9.81, RHO = 1.225, RIDER = 75, DT = 1/240, DX = 0.05;
+const WHEEL_R = 0.35, WHEEL_CIRC = 2.2;   // 700c hybrid wheel
+const CADENCE_MAX = 110/60;               // rev/s spin-out
+
+/* ---------- utilities ---------- */
+function mulberry32(seed){ return function(){ seed|=0; seed=seed+0x6D2B79F5|0;
+  let t=Math.imul(seed^seed>>>15,1|seed); t=t+Math.imul(t^t>>>7,61|t)^t;
+  return ((t^t>>>14)>>>0)/4294967296; }; }
+const clamp=(v,a,b)=>v<a?a:v>b?b:v;
+const lerp=(a,b,t)=>a+(b-a)*t;
+
+function cssVar(name){ return getComputedStyle(document.documentElement).getPropertyValue(name).trim(); }
+
+/* ---------- bike definitions (from published specs) ---------- */
+// tread: 0 = slick/file (G-One Allround), 1 = mixed (Pathfinder), 2 = semi-knob (Terreno Dry)
+const BIKES = [
+  { key:"quick",  name:"Quick 2",      brand:"Cannondale",
+    massBike:10.8, unsprung:3.6, cda:0.520, crr0:0.0045,
+    tireW:0.035, tireK:130000, tireC:280, tread:0,
+    topRatio:40/11, susp:null, futureShock:false, bobLoss:0.0,
+    seatpostK:220000 },
+  { key:"sirrus", name:"Sirrus X 4.0", brand:"Specialized",
+    massBike:11.3, unsprung:3.8, cda:0.550, crr0:0.0055,
+    tireW:0.040, tireK:105000, tireC:330, tread:1,
+    topRatio:42/11, susp:null, futureShock:true, bobLoss:0.005,
+    seatpostK:200000 },
+  { key:"cx",     name:"Quick CX 2",   brand:"Cannondale",
+    massBike:13.2, unsprung:4.6, cda:0.580, crr0:0.0070,
+    tireW:0.040, tireK:100000, tireC:350, tread:2,
+    topRatio:40/11, susp:{ travel:0.050, k:26000, c:900, stiction:15 },
+    futureShock:false, bobLoss:0.03,
+    seatpostK:220000 },
+];
+// grip μ by [surfaceClass][tread] : pavement, dirt, trail
+const MU = [ [0.90,0.90,0.85], [0.48,0.62,0.70], [0.38,0.55,0.70] ];
+// Crr surface multiplier by [surfaceClass][tread]
+const CRR_MULT = [ [1.00,1.00,1.00], [2.60,1.85,1.55], [4.00,2.60,2.00] ];
+
+/* ---------- course generation ---------- */
+// surfaceClass: 0 pavement, 1 dirt, 2 trail
+const COURSES = [
+  { name:"Smooth pavement",  len:1500, cls:0, desc:"1.5 km fresh asphalt, gently rolling" },
+  { name:"Cracked pavement", len:1500, cls:0, desc:"1.5 km old asphalt — cracks, patches, speed humps" },
+  { name:"Dirt road",        len:1500, cls:1, desc:"1.5 km gravel & washboard, rolling grades" },
+  { name:"Mountain descent", len:1200, cls:2, desc:"1.2 km wooded singletrack, −7% avg, roots & rock" },
+];
+
+function buildCourse(ci){
+  const c = COURSES[ci], n = Math.floor(c.len/DX)+2;
+  const rnd = mulberry32(1234+ci*777);
+  const elev = new Float32Array(n);      // macro elevation (m)
+  const rough = new Float32Array(n);     // micro roughness added to elev
+  const grade = new Float32Array(n);
+  const gates = [];                      // {x, vmaxBase, r} slow points (trees/corners)
+  const rocksEx = [];                    // decorative rocks [x]
+  // --- macro elevation ---
+  let e=0;
+  for(let i=0;i<n;i++){
+    const x=i*DX; let g=0;
+    if(ci===0)      g = 0.005*Math.sin(x/230) + 0.003*Math.sin(x/97+1.3);
+    else if(ci===1) g = 0.006*Math.sin(x/210) + 0.004*Math.sin(x/76+0.7);
+    else if(ci===2) g = 0.022*Math.sin(x/150+2.1) + 0.015*Math.sin(x/61+0.9);
+    else            g = -0.07 + 0.035*Math.sin(x/90) + 0.02*Math.sin(x/37+2.2);
+    grade[i]=g; e+=g*DX; elev[i]=e;
+  }
+  // --- micro features ---
+  const addBump=(x0,len,h,sharp)=>{ // half-sine or sharp-edge bump
+    const i0=Math.max(0,Math.floor(x0/DX)), i1=Math.min(n-1,Math.floor((x0+len)/DX));
+    for(let i=i0;i<=i1;i++){ const t=(i-i0)/Math.max(1,(i1-i0));
+      rough[i]+= sharp? h*(t<0.25? t/0.25 : Math.pow(1-(t-0.25)/0.75,1.6))
+                      : h*Math.sin(Math.PI*t); } };
+  if(ci===0){ // near-new asphalt: mm-level texture, one expansion joint set
+    for(let i=0;i<n;i++) rough[i]+=(rnd()-0.5)*0.003;
+    for(let x=180;x<c.len;x+=180) addBump(x,0.25,0.006,true);
+  } else if(ci===1){ // cracked pavement
+    for(let i=0;i<n;i++) rough[i]+=(rnd()-0.5)*0.006;
+    for(let x=12;x<c.len;x+=10+rnd()*14) addBump(x,0.30,0.014+rnd()*0.018,true);   // cracks & lips
+    for(let x=90;x<c.len;x+=110+rnd()*80) addBump(x,0.9,-(0.02+rnd()*0.03),true);  // potholes
+    for(let x=250;x<c.len;x+=280) addBump(x,3.2,0.075,false);                       // speed humps
+  } else if(ci===2){ // dirt road
+    for(let i=0;i<n;i++) rough[i]+=(rnd()-0.5)*0.014;
+    for(let x=60;x<c.len;x+=140+rnd()*160){        // washboard sections ~25 m long
+      const end=x+25; for(let xx=x;xx<end;xx+=0.55) addBump(xx,0.4,0.011+rnd()*0.007,false);
+    }
+    for(let x=40;x<c.len;x+=60+rnd()*90) addBump(x,0.8,-(0.015+rnd()*0.025),true); // potholes/ruts
+    gates.push(...[380,760,1150].map(x=>({x, vmaxBase:8.5, r:24})));               // loose corners
+  } else { // mountain descent
+    for(let i=0;i<n;i++) rough[i]+=(rnd()-0.5)*0.020;
+    for(let x=8;x<c.len;x+=3.5+rnd()*7) addBump(x,0.35,0.030+rnd()*0.045,true);    // roots & rocks
+    for(let x=140;x<c.len;x+=190+rnd()*120){       // rock gardens ~15 m
+      const end=x+15; for(let xx=x;xx<end;xx+=0.8) addBump(xx,0.5,0.05+rnd()*0.05,true);
+      rocksEx.push(x+7);
+    }
+    for(let x=55;x<c.len;x+=45+rnd()*45){          // tree gates / switchback corners
+      const tight=rnd()<0.35;
+      gates.push({x, vmaxBase: tight? 3.6+rnd()*0.8 : 5.5+rnd()*1.6, r: tight?6:12});
+    }
+  }
+  // profile = elev + rough
+  const h = new Float32Array(n);
+  for(let i=0;i<n;i++) h[i]=elev[i]+rough[i];
+  // local roughness RMS over 8 m window (for control caps & rendering)
+  const rms = new Float32Array(n); const w=Math.floor(8/DX);
+  let acc=0; const q=new Float32Array(n);
+  for(let i=0;i<n;i++){ const d=i>0?(rough[i]-rough[i-1]):0; q[i]=d*d; }
+  for(let i=0;i<n;i++){ acc+=q[i]; if(i>=w) acc-=q[i-w]; rms[i]=Math.sqrt(acc/Math.min(i+1,w))/DX*0.01; }
+  // trees for décor on trail
+  const trees=[]; if(ci===3){ const tr=mulberry32(99);
+    for(let x=10;x<c.len;x+=8+tr()*18) trees.push({x, s:0.8+tr()*0.6, side:tr()<0.5?-1:1}); }
+  return { ...c, n, h, elev, rough, grade, rms, gates, trees, rocksEx };
+}
+
+/* per-bike control-speed limit & braking envelope for a course */
+function buildEnvelope(course, bike){
+  const n=course.n, cls=course.cls;
+  const mu = MU[cls][bike.tread];
+  // suspension & tire control factors
+  const suspF = bike.susp ? 1.28 : (bike.futureShock ? 1.07 : 1.0);
+  const tireF = [ [1,1,0.96], [0.80,1.0,1.08], [0.60,0.92,1.12] ][cls][bike.tread];
+  const vlim = new Float32Array(n);
+  const baseCap = cls===0 ? 999 : cls===1 ? 11.5 : 8.6; // m/s straight-line cap on loose/rough
+  for(let i=0;i<n;i++){
+    let v = baseCap * suspF * tireF;
+    if(cls>0) v *= clamp(1.25 - course.rms[i]*0.9, 0.55, 1.25);
+    vlim[i]=v;
+  }
+  for(const g of course.gates){
+    const vg = Math.min(Math.sqrt(mu*G*g.r), g.vmaxBase * (0.75+0.35*suspF*tireF/1.4));
+    const i0=Math.max(0,Math.floor((g.x-2)/DX)), i1=Math.min(n-1,Math.floor((g.x+3)/DX));
+    for(let i=i0;i<=i1;i++) vlim[i]=Math.min(vlim[i],vg);
+  }
+  // backward pass: brake-ahead envelope
+  const aBr = 0.65*mu*G;
+  const env = new Float32Array(n); env[n-1]=vlim[n-1];
+  for(let i=n-2;i>=0;i--) env[i]=Math.min(vlim[i], Math.sqrt(env[i+1]*env[i+1]+2*aBr*DX));
+  return { env, mu, aBr };
+}
+
+/* ---------- rider/bike simulation state ---------- */
+function makeState(bike, course){
+  const M = RIDER + bike.massBike;               // total
+  const Ms = M - bike.unsprung;                  // sprung
+  return {
+    bike, course, envInfo:null,
+    x:0, v:0, t:0, done:false, finishT:0,
+    // vertical: sprung heave z (about static), pitch th
+    z:0, th:0, zd:0, thd:0,
+    fsZ:0, fsZd:0,                               // future shock dof
+    suspSagF:0, suspSagR:0,                      // rendered compressions (m)
+    airF:false, airR:false,
+    M, Ms, I: Ms*0.42,                            // pitch inertia approx
+    aRmsAcc:0, aRmsN:0, bumpJ:0, vMax:0,
+    wheelPhase:0, pedalPhase:0,
+    trace:[],                                     // [dist, speed] telemetry
+    lastTrace:-5,
+  };
+}
+
+const WB=1.08, AF=0.49, AR=WB-AF;   // wheelbase & COM position (rear-biased)
+
+function groundAt(course,x){
+  const i = clamp(x/DX, 0, course.n-2), i0=Math.floor(i), f=i-i0;
+  return lerp(course.h[i0], course.h[i0+1], f);
+}
+function gradeAt(course,x){
+  const i = clamp(Math.floor(x/DX),0,course.n-1); return course.grade[i];
+}
+// tire enveloping: average ground over contact window (bigger/softer tire smooths more)
+function envelopedGround(course,x,win){
+  return (groundAt(course,x-win)+2*groundAt(course,x)+groundAt(course,x+win))*0.25;
+}
+
+function stepBike(S, power){
+  if(S.done) return;
+  const b=S.bike, c=S.course, cls=c.cls;
+  const {env, mu, aBr} = S.envInfo;
+  const i = clamp(Math.floor(S.x/DX),0,c.n-1);
+  const grade = c.grade[i], cosT=1/Math.sqrt(1+grade*grade), sinT=grade*cosT;
+
+  /* --- corner compliance chains --- */
+  const kSusF = b.susp ? 1/(1/b.tireK + 1/b.susp.k) : b.tireK;
+  const cSusF = b.susp ? b.susp.c + b.tireC : b.tireC;
+  const kSusR = 1/(1/b.tireK + 1/b.seatpostK);
+  const cSusR = b.tireC;
+  // rider body compliance damps sprung motion heavily (legs/arms)
+  const cBody = 950, cPitch = 260;
+
+  const win = 0.10 + b.tireW*2.2 + (b.susp?0.05:0);
+  const hF = envelopedGround(c, S.x+AF, win), hR = envelopedGround(c, S.x-AR, win);
+  const slopeF=(envelopedGround(c,S.x+AF+0.1,win)-hF)/0.1, slopeR=(envelopedGround(c,S.x-AR+0.1,win)-hR)/0.1;
+  const hdF = clamp(slopeF*S.v,-3.5,3.5), hdR = clamp(slopeR*S.v,-3.5,3.5);
+  // corner positions of sprung body (about static ride height)
+  const zF = S.z + AF*S.th, zR = S.z - AR*S.th;
+  const zdF= S.zd + AF*S.thd, zdR= S.zd - AR*S.thd;
+  // static loads
+  const WF = S.Ms*G*(AR/WB), WR = S.Ms*G*(AF/WB);
+  // dynamic corner forces (can't pull; 0 = airborne)
+  let FF = WF + kSusF*(hF-zF) + cSusF*(hdF-zdF);
+  let FR = WR + kSusR*(hR-zR) + cSusR*(hdR-zdR);
+  S.airF = FF<=0; S.airR = FR<=0;
+  S.airCnt = (S.airF&&S.airR) ? (S.airCnt||0)+DT : 0;
+  FF=Math.max(0,FF); FR=Math.max(0,FR);
+  // sprung dynamics; body damping acts on heave relative to the road grade,
+  // so steady climbs/descents aren't counted as vibration
+  const zdRel = S.zd - grade*S.v;
+  const zdd = (FF+FR-S.Ms*G)/S.Ms - cBody*zdRel/S.Ms;
+  const thdd= (FF*AF-FR*AR)/S.I - cPitch*S.thd/S.I;
+  S.zd+=zdd*DT; S.z+=S.zd*DT; S.thd+=thdd*DT; S.th+=S.thd*DT;
+  S.th=clamp(S.th,-0.2,0.2); S.zd=clamp(S.zd,-6,6);
+
+  // suspension compressions for rendering
+  const defF=clamp(hF-zF, -0.02, b.susp? b.susp.travel+0.02 : 0.04);
+  S.suspSagF = lerp(S.suspSagF, b.susp? clamp(defF,0,b.susp.travel):clamp(defF*0.4,0,0.03), 0.3);
+  S.suspSagR = lerp(S.suspSagR, clamp((hR-zR)*0.4,0,0.03), 0.3);
+
+  /* Future Shock: 20 mm sprung stem, filters what the hands feel */
+  let handAcc = zdd + AF*thdd;
+  if(b.futureShock){
+    const kFS=32000/ (RIDER*0.30), cFS=550/(RIDER*0.30);
+    const fsA = -kFS*(S.fsZ) - cFS*S.fsZd + handAcc;
+    S.fsZd+=fsA*DT; S.fsZ=clamp(S.fsZ+S.fsZd*DT,-0.01,0.012);
+    handAcc = handAcc*0.35 + (-32000*S.fsZ-550*S.fsZd)/(RIDER*0.30)*0.0; // isolated
+    handAcc *= 0.42;
+  }
+  const saddleAcc = zdd - 0.15*thdd;
+  const riderAcc = 0.6*saddleAcc + 0.4*handAcc;
+  S.aRmsAcc += riderAcc*riderAcc*DT; S.aRmsN += DT;
+
+  /* impedance (bump) losses: damper + body dissipation.
+     0.4 = casing hysteresis efficiency; capped so a single sharp edge
+     can't extract unphysical power from the contact patch. A suspended
+     corner converts far less of its absorbed energy into forward drag —
+     that's the whole point of suspension on rough ground. */
+  const PF = cSusF*Math.pow(hdF-zdF,2)*0.5, PR = cSusR*Math.pow(hdR-zdR,2)*0.5,
+        PB = cBody*zdRel*zdRel*0.6;
+  const pDamp = Math.min(2200, 0.4*(PF+PR+PB));
+  const pDrag = Math.min(2200, 0.4*( PF*(b.susp?0.30:1) + PR + PB ));
+  S.bumpJ += pDamp*DT;
+  const Fbump = Math.min(pDrag/Math.max(S.v,0.8), 0.30*S.M*G);
+
+  /* --- longitudinal --- */
+  const vTarget = env[i];
+  const crr = b.crr0 * CRR_MULT[cls][b.tread];
+  const Froll = crr*S.M*G*cosT * (S.airF&&S.airR?0:1);
+  const Faero = 0.5*RHO*b.cda*S.v*S.v;
+  const Fgrade= S.M*G*sinT;
+  const vSpinout = b.topRatio*WHEEL_CIRC*CADENCE_MAX;
+  let Fdrive=0, Fbrake=0;
+  const margin=0.985;
+  if((S.v < vTarget*margin || S.v < 1) && S.v < vSpinout){
+    const pEff = power*(1-b.bobLoss*(cls>0?1:0.4));
+    Fdrive = pEff/Math.max(S.v,1.2);
+    Fdrive = Math.min(Fdrive, mu*FR*0.9);         // rear traction cap
+    if(S.airR) Fdrive=0;
+  } else if(S.v > vTarget){
+    Fbrake = Math.min(S.M*aBr, S.M*aBr*( (S.v-vTarget)*2+0.3 ));
+    if(S.airF&&S.airR) Fbrake*=0.1;
+  }
+  const a=(Fdrive-Faero-Froll-Fgrade-Fbump-Fbrake)/S.M;
+  S.v=Math.max(0,S.v+a*DT); S.x+=S.v*DT; S.t+=DT;
+  S.vMax=Math.max(S.vMax,S.v);
+  S.wheelPhase += S.v/WHEEL_R*DT;
+  if(Fdrive>0) S.pedalPhase += S.v/(b.topRatio*0.7*WHEEL_R)*DT;
+
+  if(S.x - S.lastTrace >= 5){ S.trace.push([S.x, S.v]); S.lastTrace=S.x; }
+  if(S.x>=c.len){ S.done=true; S.finishT=S.t; S.x=c.len; }
+}
+
+/* =====================================================================
+   App state & loop
+===================================================================== */
+const courseCache=[];
+function getCourse(ci){ return courseCache[ci] || (courseCache[ci]=buildCourse(ci)); }
+
+let curCourse=0, running=false, states=[], simMult=2, finished=false;
+const SIM_SPEEDS=[1,2,4,8];
+
+function resetSim(){
+  running=false; finished=false;
+  const c=getCourse(curCourse);
+  states = BIKES.map(b=>{ const s=makeState(b,c); s.envInfo=buildEnvelope(c,b); return s; });
+  document.getElementById("verdict").style.display="none";
+  document.getElementById("startBtn").textContent="Start ride";
+  document.getElementById("startBtn").disabled=false;
+  document.getElementById("courseInfo").textContent = c.desc;
+  updateStandings(); drawChart(); drawRace();
+  document.getElementById("clock").textContent="t = 0.0 s";
+}
+
+function tick(){
+  if(running && !finished){
+    const power=+document.getElementById("power").value;
+    const steps=Math.round(simMult/DT/60);
+    for(let k=0;k<steps;k++) for(const s of states) stepBike(s,power);
+    document.getElementById("clock").textContent="t = "+states[0].t.toFixed(1)+" s";
+    if(states.every(s=>s.done)){ finished=true; running=false; showResults(); }
+    updateStandings(); drawChart();
+  }
+  drawRace();
+  requestAnimationFrame(tick);
+}
+
+/* =====================================================================
+   Rendering — race view
+===================================================================== */
+const raceCv=document.getElementById("raceCanvas"), rctx=raceCv.getContext("2d");
+const LANE_H=186, PXM=46; // px per meter
+function col(i){ return [cssVar("--quick"),cssVar("--sirrus"),cssVar("--cx")][i]; }
+function markCol(i){ return [cssVar("--quickMark"),cssVar("--sirrus"),cssVar("--cx")][i]; }
+
+function drawRace(){
+  const W=raceCv.width, c=getCourse(curCourse);
+  raceCv.height=LANE_H*3+2;
+  rctx.clearRect(0,0,W,raceCv.height);
+  for(let li=0;li<3;li++) drawLane(li, c, W);
+  // lane separators
+  rctx.strokeStyle=cssVar("--line"); rctx.lineWidth=1;
+  for(let li=1;li<3;li++){ rctx.beginPath(); rctx.moveTo(0,li*LANE_H+.5); rctx.lineTo(W,li*LANE_H+.5); rctx.stroke(); }
+}
+
+function drawLane(li, c, W){
+  const S=states[li], b=BIKES[li];
+  const y0=li*LANE_H;
+  rctx.save(); rctx.translate(0,y0);
+  // sky
+  const sky=rctx.createLinearGradient(0,0,0,LANE_H);
+  sky.addColorStop(0,cssVar("--sky1")); sky.addColorStop(1,cssVar("--sky2"));
+  rctx.fillStyle=sky; rctx.fillRect(0,0,W,LANE_H);
+
+  const camX = clamp(S.x-6, 0, Math.max(0,c.len-W/PXM+4));
+  const gY = m => LANE_H*0.62 - (m - groundAt(c,S.x))*PXM*1.35; // vertical, anchored to bike
+  const gX = x => (x-camX)*PXM;
+
+  // ground fill
+  const groundCol = [ ["#8d8d95","#6f6f77"], ["#8d8d95","#6f6f77"], ["#b39a6e","#93794d"], ["#7d6a4f","#5c4c36"] ][curCourse];
+  rctx.beginPath(); rctx.moveTo(0,LANE_H);
+  for(let px=0;px<=W;px+=3){ const x=camX+px/PXM; rctx.lineTo(px, gY(groundAt(c,x))); }
+  rctx.lineTo(W,LANE_H); rctx.closePath();
+  const gg=rctx.createLinearGradient(0,LANE_H*0.3,0,LANE_H);
+  gg.addColorStop(0,groundCol[0]); gg.addColorStop(1,groundCol[1]);
+  rctx.fillStyle=gg; rctx.fill();
+  // surface line
+  rctx.beginPath();
+  for(let px=0;px<=W;px+=2){ const x=camX+px/PXM; const yy=gY(groundAt(c,x)); px===0?rctx.moveTo(px,yy):rctx.lineTo(px,yy); }
+  rctx.strokeStyle="rgba(0,0,0,.35)"; rctx.lineWidth=2; rctx.stroke();
+  // pavement centerline dashes
+  if(curCourse<=1){ rctx.strokeStyle="rgba(255,255,210,.55)"; rctx.lineWidth=2; rctx.setLineDash([14,18]);
+    rctx.beginPath();
+    for(let px=0;px<=W;px+=4){ const x=camX+px/PXM; const yy=gY(groundAt(c,x))+9; px===0?rctx.moveTo(px,yy):rctx.lineTo(px,yy); }
+    rctx.stroke(); rctx.setLineDash([]); }
+  // trees & gates on trail; corner flags on dirt
+  if(c.trees) for(const t of c.trees){ if(t.x<camX-2||t.x>camX+W/PXM+2) continue; drawTree(gX(t.x), gY(groundAt(c,t.x)), t.s); }
+  for(const g of c.gates){ if(g.x<camX-2||g.x>camX+W/PXM+2) continue;
+    const x=gX(g.x), y=gY(groundAt(c,g.x));
+    rctx.fillStyle=cssVar("--warn"); rctx.beginPath(); rctx.moveTo(x,y-30); rctx.lineTo(x+12,y-25); rctx.lineTo(x,y-20); rctx.fill();
+    rctx.strokeStyle=cssVar("--ink3"); rctx.lineWidth=2; rctx.beginPath(); rctx.moveTo(x,y); rctx.lineTo(x,y-30); rctx.stroke(); }
+  // finish flag
+  if(c.len>camX && c.len<camX+W/PXM+2){ const x=gX(c.len), y=gY(groundAt(c,c.len));
+    rctx.strokeStyle=cssVar("--ink"); rctx.lineWidth=2.5; rctx.beginPath(); rctx.moveTo(x,y); rctx.lineTo(x,y-46); rctx.stroke();
+    rctx.fillStyle=cssVar("--ink");
+    for(let r=0;r<3;r++)for(let cc=0;cc<3;cc++) if((r+cc)%2===0) rctx.fillRect(x+cc*7,y-46+r*7,7,7); }
+
+  drawBike(S, b, li, gX, gY, c);
+
+  // HUD chip
+  rctx.font="700 15px "+"Arial Narrow, sans-serif";
+  const label=b.brand+" "+b.name;
+  rctx.fillStyle=col(li); rctx.fillRect(12,12,8,26);
+  rctx.fillStyle=cssVar("--ink"); rctx.textBaseline="top"; rctx.fillText(label.toUpperCase(),28,12);
+  rctx.font="600 13px "+"ui-monospace, monospace"; rctx.fillStyle=cssVar("--ink2");
+  const kmh=(S.v*3.6).toFixed(1).padStart(4);
+  rctx.fillText(kmh+" km/h   "+Math.round(S.x)+" m"+(S.done?"   ✓ "+S.finishT.toFixed(1)+"s":""),28,29);
+  if(S.airCnt>0.06&&!S.done){ rctx.fillStyle=cssVar("--crit"); rctx.font="700 11px Arial Narrow, sans-serif"; rctx.fillText("AIRBORNE",28,45); }
+  rctx.restore();
+}
+
+function drawTree(x,y,s){
+  rctx.save(); rctx.translate(x,y); rctx.scale(s,s);
+  rctx.fillStyle="#5a4632"; rctx.fillRect(-3,-34,6,34);
+  rctx.fillStyle="rgba(58,94,55,.92)";
+  rctx.beginPath(); rctx.moveTo(0,-78); rctx.lineTo(20,-40); rctx.lineTo(-20,-40); rctx.fill();
+  rctx.beginPath(); rctx.moveTo(0,-62); rctx.lineTo(24,-26); rctx.lineTo(-24,-26); rctx.fill();
+  rctx.restore();
+}
+
+function drawBike(S,b,li,gX,gY,c){
+  const wr=WHEEL_R*PXM;
+  // heave relative to local ground, for rendering bounce (S.z is absolute)
+  const zRel=clamp(S.z-groundAt(c,S.x),-0.12,0.12);
+  const xF=S.x+AF, xR=S.x-AR;
+  const yFg=gY(envelopedGround(c,xF,0.08)), yRg=gY(envelopedGround(c,xR,0.08));
+  const yF=yFg-wr-(S.airF?4:0), yR=yRg-wr-(S.airR?4:0);
+  const xf=gX(xF), xr=gX(xR);
+  const color=col(li);
+  rctx.save();
+  rctx.lineWidth=3; rctx.lineCap="round";
+  // wheels
+  for(const [wx,wy] of [[xf,yF],[xr,yR]]){
+    rctx.strokeStyle=cssVar("--ink"); rctx.beginPath(); rctx.arc(wx,wy,wr,0,7); rctx.stroke();
+    rctx.strokeStyle="rgba(128,128,128,.7)"; rctx.lineWidth=1.2;
+    for(let k=0;k<5;k++){ const a=S.wheelPhase+k*Math.PI*2/5;
+      rctx.beginPath(); rctx.moveTo(wx,wy); rctx.lineTo(wx+wr*.92*Math.cos(a),wy+wr*.92*Math.sin(a)); rctx.stroke(); }
+    rctx.lineWidth=3;
+  }
+  // knob hints for treaded tires
+  if(b.tread===2){ rctx.strokeStyle=cssVar("--ink");
+    for(const [wx,wy] of [[xf,yF],[xr,yR]])
+      for(let k=0;k<12;k++){ const a=S.wheelPhase*0.9+k*Math.PI/6;
+        rctx.beginPath(); rctx.moveTo(wx+wr*Math.cos(a),wy+wr*Math.sin(a));
+        rctx.lineTo(wx+(wr+2.5)*Math.cos(a),wy+(wr+2.5)*Math.sin(a)); rctx.stroke(); } }
+  // frame geometry (sprung, follows z & pitch)
+  const sag=S.suspSagF*PXM;
+  const bbX=xr+(xf-xr)*0.45, bbY=Math.max(yF,yR)+wr-14-(zRel*PXM*0.6);
+  const stX=xr+3, stY=yR-wr*0.15-26;         // seat cluster
+  const hbX=xf-6, hbY=yF-wr*0.2-30+sag*0.5;  // head tube top
+  rctx.strokeStyle=color; rctx.lineWidth=4;
+  rctx.beginPath();
+  rctx.moveTo(xr,yR); rctx.lineTo(stX,stY);            // seatstay+post
+  rctx.lineTo(bbX,bbY);                                 // seat tube
+  rctx.lineTo(xr,yR);                                   // chainstay
+  rctx.moveTo(stX,stY); rctx.lineTo(hbX,hbY);           // top tube
+  rctx.moveTo(bbX,bbY); rctx.lineTo(hbX,hbY);           // down tube
+  rctx.stroke();
+  // fork: telescoping for CX (shows sag), straight otherwise
+  if(b.susp){
+    rctx.lineWidth=5; rctx.strokeStyle=cssVar("--ink2");
+    rctx.beginPath(); rctx.moveTo(hbX,hbY); rctx.lineTo(xf-(hbX-xf)*-0.2, hbY+(yF-hbY)*0.45); rctx.stroke();
+    rctx.lineWidth=3.2; rctx.strokeStyle=color;
+    rctx.beginPath(); rctx.moveTo(hbX+(xf-hbX)*0.45, hbY+(yF-hbY)*0.42+sag); rctx.lineTo(xf,yF); rctx.stroke();
+  } else {
+    rctx.lineWidth=3.5; rctx.beginPath(); rctx.moveTo(hbX,hbY); rctx.lineTo(xf,yF); rctx.stroke();
+  }
+  // crank + pedals
+  rctx.strokeStyle=cssVar("--ink"); rctx.lineWidth=2.5;
+  const ca=S.pedalPhase;
+  rctx.beginPath(); rctx.moveTo(bbX-9*Math.cos(ca),bbY-9*Math.sin(ca)); rctx.lineTo(bbX+9*Math.cos(ca),bbY+9*Math.sin(ca)); rctx.stroke();
+  // Future Shock stem marker
+  let barX=hbX-2, barY=hbY-8;
+  if(b.futureShock){ const fsPix=clamp(-S.fsZ*PXM*2,0,6); barY=hbY-10+fsPix;
+    rctx.fillStyle=cssVar("--ink2"); rctx.fillRect(hbX-4,hbY-11,8,9); }
+  // rider (bounces with sprung mass, hands on bars)
+  const hipX=stX+4, hipY=stY-8-(zRel*PXM*0.5);
+  const shX=lerp(hipX,barX,0.62), shY=hipY-30+(b.futureShock? S.fsZ*PXM*1.2 : 0);
+  rctx.strokeStyle=cssVar("--ink"); rctx.lineWidth=4.5;
+  rctx.beginPath(); rctx.moveTo(hipX,hipY); rctx.lineTo(shX,shY); rctx.stroke();       // torso
+  rctx.lineWidth=3;
+  rctx.beginPath(); rctx.moveTo(shX,shY); rctx.lineTo(barX,barY-2); rctx.stroke();     // arm
+  const kneeX=lerp(hipX,bbX,0.5)+4, kneeY=lerp(hipY,bbY,0.5)-6*Math.cos(ca);
+  rctx.beginPath(); rctx.moveTo(hipX,hipY); rctx.lineTo(kneeX,kneeY); rctx.lineTo(bbX+9*Math.cos(ca),bbY+9*Math.sin(ca)); rctx.stroke(); // leg
+  rctx.beginPath(); rctx.arc(shX+5,shY-9,6.5,0,7); rctx.fillStyle=color; rctx.fill();  // head
+  rctx.restore();
+}
+
+/* =====================================================================
+   Telemetry chart (speed vs distance)
+===================================================================== */
+const cv=document.getElementById("chart"), ctx2=cv.getContext("2d");
+const tip=document.getElementById("tip");
+const PADL=44,PADR=14,PADT=14,PADB=30;
+
+function drawChart(){
+  const W=cv.width,H=cv.height, c=getCourse(curCourse);
+  ctx2.clearRect(0,0,W,H);
+  const pw=W-PADL-PADR, ph=H-PADT-PADB;
+  let vmax=6; for(const s of states) for(const p of s.trace) vmax=Math.max(vmax,p[1]);
+  vmax=Math.ceil(vmax*3.6/10)*10/3.6;
+  const X=d=>PADL+d/c.len*pw, Y=v=>PADT+ph-(v/vmax)*ph;
+  // grid + axes
+  ctx2.strokeStyle=cssVar("--line"); ctx2.lineWidth=1;
+  ctx2.fillStyle=cssVar("--ink3"); ctx2.font="11px ui-monospace,monospace"; ctx2.textAlign="right";
+  const stepK=vmax*3.6<=30?10:vmax*3.6<=60?10:20;
+  for(let k=0;k<=vmax*3.6+0.01;k+=stepK){ const y=Y(k/3.6);
+    ctx2.beginPath(); ctx2.moveTo(PADL,y); ctx2.lineTo(W-PADR,y); ctx2.stroke();
+    ctx2.fillText(k+"",PADL-6,y+3); }
+  ctx2.textAlign="center";
+  for(let d=0;d<=c.len;d+=300){ ctx2.fillText(d+" m",X(d),H-8); }
+  ctx2.save(); ctx2.translate(12,PADT+ph/2); ctx2.rotate(-Math.PI/2); ctx2.textAlign="center";
+  ctx2.fillText("km/h",0,0); ctx2.restore();
+  // series
+  states.forEach((s,i)=>{
+    if(s.trace.length<2) return;
+    ctx2.strokeStyle=markCol(i); ctx2.lineWidth=2; ctx2.lineJoin="round"; ctx2.beginPath();
+    s.trace.forEach((p,j)=> j===0?ctx2.moveTo(X(p[0]),Y(p[1])):ctx2.lineTo(X(p[0]),Y(p[1])));
+    ctx2.stroke();
+    // direct end label
+    const last=s.trace[s.trace.length-1];
+    ctx2.fillStyle=cssVar("--ink"); ctx2.font="700 11px Arial Narrow,sans-serif"; ctx2.textAlign="left";
+    const ly=clamp(Y(last[1])+ (i===0?-6:i===1?4:14)-4, PADT+8, H-PADB-4);
+    ctx2.fillStyle=markCol(i); ctx2.beginPath(); ctx2.arc(X(last[0]),Y(last[1]),3.2,0,7); ctx2.fill();
+    ctx2.fillStyle=cssVar("--ink2");
+    ctx2.fillText(BIKES[i].name.toUpperCase(), clamp(X(last[0])+6,PADL,W-90), ly);
+  });
+}
+cv.addEventListener("mousemove",e=>{
+  const r=cv.getBoundingClientRect(), c=getCourse(curCourse);
+  const mx=(e.clientX-r.left)*(cv.width/r.width);
+  if(mx<PADL||mx>cv.width-PADR||states.every(s=>s.trace.length<2)){tip.style.display="none";return;}
+  const d=(mx-PADL)/(cv.width-PADL-PADR)*c.len;
+  let html="<b>"+Math.round(d)+" m</b>";
+  states.forEach((s,i)=>{
+    let sp=null;
+    for(let j=1;j<s.trace.length;j++) if(s.trace[j][0]>=d){ sp=lerp(s.trace[j-1][1],s.trace[j][1],(d-s.trace[j-1][0])/Math.max(1e-6,s.trace[j][0]-s.trace[j-1][0])); break; }
+    if(sp!=null) html+="<br><span style='color:"+markCol(i)+"'>●</span> "+BIKES[i].name+"  "+(sp*3.6).toFixed(1)+" km/h";
+  });
+  tip.innerHTML=html; tip.style.display="block";
+  tip.style.left=Math.min(e.clientX-r.left+14, r.width-150)+"px";
+  tip.style.top=(e.clientY-r.top+10)+"px";
+  drawChart();
+  const x=mx; ctx2.strokeStyle=cssVar("--ink3"); ctx2.setLineDash([3,3]);
+  ctx2.beginPath(); ctx2.moveTo(x,PADT); ctx2.lineTo(x,cv.height-PADB); ctx2.stroke(); ctx2.setLineDash([]);
+});
+cv.addEventListener("mouseleave",()=>{ tip.style.display="none"; drawChart(); });
+
+/* =====================================================================
+   Standings & results
+===================================================================== */
+function fmtRms(s){ return s.aRmsN>0.5 ? Math.sqrt(s.aRmsAcc/s.aRmsN).toFixed(2)+" m/s²" : "—"; }
+function updateStandings(){
+  const tb=document.getElementById("standings");
+  const order=[...states.keys()].sort((a,b)=> (states[b].done?1e6-states[b].finishT:states[b].x) - (states[a].done?1e6-states[a].finishT:states[a].x));
+  tb.innerHTML=order.map((i,rank)=>{
+    const s=states[i];
+    return "<tr><td><span class='bikecell'><i class='swatch' style='background:"+col(i)+"'></i>"+BIKES[i].name+
+      (rank===0?" <span class='leader'>▲ lead</span>":"")+"</span></td>"+
+      "<td class='num'>"+Math.round(s.x)+" m</td>"+
+      "<td class='num'>"+(s.v*3.6).toFixed(1)+"</td>"+
+      "<td class='num'>"+fmtRms(s)+"</td></tr>";
+  }).join("");
+}
+function showResults(){
+  const v=document.getElementById("verdict"); v.style.display="block";
+  const order=[...states.keys()].sort((a,b)=>states[a].finishT-states[b].finishT);
+  const rows=order.map((i,rank)=>{
+    const s=states[i], c=s.course;
+    return "<tr><td><span class='bikecell'><i class='swatch' style='background:"+col(i)+"'></i>"+
+      ["🥇","🥈","🥉"][rank]+" "+BIKES[i].brand+" "+BIKES[i].name+"</span></td>"+
+      "<td class='num'>"+s.finishT.toFixed(1)+" s</td>"+
+      "<td class='num'>"+(c.len/s.finishT*3.6).toFixed(1)+" km/h</td>"+
+      "<td class='num'>"+(s.vMax*3.6).toFixed(1)+" km/h</td>"+
+      "<td class='num'>"+fmtRms(s)+"</td>"+
+      "<td class='num'>"+(s.bumpJ/1000).toFixed(1)+" kJ</td></tr>";
+  }).join("");
+  document.getElementById("resultRows").innerHTML=rows;
+  const w=states[order[0]], l=states[order[2]];
+  document.getElementById("winnerLine").textContent=BIKES[order[0]].brand+" "+BIKES[order[0]].name+" wins by "+(states[order[1]].finishT-w.finishT).toFixed(1)+" s";
+  const comfy=[...states.keys()].sort((a,b)=>Math.sqrt(states[a].aRmsAcc/Math.max(.1,states[a].aRmsN))-Math.sqrt(states[b].aRmsAcc/Math.max(.1,states[b].aRmsN)))[0];
+  document.getElementById("verdictText").textContent =
+    "On "+w.course.name.toLowerCase()+", "+BIKES[order[0]].name+" finished "+COURSES[curCourse].len+" m in "+w.finishT.toFixed(1)+" s. "+
+    "Smoothest ride: "+BIKES[comfy].name+" at "+fmtRms(states[comfy])+" RMS. "+
+    BIKES[order[2]].name+" gave up "+(l.finishT-w.finishT).toFixed(1)+" s, losing "+(l.bumpJ/1000).toFixed(1)+" kJ to vibration and impedance along the way.";
+}
+
+/* =====================================================================
+   Wiring
+===================================================================== */
+document.querySelectorAll(".tabs button").forEach(btn=>{
+  btn.addEventListener("click",()=>{
+    document.querySelectorAll(".tabs button").forEach(b=>b.setAttribute("aria-pressed","false"));
+    btn.setAttribute("aria-pressed","true");
+    curCourse=+btn.dataset.course; resetSim();
+  });
+});
+document.getElementById("power").addEventListener("input",e=>{
+  document.getElementById("powerVal").textContent=e.target.value+" W";
+});
+document.getElementById("simspeed").addEventListener("input",e=>{
+  simMult=SIM_SPEEDS[+e.target.value];
+  document.getElementById("simspeedVal").textContent=simMult+"×";
+});
+document.getElementById("startBtn").addEventListener("click",()=>{
+  if(finished) resetSim();
+  running=!running;
+  document.getElementById("startBtn").textContent=running?"Pause":"Resume";
+});
+document.getElementById("resetBtn").addEventListener("click",resetSim);
+addEventListener("keydown",e=>{ if(e.key===" "&&document.activeElement.tagName!=="INPUT"){ e.preventDefault(); document.getElementById("startBtn").click(); }});
+
+resetSim();
+requestAnimationFrame(tick);
+</script>
