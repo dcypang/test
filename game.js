@@ -3,9 +3,11 @@
   "use strict";
 
   // ---------- basic setup ----------
+  const IS_TOUCH = ("ontouchstart" in window) || navigator.maxTouchPoints > 0;
   const container = document.getElementById("game");
   const renderer = new THREE.WebGLRenderer({ antialias: true });
-  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+  // phones: lower pixel ratio keeps the frame rate smooth
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio, IS_TOUCH ? 1.6 : 2));
   renderer.setSize(window.innerWidth, window.innerHeight);
   renderer.shadowMap.enabled = true;
   renderer.shadowMap.type = THREE.PCFSoftShadowMap;
@@ -18,11 +20,17 @@
   const camera = new THREE.PerspectiveCamera(55, window.innerWidth / window.innerHeight, 0.1, 400);
   camera.position.set(0, 6, 10);
 
-  window.addEventListener("resize", () => {
-    camera.aspect = window.innerWidth / window.innerHeight;
+  function fitCamera() {
+    const aspect = window.innerWidth / window.innerHeight;
+    camera.aspect = aspect;
+    // portrait phones: widen the view so the world doesn't feel cramped
+    camera.fov = aspect < 0.8 ? 68 : 55;
     camera.updateProjectionMatrix();
     renderer.setSize(window.innerWidth, window.innerHeight);
-  });
+  }
+  fitCamera();
+  window.addEventListener("resize", fitCamera);
+  window.addEventListener("orientationchange", () => setTimeout(fitCamera, 250));
 
   // lights
   scene.add(new THREE.AmbientLight(0xffffff, 0.55));
@@ -30,7 +38,7 @@
   scene.add(sky);
   const sun = new THREE.DirectionalLight(0xfff2cc, 1.6);
   sun.castShadow = true;
-  sun.shadow.mapSize.set(2048, 2048);
+  sun.shadow.mapSize.set(IS_TOUCH ? 1024 : 2048, IS_TOUCH ? 1024 : 2048);
   sun.shadow.camera.left = -45; sun.shadow.camera.right = 45;
   sun.shadow.camera.top = 45; sun.shadow.camera.bottom = -45;
   sun.shadow.camera.far = 120;
@@ -577,7 +585,7 @@
   window.addEventListener("keyup", e => { keys[e.code] = false; });
 
   // touch controls
-  const isTouch = ("ontouchstart" in window) || navigator.maxTouchPoints > 0;
+  const isTouch = IS_TOUCH;
   const joyVec = { x: 0, y: 0 };
   if (isTouch) {
     document.body.classList.add("touch");
@@ -586,20 +594,24 @@
     const setKnob = (dx, dy) => {
       knob.style.transform = `translate(calc(-50% + ${dx}px), calc(-50% + ${dy}px))`;
     };
-    joy.addEventListener("pointerdown", e => {
-      joyId = e.pointerId;
-      joy.setPointerCapture(joyId);
-    });
-    joy.addEventListener("pointermove", e => {
-      if (e.pointerId !== joyId) return;
+    const joyMove = e => {
       const r = joy.getBoundingClientRect();
       let dx = e.clientX - (r.left + r.width / 2);
       let dy = e.clientY - (r.top + r.height / 2);
       const len = Math.hypot(dx, dy) || 1;
-      const cl = Math.min(len, 44);
+      const cl = Math.min(len, 46);
       dx = dx / len * cl; dy = dy / len * cl;
       setKnob(dx, dy);
-      joyVec.x = dx / 44; joyVec.y = dy / 44;
+      joyVec.x = dx / 46; joyVec.y = dy / 46;
+    };
+    joy.addEventListener("pointerdown", e => {
+      e.preventDefault();
+      joyId = e.pointerId;
+      joy.setPointerCapture(joyId);
+      joyMove(e); // start steering from the very first touch
+    });
+    joy.addEventListener("pointermove", e => {
+      if (e.pointerId === joyId) joyMove(e);
     });
     const joyEnd = e => {
       if (e.pointerId !== joyId) return;
@@ -609,9 +621,15 @@
     };
     joy.addEventListener("pointerup", joyEnd);
     joy.addEventListener("pointercancel", joyEnd);
-    $("btnJump").addEventListener("pointerdown", () => { wantJump = true; });
-    $("btnDig").addEventListener("pointerdown", () => tryDig());
+    $("btnJump").addEventListener("pointerdown", e => { e.preventDefault(); wantJump = true; });
+    $("btnDig").addEventListener("pointerdown", e => { e.preventDefault(); tryDig(); });
+    // no long-press menus on the controls
+    document.addEventListener("contextmenu", e => {
+      if (e.target.closest(".tbtn, #joy")) e.preventDefault();
+    });
   }
+  // browsers only allow sound after a first tap/click — unlock it then
+  window.addEventListener("pointerdown", () => ac(), { once: true });
 
   // ---------- game state ----------
   const player = {

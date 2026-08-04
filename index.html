@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
 <title>Find the Hidden Treasure — 3D</title>
 <style>
   html, body { margin: 0; padding: 0; height: 100%; overflow: hidden; background: #7a5b3a; touch-action: none; }
@@ -59,22 +59,36 @@
 
   /* touch controls */
   #joy {
-    position: fixed; left: 26px; bottom: 76px; width: 120px; height: 120px; border-radius: 50%;
-    background: rgba(255,255,255,.15); border: 3px solid rgba(255,255,255,.5); display: none; z-index: 10;
+    position: fixed; display: none; z-index: 10;
+    left: calc(22px + env(safe-area-inset-left, 0px));
+    bottom: calc(30px + env(safe-area-inset-bottom, 0px));
+    width: 128px; height: 128px; border-radius: 50%;
+    background: rgba(255,255,255,.15); border: 3px solid rgba(255,255,255,.5);
+    touch-action: none; -webkit-touch-callout: none;
   }
   #joyKnob {
-    position: absolute; left: 50%; top: 50%; width: 52px; height: 52px; border-radius: 50%;
+    position: absolute; left: 50%; top: 50%; width: 56px; height: 56px; border-radius: 50%;
     background: #c6e526; border: 3px solid #8a7300; transform: translate(-50%,-50%);
   }
   .tbtn {
-    position: fixed; width: 78px; height: 78px; border-radius: 50%; display: none; z-index: 10;
+    position: fixed; width: 86px; height: 86px; border-radius: 50%; display: none; z-index: 10;
     align-items: center; justify-content: center; font-family: "Comic Sans MS", cursive, sans-serif;
-    font-size: 17px; font-weight: bold; color: #4b3620; background: #c6e526e0; border: 3px solid #8a7300;
-    user-select: none; -webkit-user-select: none;
+    font-size: 18px; font-weight: bold; color: #4b3620; background: #c6e526e0; border: 3px solid #8a7300;
+    user-select: none; -webkit-user-select: none; touch-action: none; -webkit-touch-callout: none;
+    box-shadow: 0 3px 8px rgba(0,0,0,.35);
   }
-  #btnJump { right: 30px; bottom: 96px; }
-  #btnDig  { right: 118px; bottom: 40px; }
+  #btnJump { right: calc(24px + env(safe-area-inset-right, 0px)); bottom: calc(102px + env(safe-area-inset-bottom, 0px)); }
+  #btnDig  { right: calc(112px + env(safe-area-inset-right, 0px)); bottom: calc(26px + env(safe-area-inset-bottom, 0px)); }
   .touch #joy, .touch .tbtn { display: flex; }
+  /* phones: hide keyboard hints, move the mission banner up out of thumb range */
+  .touch #help { display: none; }
+  .touch #title { font-size: clamp(18px, 4vw, 30px); top: calc(8px + env(safe-area-inset-top, 0px)); }
+  .touch #mission {
+    bottom: auto; top: calc(env(safe-area-inset-top, 0px) + 56px);
+    font-size: 14px; padding: 7px 16px; max-width: 92vw;
+  }
+  .touch #hud .pill { font-size: 13px; padding: 4px 11px; border-width: 2px; }
+  .touch #hud { top: calc(8px + env(safe-area-inset-top, 0px)); left: calc(8px + env(safe-area-inset-left, 0px)); }
 </style>
 </head>
 <body>
