@@ -544,6 +544,273 @@
     }
   }
 
+  // ---------- final boss: the Giant Hand Girl ----------
+  const SKIN = 0xf2c9a0;
+  function buildGiantHand(mirror) {
+    const g = new THREE.Group();
+    const palm = new THREE.Mesh(new THREE.SphereGeometry(0.9, 20, 16), MAT(SKIN));
+    palm.scale.set(1, 1.15, 0.45);
+    palm.castShadow = true;
+    g.add(palm);
+    const fingerGeo = new THREE.CapsuleGeometry(0.17, 0.6, 4, 10);
+    for (let i = 0; i < 4; i++) {
+      const f = new THREE.Mesh(fingerGeo, MAT(SKIN));
+      f.position.set(-0.55 + i * 0.37, 1.15, 0);
+      f.castShadow = true;
+      g.add(f);
+    }
+    const thumb = new THREE.Mesh(fingerGeo, MAT(SKIN));
+    thumb.position.set(0.85 * (mirror ? -1 : 1), 0.35, 0);
+    thumb.rotation.z = 0.7 * (mirror ? 1 : -1);
+    thumb.castShadow = true;
+    g.add(thumb);
+    g.scale.setScalar(1.7);
+    return g;
+  }
+  function buildBossGirl() {
+    const g = new THREE.Group();
+    // green-pants legs + rainbow sneakers
+    [-1, 1].forEach(s => {
+      const leg = new THREE.Mesh(new THREE.CapsuleGeometry(0.2, 0.8, 4, 10), MAT(0x2c8a3d));
+      leg.position.set(0.28 * s, 0.75, 0);
+      leg.castShadow = true;
+      g.add(leg);
+      const shoe = new THREE.Mesh(new THREE.BoxGeometry(0.42, 0.24, 0.66), MAT(s < 0 ? 0xe8a020 : 0x3fb6e0));
+      shoe.position.set(0.28 * s, 0.14, 0.1);
+      shoe.castShadow = true;
+      g.add(shoe);
+    });
+    // blue shirt
+    const torso = new THREE.Mesh(new THREE.SphereGeometry(0.62, 22, 18), MAT(0x2f6df6));
+    torso.scale.set(1, 1.2, 0.75);
+    torso.position.y = 1.75;
+    torso.castShadow = true;
+    g.add(torso);
+    // small regular arms (her GIANT hands float on their own, like the collage)
+    [-1, 1].forEach(s => {
+      const arm = new THREE.Mesh(new THREE.CapsuleGeometry(0.13, 0.55, 4, 10), MAT(0x2f6df6));
+      arm.position.set(0.68 * s, 1.95, 0);
+      arm.rotation.z = 0.9 * s;
+      g.add(arm);
+    });
+    // head
+    const head = new THREE.Group();
+    head.position.y = 3.05;
+    g.add(head);
+    const face = new THREE.Mesh(new THREE.SphereGeometry(0.52, 24, 20), MAT(SKIN));
+    face.castShadow = true;
+    head.add(face);
+    const hair = new THREE.Mesh(new THREE.SphereGeometry(0.56, 24, 20), MAT(0x241a14));
+    hair.position.set(0, 0.1, -0.12);
+    head.add(hair);
+    const bangs = new THREE.Mesh(new THREE.SphereGeometry(0.5, 20, 14, 0, Math.PI * 2, 0, Math.PI * 0.42), MAT(0x241a14));
+    bangs.position.set(0, 0.16, 0.06);
+    head.add(bangs);
+    [-1, 1].forEach(s => {
+      const eye = new THREE.Mesh(new THREE.SphereGeometry(0.06, 10, 8), MAT(0x241a14));
+      eye.scale.y = 1.4;
+      eye.position.set(0.18 * s, 0.05, 0.47);
+      head.add(eye);
+    });
+    // excited open mouth
+    const mouth = new THREE.Mesh(new THREE.SphereGeometry(0.09, 12, 10), MAT(0x6b2020));
+    mouth.scale.set(1, 1.25, 0.4);
+    mouth.position.set(0, -0.2, 0.46);
+    head.add(mouth);
+    // the cat on her head
+    const cat = new THREE.Group();
+    cat.position.set(0.05, 0.62, 0.05);
+    const catBody = new THREE.Mesh(new THREE.SphereGeometry(0.2, 14, 12), MAT(0xe08a30));
+    catBody.scale.set(1.25, 0.8, 1);
+    cat.add(catBody);
+    [-1, 1].forEach(s => {
+      const ear = new THREE.Mesh(new THREE.ConeGeometry(0.07, 0.12, 6), MAT(0xe08a30));
+      ear.position.set(0.12 * s, 0.18, 0);
+      cat.add(ear);
+    });
+    const tail = new THREE.Mesh(new THREE.CapsuleGeometry(0.035, 0.3, 4, 8), MAT(0xe08a30));
+    tail.position.set(-0.28, 0.08, -0.05);
+    tail.rotation.z = 0.9;
+    cat.add(tail);
+    [-1, 1].forEach(s => {
+      const ce = new THREE.Mesh(new THREE.SphereGeometry(0.025, 8, 6), MAT(0x241a14));
+      ce.position.set(0.08 * s + 0.12, 0.05, 0.16);
+      cat.add(ce);
+    });
+    head.add(cat);
+    g.scale.setScalar(1.55);
+    return { group: g, head, cat };
+  }
+
+  const boss = {
+    active: false, defeated: false, hp: 3,
+    body: null, hands: [], shadowRing: null,
+    attackTimer: 2, handIndex: 0
+  };
+  function startBossFight(treasurePos) {
+    const b = buildBossGirl();
+    b.group.position.set(treasurePos.x, 0, treasurePos.z - 6);
+    scene.add(b.group);
+    boss.body = b;
+    [true, false].forEach((mirror, i) => {
+      const h = buildGiantHand(mirror);
+      const side = i === 0 ? -1 : 1;
+      h.position.set(treasurePos.x + side * 6, 5, treasurePos.z - 5);
+      scene.add(h);
+      boss.hands.push({
+        mesh: h, side, state: "idle", t: 0,
+        home: h.position.clone(), target: new THREE.Vector3()
+      });
+    });
+    const ring = new THREE.Mesh(
+      new THREE.RingGeometry(0.4, 2.2, 32),
+      new THREE.MeshBasicMaterial({ color: 0x201010, transparent: true, opacity: 0.35, side: THREE.DoubleSide })
+    );
+    ring.rotation.x = -Math.PI / 2;
+    ring.position.y = 0.07;
+    ring.visible = false;
+    scene.add(ring);
+    boss.shadowRing = ring;
+    boss.active = true;
+    boss.hp = 3;
+    $("bossPill").style.display = "";
+    $("bossHp").textContent = "❤️❤️❤️";
+    const digBtn = $("btnDig");
+    digBtn.querySelector(".ico").textContent = "⭐";
+    digBtn.querySelector(".lbl").textContent = "BONK";
+    setMission(isTouch
+      ? "😱 The Giant Hand Girl wants the treasure! Dodge her hands, then BONK them when they land!"
+      : "😱 The Giant Hand Girl wants the treasure! Dodge her hands, then press E to bonk them when they land!");
+    sfx.decoy();
+  }
+  function bonkHand(hand) {
+    boss.hp--;
+    $("bossHp").textContent = "❤️".repeat(boss.hp) || "💫";
+    player.digging = 0.45; // quick wand-swing pose
+    sfx.star();
+    beep(200, 0.2, "sawtooth", 0, 0.15);
+    burst(hand.mesh.position.clone(), 0xffd21f, 20, 5, 0.9);
+    hand.state = "return";
+    hand.t = 0;
+    if (boss.hp <= 0) {
+      boss.active = false;
+      boss.defeated = true;
+      boss.shadowRing.visible = false;
+      boss.hands.forEach(h => { h.state = "idle"; });
+      sfx.fanfare();
+      setMission("😄 She just wanted to play! The treasure is yours!");
+      confettiRain();
+      setTimeout(() => {
+        won = true;
+        $("winStats").textContent =
+          `You dug ${dugCount} spot${dugCount === 1 ? "" : "s"}, collected ${starCount} star${starCount === 1 ? "" : "s"}, and beat the Giant Hand Girl!`;
+        $("win").style.display = "flex";
+        confettiRain();
+      }, 2400);
+    } else {
+      setMission(`Great bonk! ${boss.hp} more to go! 💪`, 2500);
+    }
+  }
+  function updateBoss(dt, t) {
+    if (!boss.body) return;
+    // the girl hovers and wobbles excitedly
+    const bg = boss.body.group;
+    bg.position.y = 1.6 + Math.sin(t * 2.1) * 0.35;
+    bg.rotation.y = Math.atan2(player.pos.x - bg.position.x, player.pos.z - bg.position.z);
+    bg.rotation.z = Math.sin(t * 2.6) * 0.06;
+    boss.body.cat.rotation.z = Math.sin(t * 3.2) * 0.15;
+    if (boss.defeated) {
+      bg.rotation.y += Math.sin(t * 4) * 0.15;
+      boss.hands.forEach(h => {
+        h.mesh.position.lerp(h.home, dt * 2);
+        h.mesh.rotation.z = Math.sin(t * 6 + h.side) * 0.4; // happy waving
+      });
+      return;
+    }
+    if (!boss.active) return;
+    // attack scheduling
+    boss.attackTimer -= dt;
+    if (boss.attackTimer <= 0) {
+      const hand = boss.hands[boss.handIndex % 2];
+      boss.handIndex++;
+      if (hand.state === "idle") {
+        hand.state = "telegraph";
+        hand.t = 0;
+        hand.target.set(player.pos.x, 0, player.pos.z);
+      }
+      boss.attackTimer = 4.2;
+    }
+    boss.hands.forEach(hand => {
+      hand.t += dt;
+      const m = hand.mesh;
+      switch (hand.state) {
+        case "idle": {
+          const idlePos = hand.home.clone();
+          idlePos.y = 5 + Math.sin(t * 1.8 + hand.side) * 0.5;
+          m.position.lerp(idlePos, dt * 2.5);
+          m.rotation.set(0, 0, Math.sin(t * 1.5 + hand.side) * 0.15);
+          break;
+        }
+        case "telegraph": {
+          // hover above the player's marked spot, fingers down
+          const hover = hand.target.clone();
+          hover.y = 7;
+          m.position.lerp(hover, dt * 5);
+          m.rotation.x = Math.PI; // palm down
+          boss.shadowRing.visible = true;
+          boss.shadowRing.position.set(hand.target.x, 0.07, hand.target.z);
+          const p = Math.min(1, hand.t / 1.1);
+          boss.shadowRing.scale.setScalar(0.4 + p * 0.8);
+          if (hand.t > 1.1) { hand.state = "slam"; hand.t = 0; }
+          break;
+        }
+        case "slam": {
+          m.position.y = Math.max(1.1, 7 - hand.t * 26);
+          if (m.position.y <= 1.1) {
+            // impact!
+            burst(new THREE.Vector3(m.position.x, 0.5, m.position.z), 0x8a6134, 20, 5, 0.8);
+            beep(90, 0.3, "sawtooth", 0, 0.2);
+            shake = 0.5;
+            const dx = player.pos.x - m.position.x, dz = player.pos.z - m.position.z;
+            const dd = Math.hypot(dx, dz);
+            if (dd < 2.6) {
+              knock.set(dx / (dd || 1) * 14, 0, dz / (dd || 1) * 14);
+              setMission("Whoa! Watch out for the giant hands! 🖐️", 2000);
+            }
+            hand.state = "stunned";
+            hand.t = 0;
+            boss.shadowRing.visible = false;
+          }
+          break;
+        }
+        case "stunned": {
+          m.position.y = 1.1 + Math.sin(hand.t * 3) * 0.05;
+          m.rotation.x = Math.PI;
+          m.rotation.z = Math.sin(hand.t * 20) * 0.04; // trembling — bonk it now!
+          if (hand.t > 3.0) { hand.state = "return"; hand.t = 0; }
+          break;
+        }
+        case "return": {
+          const back = hand.home.clone();
+          back.y = 5;
+          m.position.lerp(back, dt * 3);
+          m.rotation.x *= (1 - dt * 4);
+          if (hand.t > 1.2) { hand.state = "idle"; hand.t = 0; }
+          break;
+        }
+      }
+    });
+  }
+  function nearestStunnedHand() {
+    let bestHand = null, best = 3.4;
+    for (const h of boss.hands) {
+      if (h.state !== "stunned") continue;
+      const dd = Math.hypot(player.pos.x - h.mesh.position.x, player.pos.z - h.mesh.position.z);
+      if (dd < best) { best = dd; bestHand = h; }
+    }
+    return bestHand;
+  }
+
   // ---------- treasure chest ----------
   let chest = null;
   function spawnChest(pos) {
@@ -652,10 +919,19 @@
   let wantJump = false;
   let won = false;
   let nearSpot = null;
+  let shake = 0;
+  const knock = new THREE.Vector3();
 
   function tryDig() {
     ac();
-    if (won || player.digging > 0 || !nearSpot || nearSpot.dug) return;
+    if (won || player.digging > 0) return;
+    // during the boss fight the wand bonks stunned giant hands
+    if (boss.active) {
+      const hand = nearestStunnedHand();
+      if (hand) bonkHand(hand);
+      return;
+    }
+    if (!nearSpot || nearSpot.dug) return;
     const spot = nearSpot;
     player.digging = 0.8;
     sfx.dig();
@@ -670,13 +946,8 @@
         spawnChest(spot.pos);
         sfx.fanfare();
         setMission("💛 TREASURE!!! 💛");
-        setTimeout(() => {
-          if (won) return;
-          won = true;
-          $("winStats").textContent = `You dug ${dugCount} spot${dugCount === 1 ? "" : "s"} and collected ${starCount} star${starCount === 1 ? "" : "s"}!`;
-          $("win").style.display = "flex";
-          confettiRain();
-        }, 2100);
+        // ...but the treasure has a guardian!
+        setTimeout(() => startBossFight(spot.pos), 2300);
       } else {
         sfx.decoy();
         burst(new THREE.Vector3(spot.pos.x, 0.6, spot.pos.z), 0xffd21f, 10, 3, 0.8);
@@ -696,7 +967,7 @@
   $("again").addEventListener("click", () => location.reload());
 
   // small hook for automated testing
-  window.__game = { player, digSpots, tryDig: () => tryDig(), treasureIndex };
+  window.__game = { player, digSpots, tryDig: () => tryDig(), treasureIndex, boss };
 
   // ---------- main loop ----------
   const clock = new THREE.Clock();
@@ -723,6 +994,12 @@
       player.pos.x += ix * SPEED * dt;
       player.pos.z += iz * SPEED * dt;
       player.facing = Math.atan2(ix, iz);
+    }
+    // knockback from giant-hand slams
+    if (knock.lengthSq() > 0.01) {
+      player.pos.x += knock.x * dt;
+      player.pos.z += knock.z * dt;
+      knock.multiplyScalar(Math.max(0, 1 - dt * 5));
     }
     player.pos.x = Math.max(-WORLD, Math.min(WORLD, player.pos.x));
     player.pos.z = Math.max(-WORLD, Math.min(WORLD, player.pos.z));
@@ -782,6 +1059,11 @@
     camTarget.set(player.pos.x, player.pos.y + 2, player.pos.z);
     const camGoal = new THREE.Vector3(player.pos.x, player.pos.y + 6.5, player.pos.z + 10.5);
     camera.position.lerp(camGoal, Math.min(1, dt * 4));
+    if (shake > 0) {
+      camera.position.x += (Math.random() - 0.5) * shake;
+      camera.position.y += (Math.random() - 0.5) * shake;
+      shake = Math.max(0, shake - dt * 1.6);
+    }
     camera.lookAt(camTarget);
 
     // sun follows player so shadows stay crisp
@@ -818,12 +1100,14 @@
       const dd = s.pos.distanceTo(player.pos);
       if (dd < best) { best = dd; nearSpot = s; }
     }
-    if (nearSpot && player.digging <= 0 && !won) {
+    if (nearSpot && player.digging <= 0 && !won && !boss.active && !boss.defeated) {
       setMission(isTouch ? "❌ found! Tap DIG to dig here!" : "❌ found! Press E to dig here!");
       nearSpot.mats.forEach(m => m.color.setHSL(0.83, 0.8, 0.5 + Math.sin(t * 6) * 0.2));
-    } else if (!won && player.digging <= 0 && $("mission").textContent.startsWith("❌")) {
+    } else if (!won && !boss.active && !boss.defeated && player.digging <= 0 && $("mission").textContent.startsWith("❌")) {
       setMission("Your Mission: find the ❌ marks and dig up the hidden treasure!");
     }
+
+    updateBoss(dt, t);
 
     // chest animation
     if (chest) {
