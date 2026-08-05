@@ -26,7 +26,8 @@ Everything from the drawing is in there:
 - 🌈 Rainbow cave portals in the corners — walk in to teleport across the map
 - 💧 The squiggly blue lake on its yellow patch
 - ❓ Floating golden question blocks — jump and bonk them from below for hidden stars
-- 🏰 The purple-towered castle on a hill
+- 🏰 A real stone castle with battlements, a throne hall, stairs to a second floor,
+  and a pitched roof — the walls turn to glass while you're inside so the camera can see
 - 🍭 Colorful swirl lollipops in the snowy zone
 - ➡️ Arrow signposts, pine trees, and the red wavy sky ribbon
 
