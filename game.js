@@ -89,7 +89,7 @@
     scene.add(d);
   });
 
-  // rainbow cave portals (the tunnel arches from the drawing)
+  // rainbow cave portals (the tunnel arches from the drawing) — they teleport!
   function rainbowPortal(x, z, rotY) {
     const g = new THREE.Group();
     const colors = [0xd8262c, 0x7a3b16, 0x2f6df6, 0x24b6c9, 0x2fae2f];
@@ -106,9 +106,14 @@
     g.position.set(x, 0, z);
     g.rotation.y = rotY;
     scene.add(g);
+    return g;
   }
-  rainbowPortal(-52, -50, Math.PI / 4);
-  rainbowPortal(50, 52, Math.PI + Math.PI / 4);
+  const portals = [
+    rainbowPortal(-52, -50, Math.PI / 4),
+    rainbowPortal(50, 52, Math.PI + Math.PI / 4)
+  ];
+  let portalCooldown = 0;
+  let camSnap = false;
 
   // question-mark blocks
   function questionTexture() {
@@ -586,12 +591,12 @@
     torso.position.y = 1.75;
     torso.castShadow = true;
     g.add(torso);
-    // small regular arms (her GIANT hands float on their own, like the collage)
-    [-1, 1].forEach(s => {
-      const arm = new THREE.Mesh(new THREE.CapsuleGeometry(0.13, 0.55, 4, 10), MAT(0x2f6df6));
-      arm.position.set(0.68 * s, 1.95, 0);
-      arm.rotation.z = 0.9 * s;
-      g.add(arm);
+    // shoulder anchors — stretchy sleeves connect these to her giant hands
+    const shoulders = [-1, 1].map(s => {
+      const anchor = new THREE.Object3D();
+      anchor.position.set(0.62 * s, 2.15, 0);
+      g.add(anchor);
+      return anchor;
     });
     // head
     const head = new THREE.Group();
@@ -639,7 +644,7 @@
     });
     head.add(cat);
     g.scale.setScalar(1.55);
-    return { group: g, head, cat };
+    return { group: g, head, cat, shoulders };
   }
 
   const boss = {
@@ -657,8 +662,13 @@
       const side = i === 0 ? -1 : 1;
       h.position.set(treasurePos.x + side * 6, 5, treasurePos.z - 5);
       scene.add(h);
+      // stretchy blue sleeve from her shoulder to this hand
+      const sleeve = new THREE.Mesh(new THREE.CylinderGeometry(0.34, 0.26, 1, 12), MAT(0x2f6df6));
+      sleeve.castShadow = true;
+      scene.add(sleeve);
       boss.hands.push({
-        mesh: h, side, state: "idle", t: 0,
+        mesh: h, side, state: "idle", t: 0, sleeve,
+        shoulder: b.shoulders[i],
         home: h.position.clone(), target: new THREE.Vector3()
       });
     });
@@ -711,6 +721,17 @@
       setMission(`Great bonk! ${boss.hp} more to go! 💪`, 2500);
     }
   }
+  const _shoulderPos = new THREE.Vector3(), _armDir = new THREE.Vector3(), _armUp = new THREE.Vector3(0, 1, 0);
+  function updateSleeves() {
+    boss.hands.forEach(h => {
+      h.shoulder.getWorldPosition(_shoulderPos);
+      _armDir.copy(h.mesh.position).sub(_shoulderPos);
+      const len = Math.max(0.001, _armDir.length());
+      h.sleeve.position.copy(_shoulderPos).addScaledVector(_armDir, 0.5);
+      h.sleeve.quaternion.setFromUnitVectors(_armUp, _armDir.normalize());
+      h.sleeve.scale.set(1, len, 1);
+    });
+  }
   function updateBoss(dt, t) {
     if (!boss.body) return;
     // the girl hovers and wobbles excitedly
@@ -725,6 +746,7 @@
         h.mesh.position.lerp(h.home, dt * 2);
         h.mesh.rotation.z = Math.sin(t * 6 + h.side) * 0.4; // happy waving
       });
+      updateSleeves();
       return;
     }
     if (!boss.active) return;
@@ -800,6 +822,7 @@
         }
       }
     });
+    updateSleeves();
   }
   function nearestStunnedHand() {
     let bestHand = null, best = 3.4;
@@ -1054,6 +1077,27 @@
     }
     if (player.digging > 0) player.digging -= dt;
 
+    // rainbow cave teleport
+    portalCooldown -= dt;
+    if (portalCooldown <= 0 && !won) {
+      for (let i = 0; i < portals.length; i++) {
+        const p = portals[i].position;
+        if (Math.hypot(player.pos.x - p.x, player.pos.z - p.z) < 2.6) {
+          const dest = portals[1 - i].position;
+          burst(new THREE.Vector3(p.x, 1.5, p.z), 0x24b6c9, 24, 5, 1);
+          // land a few steps in front of the other cave, toward the map middle
+          const inward = Math.hypot(dest.x, dest.z) || 1;
+          player.pos.set(dest.x - dest.x / inward * 4.5, 0, dest.z - dest.z / inward * 4.5);
+          burst(new THREE.Vector3(player.pos.x, 1.5, player.pos.z), 0xd8262c, 24, 5, 1);
+          [660, 880, 1100, 1320].forEach((f, j) => beep(f, 0.1, "triangle", j * 0.06, 0.1));
+          portalCooldown = 3;
+          camSnap = true;
+          setMission("🌈 Wheee! The rainbow cave teleported you across the map!", 3500);
+          break;
+        }
+      }
+    }
+
     // hero transform + animation
     hero.root.position.copy(player.pos);
     let targetRot = player.facing;
@@ -1094,7 +1138,12 @@
       player.pos.y + CAM_DIST * Math.sin(camPitch),
       player.pos.z + Math.cos(camYaw) * CAM_DIST * Math.cos(camPitch)
     );
-    camera.position.lerp(camGoal, Math.min(1, dt * 4));
+    if (camSnap) {
+      camera.position.copy(camGoal);
+      camSnap = false;
+    } else {
+      camera.position.lerp(camGoal, Math.min(1, dt * 4));
+    }
     if (shake > 0) {
       camera.position.x += (Math.random() - 0.5) * shake;
       camera.position.y += (Math.random() - 0.5) * shake;
