@@ -23,9 +23,9 @@ spoons! The treasure moves to a random spot every game.
 
 Everything from the drawing is in there:
 
-- 🌈 Rainbow cave portals in the corners
+- 🌈 Rainbow cave portals in the corners — walk in to teleport across the map
 - 💧 The squiggly blue lake on its yellow patch
-- ❓ Floating golden question blocks
+- ❓ Floating golden question blocks — jump and bonk them from below for hidden stars
 - 🏰 The purple-towered castle on a hill
 - 🍭 Colorful swirl lollipops in the snowy zone
 - ➡️ Arrow signposts, pine trees, and the red wavy sky ribbon

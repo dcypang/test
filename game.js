@@ -133,12 +133,15 @@
     return new THREE.CanvasTexture(c);
   }
   const qMat = new THREE.MeshStandardMaterial({ map: questionTexture(), roughness: 0.6 });
+  const qMatUsed = new THREE.MeshStandardMaterial({ color: 0x9a8a5a, roughness: 0.8 });
   const qBlocks = [];
   [[6, 3.2, -22], [-16, 3.2, 12], [30, 3.4, -30]].forEach(([x, y, z]) => {
     const b = new THREE.Mesh(new THREE.BoxGeometry(1.6, 1.6, 1.6), qMat);
     b.position.set(x, y, z);
     b.castShadow = true;
     b.userData.baseY = y;
+    b.userData.used = false;
+    b.userData.pop = 0;
     scene.add(b);
     qBlocks.push(b);
   });
@@ -459,7 +462,7 @@
 
   // ---------- HUD ----------
   const $ = id => document.getElementById(id);
-  $("starsTotal").textContent = stars.length;
+  $("starsTotal").textContent = stars.length + qBlocks.length; // blocks hide one star each
   $("dugTotal").textContent = digSpots.length;
   let starCount = 0, dugCount = 0;
   let missionTimer = null;
@@ -1079,10 +1082,16 @@
 
     // rainbow cave teleport
     portalCooldown -= dt;
+    // sparkles drifting out of the cave mouths so they're easy to spot
+    if (Math.random() < dt * 4) {
+      const p = portals[Math.floor(Math.random() * portals.length)].position;
+      const rainbow = [0xd8262c, 0xe8a020, 0xffd21f, 0x2fae2f, 0x2f6df6, 0xc03ad0];
+      burst(new THREE.Vector3(p.x, 1, p.z), rainbow[Math.floor(Math.random() * rainbow.length)], 3, 2, 1);
+    }
     if (portalCooldown <= 0 && !won) {
       for (let i = 0; i < portals.length; i++) {
         const p = portals[i].position;
-        if (Math.hypot(player.pos.x - p.x, player.pos.z - p.z) < 2.6) {
+        if (Math.hypot(player.pos.x - p.x, player.pos.z - p.z) < 3.6) {
           const dest = portals[1 - i].position;
           burst(new THREE.Vector3(p.x, 1.5, p.z), 0x24b6c9, 24, 5, 1);
           // land a few steps in front of the other cave, toward the map middle
@@ -1170,10 +1179,26 @@
       }
     }
 
-    // bob question blocks & lollipops
+    // question blocks: bob, and pop a hidden star when bonked from below
     qBlocks.forEach((b, i) => {
-      b.position.y = b.userData.baseY + Math.sin(t * 1.8 + i * 2) * 0.25;
-      b.rotation.y = t * 0.7 + i;
+      const u = b.userData;
+      if (u.pop > 0) u.pop -= dt;
+      const bob = u.used ? 0.08 : 0.25;
+      b.position.y = u.baseY + Math.sin(t * 1.8 + i * 2) * bob + Math.max(0, u.pop) * 1.6;
+      b.rotation.y = u.used ? 0 : t * 0.7 + i;
+      if (!u.used && !won) {
+        const hd = Math.hypot(player.pos.x - b.position.x, player.pos.z - b.position.z);
+        if (hd < 1.5 && !player.onGround && player.vy > 0 && player.pos.y + 3.1 >= b.position.y - 0.8) {
+          u.used = true;
+          u.pop = 0.35;
+          b.material = qMatUsed;
+          starCount++;
+          $("stars").textContent = starCount;
+          sfx.star();
+          burst(b.position.clone().add(new THREE.Vector3(0, 1, 0)), 0xffd21f, 16, 4, 0.9);
+          setMission("❓ Surprise! A star was hidden in the block! ⭐", 2800);
+        }
+      }
     });
     lollipops.forEach((l, i) => { l.userData.face.rotation.z = t * (0.8 + i * 0.3); });
 
