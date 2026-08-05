@@ -166,32 +166,91 @@
   [[-12, -12], [-24, 4], [14, 16], [22, 34], [-52, 20], [-20, -48], [8, -40], [-4, 44], [-55, 40], [18, 55]].forEach(p => tree(p[0], p[1], false));
   [[40, -12], [55, 8], [45, 30], [58, -30]].forEach(p => tree(p[0], p[1], true));
 
-  // castle on a hill (from the framed picture in the drawing)
+  // walk-in castle (from the framed picture in the drawing) — gate faces the map middle
+  const castleThrone = { pos: new THREE.Vector3(), visited: false };
+  const castleCourtyardStars = [];
   (function castle() {
     const g = new THREE.Group();
-    const hill = new THREE.Mesh(new THREE.CylinderGeometry(9, 12, 3, 20), MAT(0x35a035));
-    hill.position.y = 1.5;
-    hill.receiveShadow = true;
-    g.add(hill);
-    const wall = new THREE.Mesh(new THREE.BoxGeometry(8, 4, 6), MAT(0xe8d44d));
-    wall.position.y = 5;
-    wall.castShadow = true;
-    g.add(wall);
-    [[-4, -3], [4, -3], [-4, 3], [4, 3]].forEach(([tx, tz]) => {
-      const tower = new THREE.Mesh(new THREE.CylinderGeometry(1.1, 1.1, 6.5, 12), MAT(0xcf6ee0));
-      tower.position.set(tx, 6, tz);
+    const wallMat = MAT(0xe8d44d);
+    const H = 3.2, TH = 0.6, W = 16, D = 12, GATE = 3.4;
+    // front wall with a real gateway opening
+    const segW = (W - GATE) / 2;
+    [-1, 1].forEach(s => {
+      const seg = new THREE.Mesh(new THREE.BoxGeometry(segW, H, TH), wallMat);
+      seg.position.set(s * (GATE / 2 + segW / 2), H / 2, D / 2);
+      seg.castShadow = true;
+      seg.receiveShadow = true;
+      g.add(seg);
+    });
+    const lintel = new THREE.Mesh(new THREE.BoxGeometry(GATE, 1, TH), wallMat);
+    lintel.position.set(0, H - 0.5, D / 2);
+    lintel.castShadow = true;
+    g.add(lintel);
+    // back and side walls
+    const back = new THREE.Mesh(new THREE.BoxGeometry(W, H, TH), wallMat);
+    back.position.set(0, H / 2, -D / 2);
+    back.castShadow = true;
+    back.receiveShadow = true;
+    g.add(back);
+    [-1, 1].forEach(s => {
+      const side = new THREE.Mesh(new THREE.BoxGeometry(TH, H, D), wallMat);
+      side.position.set(s * W / 2, H / 2, 0);
+      side.castShadow = true;
+      side.receiveShadow = true;
+      g.add(side);
+    });
+    // purple corner towers
+    [[-W / 2, -D / 2], [W / 2, -D / 2], [-W / 2, D / 2], [W / 2, D / 2]].forEach(([tx, tz]) => {
+      const tower = new THREE.Mesh(new THREE.CylinderGeometry(1.5, 1.5, 5, 14), MAT(0xcf6ee0));
+      tower.position.set(tx, 2.5, tz);
       tower.castShadow = true;
       g.add(tower);
-      const roof = new THREE.Mesh(new THREE.ConeGeometry(1.5, 2.2, 12), MAT(0x7a1fd0));
-      roof.position.set(tx, 10.2, tz);
+      const roof = new THREE.Mesh(new THREE.ConeGeometry(2, 2.6, 14), MAT(0x7a1fd0));
+      roof.position.set(tx, 6.3, tz);
       roof.castShadow = true;
       g.add(roof);
     });
-    const door = new THREE.Mesh(new THREE.CircleGeometry(1.2, 16, 0, Math.PI), new THREE.MeshBasicMaterial({ color: 0x3a2410 }));
-    door.position.set(0, 3.05, 3.01);
-    g.add(door);
+    // flag over the gate
+    const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.07, 0.07, 2.4, 8), MAT(0x7a4a1e));
+    pole.position.set(0, H + 1, D / 2);
+    g.add(pole);
+    const flag = new THREE.Mesh(new THREE.BoxGeometry(1.1, 0.6, 0.06), MAT(0xd8262c));
+    flag.position.set(0.62, H + 1.9, D / 2);
+    g.add(flag);
+    // red carpet from the gate to the throne
+    const carpet = new THREE.Mesh(new THREE.PlaneGeometry(2.4, D - 1.5), MAT(0xc22432));
+    carpet.rotation.x = -Math.PI / 2;
+    carpet.position.set(0, 0.06, 0.4);
+    carpet.receiveShadow = true;
+    g.add(carpet);
+    // golden throne with a red cushion
+    const throne = new THREE.Group();
+    const goldMat = MAT(0xd9a51f, { metalness: 0.6, roughness: 0.35 });
+    const seat = new THREE.Mesh(new THREE.BoxGeometry(1.6, 0.5, 1.1), goldMat);
+    seat.position.y = 0.55;
+    seat.castShadow = true;
+    throne.add(seat);
+    const backRest = new THREE.Mesh(new THREE.BoxGeometry(1.6, 2.2, 0.25), goldMat);
+    backRest.position.set(0, 1.6, -0.45);
+    backRest.castShadow = true;
+    throne.add(backRest);
+    const cushion = new THREE.Mesh(new THREE.BoxGeometry(1.3, 0.18, 0.9), MAT(0xc22432));
+    cushion.position.y = 0.9;
+    throne.add(cushion);
+    const knob = new THREE.Mesh(new THREE.SphereGeometry(0.16, 10, 8), goldMat);
+    knob.position.set(0, 2.8, -0.45);
+    throne.add(knob);
+    throne.position.set(0, 0, -D / 2 + 1.6);
+    g.add(throne);
     g.position.set(44, 0, -44);
+    g.rotation.y = -Math.PI / 4; // gateway looks toward the middle of the map
     scene.add(g);
+    g.updateMatrixWorld(true);
+    castleThrone.pos.copy(throne.getWorldPosition(new THREE.Vector3()));
+    // two stars hidden in the courtyard
+    [new THREE.Vector3(-4, 1.2, 1), new THREE.Vector3(4, 1.2, 1)].forEach(local => {
+      castleCourtyardStars.push(g.localToWorld(local.clone()));
+    });
   })();
 
   // swirl lollipops (the colorful spirals in the snowy zone)
@@ -426,6 +485,7 @@
     [-6, -10], [12, -4], [-20, 18], [4, 24], [-34, -14],
     [26, 6], [36, -20], [-44, 34], [16, -34], [-8, 56], [44, 40], [-28, -44]
   ];
+  castleCourtyardStars.forEach(p => starSpots.push([p.x, p.z]));
   starSpots.forEach(([x, z]) => {
     const m = new THREE.Mesh(starGeoSmall, starMat);
     m.position.set(x, 1.2, z);
@@ -1215,6 +1275,15 @@
       nearSpot.mats.forEach(m => m.color.setHSL(0.83, 0.8, 0.5 + Math.sin(t * 6) * 0.2));
     } else if (!won && !boss.active && !boss.defeated && player.digging <= 0 && $("mission").textContent.startsWith("❌")) {
       setMission("Your Mission: find the ❌ marks and dig up the hidden treasure!");
+    }
+
+    // reaching the throne earns a royal welcome
+    if (!castleThrone.visited &&
+        Math.hypot(player.pos.x - castleThrone.pos.x, player.pos.z - castleThrone.pos.z) < 2) {
+      castleThrone.visited = true;
+      sfx.fanfare();
+      burst(castleThrone.pos.clone().add(new THREE.Vector3(0, 2, 0)), 0xffd21f, 24, 4, 1.2);
+      setMission("👑 Welcome to your castle, Treasure King!", 4000);
     }
 
     updateBoss(dt, t);
