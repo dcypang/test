@@ -621,8 +621,17 @@
     };
     joy.addEventListener("pointerup", joyEnd);
     joy.addEventListener("pointercancel", joyEnd);
-    $("btnJump").addEventListener("pointerdown", e => { e.preventDefault(); wantJump = true; });
-    $("btnDig").addEventListener("pointerdown", e => { e.preventDefault(); tryDig(); });
+    const pressable = (btn, onPress) => {
+      btn.addEventListener("pointerdown", e => {
+        e.preventDefault();
+        btn.classList.add("pressed");
+        onPress();
+      });
+      ["pointerup", "pointercancel", "pointerleave"].forEach(ev =>
+        btn.addEventListener(ev, () => btn.classList.remove("pressed")));
+    };
+    pressable($("btnJump"), () => { wantJump = true; });
+    pressable($("btnDig"), () => tryDig());
     // no long-press menus on the controls
     document.addEventListener("contextmenu", e => {
       if (e.target.closest(".tbtn, #joy")) e.preventDefault();

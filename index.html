@@ -23,8 +23,10 @@
     font-family: "Comic Sans MS", "Chalkboard SE", cursive, sans-serif; font-weight: bold;
   }
   .pill {
-    background: #4b3620; color: #fff; border: 3px solid #c6e526; border-radius: 999px;
-    padding: 6px 14px; font-size: 16px; box-shadow: 0 3px 6px rgba(0,0,0,.4); width: max-content;
+    background: linear-gradient(#5d4229, #4b3620 60%, #3c2b19); color: #fff;
+    border: 3px solid #c6e526; border-radius: 999px;
+    padding: 6px 14px; font-size: 16px; width: max-content;
+    box-shadow: inset 0 2px 3px rgba(255,255,255,.18), 0 3px 6px rgba(0,0,0,.4);
   }
   #mission {
     position: fixed; bottom: 18px; left: 50%; transform: translateX(-50%); pointer-events: none;
@@ -51,31 +53,62 @@
   #win h1 { margin: 0 0 8px; font-size: clamp(26px, 6vw, 46px); }
   #win p { margin: 4px 0 18px; font-size: 18px; font-weight: bold; }
   #win button {
-    font-family: inherit; font-size: 20px; font-weight: bold; cursor: pointer;
-    background: #4b3620; color: #fff; border: 3px solid #fff; border-radius: 999px; padding: 12px 30px;
+    font-family: inherit; font-size: 21px; font-weight: bold; cursor: pointer;
+    color: #ffe9c9; letter-spacing: .5px;
+    background: linear-gradient(#6a4d2e, #4b3620 55%, #382817);
+    border: 3px solid #2b1e10; border-radius: 999px; padding: 13px 34px;
+    box-shadow: inset 0 3px 4px rgba(255,255,255,.25), inset 0 -5px 8px rgba(0,0,0,.4),
+                0 6px 0 #2b1e10, 0 10px 14px rgba(0,0,0,.35);
+    text-shadow: 0 -1px 0 rgba(0,0,0,.4);
+    transition: transform .07s, box-shadow .07s;
   }
-  #win button:hover { transform: scale(1.05); }
+  #win button:hover { filter: brightness(1.12); }
+  #win button:active {
+    transform: translateY(4px);
+    box-shadow: inset 0 3px 4px rgba(255,255,255,.2), inset 0 -3px 6px rgba(0,0,0,.4),
+                0 2px 0 #2b1e10, 0 4px 8px rgba(0,0,0,.3);
+  }
+  #win button:focus-visible { outline: 3px solid #fff; outline-offset: 3px; }
   @keyframes pop { from { transform: scale(.5); opacity: 0; } to { transform: scale(1); opacity: 1; } }
 
-  /* touch controls */
+  /* touch controls — candy buttons matching the drawing's lime & chocolate look */
   #joy {
     position: fixed; display: none; z-index: 10;
     left: calc(22px + env(safe-area-inset-left, 0px));
     bottom: calc(30px + env(safe-area-inset-bottom, 0px));
-    width: 128px; height: 128px; border-radius: 50%;
-    background: rgba(255,255,255,.15); border: 3px solid rgba(255,255,255,.5);
+    width: 132px; height: 132px; border-radius: 50%;
+    background: radial-gradient(circle at 50% 38%, rgba(255,255,255,.28), rgba(75,54,32,.28) 75%);
+    border: 4px solid rgba(255,255,255,.55);
+    box-shadow: inset 0 4px 10px rgba(255,255,255,.25), inset 0 -6px 12px rgba(0,0,0,.25), 0 6px 14px rgba(0,0,0,.3);
     touch-action: none; -webkit-touch-callout: none;
   }
   #joyKnob {
-    position: absolute; left: 50%; top: 50%; width: 56px; height: 56px; border-radius: 50%;
-    background: #c6e526; border: 3px solid #8a7300; transform: translate(-50%,-50%);
+    position: absolute; left: 50%; top: 50%; width: 58px; height: 58px; border-radius: 50%;
+    background: radial-gradient(circle at 35% 28%, #f4ff8a, #c6e526 55%, #97b307);
+    border: 3px solid #6f5c00;
+    box-shadow: inset 0 -5px 8px rgba(111,92,0,.45), inset 0 4px 6px rgba(255,255,255,.6), 0 4px 8px rgba(0,0,0,.4);
+    transform: translate(-50%,-50%);
   }
   .tbtn {
-    position: fixed; width: 86px; height: 86px; border-radius: 50%; display: none; z-index: 10;
-    align-items: center; justify-content: center; font-family: "Comic Sans MS", cursive, sans-serif;
-    font-size: 18px; font-weight: bold; color: #4b3620; background: #c6e526e0; border: 3px solid #8a7300;
+    position: fixed; width: 92px; height: 92px; border-radius: 50%; display: none; z-index: 10;
+    flex-direction: column; align-items: center; justify-content: center; gap: 0;
+    font-family: "Comic Sans MS", "Chalkboard SE", cursive, sans-serif;
+    font-size: 15px; font-weight: bold; color: #4b3620; letter-spacing: .5px;
+    background: radial-gradient(circle at 35% 25%, #f4ff8a, #c6e526 50%, #a3bd12 85%);
+    border: 4px solid #6f5c00;
+    box-shadow: inset 0 6px 8px rgba(255,255,255,.65), inset 0 -8px 12px rgba(111,92,0,.5),
+                0 7px 0 #6f5c00, 0 11px 16px rgba(0,0,0,.4);
+    text-shadow: 0 1px 0 rgba(255,255,255,.6);
     user-select: none; -webkit-user-select: none; touch-action: none; -webkit-touch-callout: none;
-    box-shadow: 0 3px 8px rgba(0,0,0,.35);
+    transition: transform .07s, box-shadow .07s;
+  }
+  .tbtn .ico { font-size: 26px; line-height: 1; margin-bottom: 2px; filter: drop-shadow(0 2px 2px rgba(0,0,0,.25)); }
+  .tbtn .lbl { line-height: 1; }
+  .tbtn.pressed, .tbtn:active {
+    transform: translateY(5px);
+    box-shadow: inset 0 6px 8px rgba(255,255,255,.5), inset 0 -4px 8px rgba(111,92,0,.5),
+                0 2px 0 #6f5c00, 0 4px 8px rgba(0,0,0,.35);
+    background: radial-gradient(circle at 35% 30%, #e9f56a, #b3d215 55%, #97b307 85%);
   }
   #btnJump { right: calc(24px + env(safe-area-inset-right, 0px)); bottom: calc(102px + env(safe-area-inset-bottom, 0px)); }
   #btnDig  { right: calc(112px + env(safe-area-inset-right, 0px)); bottom: calc(26px + env(safe-area-inset-bottom, 0px)); }
@@ -108,8 +141,8 @@
   </div>
 </div>
 <div id="joy"><div id="joyKnob"></div></div>
-<div class="tbtn" id="btnJump">JUMP</div>
-<div class="tbtn" id="btnDig">DIG</div>
+<div class="tbtn" id="btnJump"><span class="ico">🦘</span><span class="lbl">JUMP</span></div>
+<div class="tbtn" id="btnDig"><span class="ico">⛏️</span><span class="lbl">DIG</span></div>
 <script src="vendor/three.global.js"></script>
 <script src="game.js"></script>
 </body>
