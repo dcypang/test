@@ -907,6 +907,29 @@
   // browsers only allow sound after a first tap/click — unlock it then
   window.addEventListener("pointerdown", () => ac(), { once: true });
 
+  // camera orbit: drag anywhere on the world (not the buttons/joystick) to look around
+  let camYaw = 0;                 // angle around the player
+  let camPitch = 0.55;            // how high the camera sits
+  const CAM_DIST = 12.4;
+  {
+    const canvas = renderer.domElement;
+    let dragId = null, lastX = 0, lastY = 0;
+    canvas.addEventListener("pointerdown", e => {
+      dragId = e.pointerId;
+      lastX = e.clientX; lastY = e.clientY;
+      canvas.setPointerCapture(dragId);
+    });
+    canvas.addEventListener("pointermove", e => {
+      if (e.pointerId !== dragId) return;
+      camYaw -= (e.clientX - lastX) * 0.006;
+      camPitch = Math.min(1.15, Math.max(0.18, camPitch + (e.clientY - lastY) * 0.004));
+      lastX = e.clientX; lastY = e.clientY;
+    });
+    const dragEnd = e => { if (e.pointerId === dragId) dragId = null; };
+    canvas.addEventListener("pointerup", dragEnd);
+    canvas.addEventListener("pointercancel", dragEnd);
+  }
+
   // ---------- game state ----------
   const player = {
     pos: new THREE.Vector3(0, 0, 8),
@@ -989,11 +1012,20 @@
     const ilen = Math.hypot(ix, iz);
     if (ilen > 1) { ix /= ilen; iz /= ilen; }
 
+    // keyboard camera turn
+    if (keys.KeyZ) camYaw += 2.2 * dt;
+    if (keys.KeyC) camYaw -= 2.2 * dt;
+
+    // steer relative to the camera so "up" is always away from it
+    const cy = Math.cos(camYaw), sy = Math.sin(camYaw);
+    const mx = ix * cy + iz * sy;
+    const mz = -ix * sy + iz * cy;
+
     const moving = ilen > 0.15 && player.digging <= 0 && !won;
     if (moving) {
-      player.pos.x += ix * SPEED * dt;
-      player.pos.z += iz * SPEED * dt;
-      player.facing = Math.atan2(ix, iz);
+      player.pos.x += mx * SPEED * dt;
+      player.pos.z += mz * SPEED * dt;
+      player.facing = Math.atan2(mx, mz);
     }
     // knockback from giant-hand slams
     if (knock.lengthSq() > 0.01) {
@@ -1057,7 +1089,11 @@
 
     // camera follow
     camTarget.set(player.pos.x, player.pos.y + 2, player.pos.z);
-    const camGoal = new THREE.Vector3(player.pos.x, player.pos.y + 6.5, player.pos.z + 10.5);
+    const camGoal = new THREE.Vector3(
+      player.pos.x + Math.sin(camYaw) * CAM_DIST * Math.cos(camPitch),
+      player.pos.y + CAM_DIST * Math.sin(camPitch),
+      player.pos.z + Math.cos(camYaw) * CAM_DIST * Math.cos(camPitch)
+    );
     camera.position.lerp(camGoal, Math.min(1, dt * 4));
     if (shake > 0) {
       camera.position.x += (Math.random() - 0.5) * shake;

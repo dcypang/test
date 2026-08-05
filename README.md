@@ -13,6 +13,7 @@ no internet or server needed.
 - **Move:** WASD or arrow keys (on phones/tablets: on-screen joystick)
 - **Jump:** Space (or the JUMP button)
 - **Dig:** walk onto a purple ❌ mark, then press **E** (or the DIG button)
+- **Camera:** drag with the mouse or a finger to orbit around the hero (or **Z** / **C** keys)
 
 Your mission: explore the world, collect the ⭐ spinning stars, and dig up the ❌ spots.
 One of them hides the real treasure chest — the rest are worms, old boots, and rusty
