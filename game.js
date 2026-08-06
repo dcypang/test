@@ -47,7 +47,7 @@
   const MAT = (color, opts) => new THREE.MeshStandardMaterial(Object.assign({ color, roughness: 0.85, metalness: 0.05 }, opts || {}));
 
   // ---------- world ----------
-  const WORLD = 62; // playable half-size
+  const WORLD = 70; // playable half-size
 
   // brown "underground" base, like the drawing's dirt border
   const dirtBase = new THREE.Mesh(new THREE.PlaneGeometry(420, 420), MAT(0x7a5b3a));
@@ -164,7 +164,7 @@
     scene.add(g);
   }
   [[-12, -12], [-24, 4], [14, 16], [22, 34], [-52, 20], [-20, -48], [8, -40], [-4, 44], [-55, 40], [18, 55]].forEach(p => tree(p[0], p[1], false));
-  [[40, -12], [55, 8], [45, 30], [58, -30]].forEach(p => tree(p[0], p[1], true));
+  [[40, -12], [55, 8], [45, 30], [64, -14]].forEach(p => tree(p[0], p[1], true));
 
   // walk-in stone castle: two floors, stairs, battlements, and a pitched roof.
   // Walls and roof fade to glass while the player is inside so the camera can see.
@@ -209,7 +209,7 @@
     const roofMat = MAT(0x8a3b2e, { roughness: 0.8, transparent: true });
     const towerRoofMat = MAT(0x7a1fd0, { transparent: true });
     castleFade.mats.push(stoneMat, roofMat, towerRoofMat);
-    const H = 6, TH = 0.8, W = 24, D = 18, GATE = 4.4, TR = 2.2, FLOOR2 = 4.2;
+    const H = 10, TH = 1, W = 40, D = 30, GATE = 6, TR = 3, FLOOR2 = 5, ROOF = 10;
     const wall = (w, h, d, x, y, z) => {
       const m = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), stoneMat);
       m.position.set(x, y, z);
@@ -218,119 +218,134 @@
       g.add(m);
       return m;
     };
-    // front wall with the gateway (opening up to y=3.9, stone above it)
+    // front wall with the gateway (opening up to y=5, stone above it)
     const segW = (W - GATE) / 2;
     wall(segW, H, TH, GATE / 2 + segW / 2, H / 2, D / 2);
     wall(segW, H, TH, -GATE / 2 - segW / 2, H / 2, D / 2);
-    wall(GATE, H - 3.9, TH, 0, (H + 3.9) / 2, D / 2);
+    wall(GATE, H - 5, TH, 0, (H + 5) / 2, D / 2);
     // back and side walls
     wall(W, H, TH, 0, H / 2, -D / 2);
     wall(TH, H, D, -W / 2, H / 2, 0);
     wall(TH, H, D, W / 2, H / 2, 0);
-    // battlements (merlons) along every wall top, skipping the gate
-    for (let mx = -W / 2 + 0.7; mx <= W / 2 - 0.6; mx += 1.9) {
-      wall(1, 0.9, TH + 0.15, mx, H + 0.45, -D / 2);
-      if (Math.abs(mx) > GATE / 2 + 0.7) wall(1, 0.9, TH + 0.15, mx, H + 0.45, D / 2);
+    // battlements (merlons) around the rooftop parapet
+    for (let mx = -W / 2 + 0.8; mx <= W / 2 - 0.7; mx += 2.4) {
+      wall(1.2, 1.1, TH + 0.15, mx, H + 0.55, -D / 2);
+      wall(1.2, 1.1, TH + 0.15, mx, H + 0.55, D / 2);
     }
-    for (let mz = -D / 2 + 0.9; mz <= D / 2 - 0.8; mz += 1.9) {
-      wall(TH + 0.15, 0.9, 1, -W / 2, H + 0.45, mz);
-      wall(TH + 0.15, 0.9, 1, W / 2, H + 0.45, mz);
+    for (let mz = -D / 2 + 1.1; mz <= D / 2 - 1; mz += 2.4) {
+      wall(TH + 0.15, 1.1, 1.2, -W / 2, H + 0.55, mz);
+      wall(TH + 0.15, 1.1, 1.2, W / 2, H + 0.55, mz);
     }
-    // arrow-slit windows on the front wall
-    [-8.5, -4.5, 4.5, 8.5].forEach(wx => {
-      const slit = new THREE.Mesh(new THREE.BoxGeometry(0.28, 1.5, 0.12), new THREE.MeshBasicMaterial({ color: 0x1a140e }));
-      slit.position.set(wx, 3.6, D / 2 + TH / 2 + 0.02);
-      g.add(slit);
+    // arrow-slit windows on the front wall, two rows
+    [-14, -9, 9, 14].forEach(wx => {
+      [3.8, 7.6].forEach(wy => {
+        const slit = new THREE.Mesh(new THREE.BoxGeometry(0.3, 1.7, 0.12), new THREE.MeshBasicMaterial({ color: 0x1a140e }));
+        slit.position.set(wx, wy, D / 2 + TH / 2 + 0.02);
+        g.add(slit);
+      });
     });
-    // stone corner towers with purple roofs
+    // stone corner towers with purple roofs, rising past the rooftop
     [[-W / 2, -D / 2], [W / 2, -D / 2], [-W / 2, D / 2], [W / 2, D / 2]].forEach(([tx, tz], ti) => {
-      const tower = new THREE.Mesh(new THREE.CylinderGeometry(TR, TR + 0.3, 9, 14), stoneMat);
-      tower.position.set(tx, 4.5, tz);
+      const tower = new THREE.Mesh(new THREE.CylinderGeometry(TR, TR + 0.4, 14, 16), stoneMat);
+      tower.position.set(tx, 7, tz);
       tower.castShadow = true;
       g.add(tower);
-      const roof = new THREE.Mesh(new THREE.ConeGeometry(TR + 0.7, 3.6, 14), towerRoofMat);
-      roof.position.set(tx, 10.8, tz);
+      const roof = new THREE.Mesh(new THREE.ConeGeometry(TR + 0.9, 4.5, 16), towerRoofMat);
+      roof.position.set(tx, 16.2, tz);
       roof.castShadow = true;
       g.add(roof);
       castleCollider.circles.push({ x: tx, z: tz, r: TR });
       // flags on the two front towers
       if (ti >= 2) {
-        const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.06, 2.2, 8), MAT(0x7a4a1e));
-        pole.position.set(tx, 13.6, tz);
+        const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.06, 2.6, 8), MAT(0x7a4a1e));
+        pole.position.set(tx, 19.6, tz);
         g.add(pole);
-        const flag = new THREE.Mesh(new THREE.BoxGeometry(1.2, 0.65, 0.06), MAT(0xd8262c));
-        flag.position.set(tx + 0.65, 14.4, tz);
+        const flag = new THREE.Mesh(new THREE.BoxGeometry(1.4, 0.75, 0.06), MAT(0xd8262c));
+        flag.position.set(tx + 0.75, 20.5, tz);
         g.add(flag);
       }
     });
     // red carpet from the gate to the throne
-    const carpet = new THREE.Mesh(new THREE.PlaneGeometry(3.2, D - 2), MAT(0xc22432));
+    const carpet = new THREE.Mesh(new THREE.PlaneGeometry(4.5, D - 3), MAT(0xc22432));
     carpet.rotation.x = -Math.PI / 2;
-    carpet.position.set(0, 0.06, 0.5);
+    carpet.position.set(0, 0.06, 0.8);
     carpet.receiveShadow = true;
     g.add(carpet);
-    // staircase along the left wall up to the second floor
-    const stairMinX = -W / 2 + 0.4, stairMaxX = stairMinX + 2.4, zFront = 2.6;
-    for (let i = 0; i < 8; i++) {
-      const top = FLOOR2 * (i + 1) / 8;
-      const step = new THREE.Mesh(new THREE.BoxGeometry(stairMaxX - stairMinX, 0.35, 0.6), stepMat);
-      step.position.set((stairMinX + stairMaxX) / 2, top - 0.175, zFront - 0.6 * i - 0.3);
+    // flight 1: courtyard up to the second floor, along the left wall
+    const s1MinX = -W / 2 + 0.5, s1MaxX = s1MinX + 3, s1Front = 3;
+    for (let i = 0; i < 10; i++) {
+      const top = FLOOR2 * (i + 1) / 10;
+      const step = new THREE.Mesh(new THREE.BoxGeometry(s1MaxX - s1MinX, 0.4, 0.7), stepMat);
+      step.position.set((s1MinX + s1MaxX) / 2, top - 0.2, s1Front - 0.7 * i - 0.35);
       step.castShadow = true;
       step.receiveShadow = true;
       g.add(step);
-      castlePlatforms.push({ minX: stairMinX, maxX: stairMaxX, minZ: zFront - 0.6 * (i + 1), maxZ: zFront - 0.6 * i, top });
+      castlePlatforms.push({ minX: s1MinX, maxX: s1MaxX, minZ: s1Front - 0.7 * (i + 1), maxZ: s1Front - 0.7 * i, top });
     }
-    // solid banister on the open side of the stairs
-    const banX = stairMaxX + 0.15;
-    const banister = new THREE.Mesh(new THREE.BoxGeometry(0.3, 4.4, 4.5), stoneMat);
-    banister.position.set(banX, 2.2, 0.35);
-    banister.castShadow = true;
-    g.add(banister);
-    castleCollider.boxes.push({ minX: banX - 0.15, maxX: banX + 0.15, minZ: -1.9, maxZ: 2.6 });
-    // second floor over the throne hall
-    const slab = new THREE.Mesh(new THREE.BoxGeometry(W - 0.8, 0.5, 6.6), stoneMat);
-    slab.position.set(0, FLOOR2 - 0.25, -5.3);
+    // solid banister on the open side of flight 1
+    const ban1X = s1MaxX + 0.15;
+    const banister1 = new THREE.Mesh(new THREE.BoxGeometry(0.3, 5.4, 7), stoneMat);
+    banister1.position.set(ban1X, 2.7, s1Front - 3.5);
+    banister1.castShadow = true;
+    g.add(banister1);
+    castleCollider.boxes.push({ minX: ban1X - 0.15, maxX: ban1X + 0.15, minZ: s1Front - 6.9, maxZ: s1Front });
+    // second floor over the throne hall (back half of the castle)
+    const slab = new THREE.Mesh(new THREE.BoxGeometry(W - 1, 0.6, 11), stoneMat);
+    slab.position.set(0, FLOOR2 - 0.3, -9.5);
     slab.castShadow = true;
     slab.receiveShadow = true;
     g.add(slab);
-    castlePlatforms.push({ minX: -W / 2 + 0.4, maxX: W / 2 - 0.4, minZ: -8.6, maxZ: -2, top: FLOOR2 });
+    castlePlatforms.push({ minX: -W / 2 + 0.5, maxX: W / 2 - 0.5, minZ: -15, maxZ: -4, top: FLOOR2 });
     // columns holding the hall ceiling
-    [-5, 5].forEach(cx => {
-      const col = new THREE.Mesh(new THREE.CylinderGeometry(0.42, 0.5, FLOOR2 - 0.5, 12), stepMat);
-      col.position.set(cx, (FLOOR2 - 0.5) / 2, -2.7);
+    [[-9, -6], [9, -6], [-9, -13], [9, -13]].forEach(([cx, cz]) => {
+      const col = new THREE.Mesh(new THREE.CylinderGeometry(0.6, 0.7, FLOOR2 - 0.6, 12), stepMat);
+      col.position.set(cx, (FLOOR2 - 0.6) / 2, cz);
       col.castShadow = true;
       g.add(col);
-      castleCollider.circles.push({ x: cx, z: -2.7, r: 0.55 });
+      castleCollider.circles.push({ x: cx, z: cz, r: 0.75 });
     });
-    // pitched roof over the upper floor, high enough to walk under its eaves
-    const eaveY = 7.4, ridgeY = 9.6, eaveF = -1.7, eaveB = -8.9, ridgeZ = -5.3;
-    const panelLen = Math.hypot(ridgeZ - eaveF, ridgeY - eaveY);
-    const pitch = Math.atan2(ridgeY - eaveY, Math.abs(ridgeZ - eaveF));
-    const front = new THREE.Mesh(new THREE.BoxGeometry(W + 1.4, 0.22, panelLen), roofMat);
-    front.position.set(0, (eaveY + ridgeY) / 2, (eaveF + ridgeZ) / 2);
-    front.rotation.x = pitch;
-    front.castShadow = true;
-    g.add(front);
-    const backP = new THREE.Mesh(new THREE.BoxGeometry(W + 1.4, 0.22, panelLen), roofMat);
-    backP.position.set(0, (eaveY + ridgeY) / 2, (eaveB + ridgeZ) / 2);
-    backP.rotation.x = -pitch;
-    backP.castShadow = true;
-    g.add(backP);
-    // stone gable ends closing the roof sides
-    const gable = new THREE.Shape();
-    gable.moveTo(eaveF, H);
-    gable.lineTo(eaveF, eaveY);
-    gable.lineTo(ridgeZ, ridgeY);
-    gable.lineTo(eaveB, eaveY);
-    gable.lineTo(eaveB, H);
-    gable.closePath();
-    [-W / 2 + 0.4, W / 2 - 0.75].forEach(gx => {
-      const end = new THREE.Mesh(new THREE.ExtrudeGeometry(gable, { depth: 0.35, bevelEnabled: false }), stoneMat);
-      end.rotation.y = -Math.PI / 2;
-      end.position.set(gx, 0, 0);
-      end.castShadow = true;
-      g.add(end);
+    // flight 2: second floor up to the rooftop, along the right wall
+    const s2MinX = W / 2 - 3.6, s2MaxX = W / 2 - 0.5, s2Front = -4;
+    for (let i = 0; i < 10; i++) {
+      const top = FLOOR2 + (ROOF - FLOOR2) * (i + 1) / 10;
+      const step = new THREE.Mesh(new THREE.BoxGeometry(s2MaxX - s2MinX, 0.4, 0.8), stepMat);
+      step.position.set((s2MinX + s2MaxX) / 2, top - 0.2, s2Front - 0.8 * i - 0.4);
+      step.castShadow = true;
+      step.receiveShadow = true;
+      g.add(step);
+      castlePlatforms.push({ minX: s2MinX, maxX: s2MaxX, minZ: s2Front - 0.8 * (i + 1), maxZ: s2Front - 0.8 * i, top });
+    }
+    // solid banister on the open side of flight 2 (only matters above the hall)
+    const ban2X = s2MinX - 0.15;
+    const banister2 = new THREE.Mesh(new THREE.BoxGeometry(0.3, ROOF - FLOOR2 + 0.4, 8), stoneMat);
+    banister2.position.set(ban2X, (FLOOR2 + ROOF) / 2, s2Front - 4);
+    banister2.castShadow = true;
+    g.add(banister2);
+    castleCollider.boxes.push({ minX: ban2X - 0.15, maxX: ban2X + 0.15, minZ: s2Front - 8, maxZ: s2Front, minY: FLOOR2 - 0.5 });
+    // the flat walkable rooftop, with an opening where flight 2 arrives
+    const holeMinX = s2MinX - 0.6, holeMinZ = s2Front - 8.4, holeMaxZ = s2Front + 0.4;
+    const roofBits = [
+      { minX: -W / 2 + 0.5, maxX: holeMinX, minZ: -D / 2 + 0.5, maxZ: D / 2 - 0.5 },
+      { minX: holeMinX, maxX: W / 2 - 0.5, minZ: holeMaxZ, maxZ: D / 2 - 0.5 },
+      { minX: holeMinX, maxX: W / 2 - 0.5, minZ: -D / 2 + 0.5, maxZ: holeMinZ }
+    ];
+    roofBits.forEach(rb => {
+      const m = new THREE.Mesh(new THREE.BoxGeometry(rb.maxX - rb.minX, 0.6, rb.maxZ - rb.minZ), stoneMat);
+      m.position.set((rb.minX + rb.maxX) / 2, ROOF - 0.3, (rb.minZ + rb.maxZ) / 2);
+      m.castShadow = true;
+      m.receiveShadow = true;
+      g.add(m);
+      castlePlatforms.push({ minX: rb.minX, maxX: rb.maxX, minZ: rb.minZ, maxZ: rb.maxZ, top: ROOF });
     });
+    // big banner flying from the middle of the rooftop
+    const bigPole = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.12, 5, 10), MAT(0x7a4a1e));
+    bigPole.position.set(0, ROOF + 2.5, 0);
+    bigPole.castShadow = true;
+    g.add(bigPole);
+    const banner = new THREE.Mesh(new THREE.BoxGeometry(2.6, 1.4, 0.08), MAT(0xd8262c));
+    banner.position.set(1.4, ROOF + 4.2, 0);
+    g.add(banner);
+    castleCollider.circles.push({ x: 0, z: 0, r: 0.35, minY: ROOF - 0.5 });
     // wall colliders (front segments, back, sides)
     castleCollider.boxes.push(
       { minX: GATE / 2, maxX: W / 2, minZ: D / 2 - TH / 2, maxZ: D / 2 + TH / 2 },
@@ -356,17 +371,21 @@
     const knob = new THREE.Mesh(new THREE.SphereGeometry(0.16, 10, 8), goldMat);
     knob.position.set(0, 2.8, -0.45);
     throne.add(knob);
-    throne.scale.setScalar(1.3);
-    throne.position.set(0, 0, -D / 2 + 2);
+    throne.scale.setScalar(1.6);
+    throne.position.set(0, 0, -D / 2 + 2.4);
     g.add(throne);
-    castleCollider.circles.push({ x: 0, z: -D / 2 + 1.7, r: 1.1 });
+    castleCollider.circles.push({ x: 0, z: -D / 2 + 2, r: 1.3 });
     g.position.set(44, 0, -44);
     g.rotation.y = -Math.PI / 4; // gateway looks toward the middle of the map
     scene.add(g);
     g.updateMatrixWorld(true);
     castleThrone.pos.copy(throne.getWorldPosition(new THREE.Vector3()));
-    // one star in the courtyard, one up on the second floor
-    [new THREE.Vector3(6, 1.2, 1), new THREE.Vector3(-5, FLOOR2 + 1.2, -5)].forEach(local => {
+    // stars: courtyard, second floor, and the rooftop
+    [
+      new THREE.Vector3(8, 1.2, 2),
+      new THREE.Vector3(-8, FLOOR2 + 1.2, -9),
+      new THREE.Vector3(5, ROOF + 1.2, 5)
+    ].forEach(local => {
       castleCourtyardStars.push(g.localToWorld(local.clone()));
     });
   })();
@@ -375,7 +394,7 @@
   function groundHeightAt(px, pz, py) {
     const cc = castleCollider;
     const dx0 = px - cc.cx, dz0 = pz - cc.cz;
-    if (dx0 * dx0 + dz0 * dz0 > 700) return 0;
+    if (dx0 * dx0 + dz0 * dz0 > 1400) return 0;
     const lx = cc.cos * dx0 - cc.sin * dz0;
     const lz = cc.sin * dx0 + cc.cos * dz0;
     let h = 0;
@@ -389,19 +408,20 @@
   function insideCastle() {
     const cc = castleCollider;
     const dx0 = player.pos.x - cc.cx, dz0 = player.pos.z - cc.cz;
-    if (dx0 * dx0 + dz0 * dz0 > 400) return false;
+    if (dx0 * dx0 + dz0 * dz0 > 1400) return false;
     const lx = cc.cos * dx0 - cc.sin * dz0;
     const lz = cc.sin * dx0 + cc.cos * dz0;
-    return Math.abs(lx) < 13.5 && Math.abs(lz) < 11;
+    return Math.abs(lx) < 22 && Math.abs(lz) < 17;
   }
   // push the player out of castle walls, towers, and the throne
   function collideWithCastle() {
     const cc = castleCollider, r = 0.55;
     const dx0 = player.pos.x - cc.cx, dz0 = player.pos.z - cc.cz;
-    if (dx0 * dx0 + dz0 * dz0 > 700) return; // nowhere near the castle
+    if (dx0 * dx0 + dz0 * dz0 > 1400) return; // nowhere near the castle
     let lx = cc.cos * dx0 - cc.sin * dz0;
     let lz = cc.sin * dx0 + cc.cos * dz0;
     for (const b of cc.boxes) {
+      if (b.minY && player.pos.y < b.minY) continue;
       if (lx > b.minX - r && lx < b.maxX + r && lz > b.minZ - r && lz < b.maxZ + r) {
         const pL = lx - (b.minX - r), pR = (b.maxX + r) - lx;
         const pB = lz - (b.minZ - r), pF = (b.maxZ + r) - lz;
@@ -413,6 +433,7 @@
       }
     }
     for (const c of cc.circles) {
+      if (c.minY && player.pos.y < c.minY) continue;
       const ddx = lx - c.x, ddz = lz - c.z, rr = c.r + r;
       const d2 = ddx * ddx + ddz * ddz;
       if (d2 < rr * rr && d2 > 1e-6) {
@@ -1462,7 +1483,8 @@
     }
 
     // walls and roof turn to glass while the player is inside the castle
-    const fadeTarget = insideCastle() ? 0.22 : 1;
+    // (but not when standing on the rooftop — up there the castle stays solid)
+    const fadeTarget = insideCastle() && player.pos.y < 9.5 ? 0.22 : 1;
     if (Math.abs(castleFade.level - fadeTarget) > 0.005) {
       castleFade.level += (fadeTarget - castleFade.level) * Math.min(1, dt * 6);
       castleFade.mats.forEach(m => { m.opacity = castleFade.level; });
