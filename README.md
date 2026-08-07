@@ -33,9 +33,9 @@ Everything from the drawing is in there:
 - ❓ Floating golden question blocks — jump and bonk them from below for hidden stars
 - 🏰 A huge stone castle with battlements, a throne hall, two staircases, a second
   floor, and a walkable rooftop with a banner — the walls turn to glass while you're
-  inside so the camera can see. Golden arrows on the floor mark the route up:
-  gate → stairs by the left wall → upper floor → far stairs → rooftop. Railings keep
-  you from falling off the upper floor.
+  inside so the camera can see. Pulsing golden arrows mark the route in both
+  directions: gate → stairs by the left wall → upper floor → far stairs → rooftop,
+  and back down again. Railings keep you from falling off the upper floor.
 - 🍭 Colorful swirl lollipops in the snowy zone
 - ➡️ Arrow signposts, pine trees, and the red wavy sky ribbon
 

@@ -289,7 +289,7 @@
     banister1.position.set(ban1X, 2.7, s1Front - 3.5);
     banister1.castShadow = true;
     g.add(banister1);
-    castleCollider.boxes.push({ minX: ban1X - 0.15, maxX: ban1X + 0.15, minZ: s1Front - 6.9, maxZ: s1Front });
+    castleCollider.boxes.push({ minX: ban1X - 0.15, maxX: ban1X + 0.15, minZ: s1Front - 6.9, maxZ: s1Front, maxY: FLOOR2 + 0.6 });
     // second floor over the throne hall (back half of the castle)
     const slab = new THREE.Mesh(new THREE.BoxGeometry(W - 1, 0.6, 11), stoneMat);
     slab.position.set(0, FLOOR2 - 0.3, -9.5);
@@ -303,7 +303,7 @@
       col.position.set(cx, (FLOOR2 - 0.6) / 2, cz);
       col.castShadow = true;
       g.add(col);
-      castleCollider.circles.push({ x: cx, z: cz, r: 0.75 });
+      castleCollider.circles.push({ x: cx, z: cz, r: 0.75, maxY: FLOOR2 - 0.6 });
     });
     // flight 2: second floor up to the rooftop, along the right wall.
     // It starts deep at the back of the hall and climbs toward the gate, so you
@@ -336,7 +336,8 @@
     for (let mx = railMinX + 0.6; mx <= railMaxX - 0.5; mx += 2.4) {
       wall(1, 0.5, 0.55, mx, FLOOR2 + 1.55, railZ);
     }
-    castleCollider.boxes.push({ minX: railMinX, maxX: railMaxX, minZ: railZ - 0.2, maxZ: railZ + 0.2, minY: FLOOR2 - 0.5 });
+    // …only across the second floor: above that it must not fence off the roof
+    castleCollider.boxes.push({ minX: railMinX, maxX: railMaxX, minZ: railZ - 0.2, maxZ: railZ + 0.2, minY: FLOOR2 - 0.5, maxY: FLOOR2 + 3 });
     // the flat walkable rooftop, with a stairwell opening where flight 2 climbs
     const holeMinX = s2MinX - 0.6;
     const roofBits = [
@@ -371,12 +372,17 @@
       g.add(a);
       castleArrows.push(mat);
     }
-    // ground floor: from the gate over to flight 1 (pointing -z, into the hall)
-    [[-6, 8], [-11, 6.5], [-15.5, 5], [-18, 3.6]].forEach(([ax, az]) => routeArrow(ax, 0, az, 180));
-    // upper floor: across the hall to the back-right, then up flight 2
-    [[-14, -6], [-7, -8.5], [0, -10.5], [8, -12], [15, -13.2]].forEach(([ax, az]) => routeArrow(ax, FLOOR2, az, 90));
-    routeArrow(18, FLOOR2, -12.4, 0);
-    routeArrow(18, FLOOR2 + 1.5, -10.5, 0);
+    // heading 0 points toward -z (deeper into the castle); it turns clockwise
+    // seen from above, so 90 = -x, 180 = +z, 270 = +x.
+    // ground floor: from the gate across to flight 1
+    [[-5, 9], [-10, 7], [-14.5, 5]].forEach(([ax, az]) => routeArrow(ax, 0, az, 45));
+    routeArrow(-18, 0, 4.2, 0);
+    // upper floor: across the hall to the back-right corner, then up flight 2
+    [[-14, -5.5], [-8, -8], [-1, -10.3], [7, -12], [13.5, -13.4]].forEach(([ax, az]) => routeArrow(ax, FLOOR2, az, 315));
+    routeArrow(18, FLOOR2, -13.7, 180);
+    // rooftop: the way back down is the stairwell in the corner
+    [[4, -1], [10, -2.5]].forEach(([ax, az]) => routeArrow(ax, ROOF, az, 270));
+    [[18, 4], [18, 0], [18, -3.6]].forEach(([ax, az]) => routeArrow(ax, ROOF, az, 0));
     // big banner flying from the middle of the rooftop
     const bigPole = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.12, 5, 10), MAT(0x7a4a1e));
     bigPole.position.set(0, ROOF + 2.5, 0);
@@ -414,7 +420,7 @@
     throne.scale.setScalar(1.6);
     throne.position.set(0, 0, -D / 2 + 2.4);
     g.add(throne);
-    castleCollider.circles.push({ x: 0, z: -D / 2 + 2, r: 1.3 });
+    castleCollider.circles.push({ x: 0, z: -D / 2 + 2, r: 1.3, maxY: FLOOR2 - 0.6 });
     g.position.set(44, 0, -44);
     g.rotation.y = -Math.PI / 4; // gateway looks toward the middle of the map
     scene.add(g);
@@ -461,7 +467,8 @@
     let lx = cc.cos * dx0 - cc.sin * dz0;
     let lz = cc.sin * dx0 + cc.cos * dz0;
     for (const b of cc.boxes) {
-      if (b.minY && player.pos.y < b.minY) continue;
+      if (b.minY !== undefined && player.pos.y < b.minY) continue;
+      if (b.maxY !== undefined && player.pos.y > b.maxY) continue;
       if (lx > b.minX - r && lx < b.maxX + r && lz > b.minZ - r && lz < b.maxZ + r) {
         const pL = lx - (b.minX - r), pR = (b.maxX + r) - lx;
         const pB = lz - (b.minZ - r), pF = (b.maxZ + r) - lz;
@@ -473,7 +480,8 @@
       }
     }
     for (const c of cc.circles) {
-      if (c.minY && player.pos.y < c.minY) continue;
+      if (c.minY !== undefined && player.pos.y < c.minY) continue;
+      if (c.maxY !== undefined && player.pos.y > c.maxY) continue;
       const ddx = lx - c.x, ddz = lz - c.z, rr = c.r + r;
       const d2 = ddx * ddx + ddz * ddz;
       if (d2 < rr * rr && d2 > 1e-6) {
