@@ -171,6 +171,7 @@
   const castleThrone = { pos: new THREE.Vector3(), visited: false };
   const castleCourtyardStars = [];
   const castlePlatforms = []; // local-space rects the player can stand on
+  const castleArrows = [];    // route markers, pulsed in the main loop
   const castleFade = { mats: [], level: 1 };
   // solid geometry the player cannot walk through, in the castle's local space
   const castleCollider = {
@@ -304,30 +305,44 @@
       g.add(col);
       castleCollider.circles.push({ x: cx, z: cz, r: 0.75 });
     });
-    // flight 2: second floor up to the rooftop, along the right wall
-    const s2MinX = W / 2 - 3.6, s2MaxX = W / 2 - 0.5, s2Front = -4;
+    // flight 2: second floor up to the rooftop, along the right wall.
+    // It starts deep at the back of the hall and climbs toward the gate, so you
+    // walk onto its bottom step straight off the open floor.
+    const s2MinX = 16.4, s2MaxX = 19.5, s2Bottom = -13.2, s2Step = 0.8;
     for (let i = 0; i < 10; i++) {
       const top = FLOOR2 + (ROOF - FLOOR2) * (i + 1) / 10;
-      const step = new THREE.Mesh(new THREE.BoxGeometry(s2MaxX - s2MinX, 0.4, 0.8), stepMat);
-      step.position.set((s2MinX + s2MaxX) / 2, top - 0.2, s2Front - 0.8 * i - 0.4);
+      const step = new THREE.Mesh(new THREE.BoxGeometry(s2MaxX - s2MinX, 0.4, s2Step), stepMat);
+      step.position.set((s2MinX + s2MaxX) / 2, top - 0.2, s2Bottom + s2Step * i + s2Step / 2);
       step.castShadow = true;
       step.receiveShadow = true;
       g.add(step);
-      castlePlatforms.push({ minX: s2MinX, maxX: s2MaxX, minZ: s2Front - 0.8 * (i + 1), maxZ: s2Front - 0.8 * i, top });
+      castlePlatforms.push({ minX: s2MinX, maxX: s2MaxX, minZ: s2Bottom + s2Step * i, maxZ: s2Bottom + s2Step * (i + 1), top });
     }
-    // solid banister on the open side of flight 2 (only matters above the hall)
+    const s2Top = s2Bottom + s2Step * 10; // -5.2, where the stairs meet the roof
+    // solid banister down the open side of flight 2
     const ban2X = s2MinX - 0.15;
-    const banister2 = new THREE.Mesh(new THREE.BoxGeometry(0.3, ROOF - FLOOR2 + 0.4, 8), stoneMat);
-    banister2.position.set(ban2X, (FLOOR2 + ROOF) / 2, s2Front - 4);
+    const banister2 = new THREE.Mesh(new THREE.BoxGeometry(0.3, ROOF - FLOOR2 + 0.4, s2Top - s2Bottom), stoneMat);
+    banister2.position.set(ban2X, (FLOOR2 + ROOF) / 2, (s2Bottom + s2Top) / 2);
     banister2.castShadow = true;
     g.add(banister2);
-    castleCollider.boxes.push({ minX: ban2X - 0.15, maxX: ban2X + 0.15, minZ: s2Front - 8, maxZ: s2Front, minY: FLOOR2 - 0.5 });
-    // the flat walkable rooftop, with an opening where flight 2 arrives
-    const holeMinX = s2MinX - 0.6, holeMinZ = s2Front - 8.4, holeMaxZ = s2Front + 0.4;
+    castleCollider.boxes.push({ minX: ban2X - 0.15, maxX: ban2X + 0.15, minZ: s2Bottom, maxZ: s2Top, minY: FLOOR2 - 0.5 });
+    // parapet railing along the second floor's open edge — no falling off!
+    // (gap on the far left where flight 1 arrives)
+    const railMinX = -16.4, railMaxX = 19.5, railZ = -4.1;
+    const rail = new THREE.Mesh(new THREE.BoxGeometry(railMaxX - railMinX, 1.3, 0.4), stoneMat);
+    rail.position.set((railMinX + railMaxX) / 2, FLOOR2 + 0.65, railZ);
+    rail.castShadow = true;
+    g.add(rail);
+    for (let mx = railMinX + 0.6; mx <= railMaxX - 0.5; mx += 2.4) {
+      wall(1, 0.5, 0.55, mx, FLOOR2 + 1.55, railZ);
+    }
+    castleCollider.boxes.push({ minX: railMinX, maxX: railMaxX, minZ: railZ - 0.2, maxZ: railZ + 0.2, minY: FLOOR2 - 0.5 });
+    // the flat walkable rooftop, with a stairwell opening where flight 2 climbs
+    const holeMinX = s2MinX - 0.6;
     const roofBits = [
       { minX: -W / 2 + 0.5, maxX: holeMinX, minZ: -D / 2 + 0.5, maxZ: D / 2 - 0.5 },
-      { minX: holeMinX, maxX: W / 2 - 0.5, minZ: holeMaxZ, maxZ: D / 2 - 0.5 },
-      { minX: holeMinX, maxX: W / 2 - 0.5, minZ: -D / 2 + 0.5, maxZ: holeMinZ }
+      { minX: holeMinX, maxX: W / 2 - 0.5, minZ: s2Top, maxZ: D / 2 - 0.5 },
+      { minX: holeMinX, maxX: W / 2 - 0.5, minZ: -D / 2 + 0.5, maxZ: s2Bottom }
     ];
     roofBits.forEach(rb => {
       const m = new THREE.Mesh(new THREE.BoxGeometry(rb.maxX - rb.minX, 0.6, rb.maxZ - rb.minZ), stoneMat);
@@ -337,6 +352,31 @@
       g.add(m);
       castlePlatforms.push({ minX: rb.minX, maxX: rb.maxX, minZ: rb.minZ, maxZ: rb.maxZ, top: ROOF });
     });
+    // golden chevrons on the floor marking the route: gate → stairs → upper
+    // floor → stairs → rooftop
+    const arrowShape = new THREE.Shape();
+    arrowShape.moveTo(0, 0.55); arrowShape.lineTo(0.5, 0); arrowShape.lineTo(0.5, -0.28);
+    arrowShape.lineTo(0, 0.27); arrowShape.lineTo(-0.5, -0.28); arrowShape.lineTo(-0.5, 0);
+    arrowShape.closePath();
+    const arrowGeo = new THREE.ShapeGeometry(arrowShape);
+    function routeArrow(x, y, z, headingDeg) {
+      const mat = new THREE.MeshBasicMaterial({
+        color: 0xffd21f, transparent: true, opacity: 0.85, side: THREE.DoubleSide, depthWrite: false
+      });
+      const a = new THREE.Mesh(arrowGeo, mat);
+      a.rotation.x = -Math.PI / 2;
+      a.rotation.z = THREE.MathUtils.degToRad(headingDeg);
+      a.scale.setScalar(2.6);
+      a.position.set(x, y + 0.12, z);
+      g.add(a);
+      castleArrows.push(mat);
+    }
+    // ground floor: from the gate over to flight 1 (pointing -z, into the hall)
+    [[-6, 8], [-11, 6.5], [-15.5, 5], [-18, 3.6]].forEach(([ax, az]) => routeArrow(ax, 0, az, 180));
+    // upper floor: across the hall to the back-right, then up flight 2
+    [[-14, -6], [-7, -8.5], [0, -10.5], [8, -12], [15, -13.2]].forEach(([ax, az]) => routeArrow(ax, FLOOR2, az, 90));
+    routeArrow(18, FLOOR2, -12.4, 0);
+    routeArrow(18, FLOOR2 + 1.5, -10.5, 0);
     // big banner flying from the middle of the rooftop
     const bigPole = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.12, 5, 10), MAT(0x7a4a1e));
     bigPole.position.set(0, ROOF + 2.5, 0);
@@ -940,8 +980,11 @@
     boss.shadowRing = ring;
     boss.active = true;
     boss.hp = 3;
+    playerHp = 3;
     $("bossPill").style.display = "";
     $("bossHp").textContent = "❤️❤️❤️";
+    $("playerPill").style.display = "";
+    $("playerHp").textContent = "❤️❤️❤️";
     const digBtn = $("btnDig");
     digBtn.querySelector(".ico").textContent = "⭐";
     digBtn.querySelector(".lbl").textContent = "BONK";
@@ -1052,9 +1095,9 @@
             shake = 0.5;
             const dx = player.pos.x - m.position.x, dz = player.pos.z - m.position.z;
             const dd = Math.hypot(dx, dz);
-            if (dd < 2.6) {
+            if (dd < 2.6 && hurtCooldown <= 0) {
               knock.set(dx / (dd || 1) * 14, 0, dz / (dd || 1) * 14);
-              setMission("Whoa! Watch out for the giant hands! 🖐️", 2000);
+              hurtPlayer();
             }
             hand.state = "stunned";
             hand.t = 0;
@@ -1221,9 +1264,32 @@
   };
   let wantJump = false;
   let won = false;
+  let lost = false;
   let nearSpot = null;
   let shake = 0;
+  let playerHp = 3;
+  let hurtCooldown = 0;
+  let castleHintShown = false;
   const knock = new THREE.Vector3();
+
+  function hurtPlayer() {
+    if (hurtCooldown > 0 || lost || won) return;
+    playerHp--;
+    hurtCooldown = 1.5;
+    $("playerHp").textContent = "❤️".repeat(playerHp) || "💫";
+    beep(180, 0.25, "sawtooth", 0, 0.18);
+    beep(120, 0.3, "sawtooth", 0.12, 0.18);
+    if (playerHp <= 0) {
+      lost = true;
+      won = true; // freezes movement and input
+      boss.active = false;
+      if (boss.shadowRing) boss.shadowRing.visible = false;
+      [392, 330, 262, 196].forEach((f, i) => beep(f, 0.3, "triangle", i * 0.18, 0.14));
+      setTimeout(() => { $("lose").style.display = "flex"; }, 700);
+    } else {
+      setMission(`Ouch! ${playerHp} heart${playerHp === 1 ? "" : "s"} left — dodge the shadow circles! 🖐️`, 2500);
+    }
+  }
 
   function tryDig() {
     ac();
@@ -1268,9 +1334,10 @@
     }
   }
   $("again").addEventListener("click", () => location.reload());
+  $("retry").addEventListener("click", () => location.reload());
 
   // small hook for automated testing
-  window.__game = { player, digSpots, tryDig: () => tryDig(), treasureIndex, boss };
+  window.__game = { player, digSpots, tryDig: () => tryDig(), treasureIndex, boss, hurtPlayer };
 
   // ---------- main loop ----------
   const clock = new THREE.Clock();
@@ -1482,9 +1549,24 @@
       setMission("Your Mission: find the ❌ marks and dig up the hidden treasure!");
     }
 
+    // hurt flashing + invincibility window
+    if (hurtCooldown > 0) {
+      hurtCooldown -= dt;
+      hero.root.visible = Math.floor(t * 14) % 2 === 0;
+    } else if (!hero.root.visible) {
+      hero.root.visible = true;
+    }
+
     // walls and roof turn to glass while the player is inside the castle
     // (but not when standing on the rooftop — up there the castle stays solid)
-    const fadeTarget = insideCastle() && player.pos.y < 9.5 ? 0.22 : 1;
+    const inCastleNow = insideCastle();
+    if (inCastleNow && !castleHintShown && !boss.active && !won) {
+      castleHintShown = true;
+      setMission("🏰 Take the stairs by the left wall, cross the upper floor, then the far stairs lead to the rooftop!", 6000);
+    }
+    const pulse = 0.55 + Math.abs(Math.sin(t * 2.2)) * 0.45;
+    castleArrows.forEach((m, i) => { m.opacity = pulse * (i % 2 ? 0.85 : 1); });
+    const fadeTarget = inCastleNow && player.pos.y < 9.5 ? 0.22 : 1;
     if (Math.abs(castleFade.level - fadeTarget) > 0.005) {
       castleFade.level += (fadeTarget - castleFade.level) * Math.min(1, dt * 6);
       castleFade.mats.forEach(m => { m.opacity = castleFade.level; });

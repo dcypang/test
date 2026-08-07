@@ -19,6 +19,11 @@ Your mission: explore the world, collect the ⭐ spinning stars, and dig up the 
 One of them hides the real treasure chest — the rest are worms, old boots, and rusty
 spoons! The treasure moves to a random spot every game.
 
+Digging up the treasure summons its guardian, the **Giant Hand Girl**. You each get
+three hearts: dodge the shadow circles where her giant hands are about to slam, then
+bonk a hand with the star wand while it rests on the ground. Three bonks and she gives
+up the treasure — but if her hands catch you three times, it's game over.
+
 ## The world
 
 Everything from the drawing is in there:
@@ -28,7 +33,9 @@ Everything from the drawing is in there:
 - ❓ Floating golden question blocks — jump and bonk them from below for hidden stars
 - 🏰 A huge stone castle with battlements, a throne hall, two staircases, a second
   floor, and a walkable rooftop with a banner — the walls turn to glass while you're
-  inside so the camera can see
+  inside so the camera can see. Golden arrows on the floor mark the route up:
+  gate → stairs by the left wall → upper floor → far stairs → rooftop. Railings keep
+  you from falling off the upper floor.
 - 🍭 Colorful swirl lollipops in the snowy zone
 - ➡️ Arrow signposts, pine trees, and the red wavy sky ribbon
 

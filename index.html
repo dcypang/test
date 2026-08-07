@@ -41,10 +41,26 @@
     color: #fff; font-size: 13px; font-weight: bold; text-shadow: 0 1px 3px #000;
     background: rgba(75,54,32,.75); border: 2px solid #c6e526; border-radius: 12px; padding: 8px 12px;
   }
-  #win {
+  #win, #lose {
     position: fixed; inset: 0; display: none; align-items: center; justify-content: center; z-index: 20;
     background: rgba(40, 25, 5, .55); backdrop-filter: blur(3px);
   }
+  #lose .card {
+    background: #f0a0a0; border: 6px solid #8a2020; border-radius: 28px; padding: 34px 44px; text-align: center;
+    font-family: "Comic Sans MS", "Chalkboard SE", cursive, sans-serif; color: #6b1010;
+    box-shadow: 0 12px 40px rgba(0,0,0,.5); animation: pop .45s ease-out;
+  }
+  #lose h1 { margin: 0 0 8px; font-size: clamp(22px, 5vw, 40px); }
+  #lose p { margin: 4px 0 18px; font-size: 17px; font-weight: bold; }
+  #lose button {
+    font-family: inherit; font-size: 21px; font-weight: bold; cursor: pointer;
+    color: #ffe0e0; letter-spacing: .5px;
+    background: linear-gradient(#a03030, #7a1818 55%, #5c1010);
+    border: 3px solid #3a0808; border-radius: 999px; padding: 13px 34px;
+    box-shadow: inset 0 3px 4px rgba(255,255,255,.25), inset 0 -5px 8px rgba(0,0,0,.4),
+                0 6px 0 #3a0808, 0 10px 14px rgba(0,0,0,.35);
+  }
+  #lose button:active { transform: translateY(4px); }
   #win .card {
     background: #c6e526; border: 6px solid #8a7300; border-radius: 28px; padding: 34px 44px; text-align: center;
     font-family: "Comic Sans MS", "Chalkboard SE", cursive, sans-serif; color: #6b5600;
@@ -131,6 +147,7 @@
   <div class="pill">⭐ Stars: <span id="stars">0</span> / <span id="starsTotal">0</span></div>
   <div class="pill">❌ Spots dug: <span id="dug">0</span> / <span id="dugTotal">0</span></div>
   <div class="pill" id="bossPill" style="display:none">🖐️ Giant Hand Girl: <span id="bossHp">❤️❤️❤️</span></div>
+  <div class="pill" id="playerPill" style="display:none">👑 You: <span id="playerHp">❤️❤️❤️</span></div>
 </div>
 <div id="help">Move: WASD / arrows · Jump: Space<br>Dig on a ❌: E · Camera: drag or Z / C</div>
 <div id="mission">Your Mission: find the ❌ marks and dig up the hidden treasure!</div>
@@ -139,6 +156,13 @@
     <h1>🏆 You found the hidden treasure! 🏆</h1>
     <p id="winStats"></p>
     <button id="again">Play again</button>
+  </div>
+</div>
+<div id="lose">
+  <div class="card">
+    <h1>💥 The Giant Hand Girl got you! 💥</h1>
+    <p>Dodge the shadow circles, then bonk her hands while they rest on the ground!</p>
+    <button id="retry">Try again</button>
   </div>
 </div>
 <div id="joy"><div id="joyKnob"></div></div>
