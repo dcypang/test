@@ -3,153 +3,158 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
-<title>Find the Hidden Treasure — 3D</title>
+<title>Find the Hidden Treasure — Voxel Adventure</title>
 <style>
-  html, body { margin: 0; padding: 0; height: 100%; overflow: hidden; background: #7a5b3a; touch-action: none; }
+  html, body { margin: 0; padding: 0; height: 100%; overflow: hidden; background: #6b4f31; touch-action: none; }
   #game { position: fixed; inset: 0; }
-  canvas { display: block; touch-action: none; }
+  canvas { display: block; touch-action: none; image-rendering: pixelated; }
 
-  .bubble-font { font-family: "Comic Sans MS", "Chalkboard SE", "Marker Felt", cursive, sans-serif; }
+  /* Minecraft-ish chunky pixel type: no webfonts (CSP), so a heavy mono stack */
+  :root {
+    --mc-font: "Minecraftia", "Silkscreen", "Press Start 2P", ui-monospace, "SF Mono",
+               "Cascadia Mono", "Segoe UI Mono", "Roboto Mono", Menlo, Consolas, monospace;
+    --panel: #1c1c1cdd;
+    --bevel-lt: #6d6d6d;
+    --bevel-dk: #0a0a0a;
+  }
+  .mc { font-family: var(--mc-font); font-weight: 700; letter-spacing: .5px; }
+  .shadowed { text-shadow: 2px 2px 0 rgba(0,0,0,.75); }
+
+  /* classic beveled GUI box */
+  .panel {
+    background: var(--panel);
+    border-style: solid; border-width: 3px;
+    border-color: var(--bevel-lt) var(--bevel-dk) var(--bevel-dk) var(--bevel-lt);
+    box-shadow: inset 0 0 0 3px #2f2f2f;
+  }
 
   #title {
     position: fixed; top: 10px; left: 0; right: 0; text-align: center; pointer-events: none;
-    font-family: "Comic Sans MS", "Chalkboard SE", cursive, sans-serif;
-    font-size: clamp(22px, 5vw, 44px); font-weight: bold; color: #8a7300;
-    text-shadow: 0 2px 0 #fff70044, -2px -2px 0 #c6e526, 2px -2px 0 #c6e526, -2px 2px 0 #c6e526, 2px 2px 0 #c6e526, 0 5px 8px rgba(0,0,0,.35);
+    font-family: var(--mc-font); font-weight: 700;
+    font-size: clamp(15px, 3.2vw, 30px); color: #ffe23d;
+    text-shadow: 3px 3px 0 #3f3000, 0 0 12px rgba(0,0,0,.5);
     letter-spacing: 1px;
   }
   #hud {
-    position: fixed; top: 12px; left: 12px; display: flex; flex-direction: column; gap: 6px; pointer-events: none;
-    font-family: "Comic Sans MS", "Chalkboard SE", cursive, sans-serif; font-weight: bold;
+    position: fixed; top: 12px; left: 12px; display: flex; flex-direction: column; gap: 6px;
+    pointer-events: none; font-family: var(--mc-font); font-weight: 700;
   }
   .pill {
-    background: linear-gradient(#5d4229, #4b3620 60%, #3c2b19); color: #fff;
-    border: 3px solid #c6e526; border-radius: 999px;
-    padding: 6px 14px; font-size: 16px; width: max-content;
-    box-shadow: inset 0 2px 3px rgba(255,255,255,.18), 0 3px 6px rgba(0,0,0,.4);
+    background: var(--panel); color: #fff;
+    border-style: solid; border-width: 3px;
+    border-color: var(--bevel-lt) var(--bevel-dk) var(--bevel-dk) var(--bevel-lt);
+    padding: 6px 12px; font-size: 13px; width: max-content;
+    text-shadow: 2px 2px 0 rgba(0,0,0,.75);
   }
   #mission {
     position: fixed; bottom: 18px; left: 50%; transform: translateX(-50%); pointer-events: none;
-    background: #4b3620; color: #fff; border: 4px solid #c6e526; border-radius: 999px;
-    padding: 10px 26px; font-size: clamp(14px, 2.6vw, 20px); font-weight: bold; text-align: center;
-    font-family: "Comic Sans MS", "Chalkboard SE", cursive, sans-serif;
-    box-shadow: 0 4px 10px rgba(0,0,0,.45); max-width: 86vw; transition: opacity .3s;
+    background: var(--panel); color: #fff;
+    border-style: solid; border-width: 3px;
+    border-color: var(--bevel-lt) var(--bevel-dk) var(--bevel-dk) var(--bevel-lt);
+    padding: 10px 20px; font-size: clamp(11px, 2vw, 15px); text-align: center;
+    font-family: var(--mc-font); font-weight: 700; line-height: 1.5;
+    text-shadow: 2px 2px 0 rgba(0,0,0,.75);
+    max-width: 88vw; transition: opacity .3s;
   }
   #help {
     position: fixed; top: 12px; right: 12px; pointer-events: none; text-align: right;
-    font-family: "Comic Sans MS", "Chalkboard SE", cursive, sans-serif;
-    color: #fff; font-size: 13px; font-weight: bold; text-shadow: 0 1px 3px #000;
-    background: rgba(75,54,32,.75); border: 2px solid #c6e526; border-radius: 12px; padding: 8px 12px;
+    font-family: var(--mc-font); font-weight: 700; color: #fff; font-size: 11px; line-height: 1.7;
+    background: var(--panel);
+    border-style: solid; border-width: 3px;
+    border-color: var(--bevel-lt) var(--bevel-dk) var(--bevel-dk) var(--bevel-lt);
+    padding: 8px 12px; text-shadow: 2px 2px 0 rgba(0,0,0,.75);
   }
+
   #win, #lose {
     position: fixed; inset: 0; display: none; align-items: center; justify-content: center; z-index: 20;
-    background: rgba(40, 25, 5, .55); backdrop-filter: blur(3px);
+    background: rgba(10, 8, 6, .6);
   }
-  #lose .card {
-    background: #f0a0a0; border: 6px solid #8a2020; border-radius: 28px; padding: 34px 44px; text-align: center;
-    font-family: "Comic Sans MS", "Chalkboard SE", cursive, sans-serif; color: #6b1010;
-    box-shadow: 0 12px 40px rgba(0,0,0,.5); animation: pop .45s ease-out;
+  #win .card, #lose .card {
+    background: #1c1c1cf2; padding: 34px 40px; text-align: center;
+    font-family: var(--mc-font); font-weight: 700; color: #fff;
+    border-style: solid; border-width: 4px;
+    border-color: #7d7d7d #0a0a0a #0a0a0a #7d7d7d;
+    box-shadow: inset 0 0 0 4px #2f2f2f, 0 12px 40px rgba(0,0,0,.6);
+    animation: pop .35s steps(4, end);
+    max-width: 92vw;
   }
-  #lose h1 { margin: 0 0 8px; font-size: clamp(22px, 5vw, 40px); }
-  #lose p { margin: 4px 0 18px; font-size: 17px; font-weight: bold; }
-  #lose button {
-    font-family: inherit; font-size: 21px; font-weight: bold; cursor: pointer;
-    color: #ffe0e0; letter-spacing: .5px;
-    background: linear-gradient(#a03030, #7a1818 55%, #5c1010);
-    border: 3px solid #3a0808; border-radius: 999px; padding: 13px 34px;
-    box-shadow: inset 0 3px 4px rgba(255,255,255,.25), inset 0 -5px 8px rgba(0,0,0,.4),
-                0 6px 0 #3a0808, 0 10px 14px rgba(0,0,0,.35);
+  #win h1 { margin: 0 0 10px; font-size: clamp(15px, 3.4vw, 26px); color: #ffe23d; text-shadow: 3px 3px 0 #3f3000; line-height: 1.5; }
+  #lose h1 { margin: 0 0 10px; font-size: clamp(14px, 3.2vw, 24px); color: #ff6b6b; text-shadow: 3px 3px 0 #3f0000; line-height: 1.5; }
+  #win p, #lose p { margin: 6px 0 20px; font-size: 13px; line-height: 1.6; text-shadow: 2px 2px 0 rgba(0,0,0,.75); }
+  #win button, #lose button {
+    font-family: var(--mc-font); font-size: 15px; font-weight: 700; cursor: pointer;
+    color: #fff; text-shadow: 2px 2px 0 rgba(0,0,0,.75);
+    background: linear-gradient(#a5a5a5, #8b8b8b 50%, #6f6f6f);
+    border-style: solid; border-width: 3px;
+    border-color: #d8d8d8 #3a3a3a #3a3a3a #d8d8d8;
+    padding: 12px 28px; letter-spacing: 1px;
   }
-  #lose button:active { transform: translateY(4px); }
-  #win .card {
-    background: #c6e526; border: 6px solid #8a7300; border-radius: 28px; padding: 34px 44px; text-align: center;
-    font-family: "Comic Sans MS", "Chalkboard SE", cursive, sans-serif; color: #6b5600;
-    box-shadow: 0 12px 40px rgba(0,0,0,.5); animation: pop .45s ease-out;
+  #win button:hover, #lose button:hover { background: linear-gradient(#b9c9e8, #8fa5d0 50%, #7086b5); }
+  #win button:active, #lose button:active {
+    border-color: #3a3a3a #d8d8d8 #d8d8d8 #3a3a3a;
+    transform: translateY(2px);
   }
-  #win h1 { margin: 0 0 8px; font-size: clamp(26px, 6vw, 46px); }
-  #win p { margin: 4px 0 18px; font-size: 18px; font-weight: bold; }
-  #win button {
-    font-family: inherit; font-size: 21px; font-weight: bold; cursor: pointer;
-    color: #ffe9c9; letter-spacing: .5px;
-    background: linear-gradient(#6a4d2e, #4b3620 55%, #382817);
-    border: 3px solid #2b1e10; border-radius: 999px; padding: 13px 34px;
-    box-shadow: inset 0 3px 4px rgba(255,255,255,.25), inset 0 -5px 8px rgba(0,0,0,.4),
-                0 6px 0 #2b1e10, 0 10px 14px rgba(0,0,0,.35);
-    text-shadow: 0 -1px 0 rgba(0,0,0,.4);
-    transition: transform .07s, box-shadow .07s;
-  }
-  #win button:hover { filter: brightness(1.12); }
-  #win button:active {
-    transform: translateY(4px);
-    box-shadow: inset 0 3px 4px rgba(255,255,255,.2), inset 0 -3px 6px rgba(0,0,0,.4),
-                0 2px 0 #2b1e10, 0 4px 8px rgba(0,0,0,.3);
-  }
-  #win button:focus-visible { outline: 3px solid #fff; outline-offset: 3px; }
-  @keyframes pop { from { transform: scale(.5); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+  #win button:focus-visible, #lose button:focus-visible { outline: 3px solid #ffe23d; outline-offset: 3px; }
+  @keyframes pop { from { transform: scale(.7); opacity: 0; } to { transform: scale(1); opacity: 1; } }
 
-  /* touch controls — candy buttons matching the drawing's lime & chocolate look */
+  /* touch controls — blocky Minecraft buttons */
   #joy {
     position: fixed; display: none; z-index: 10;
     left: calc(22px + env(safe-area-inset-left, 0px));
     bottom: calc(30px + env(safe-area-inset-bottom, 0px));
-    width: 132px; height: 132px; border-radius: 50%;
-    background: radial-gradient(circle at 50% 38%, rgba(255,255,255,.28), rgba(75,54,32,.28) 75%);
-    border: 4px solid rgba(255,255,255,.55);
-    box-shadow: inset 0 4px 10px rgba(255,255,255,.25), inset 0 -6px 12px rgba(0,0,0,.25), 0 6px 14px rgba(0,0,0,.3);
+    width: 132px; height: 132px;
+    background: #1c1c1cbb;
+    border-style: solid; border-width: 4px;
+    border-color: #7d7d7d #0a0a0a #0a0a0a #7d7d7d;
     touch-action: none; -webkit-touch-callout: none;
   }
   #joyKnob {
-    position: absolute; left: 50%; top: 50%; width: 58px; height: 58px; border-radius: 50%;
-    background: radial-gradient(circle at 35% 28%, #f4ff8a, #c6e526 55%, #97b307);
-    border: 3px solid #6f5c00;
-    box-shadow: inset 0 -5px 8px rgba(111,92,0,.45), inset 0 4px 6px rgba(255,255,255,.6), 0 4px 8px rgba(0,0,0,.4);
+    position: absolute; left: 50%; top: 50%; width: 56px; height: 56px;
+    background: linear-gradient(#a5a5a5, #8b8b8b 50%, #6f6f6f);
+    border-style: solid; border-width: 4px;
+    border-color: #d8d8d8 #3a3a3a #3a3a3a #d8d8d8;
     transform: translate(-50%,-50%);
   }
   .tbtn {
-    position: fixed; width: 92px; height: 92px; border-radius: 50%; display: none; z-index: 10;
-    flex-direction: column; align-items: center; justify-content: center; gap: 0;
-    font-family: "Comic Sans MS", "Chalkboard SE", cursive, sans-serif;
-    font-size: 15px; font-weight: bold; color: #4b3620; letter-spacing: .5px;
-    background: radial-gradient(circle at 35% 25%, #f4ff8a, #c6e526 50%, #a3bd12 85%);
-    border: 4px solid #6f5c00;
-    box-shadow: inset 0 6px 8px rgba(255,255,255,.65), inset 0 -8px 12px rgba(111,92,0,.5),
-                0 7px 0 #6f5c00, 0 11px 16px rgba(0,0,0,.4);
-    text-shadow: 0 1px 0 rgba(255,255,255,.6);
+    position: fixed; width: 88px; height: 88px; display: none; z-index: 10;
+    flex-direction: column; align-items: center; justify-content: center;
+    font-family: var(--mc-font); font-size: 12px; font-weight: 700; letter-spacing: 1px;
+    color: #fff; text-shadow: 2px 2px 0 rgba(0,0,0,.75);
+    background: linear-gradient(#a5a5a5, #8b8b8b 50%, #6f6f6f);
+    border-style: solid; border-width: 4px;
+    border-color: #d8d8d8 #3a3a3a #3a3a3a #d8d8d8;
     user-select: none; -webkit-user-select: none; touch-action: none; -webkit-touch-callout: none;
-    transition: transform .07s, box-shadow .07s;
   }
-  .tbtn .ico { font-size: 26px; line-height: 1; margin-bottom: 2px; filter: drop-shadow(0 2px 2px rgba(0,0,0,.25)); }
+  .tbtn .ico { font-size: 24px; line-height: 1; margin-bottom: 3px; }
   .tbtn .lbl { line-height: 1; }
   .tbtn.pressed, .tbtn:active {
-    transform: translateY(5px);
-    box-shadow: inset 0 6px 8px rgba(255,255,255,.5), inset 0 -4px 8px rgba(111,92,0,.5),
-                0 2px 0 #6f5c00, 0 4px 8px rgba(0,0,0,.35);
-    background: radial-gradient(circle at 35% 30%, #e9f56a, #b3d215 55%, #97b307 85%);
+    border-color: #3a3a3a #d8d8d8 #d8d8d8 #3a3a3a;
+    background: linear-gradient(#8fa5d0, #7086b5 50%, #5c6f97);
+    transform: translateY(2px);
   }
   #btnJump { right: calc(24px + env(safe-area-inset-right, 0px)); bottom: calc(102px + env(safe-area-inset-bottom, 0px)); }
   #btnDig  { right: calc(112px + env(safe-area-inset-right, 0px)); bottom: calc(26px + env(safe-area-inset-bottom, 0px)); }
   .touch #joy, .touch .tbtn { display: flex; }
-  /* phones: hide keyboard hints, move the mission banner up out of thumb range */
   .touch #help { display: none; }
-  .touch #title { font-size: clamp(18px, 4vw, 30px); top: calc(8px + env(safe-area-inset-top, 0px)); }
+  .touch #title { font-size: clamp(12px, 2.6vw, 20px); top: calc(8px + env(safe-area-inset-top, 0px)); }
   .touch #mission {
-    bottom: auto; top: calc(env(safe-area-inset-top, 0px) + 56px);
-    font-size: 14px; padding: 7px 16px; max-width: 92vw;
+    bottom: auto; top: calc(env(safe-area-inset-top, 0px) + 52px);
+    font-size: 11px; padding: 7px 14px; max-width: 92vw;
   }
-  .touch #hud .pill { font-size: 13px; padding: 4px 11px; border-width: 2px; }
+  .touch #hud .pill { font-size: 11px; padding: 4px 9px; border-width: 2px; }
   .touch #hud { top: calc(8px + env(safe-area-inset-top, 0px)); left: calc(8px + env(safe-area-inset-left, 0px)); }
 </style>
 </head>
 <body>
 <div id="game"></div>
-<div id="title">Find the hidden treasure</div>
+<div id="title">Find the Hidden Treasure</div>
 <div id="hud">
   <div class="pill">⭐ Stars: <span id="stars">0</span> / <span id="starsTotal">0</span></div>
   <div class="pill">❌ Spots dug: <span id="dug">0</span> / <span id="dugTotal">0</span></div>
   <div class="pill" id="bossPill" style="display:none">🖐️ Giant Hand Girl: <span id="bossHp">❤️❤️❤️</span></div>
   <div class="pill" id="playerPill" style="display:none">👑 You: <span id="playerHp">❤️❤️❤️</span></div>
 </div>
-<div id="help">Move: WASD / arrows · Jump: Space<br>Dig on a ❌: E · Camera: drag or Z / C</div>
+<div id="help">Move: WASD / arrows &middot; Jump: Space<br>Dig on a ❌: E &middot; Camera: drag or Z / C</div>
 <div id="mission">Your Mission: find the ❌ marks and dig up the hidden treasure!</div>
 <div id="win">
   <div class="card">
@@ -161,7 +166,7 @@
 <div id="lose">
   <div class="card">
     <h1>💥 The Giant Hand Girl got you! 💥</h1>
-    <p>Dodge the shadow circles, then bonk her hands while they rest on the ground!</p>
+    <p>Dodge the shadow squares, then bonk her hands while they rest on the ground!</p>
     <button id="retry">Try again</button>
   </div>
 </div>
