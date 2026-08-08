@@ -117,9 +117,16 @@ export function buildBike(bike, kitHex, paint){
   const forkG = new THREE.Group(); sprung.add(forkG);
   const stemTop = P.barC.clone().add(new THREE.Vector3(-0.05,-0.03,0));
   forkG.add(tubeBetween(P.head, stemTop, 0.02, mats.dark));         // steerer/stem
+  // bars pivot about the steerer axis, so the front end can be steered
+  const barsG = new THREE.Group(); barsG.position.copy(P.barC); sprung.add(barsG);
   const bars = new THREE.Mesh(new THREE.CylinderGeometry(0.011,0.011,0.54,10), mats.dark);
-  bars.rotation.x = Math.PI/2; bars.position.copy(P.barC); bars.castShadow=true;
-  const barsG = new THREE.Group(); barsG.add(bars); sprung.add(barsG);
+  bars.rotation.x = Math.PI/2; bars.castShadow = true;
+  barsG.add(bars);
+  for(const s of [-0.22, 0.22]){
+    const grip = new THREE.Mesh(new THREE.CylinderGeometry(0.016,0.016,0.11,8), mats.dark);
+    grip.rotation.x = Math.PI/2; grip.position.set(0,0,s);
+    barsG.add(grip);
+  }
 
   const lowers = new THREE.Group();                                 // slides for suspension
   sprung.add(lowers);
@@ -182,7 +189,8 @@ export function buildBike(bike, kitHex, paint){
     legs.push({ s, thigh, shin });
   }
 
-  return { root, sprung, rider, wheelF, wheelR, lowers, crank, barsG, legs, P, hip };
+  return { root, sprung, rider, wheelF, wheelR, lowers, crank, barsG,
+           barBaseY: P.barC.y, legs, P, hip };
 }
 
 const _up = new THREE.Vector3(0,1,0);
@@ -203,7 +211,11 @@ export function poseBikeParts(V, S){
   V.sprung.position.y = zRel*0.55 - (S.bike.susp? sag*0.35 : 0);
   V.sprung.rotation.z = clamp(S.th, -0.1, 0.1)*0.6;
   // Future Shock: bars dip
-  if(S.bike.futureShock) V.barsG.position.y = clamp(-S.fsZ*1.4, -0.012, 0.02);
+  V.barsG.position.y = V.barBaseY + (S.bike.futureShock ? clamp(-S.fsZ*1.4, -0.012, 0.02) : 0);
+  // steering (player only): front wheel and bars turn together
+  const steer = S.steerVis || 0;
+  V.wheelF.rotation.y = -steer;
+  V.barsG.rotation.y = -steer;
   // pedaling legs via simple 2-bone IK to pedal positions
   for(const L of V.legs){
     const side = L.s > 0 ? 1 : -1;

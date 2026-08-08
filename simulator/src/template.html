@@ -6,7 +6,7 @@
   --ink:#26241F; --ink2:#5C594F; --ink3:#8B877A;
   --line:#DAD7CC; --line2:#C9C5B8;
   --quick:#3E8A4B; --quickMark:#62C46F; --sirrus:#9E3535; --cx:#3B7DD8;
-  --good:#3E7A46; --warn:#9B6A1F; --crit:#A03333;
+  --good:#3E7A46; --warn:#9B6A1F; --crit:#A03333; --you:#C8871F;
   --disp:"Avenir Next Condensed","Helvetica Neue Condensed","Arial Narrow","Liberation Sans Narrow",ui-sans-serif,sans-serif;
   --body:ui-sans-serif,system-ui,"Segoe UI",Helvetica,Arial,sans-serif;
   --mono:ui-monospace,"SF Mono","Cascadia Mono",Menlo,Consolas,monospace;
@@ -17,7 +17,7 @@
     --ink:#E8E6E0; --ink2:#A9A69C; --ink3:#787568;
     --line:#333941; --line2:#414855;
     --quick:#49AB59; --quickMark:#49AB59; --sirrus:#B84444; --cx:#5B93E8;
-    --good:#5CAE68; --warn:#C79A45; --crit:#CC6B5F;
+    --good:#5CAE68; --warn:#C79A45; --crit:#CC6B5F; --you:#BC8626;
   }
 }
 :root[data-theme="light"]{
@@ -25,14 +25,14 @@
   --ink:#26241F; --ink2:#5C594F; --ink3:#8B877A;
   --line:#DAD7CC; --line2:#C9C5B8;
   --quick:#3E8A4B; --quickMark:#62C46F; --sirrus:#9E3535; --cx:#3B7DD8;
-  --good:#3E7A46; --warn:#9B6A1F; --crit:#A03333;
+  --good:#3E7A46; --warn:#9B6A1F; --crit:#A03333; --you:#C8871F;
 }
 :root[data-theme="dark"]{
   --paper:#171A1E; --paper2:#1F2329; --card:#21262D;
   --ink:#E8E6E0; --ink2:#A9A69C; --ink3:#787568;
   --line:#333941; --line2:#414855;
   --quick:#49AB59; --quickMark:#49AB59; --sirrus:#B84444; --cx:#5B93E8;
-  --good:#5CAE68; --warn:#C79A45; --crit:#CC6B5F;
+  --good:#5CAE68; --warn:#C79A45; --crit:#CC6B5F; --you:#BC8626;
 }
 *{box-sizing:border-box}
 html,body{margin:0;padding:0}
@@ -71,9 +71,30 @@ input[type=range]{width:150px;accent-color:var(--ink)}
 .hudchip .sp{min-width:74px;text-align:right}
 .hudbadge{font-family:var(--disp);font-weight:700;font-size:10.5px;letter-spacing:.08em}
 .hudbadge.air{color:var(--crit)}
+.hudbadge.warn{color:var(--warn)}
+.hudbadge.crash{color:var(--paper);background:var(--crit);border-radius:4px;padding:1px 6px}
 .hudbadge.done{color:var(--good)}
-.camhud{position:absolute;top:10px;right:10px}
+.hudchip.you{border-color:var(--you);border-width:2px}
+.stamina{width:56px;height:6px;border-radius:3px;background:var(--line2);overflow:hidden}
+.stamina i{display:block;height:100%;background:var(--you);width:100%}
+.camhud{position:absolute;top:10px;right:10px;max-width:52%}
+.camhud .camtabs{justify-content:flex-end}
 .camhud button{font-size:11px;padding:5px 9px}
+/* on-screen controls (touch + click) */
+#dpad{position:absolute;right:12px;bottom:12px;display:grid;grid-template-columns:repeat(3,44px);
+  grid-template-rows:repeat(3,44px);gap:5px;touch-action:none;user-select:none}
+#dpad button{background:color-mix(in srgb, var(--paper) 80%, transparent);border:1px solid var(--line2);
+  border-radius:9px;color:var(--ink);font-size:16px;font-weight:700;cursor:pointer;backdrop-filter:blur(3px);
+  display:flex;align-items:center;justify-content:center;touch-action:none}
+#dpad button.on{background:var(--ink);color:var(--paper);border-color:var(--ink)}
+#dpad [data-k=up]{grid-area:1/2} #dpad [data-k=left]{grid-area:2/1}
+#dpad [data-k=down]{grid-area:2/2} #dpad [data-k=right]{grid-area:2/3}
+#dpad [data-k=sprint]{grid-area:3/1/4/4;font-family:var(--disp);font-size:12px;letter-spacing:.1em}
+.keyhint{position:absolute;left:10px;bottom:10px;font-family:var(--mono);font-size:11px;line-height:1.7;
+  color:var(--ink2);background:color-mix(in srgb, var(--paper) 78%, transparent);border:1px solid var(--line);
+  border-radius:8px;padding:6px 9px;backdrop-filter:blur(3px);max-width:44%}
+.keyhint b{color:var(--ink)}
+@media(max-width:640px){.keyhint{display:none}}
 .racefoot{display:flex;justify-content:space-between;gap:10px;padding:8px 14px;background:var(--paper2);border-top:1px solid var(--line);font-family:var(--mono);font-size:12px;color:var(--ink2);font-variant-numeric:tabular-nums;flex-wrap:wrap}
 
 /* telemetry */
@@ -120,7 +141,7 @@ footer .src{font-size:12px;color:var(--ink3)}
 <header>
   <div class="eyebrow">True-spec 3D physics simulation · flat-bar hybrids</div>
   <h1>Three hybrids, four roads. Same rider, same watts.</h1>
-  <p class="lede">A rigid fitness bike, a Future Shock gravel-hybrid, and a suspension-fork adventure hybrid, ridden head-to-head by identical 75&nbsp;kg riders — now in full 3D. The engine models aerodynamic drag, tire rolling resistance, gearing, sprung-mass suspension dynamics, bump-impedance losses and traction-limited control speed, from each bike's published spec sheet. Every surface texture is generated procedurally.</p>
+  <p class="lede"><strong>You ride too.</strong> Pick your bike, then use the arrow keys (or the on-screen pad) to pedal, brake, back up and steer anywhere on the map while three AI riders race the same course. The engine models aerodynamic drag, tire rolling resistance, gearing, sprung-mass suspension dynamics, bump-impedance losses, grip-limited cornering and W′ sprint stamina — all from each bike's published spec sheet, on procedurally generated terrain.</p>
   <div class="bikekey">
     <span><i class="swatch" style="background:var(--quick)"></i>Cannondale Quick 2</span>
     <span><i class="swatch" style="background:var(--sirrus)"></i>Specialized Sirrus X 4.0</span>
@@ -140,6 +161,14 @@ footer .src{font-size:12px;color:var(--ink3)}
     </div>
   </div>
   <div class="ctl">
+    <span class="lbl" id="youBikeLbl">Your bike</span>
+    <div class="tabs" id="youBike" role="group" aria-labelledby="youBikeLbl">
+      <button data-bike="0" aria-pressed="false">Quick 2</button>
+      <button data-bike="1" aria-pressed="true">Sirrus X 4.0</button>
+      <button data-bike="2" aria-pressed="false">Quick CX 2</button>
+    </div>
+  </div>
+  <div class="ctl">
     <label for="power">Rider power</label>
     <input type="range" id="power" min="100" max="350" value="200" step="10">
     <span class="val" id="powerVal">200 W</span>
@@ -150,7 +179,7 @@ footer .src{font-size:12px;color:var(--ink3)}
     <span class="val" id="simspeedVal">2×</span>
   </div>
   <div class="ctl" style="flex-direction:row;gap:8px;align-items:center">
-    <button class="btn" id="startBtn">Start ride</button>
+    <button class="btn" id="startBtn">Start race</button>
     <button class="btn secondary" id="resetBtn">Reset</button>
   </div>
 </div>
@@ -161,15 +190,26 @@ footer .src{font-size:12px;color:var(--ink3)}
     <div class="hudchip"><i class="swatch" style="background:var(--quick)"></i><span class="nm">Quick 2</span><span class="sp"><span id="hudV0">0.0</span> km/h</span><span id="hudD0">0 m</span><span class="hudbadge" id="hudB0"></span></div>
     <div class="hudchip"><i class="swatch" style="background:var(--sirrus)"></i><span class="nm">Sirrus X 4.0</span><span class="sp"><span id="hudV1">0.0</span> km/h</span><span id="hudD1">0 m</span><span class="hudbadge" id="hudB1"></span></div>
     <div class="hudchip"><i class="swatch" style="background:var(--cx)"></i><span class="nm">Quick CX 2</span><span class="sp"><span id="hudV2">0.0</span> km/h</span><span id="hudD2">0 m</span><span class="hudbadge" id="hudB2"></span></div>
+    <div class="hudchip you"><i class="swatch" style="background:var(--you)"></i><span class="nm">You</span><span class="sp"><span id="hudVp">0.0</span> km/h</span><span id="hudDp">0 m</span><span class="stamina" title="Anaerobic reserve (W′)"><i id="staminaBar"></i></span><span id="hudSurf">Asphalt</span><span class="hudbadge" id="hudCrash"></span><span class="hudbadge" id="hudBp"></span></div>
   </div>
   <div class="camhud">
     <div class="camtabs" role="group" aria-label="Camera follows">
-      <button data-cam="auto" aria-pressed="true">Leader</button>
+      <button data-cam="you" aria-pressed="true">You</button>
+      <button data-cam="fpv" aria-pressed="false">First person</button>
+      <button data-cam="auto" aria-pressed="false">Leader</button>
       <button data-cam="0" aria-pressed="false">Q2</button>
       <button data-cam="1" aria-pressed="false">SX4</button>
       <button data-cam="2" aria-pressed="false">CX2</button>
       <button data-cam="orbit" aria-pressed="false">Orbit</button>
     </div>
+  </div>
+  <div class="keyhint"><b>↑/W</b> pedal · <b>↓/S</b> brake, hold to back up<br><b>←/→ or A/D</b> steer · <b>Shift</b> sprint · <b>R</b> reset position<br>Go faster than the ground allows and you will crash.</div>
+  <div id="dpad">
+    <button data-k="up" aria-label="Pedal">▲</button>
+    <button data-k="left" aria-label="Steer left">◀</button>
+    <button data-k="down" aria-label="Brake or reverse">▼</button>
+    <button data-k="right" aria-label="Steer right">▶</button>
+    <button data-k="sprint" aria-label="Sprint">SPRINT</button>
   </div>
 </div>
 <div class="racefoot" style="border:1px solid var(--line);border-top:none;border-radius:0 0 10px 10px;margin-top:-1px">
@@ -261,6 +301,8 @@ footer .src{font-size:12px;color:var(--ink3)}
     <li><strong>Control envelope:</strong> on rough or loose ground each bike gets a max controllable speed from tire grip, tread and suspension travel; the rider AI brakes ahead of tree gates, rock gardens and washboard using a μ-limited braking envelope, exactly like a real rider scrubbing speed before trouble.</li>
     <li><strong>3D scene:</strong> the road mesh is the exact heightfield the physics integrates over — wheels, fork travel and Future Shock motion you see are the simulation state. Asphalt, gravel, forest floor, bark and foliage textures are synthesized at load time from fractal value noise (the page ships no image assets).</li>
     <li><strong>Rider:</strong> 75 kg, steady power (slider), coasts past spin-out, brakes at up to 0.65·μ·g.</li>
+    <li><strong>Your bike:</strong> steered with a kinematic bicycle model (ψ̇ = v·tanδ/wheelbase) on the same suspension and drag physics. Steering lock tightens with speed; cornering draws on the same friction circle as drive and braking, so grip spent leaning is grip you no longer have for power — ask for more than μ·g and the front washes out. Sprinting spends a 20&nbsp;kJ W′ anaerobic reserve that refills only below threshold, and leaving the pavement puts you on the verge's own rolling resistance and grip.</li>
+    <li><strong>Staying upright:</strong> you are held to the same control limit the AI respects — the speed at which <em>your</em> tires, tread and suspension travel can still hold <em>that</em> ground. Ride 35% beyond it on loose or broken surfaces, land a jump with more than 3.2&nbsp;m/s of vertical speed, or hold a slide for half a second, and you go down and remount. It is why holding full throttle down the singletrack is slower than riding within the bike: over 1.2&nbsp;km the rigid Quick 2 crashes 22 times flat-out versus 6 ridden with restraint, while the 50&nbsp;mm-travel Quick CX 2 gets away with 9 — the suspension is buying you control, exactly as it does in the real world.</li>
   </ul>
   <p class="src">Spec sources: cannondale.com (Quick 2, Quick CX 2), specialized.com (Sirrus X 4.0), 99spokes.com, rei.com. Rolling-resistance figures follow bicyclerollingresistance.com test methodology for comparable casings. This is a comparative model — real-world results vary with rider, pressure and conditions. Rendered with three.js (MIT license, bundled inline).</p>
 </footer>
