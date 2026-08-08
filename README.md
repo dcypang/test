@@ -49,17 +49,29 @@ no image files.
 
 The voxel look is generated entirely in code:
 
-- **Texture atlas** — every block texture is drawn pixel by pixel into one 16×16-per-tile
-  canvas atlas at load time (grass, dirt, cobble, stone brick, logs, leaves, wool,
-  gold, portal, faces…), sampled with `NearestFilter` so it stays crisp and pixelated.
+- **Texture atlas** — every block texture is drawn pixel by pixel into one canvas atlas
+  at load time (grass, dirt, cobble, stone brick, logs, leaves, wool, gold, portal,
+  faces…), from a seeded RNG so the art is identical on every load. Tiles are drawn as
+  deliberate pixel art — stone courses, wood grain, clustered foliage — rather than
+  per-pixel noise, which is what made an earlier pass look like static.
 - **Per-block-type geometry** — a `BoxGeometry` per top/side/bottom texture combination,
   with its UVs remapped into the atlas, so grass blocks show grass on top, dirt
   underneath, and a grassy edge on the sides.
+- **Baked per-face shading** — each cube face carries a fixed brightness in its vertex
+  colours (top brightest, sides mid, bottom dark). This is the signature voxel look and
+  it makes blocks read as solid volumes instead of flatly-lit blobs.
+- **Crisp near, smooth far** — `NearestFilter` magnification keeps pixels sharp up
+  close, while mipmaps and anisotropic filtering kill the shimmer on distant ground.
+  Each atlas tile is padded with an 8px gutter of edge-repeat so mipmapping can't bleed
+  one tile into its neighbour.
 - **Instanced rendering** — every block of a given type is drawn in a single
   `InstancedMesh` draw call.
 - **Flat ground is tiled planes, not cubes.** With one texture tile per world block it
   looks identical from above but costs a handful of triangles instead of ~23,000 cubes,
   which is what keeps it smooth on phones. Anything with height is a real block.
+- **Atmosphere** — a gradient sky dome that rides with the camera, fog tuned to match
+  its horizon band exactly, drifting blocky clouds, MSAA, sRGB output and ACES filmic
+  tone mapping.
 
 Files:
 

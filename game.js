@@ -7,17 +7,21 @@
   // ---------- renderer ----------
   const IS_TOUCH = ("ontouchstart" in window) || navigator.maxTouchPoints > 0;
   const container = document.getElementById("game");
-  const renderer = new THREE.WebGLRenderer({ antialias: false });
+  const renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: "high-performance" });
+  // phones already antialias via MSAA; capping the ratio keeps the fill rate sane
   renderer.setPixelRatio(Math.min(window.devicePixelRatio, IS_TOUCH ? 1.5 : 2));
   renderer.setSize(window.innerWidth, window.innerHeight);
   renderer.shadowMap.enabled = true;
   renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+  if (THREE.SRGBColorSpace !== undefined) renderer.outputColorSpace = THREE.SRGBColorSpace;
+  renderer.toneMapping = THREE.ACESFilmicToneMapping;
+  renderer.toneMappingExposure = 1.25;
   container.appendChild(renderer.domElement);
+  const MAX_ANISO = renderer.capabilities.getMaxAnisotropy();
 
-  const SKY = 0x8ac6ff;
+  const SKY_HORIZON = 0xa8d0f2; // matches the sky dome's horizon band exactly
   const scene = new THREE.Scene();
-  scene.background = new THREE.Color(SKY);
-  scene.fog = new THREE.Fog(SKY, 85, 175);
+  scene.fog = new THREE.Fog(SKY_HORIZON, 75, 170);
 
   const camera = new THREE.PerspectiveCamera(58, window.innerWidth / window.innerHeight, 0.1, 400);
   camera.position.set(0, 8, 12);
@@ -33,121 +37,236 @@
   window.addEventListener("resize", fitCamera);
   window.addEventListener("orientationchange", () => setTimeout(fitCamera, 250));
 
-  // Minecraft-ish lighting: strong ambient, one crisp sun, no specular
-  scene.add(new THREE.AmbientLight(0xffffff, 0.72));
-  scene.add(new THREE.HemisphereLight(0xcfe9ff, 0x6b7a4a, 0.45));
-  const sun = new THREE.DirectionalLight(0xfff6e0, 1.15);
+  // gradient sky dome — a flat background colour is what makes voxel scenes
+  // look cheap, so the horizon fades up into a deeper blue
+  {
+    const c = document.createElement("canvas");
+    c.width = 4; c.height = 256;
+    const g = c.getContext("2d");
+    const grad = g.createLinearGradient(0, 0, 0, 256);
+    grad.addColorStop(0.0, "#2f6fc8");
+    grad.addColorStop(0.38, "#4f93dd");
+    grad.addColorStop(0.62, "#84bbee");
+    grad.addColorStop(0.82, "#a8d0f2");
+    grad.addColorStop(1.0, "#c2ddf6");
+    g.fillStyle = grad;
+    g.fillRect(0, 0, 4, 256);
+    const tex = new THREE.CanvasTexture(c);
+    if (THREE.SRGBColorSpace !== undefined) tex.colorSpace = THREE.SRGBColorSpace;
+    const dome = new THREE.Mesh(
+      new THREE.SphereGeometry(260, 24, 16),
+      new THREE.MeshBasicMaterial({ map: tex, side: THREE.BackSide, fog: false, depthWrite: false })
+    );
+    dome.renderOrder = -1;
+    scene.add(dome);
+    scene.userData.skyDome = dome;
+  }
+
+  // Lighting: most of the block shading is baked per face (see blockGeo), so the
+  // lights stay soft and mainly carry sun warmth, sky fill and shadows.
+  scene.add(new THREE.AmbientLight(0xffffff, 0.62));
+  scene.add(new THREE.HemisphereLight(0xbcdcf7, 0x5a6b3f, 0.38));
+  const sun = new THREE.DirectionalLight(0xfff1cf, 0.85);
   sun.castShadow = true;
   sun.shadow.mapSize.set(IS_TOUCH ? 1024 : 2048, IS_TOUCH ? 1024 : 2048);
-  sun.shadow.camera.left = -40; sun.shadow.camera.right = 40;
-  sun.shadow.camera.top = 40; sun.shadow.camera.bottom = -40;
-  sun.shadow.camera.far = 120;
-  sun.shadow.normalBias = 0.04;
+  sun.shadow.camera.left = -32; sun.shadow.camera.right = 32;
+  sun.shadow.camera.top = 32; sun.shadow.camera.bottom = -32;
+  sun.shadow.camera.near = 1;
+  sun.shadow.camera.far = 130;
+  sun.shadow.bias = -0.0006;
+  sun.shadow.normalBias = 0.05;
   scene.add(sun, sun.target);
 
   // ---------- procedural 16x16 pixel-art texture atlas ----------
-  const TILE = 16, ATLAS_TILES = 64;
+  // Each tile gets an 8px gutter of edge-repeat above and below so mipmapping
+  // (which kills distant shimmer) can't bleed one tile into its neighbour.
+  const TILE = 16, PAD = 8, CELL = TILE + PAD * 2, ATLAS_TILES = 64;
   const atlasCanvas = document.createElement("canvas");
   atlasCanvas.width = TILE;
-  atlasCanvas.height = TILE * ATLAS_TILES;
+  atlasCanvas.height = CELL * ATLAS_TILES;
   const ax = atlasCanvas.getContext("2d");
   ax.imageSmoothingEnabled = false;
   let tileCount = 0;
   const T = {}; // name -> tile index
 
-  function px(x, y, color) { ax.fillStyle = color; ax.fillRect(x, y, 1, 1); }
+  // deterministic noise, so the art is the same on every load
+  let seed = 1337;
+  function rnd() { seed = (seed * 1664525 + 1013904223) >>> 0; return seed / 4294967296; }
+  const pick = arr => arr[(rnd() * arr.length) | 0];
 
-  // sprinkle darker/lighter pixels for that hand-pixelled look
-  function speckle(oy, shades, density) {
-    for (let y = 0; y < TILE; y++) {
-      for (let x = 0; x < TILE; x++) {
-        if (Math.random() < density) px(x, oy + y, shades[(Math.random() * shades.length) | 0]);
+  function px(x, y, color) { ax.fillStyle = color; ax.fillRect(x, y, 1, 1); }
+  function fillTile(oy, color) { ax.fillStyle = color; ax.fillRect(0, oy, TILE, TILE); }
+
+  // soft clustered grain: picks shades in 1-2px clumps rather than per-pixel
+  // static, which is what made the first pass look like TV snow
+  function grain(oy, shades, density, clump) {
+    const c = clump || 2;
+    for (let y = 0; y < TILE; y += 1) {
+      for (let x = 0; x < TILE; x += 1) {
+        if (rnd() < density) {
+          const shade = pick(shades);
+          const w = 1 + ((rnd() * c) | 0), h = 1 + ((rnd() * c) | 0);
+          ax.fillStyle = shade;
+          ax.fillRect(x, oy + y, Math.min(w, TILE - x), Math.min(h, TILE - y));
+        }
       }
     }
   }
-  function fillTile(oy, color) { ax.fillStyle = color; ax.fillRect(0, oy, TILE, TILE); }
 
   function tile(name, draw) {
     const i = tileCount++;
-    const oy = i * TILE;
+    const oy = i * CELL + PAD;
     draw(oy);
+    // fill the gutters with the tile's edge rows
+    const img = ax.getImageData(0, oy, TILE, 1);
+    const imgB = ax.getImageData(0, oy + TILE - 1, TILE, 1);
+    for (let p = 1; p <= PAD; p++) {
+      ax.putImageData(img, 0, oy - p);
+      ax.putImageData(imgB, 0, oy + TILE - 1 + p);
+    }
     T[name] = i;
     return i;
   }
 
   // --- terrain ---
-  tile("grass_top", oy => { fillTile(oy, "#5ba03a"); speckle(oy, ["#6cb445", "#4e8c31", "#77c04e", "#569a36"], 0.55); });
+  tile("grass_top", oy => {
+    fillTile(oy, "#6aa740");
+    grain(oy, ["#5f9a38", "#74b249", "#568e32", "#7cba50"], 0.3, 3);
+    grain(oy, ["#4f8a2e"], 0.06, 2);
+  });
   tile("grass_side", oy => {
-    fillTile(oy, "#8a6136"); speckle(oy, ["#7a5530", "#966b3d", "#6d4b2a"], 0.5);
-    for (let y = 0; y < 4; y++) for (let x = 0; x < TILE; x++) {
-      if (y < 2 || Math.random() < 0.55 - y * 0.15) px(x, oy + y, ["#5ba03a", "#6cb445", "#4e8c31"][(Math.random() * 3) | 0]);
+    fillTile(oy, "#8a6136");
+    grain(oy, ["#7d5730", "#966c3e", "#714d29"], 0.28, 3);
+    // grassy fringe hanging over the dirt, with a ragged lower edge
+    ax.fillStyle = "#6aa740"; ax.fillRect(0, oy, TILE, 3);
+    for (let x = 0; x < TILE; x++) {
+      const drop = (rnd() * 3) | 0;
+      ax.fillStyle = pick(["#6aa740", "#5f9a38", "#74b249"]);
+      ax.fillRect(x, oy + 3, 1, drop);
     }
   });
-  tile("dirt", oy => { fillTile(oy, "#8a6136"); speckle(oy, ["#7a5530", "#966b3d", "#6d4b2a", "#a07845"], 0.55); });
-  tile("sand", oy => { fillTile(oy, "#e0d08a"); speckle(oy, ["#ead993", "#d3c17c", "#f2e3a4"], 0.5); });
-  tile("snow", oy => { fillTile(oy, "#f2f4f7"); speckle(oy, ["#e4e8ee", "#ffffff", "#dde3ea"], 0.4); });
-  tile("water", oy => { fillTile(oy, "#2f6fd0"); speckle(oy, ["#3b81e6", "#2861bb", "#4a90f0"], 0.45); });
-  tile("path", oy => { fillTile(oy, "#b99a5e"); speckle(oy, ["#c9aa6c", "#a98a52", "#d4b878"], 0.5); });
+  tile("dirt", oy => {
+    fillTile(oy, "#8a6136");
+    grain(oy, ["#7d5730", "#966c3e", "#714d29", "#a17a49"], 0.32, 3);
+  });
+  tile("sand", oy => {
+    fillTile(oy, "#e2d29a");
+    grain(oy, ["#d8c68b", "#ecdfab", "#cdba7f"], 0.28, 3);
+  });
+  tile("snow", oy => {
+    fillTile(oy, "#f4f7fa");
+    grain(oy, ["#e8edf4", "#ffffff", "#dde5ef"], 0.22, 3);
+  });
+  tile("water", oy => {
+    fillTile(oy, "#3070cf");
+    grain(oy, ["#3b7cdd", "#2a63bb", "#4a8ae8"], 0.3, 4);
+    // a couple of lighter ripple streaks
+    ax.fillStyle = "#5b9bf0";
+    ax.fillRect(2, oy + 4, 5, 1); ax.fillRect(9, oy + 10, 4, 1);
+  });
 
   // --- stone family ---
   tile("cobble", oy => {
-    fillTile(oy, "#8d8d8d"); speckle(oy, ["#7d7d7d", "#9c9c9c", "#6f6f6f", "#a8a8a8"], 0.7);
-    ax.fillStyle = "#5f5f5f";
-    [[0, 5], [6, 3], [11, 6], [2, 11], [9, 12]].forEach(([bx, by]) => ax.fillRect(bx, oy + by, 1, 4));
+    fillTile(oy, "#79797a"); // mortar
+    const stones = [[0, 0, 7, 5], [8, 0, 8, 7], [0, 6, 5, 5], [6, 8, 5, 4],
+                    [12, 8, 4, 5], [0, 12, 6, 4], [7, 13, 4, 3], [12, 14, 4, 2]];
+    stones.forEach(([sx, sy, sw, sh]) => {
+      ax.fillStyle = pick(["#b0b0b1", "#bcbcbd", "#a5a5a6"]);
+      ax.fillRect(sx, oy + sy, sw - 1, sh - 1);
+      ax.fillStyle = "#cacacb"; ax.fillRect(sx, oy + sy, sw - 1, 1);          // lit top
+      ax.fillStyle = "#8e8e8f"; ax.fillRect(sx, oy + sy + sh - 2, sw - 1, 1); // shaded base
+    });
   });
   tile("stonebrick", oy => {
-    fillTile(oy, "#a3a09a"); speckle(oy, ["#b0ada6", "#95928c", "#bdbab2"], 0.45);
-    ax.fillStyle = "#6f6d68";
-    ax.fillRect(0, oy + 7, TILE, 1);
-    ax.fillRect(0, oy + 15, TILE, 1);
-    ax.fillRect(7, oy, 1, 8);
-    ax.fillRect(3, oy + 8, 1, 8);
-    ax.fillRect(12, oy + 8, 1, 8);
+    fillTile(oy, "#84817b"); // mortar
+    const brick = (bx, by, bw, bh) => {
+      ax.fillStyle = pick(["#bcb9b1", "#b3b0a8", "#c3c0b8"]);
+      ax.fillRect(bx, oy + by, bw, bh);
+      ax.fillStyle = "#cecbc3"; ax.fillRect(bx, oy + by, bw, 1);
+      ax.fillStyle = "#a09d96"; ax.fillRect(bx, oy + by + bh - 1, bw, 1);
+    };
+    brick(0, 0, 7, 7); brick(8, 0, 8, 7);
+    brick(0, 8, 3, 7); brick(4, 8, 7, 7); brick(12, 8, 4, 7);
   });
   tile("stone_dark", oy => {
-    fillTile(oy, "#7e7b76"); speckle(oy, ["#8b8883", "#716e6a", "#96938d"], 0.5);
-    ax.fillStyle = "#5b5955"; ax.fillRect(0, oy + 7, TILE, 1); ax.fillRect(7, oy + 8, 1, 8);
+    fillTile(oy, "#77746f");
+    ax.fillStyle = "#9c9993"; ax.fillRect(0, oy, TILE, 7);
+    ax.fillStyle = "#928f8a"; ax.fillRect(0, oy + 8, TILE, 7);
+    ax.fillStyle = "#aeaba5"; ax.fillRect(0, oy, TILE, 1); ax.fillRect(0, oy + 8, TILE, 1);
+    grain(oy, ["#8a8782", "#a4a19b"], 0.12, 2);
   });
   tile("obsidian", oy => {
-    fillTile(oy, "#1b1226"); speckle(oy, ["#241a33", "#150e1e", "#2e2142"], 0.5);
-    px(4, oy + 4, "#4a3568"); px(11, oy + 9, "#4a3568"); px(7, oy + 13, "#3d2b58");
+    fillTile(oy, "#1b1226");
+    grain(oy, ["#241a33", "#150e1e"], 0.3, 3);
+    ax.fillStyle = "#5a3f80"; px(4, oy + 4, "#5a3f80"); px(11, oy + 9, "#5a3f80"); px(7, oy + 13, "#4a3568");
   });
 
   // --- wood & leaves ---
   tile("log_side", oy => {
-    fillTile(oy, "#6d4c28"); speckle(oy, ["#7d5930", "#5e4122", "#8a6337"], 0.35);
-    ax.fillStyle = "#553a1e";
-    [2, 6, 10, 14].forEach(x => ax.fillRect(x, oy, 1, TILE));
+    fillTile(oy, "#70502c");
+    for (let x = 0; x < TILE; x++) {
+      const shade = pick(["#7a5832", "#684a28", "#815f38", "#5f4423"]);
+      ax.fillStyle = shade;
+      ax.fillRect(x, oy, 1, TILE);
+      if (rnd() < 0.35) { ax.fillStyle = "#553a1e"; ax.fillRect(x, oy + ((rnd() * 12) | 0), 1, 2 + ((rnd() * 3) | 0)); }
+    }
   });
   tile("log_top", oy => {
-    fillTile(oy, "#a5763f"); speckle(oy, ["#b3834a", "#946a37"], 0.4);
-    ax.strokeStyle = "#6d4c28"; ax.lineWidth = 1;
-    ax.strokeRect(3.5, oy + 3.5, 9, 9); ax.strokeRect(6.5, oy + 6.5, 3, 3);
+    fillTile(oy, "#a5763f");
+    grain(oy, ["#b0814a", "#9a6c38"], 0.2, 2);
+    ax.strokeStyle = "#70502c"; ax.lineWidth = 1;
+    ax.strokeRect(2.5, oy + 2.5, 11, 11);
+    ax.strokeRect(5.5, oy + 5.5, 5, 5);
+    px(8, oy + 8, "#70502c");
   });
   tile("leaves", oy => {
-    fillTile(oy, "#2f7a2a"); speckle(oy, ["#3a8f33", "#276a22", "#45a03c", "#1f5c1b"], 0.75);
+    fillTile(oy, "#357f2c");
+    // clustered leaf blobs rather than static
+    for (let i = 0; i < 26; i++) {
+      const bx = (rnd() * TILE) | 0, by = (rnd() * TILE) | 0;
+      ax.fillStyle = pick(["#3f9134", "#2c6d24", "#4aa33d", "#245c1e"]);
+      ax.fillRect(bx, oy + by, 2, 2);
+    }
+    // a few dark gaps so it reads as foliage, not a solid slab
+    for (let i = 0; i < 5; i++) px((rnd() * TILE) | 0, oy + ((rnd() * TILE) | 0), "#1b4718");
   });
   tile("leaves_snow", oy => {
-    fillTile(oy, "#dfe9e2"); speckle(oy, ["#eef4ef", "#c9d6cc", "#3a8f33"], 0.5);
+    fillTile(oy, "#e7eff0");
+    for (let i = 0; i < 22; i++) {
+      const bx = (rnd() * TILE) | 0, by = (rnd() * TILE) | 0;
+      ax.fillStyle = pick(["#f3f8f9", "#d3dfe1", "#cfe0d2"]);
+      ax.fillRect(bx, oy + by, 2, 2);
+    }
+    for (let i = 0; i < 6; i++) px((rnd() * TILE) | 0, oy + ((rnd() * TILE) | 0), "#3f9134");
   });
   tile("planks", oy => {
-    fillTile(oy, "#b58a4e"); speckle(oy, ["#c2965a", "#a67d44"], 0.35);
-    ax.fillStyle = "#8a6636"; ax.fillRect(0, oy + 5, TILE, 1); ax.fillRect(0, oy + 11, TILE, 1);
+    fillTile(oy, "#b58a4e");
+    for (let row = 0; row < 3; row++) {
+      const y0 = row * 5.5;
+      ax.fillStyle = pick(["#b98e52", "#ac8248", "#c1975a"]);
+      ax.fillRect(0, oy + y0, TILE, 5);
+      ax.fillStyle = "#c9a066"; ax.fillRect(0, oy + y0, TILE, 1);
+      ax.fillStyle = "#8a6636"; ax.fillRect(0, oy + y0 + 4, TILE, 1);
+      for (let i = 0; i < 3; i++) {
+        ax.fillStyle = "#9d7440";
+        ax.fillRect((rnd() * TILE) | 0, oy + y0 + 1 + ((rnd() * 3) | 0), 2 + ((rnd() * 3) | 0), 1);
+      }
+    }
   });
 
   // --- treasure & special ---
   tile("gold", oy => {
-    fillTile(oy, "#f0c73c"); speckle(oy, ["#ffdf5e", "#d9ad2a", "#ffe98a"], 0.5);
+    fillTile(oy, "#f0c73c"); grain(oy, ["#ffdf5e", "#d9ad2a", "#ffe98a"], 0.5);
     ax.fillStyle = "#c99a1e"; ax.fillRect(0, oy, TILE, 1); ax.fillRect(0, oy + 15, TILE, 1);
   });
   tile("diamond", oy => {
-    fillTile(oy, "#2f5be0"); speckle(oy, ["#4a78f5", "#2449bb"], 0.4);
+    fillTile(oy, "#2f5be0"); grain(oy, ["#4a78f5", "#2449bb"], 0.4);
     ax.fillStyle = "#9fc4ff";
     [[7, 4], [8, 4], [6, 5], [9, 5], [7, 6], [8, 6]].forEach(([x, y]) => ax.fillRect(x, oy + y, 1, 1));
     ax.fillStyle = "#d8262c"; ax.fillRect(7, oy + 9, 2, 2);
   });
   tile("question", oy => {
-    fillTile(oy, "#e8b520"); speckle(oy, ["#f2c33a", "#d4a316"], 0.3);
+    fillTile(oy, "#e8b520"); grain(oy, ["#f2c33a", "#d4a316"], 0.3);
     ax.fillStyle = "#8a6300"; ax.fillRect(0, oy, TILE, 1); ax.fillRect(0, oy + 15, TILE, 1);
     ax.fillRect(0, oy, 1, TILE); ax.fillRect(15, oy, 1, TILE);
     ax.fillStyle = "#6b4a00";
@@ -155,29 +274,29 @@
     q.forEach((row, ry) => row.split("").forEach((c, cx) => { if (c === "#") ax.fillRect(4 + cx, oy + 3 + ry, 1, 1); }));
   });
   tile("question_used", oy => {
-    fillTile(oy, "#9a8a5a"); speckle(oy, ["#a8975f", "#8b7c50"], 0.4);
+    fillTile(oy, "#9a8a5a"); grain(oy, ["#a8975f", "#8b7c50"], 0.4);
     ax.fillStyle = "#6b5f3a"; ax.fillRect(0, oy, TILE, 1); ax.fillRect(0, oy + 15, TILE, 1);
     ax.fillRect(0, oy, 1, TILE); ax.fillRect(15, oy, 1, TILE);
   });
   tile("chest_side", oy => {
-    fillTile(oy, "#9a6a2e"); speckle(oy, ["#a87838", "#8a5e28"], 0.35);
+    fillTile(oy, "#9a6a2e"); grain(oy, ["#a87838", "#8a5e28"], 0.35);
     ax.fillStyle = "#5e3f18"; ax.fillRect(0, oy + 4, TILE, 1); ax.fillRect(0, oy, TILE, 1); ax.fillRect(0, oy + 15, TILE, 1);
   });
   tile("chest_front", oy => {
-    fillTile(oy, "#9a6a2e"); speckle(oy, ["#a87838", "#8a5e28"], 0.35);
+    fillTile(oy, "#9a6a2e"); grain(oy, ["#a87838", "#8a5e28"], 0.35);
     ax.fillStyle = "#5e3f18"; ax.fillRect(0, oy + 4, TILE, 1); ax.fillRect(0, oy, TILE, 1); ax.fillRect(0, oy + 15, TILE, 1);
     ax.fillStyle = "#d9c04a"; ax.fillRect(7, oy + 3, 2, 4);
     ax.fillStyle = "#4a3a10"; ax.fillRect(7, oy + 4, 2, 1);
   });
   tile("chest_top", oy => {
-    fillTile(oy, "#a87838"); speckle(oy, ["#b6844a", "#96682e"], 0.35);
+    fillTile(oy, "#a87838"); grain(oy, ["#b6844a", "#96682e"], 0.35);
     ax.fillStyle = "#5e3f18"; ax.strokeRect(0.5, oy + 0.5, 15, 15);
     ax.fillRect(0, oy, TILE, 1);
   });
 
   // --- wool / cloth colours ---
   function wool(name, base, shades) {
-    tile(name, oy => { fillTile(oy, base); speckle(oy, shades, 0.35); });
+    tile(name, oy => { fillTile(oy, base); grain(oy, shades, 0.35); });
   }
   wool("wool_red", "#c8302c", ["#d6403a", "#ad2724"]);
   wool("wool_purple", "#7a2fc0", ["#8b40d0", "#6726a5"]);
@@ -192,41 +311,48 @@
   wool("wool_brown", "#7a4a1e", ["#8a5726", "#673d18"]);
 
   // --- characters ---
-  tile("skin", oy => { fillTile(oy, "#f0c39a"); speckle(oy, ["#f7cca6", "#e2b189"], 0.3); });
-  tile("hair", oy => { fillTile(oy, "#2a1d15"); speckle(oy, ["#38271c", "#1f1510"], 0.4); });
-  tile("red_face", oy => { fillTile(oy, "#d8262c"); speckle(oy, ["#e4373c", "#c01f25"], 0.3); });
+  tile("skin", oy => { fillTile(oy, "#f0c39a"); grain(oy, ["#f7cca6", "#e2b189"], 0.3); });
+  tile("hair", oy => { fillTile(oy, "#2a1d15"); grain(oy, ["#38271c", "#1f1510"], 0.4); });
+  tile("red_face", oy => { fillTile(oy, "#d8262c"); grain(oy, ["#e4373c", "#c01f25"], 0.3); });
   tile("red_face_front", oy => {
-    fillTile(oy, "#d8262c"); speckle(oy, ["#e4373c", "#c01f25"], 0.25);
-    // small friendly eye (left) — a black pixel block
-    ax.fillStyle = "#141014"; ax.fillRect(3, oy + 5, 2, 3);
-    // big googly magnifier eye (right)
-    ax.fillStyle = "#e8c840"; ax.fillRect(8, oy + 3, 6, 6);
-    ax.fillStyle = "#ffffff"; ax.fillRect(9, oy + 4, 4, 4);
-    ax.fillStyle = "#7a1fd0"; ax.fillRect(10, oy + 5, 2, 2);
-    ax.fillStyle = "#141014"; ax.fillRect(10, oy + 5, 1, 1);
+    fillTile(oy, "#d8262c"); grain(oy, ["#e4373c", "#c01f25"], 0.22);
+    // small friendly eye (left)
+    ax.fillStyle = "#141014"; ax.fillRect(2, oy + 4, 3, 4);
+    ax.fillStyle = "#ffffff"; ax.fillRect(2, oy + 4, 1, 1);
+    // the big googly eye behind its golden magnifier ring
+    ax.fillStyle = "#c8991c"; ax.fillRect(7, oy + 2, 8, 8);           // ring
+    ax.fillStyle = "#e8c840"; ax.fillRect(8, oy + 3, 6, 6);           // ring highlight
+    ax.fillStyle = "#ffffff"; ax.fillRect(8, oy + 3, 6, 6);           // eye white
+    ax.fillStyle = "#e6e6ee"; ax.fillRect(8, oy + 7, 6, 2);           // lower shading
+    ax.fillStyle = "#7a1fd0"; ax.fillRect(9, oy + 4, 4, 4);           // iris
+    ax.fillStyle = "#141014"; ax.fillRect(10, oy + 5, 2, 2);          // pupil
+    ax.fillStyle = "#ffffff"; ax.fillRect(10, oy + 5, 1, 1);          // glint
+    ax.fillStyle = "#c8991c";                                          // ring outline
+    ax.fillRect(7, oy + 2, 8, 1); ax.fillRect(7, oy + 9, 8, 1);
+    ax.fillRect(7, oy + 2, 1, 8); ax.fillRect(14, oy + 2, 1, 8);
     // smile
     ax.fillStyle = "#141014";
-    ax.fillRect(4, oy + 11, 1, 1); ax.fillRect(5, oy + 12, 4, 1); ax.fillRect(9, oy + 11, 1, 1);
+    ax.fillRect(3, oy + 11, 1, 1); ax.fillRect(4, oy + 12, 6, 1); ax.fillRect(10, oy + 11, 1, 1);
   });
   tile("girl_face", oy => {
-    fillTile(oy, "#f0c39a"); speckle(oy, ["#f7cca6", "#e2b189"], 0.25);
+    fillTile(oy, "#f0c39a"); grain(oy, ["#f7cca6", "#e2b189"], 0.25);
     ax.fillStyle = "#2a1d15"; ax.fillRect(0, oy, TILE, 4); // fringe
     ax.fillStyle = "#141014"; ax.fillRect(4, oy + 6, 2, 2); ax.fillRect(10, oy + 6, 2, 2);
     ax.fillStyle = "#7a2020"; ax.fillRect(6, oy + 10, 4, 3); // open mouth
   });
   tile("cat_face", oy => {
-    fillTile(oy, "#e08a30"); speckle(oy, ["#f09a3e", "#c67626"], 0.3);
+    fillTile(oy, "#e08a30"); grain(oy, ["#f09a3e", "#c67626"], 0.3);
     ax.fillStyle = "#141014"; ax.fillRect(3, oy + 6, 2, 2); ax.fillRect(11, oy + 6, 2, 2);
     ax.fillStyle = "#a85a1a"; ax.fillRect(7, oy + 9, 2, 2);
   });
   tile("shirt_blue", oy => {
-    fillTile(oy, "#2f6df6"); speckle(oy, ["#4380ff", "#2559d0"], 0.3);
+    fillTile(oy, "#2f6df6"); grain(oy, ["#4380ff", "#2559d0"], 0.3);
   });
   tile("belly", oy => {
-    fillTile(oy, "#f0c93c"); speckle(oy, ["#ffd955", "#d4ae2a"], 0.3);
+    fillTile(oy, "#f0c93c"); grain(oy, ["#ffd955", "#d4ae2a"], 0.3);
   });
   tile("belly_front", oy => {
-    fillTile(oy, "#f0c93c"); speckle(oy, ["#ffd955", "#d4ae2a"], 0.25);
+    fillTile(oy, "#f0c93c"); grain(oy, ["#ffd955", "#d4ae2a"], 0.25);
     // blue diamond emblem with a red core (widest through the middle row)
     ax.fillStyle = "#2f3df0";
     for (let i = 0; i <= 4; i++) {
@@ -237,25 +363,58 @@
     ax.fillStyle = "#d8262c"; ax.fillRect(6, oy + 6, 3, 3);
   });
   tile("carpet", oy => {
-    fillTile(oy, "#b52b32"); speckle(oy, ["#c53a41", "#9e2229"], 0.35);
+    fillTile(oy, "#b52b32"); grain(oy, ["#c53a41", "#9e2229"], 0.35);
     ax.fillStyle = "#e0c04a"; ax.fillRect(0, oy, 1, TILE); ax.fillRect(15, oy, 1, TILE);
   });
   tile("portal", oy => {
-    fillTile(oy, "#b04ae0"); speckle(oy, ["#d06afa", "#8a2fbc", "#e79aff", "#6a1fa0"], 0.8);
+    fillTile(oy, "#b04ae0"); grain(oy, ["#d06afa", "#8a2fbc", "#e79aff", "#6a1fa0"], 0.8);
   });
   tile("glow_star", oy => {
-    fillTile(oy, "#ffd21f"); speckle(oy, ["#fff08a", "#e8b800"], 0.4);
+    fillTile(oy, "#ffd21f"); grain(oy, ["#fff08a", "#e8b800"], 0.4);
     ax.fillStyle = "#fff6c0"; ax.fillRect(6, oy + 6, 4, 4);
   });
 
   const atlas = new THREE.CanvasTexture(atlasCanvas);
-  atlas.magFilter = THREE.NearestFilter;
-  atlas.minFilter = THREE.NearestFilter;
-  atlas.generateMipmaps = false;
-  atlas.colorSpace = THREE.SRGBColorSpace !== undefined ? THREE.SRGBColorSpace : undefined;
+  atlas.magFilter = THREE.NearestFilter;              // crisp pixels up close
+  atlas.minFilter = THREE.LinearMipmapLinearFilter;   // no shimmer far away
+  atlas.generateMipmaps = true;
+  atlas.anisotropy = MAX_ANISO;
+  if (THREE.SRGBColorSpace !== undefined) atlas.colorSpace = THREE.SRGBColorSpace;
 
-  const blockMaterial = new THREE.MeshLambertMaterial({ map: atlas });
-  const blockMaterialCutout = new THREE.MeshLambertMaterial({ map: atlas, transparent: true, opacity: 1 });
+  const blockMaterial = new THREE.MeshLambertMaterial({ map: atlas, vertexColors: true });
+  const blockMaterialCutout = new THREE.MeshLambertMaterial({ map: atlas, vertexColors: true, transparent: true, opacity: 1 });
+
+  // Minecraft's signature look: each face of a cube carries a fixed brightness
+  // (top brightest, sides mid, bottom dark) baked into vertex colours, so cubes
+  // read as solid volumes instead of flatly-lit blobs.
+  const FACE_SHADE = [0.66, 0.66, 1.0, 0.46, 0.84, 0.84]; // +x, -x, +y, -y, +z, -z
+  function bakeFaceShading(geo) {
+    const n = geo.attributes.position.count;
+    const colors = new Float32Array(n * 3);
+    for (let f = 0; f < 6; f++) {
+      const s = FACE_SHADE[f];
+      for (let v = 0; v < 4; v++) {
+        const i = (f * 4 + v) * 3;
+        colors[i] = colors[i + 1] = colors[i + 2] = s;
+      }
+    }
+    geo.setAttribute("color", new THREE.BufferAttribute(colors, 3));
+  }
+  // map a box face's UVs onto one atlas cell
+  function faceUV(geo, faceTiles) {
+    const uv = geo.attributes.uv;
+    const H = atlasCanvas.height;
+    for (let f = 0; f < 6; f++) {
+      const t = faceTiles[f];
+      const top = t * CELL + PAD;
+      const vMin = 1 - (top + TILE) / H, vMax = 1 - top / H;
+      for (let v = 0; v < 4; v++) {
+        const idx = f * 4 + v;
+        uv.setY(idx, vMin + uv.getY(idx) * (vMax - vMin));
+      }
+    }
+    uv.needsUpdate = true;
+  }
 
   // ---------- block geometry: one BoxGeometry per (top, side, bottom) combo ----------
   const geoCache = new Map();
@@ -263,20 +422,9 @@
     const key = top + "|" + side + "|" + bottom;
     if (geoCache.has(key)) return geoCache.get(key);
     const g = new THREE.BoxGeometry(1, 1, 1);
-    const uv = g.attributes.uv;
     // BoxGeometry face order: +x, -x, +y(top), -y(bottom), +z, -z — 4 verts each
-    const faceTile = [side, side, top, bottom, side, side];
-    const eps = 0.25 / atlasCanvas.height;
-    for (let f = 0; f < 6; f++) {
-      const t = faceTile[f];
-      const vMin = 1 - (t + 1) / ATLAS_TILES + eps;
-      const vMax = 1 - t / ATLAS_TILES - eps;
-      for (let v = 0; v < 4; v++) {
-        const idx = f * 4 + v;
-        uv.setY(idx, vMin + uv.getY(idx) * (vMax - vMin));
-      }
-    }
-    uv.needsUpdate = true;
+    faceUV(g, [side, side, top, bottom, side, side]);
+    bakeFaceShading(g);
     geoCache.set(key, g);
     return g;
   }
@@ -351,10 +499,12 @@
   function tileTexture(tileName) {
     const c = document.createElement("canvas");
     c.width = c.height = TILE;
-    c.getContext("2d").drawImage(atlasCanvas, 0, T[tileName] * TILE, TILE, TILE, 0, 0, TILE, TILE);
+    c.getContext("2d").drawImage(atlasCanvas, 0, T[tileName] * CELL + PAD, TILE, TILE, 0, 0, TILE, TILE);
     const tex = new THREE.CanvasTexture(c);
-    tex.magFilter = tex.minFilter = THREE.NearestFilter;
-    tex.generateMipmaps = false;
+    tex.magFilter = THREE.NearestFilter;
+    tex.minFilter = THREE.LinearMipmapLinearFilter;
+    tex.generateMipmaps = true;
+    tex.anisotropy = MAX_ANISO;
     tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
     if (THREE.SRGBColorSpace !== undefined) tex.colorSpace = THREE.SRGBColorSpace;
     return tex;
@@ -375,6 +525,35 @@
   groundPlane("sand", 38, 34, -40, -34, 0.006);          // lake shore
   groundPlane("snow", 600, 640, 19 + 300, 0, 0.008);
   groundPlane("sand", 640, 580, 0, 61 + 290, 0.01);      // sandy path along the south
+
+  // drifting blocky clouds overhead — a signature part of the look
+  const clouds = (() => {
+    const cells = [];
+    for (let i = 0; i < 26; i++) {
+      const cx = (rnd() * 460 - 230) | 0, cz = (rnd() * 460 - 230) | 0;
+      const w = 4 + ((rnd() * 6) | 0), d = 3 + ((rnd() * 5) | 0);
+      for (let x = 0; x < w; x++) for (let z = 0; z < d; z++) {
+        if (rnd() < 0.22) continue; // ragged edges
+        cells.push([cx + x * 6, cz + z * 6]);
+      }
+    }
+    const geo = new THREE.BoxGeometry(6, 2.5, 6);
+    bakeFaceShading(geo);
+    const mesh = new THREE.InstancedMesh(
+      geo,
+      // unlit so they stay bright white; the baked face shading still gives them form
+      new THREE.MeshBasicMaterial({ color: 0xffffff, vertexColors: true, transparent: true, opacity: 0.85, fog: false }),
+      cells.length
+    );
+    cells.forEach(([x, z], i) => {
+      _m4.makeTranslation(x, 62, z);
+      mesh.setMatrixAt(i, _m4);
+    });
+    mesh.instanceMatrix.needsUpdate = true;
+    mesh.frustumCulled = false;
+    scene.add(mesh);
+    return mesh;
+  })();
 
   // the lake itself: one flat water quad per block, in the drawing's blobby shape
   {
@@ -461,11 +640,15 @@
   lollipop(33, 26, "wool_purple", "wool_magenta");
 
   // signposts
+  // a post with an upright board, not a tabletop
   function signpost(bx, bz) {
     addBlock(LOG, bx + 0.5, 0.5, bz + 0.5);
     addBlock(LOG, bx + 0.5, 1.5, bz + 0.5);
-    for (let dx = -1; dx <= 1; dx++) addBlock(PLANKS, bx + dx + 0.5, 2.5, bz + 0.5);
-    addBlock(soloGeo("wool_red"), bx + 1.5, 2.5, bz + 0.5);
+    for (let dx = -1; dx <= 1; dx++) for (let dy = 0; dy < 2; dy++) {
+      addBlock(PLANKS, bx + dx + 0.5, 2.5 + dy, bz + 0.5);
+    }
+    // a red arrow-tip block pointing onward
+    addBlock(soloGeo("wool_red"), bx + 2.5, 3.5, bz + 0.5);
   }
   signpost(10, 6); signpost(-14, -20); signpost(28, 44);
 
@@ -679,19 +862,8 @@
   // ---------- the hero: a blocky treasure-hunter king ----------
   function boxPart(w, h, d, texTop, texSide, texFront) {
     const g = new THREE.BoxGeometry(w, h, d);
-    const uv = g.attributes.uv;
-    const faces = [texSide, texSide, texTop, texTop, texFront !== undefined ? texFront : texSide, texSide];
-    const eps = 0.25 / atlasCanvas.height;
-    for (let f = 0; f < 6; f++) {
-      const t = faces[f];
-      const vMin = 1 - (t + 1) / ATLAS_TILES + eps;
-      const vMax = 1 - t / ATLAS_TILES - eps;
-      for (let v = 0; v < 4; v++) {
-        const idx = f * 4 + v;
-        uv.setY(idx, vMin + uv.getY(idx) * (vMax - vMin));
-      }
-    }
-    uv.needsUpdate = true;
+    faceUV(g, [texSide, texSide, texTop, texTop, texFront !== undefined ? texFront : texSide, texSide]);
+    bakeFaceShading(g);
     const m = new THREE.Mesh(g, blockMaterial);
     m.castShadow = true;
     return m;
@@ -776,15 +948,12 @@
   // ---------- collectible stars (spinning gold blocks) ----------
   const starGeo = (() => {
     const g = new THREE.BoxGeometry(0.55, 0.55, 0.55);
-    const uv = g.attributes.uv;
     const t = T.glow_star;
-    const eps = 0.25 / atlasCanvas.height;
-    const vMin = 1 - (t + 1) / ATLAS_TILES + eps, vMax = 1 - t / ATLAS_TILES - eps;
-    for (let i = 0; i < uv.count; i++) uv.setY(i, vMin + uv.getY(i) * (vMax - vMin));
-    uv.needsUpdate = true;
+    faceUV(g, [t, t, t, t, t, t]);
+    bakeFaceShading(g);
     return g;
   })();
-  const starMat = new THREE.MeshBasicMaterial({ map: atlas });
+  const starMat = new THREE.MeshBasicMaterial({ map: atlas, vertexColors: true });
   const stars = [];
   const starSpots = [
     [-6, -10], [12, -4], [-20, 18], [4, 24], [-34, -14],
@@ -1522,8 +1691,12 @@
       shake = Math.max(0, shake - dt * 1.6);
     }
     camera.lookAt(camTarget);
-    sun.position.set(player.pos.x + 22, 40, player.pos.z + 16);
+    sun.position.set(player.pos.x + 26, 46, player.pos.z + 18);
     sun.target.position.copy(player.pos);
+    // sky dome rides with the camera; clouds drift slowly overhead
+    scene.userData.skyDome.position.copy(camera.position);
+    clouds.position.x = (t * 0.55) % 60;
+    clouds.position.z = (t * 0.18) % 60;
 
     // stars
     for (let i = stars.length - 1; i >= 0; i--) {
