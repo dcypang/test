@@ -32,6 +32,30 @@ export const BIKES = [
     topRatio:40/11, susp:{ travel:0.050, k:26000, c:900, stiction:15 },
     futureShock:false, bobLoss:0.03,
     seatpostK:220000 },
+  // Trek FX 3 Disc — 11.5 kg, alloy frame + carbon fork, Bontrager 700x35c,
+  // Shimano 1x10 40T x 11-46, hydraulic disc. Hard-Case Lite casings are
+  // tougher and slower-rolling than the Quick 2's G-One.
+  { key:"fx3",    name:"FX 3 Disc",    brand:"Trek",
+    massBike:11.5, unsprung:3.6, cda:0.515, crr0:0.0058,
+    tireW:0.035, tireK:135000, tireC:270, tread:0,
+    topRatio:40/11, susp:null, futureShock:false, bobLoss:0.0,
+    seatpostK:225000 },
+  // Giant Escape 3 Disc — ~12.1 kg, ALUXX alloy frame AND alloy fork,
+  // Giant S-X3 700x38c, 2x7 Tourney (48T big ring), mechanical disc.
+  // The budget commuter: heavy, harsh, cheap rubber — but a tall top gear.
+  { key:"escape", name:"Escape 3 Disc", brand:"Giant",
+    massBike:12.1, unsprung:3.9, cda:0.575, crr0:0.0078,
+    tireW:0.038, tireK:118000, tireC:315, tread:0,
+    topRatio:48/11, susp:null, futureShock:false, bobLoss:0.0,
+    seatpostK:245000 },
+  // Marin DSX 1 — Series 3 6061 alloy + carbon fork, 700x45c, Shimano
+  // Deore 1x11 with an 11-51 Sunrace cassette. Flat-bar gravel: big
+  // supple tires, so it gives away little on tarmac and flies on dirt.
+  { key:"dsx",    name:"DSX 1",        brand:"Marin",
+    massBike:11.9, unsprung:3.9, cda:0.545, crr0:0.0059,
+    tireW:0.045, tireK:95000, tireC:340, tread:1,
+    topRatio:40/11, susp:null, futureShock:false, bobLoss:0.0,
+    seatpostK:210000 },
 ];
 export const MU = [ [0.90,0.90,0.85], [0.48,0.62,0.70], [0.38,0.55,0.70] ];
 export const CRR_MULT = [ [1.00,1.00,1.00], [2.60,1.85,1.55], [4.00,2.60,2.00] ];
@@ -179,7 +203,7 @@ export function makeState(bike, course){
     M, Ms, I: Ms*0.42,
     aRmsAcc:0, aRmsN:0, bumpJ:0, vMax:0,
     wheelPhase:0, pedalPhase:0,
-    trace:[], lastTrace:-5,
+    trace:[], lastTrace:-1,     // [t, x, v] sampled on sim time, for live plotting
   };
 }
 
@@ -281,7 +305,7 @@ export function stepBike(S, power){
   S.wheelPhase += S.v/WHEEL_R*DT;
   if(Fdrive>0) S.pedalPhase += S.v/(b.topRatio*0.7*WHEEL_R)*DT;
 
-  if(S.x - S.lastTrace >= 5){ S.trace.push([S.x, S.v]); S.lastTrace=S.x; }
+  if(S.t - S.lastTrace >= 0.1){ S.trace.push([S.t, S.x, S.v]); S.lastTrace=S.t; }
   if(S.x>=c.len){ S.done=true; S.finishT=S.t; S.x=c.len; }
 }
 
@@ -307,11 +331,17 @@ export function draftMultiplier(gap, latOffset){
 
 export const BRAINS = [
   { name:"Rae", bike:0, cpScale:1.00, chase:0.35, sit:0.06, sprintFrom:250, sprintScale:1.75,
-    lane:-2.4, blurb:"pure roadie — lights it up on tarmac, suffers when it turns rough" },
+    lane:-2.8, blurb:"pure roadie — lights it up on tarmac, suffers when it turns rough" },
   { name:"Sam", bike:1, cpScale:0.99, chase:0.26, sit:0.14, sprintFrom:170, sprintScale:1.95,
-    lane:-0.8, blurb:"tactician — hides in wheels all day, then kicks late" },
+    lane:-2.0, blurb:"tactician — hides in wheels all day, then kicks late" },
   { name:"Kit", bike:2, cpScale:1.01, chase:0.30, sit:0.08, sprintFrom:220, sprintScale:1.65,
-    lane:0.8,  blurb:"trail hound — fearless once the ground gets ugly" },
+    lane:-1.2, blurb:"trail hound — fearless once the ground gets ugly" },
+  { name:"Yuki", bike:3, cpScale:1.02, chase:0.40, sit:0.05, sprintFrom:300, sprintScale:1.70,
+    lane:-0.4, blurb:"attacks from distance and dares the pack to come across" },
+  { name:"Bo",  bike:4, cpScale:0.96, chase:0.20, sit:0.18, sprintFrom:140, sprintScale:2.05,
+    lane:0.4,  blurb:"diesel on a heavy commuter — never off the wheel, deadly in a drag race" },
+  { name:"Ines",bike:5, cpScale:1.00, chase:0.28, sit:0.10, sprintFrom:200, sprintScale:1.80,
+    lane:1.2,  blurb:"gravel specialist — comes alive the moment the tarmac ends" },
 ];
 
 /* Called every physics step in Race mode: sets each rider's draft saving,
@@ -546,6 +576,6 @@ export function stepPlayer(S, inp, cp){
     }
   } else S.risk = 0;
 
-  if(S.x - S.lastTrace >= 5){ S.trace.push([S.x, Math.max(0,S.v)]); S.lastTrace = S.x; }
+  if(S.t - S.lastTrace >= 0.1){ S.trace.push([S.t, S.x, Math.max(0,S.v)]); S.lastTrace = S.t; }
   if(!S.finished && S.x >= c.len){ S.finished = true; S.finishT = S.t; }
 }

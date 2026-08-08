@@ -8,10 +8,10 @@ import { BIKES, COURSES, getCourse, buildEnvelope, makeState, stepBike,
 import { makeTextures } from "./textures.js";
 import { buildBike, poseBikeParts } from "./bike3d.js";
 
-const LANES = [-2.4, -0.8, 0.8];
+const LANES = [-2.8, -2.0, -1.2, -0.4, 0.4, 1.2];
 const PLAYER_LANE = 2.4;
-const BIKE_HEX = [0x3E8A4B, 0x9E3535, 0x3B7DD8];
-const BIKE_HEX_DARK = [0x49AB59, 0xB84444, 0x5B93E8];
+const BIKE_HEX      = [0x62C46F, 0x9E3535, 0x3B7DD8, 0xC2569B, 0x6B4E9E, 0x0E959F];
+const BIKE_HEX_DARK = [0x49AB59, 0xB84444, 0x5B93E8, 0xBF5F9B, 0x7057C4, 0x16A0AB];
 /* factory colorways: Quick 2 "Rally Red", Sirrus X 4.0 "Satin Dark Navy
    Metallic", Quick CX 2 "Sabre". Rider kits keep the ID palette colors. */
 const PLAYER_HEX = 0xC8871F, PLAYER_HEX_DARK = 0xBC8626;   // your jersey
@@ -22,6 +22,15 @@ const PAINTS = [
     logo:"SPECIALIZED", logoColor:"#E9E9ED", font:"700 46px 'Arial Narrow', Arial, sans-serif" },
   { color:0x8B927F, css:"#8B927F", metalness:0.35, roughness:0.5, clearcoat:0.25,
     logo:"cannondale", logoColor:"#23262B", font:"italic 700 62px Arial, Helvetica, sans-serif" },
+  // Trek FX 3 Disc — Satin Lithium Grey
+  { color:0x9AA0A6, css:"#9AA0A6", metalness:0.45, roughness:0.42, clearcoat:0.3,
+    logo:"TREK", logoColor:"#1A1C1F", font:"700 58px 'Arial Narrow', Arial, sans-serif" },
+  // Giant Escape 3 Disc — Metallic Black
+  { color:0x2B2F36, css:"#2B2F36", metalness:0.5, roughness:0.38, clearcoat:0.6,
+    logo:"GIANT", logoColor:"#E4E6EA", font:"700 52px 'Arial Narrow', Arial, sans-serif" },
+  // Marin DSX 1 — Gloss Teal
+  { color:0x18707A, css:"#18707A", metalness:0.3, roughness:0.28, clearcoat:0.85,
+    logo:"MARIN", logoColor:"#F0F2F0", font:"700 52px 'Arial Narrow', Arial, sans-serif" },
 ];
 const isDark = () => matchMedia("(prefers-color-scheme: dark)").matches;
 
@@ -394,41 +403,77 @@ function updateCamera(dt){
 }
 
 /* ================= HUD / standings / chart / results ================= */
-function markCol(i){ return [cssVar("--quickMark"),cssVar("--sirrus"),cssVar("--cx")][i]; }
-function col(i){ return [cssVar("--quick"),cssVar("--sirrus"),cssVar("--cx")][i]; }
+const col = i => cssVar("--r"+i);          // one validated colour per rider
+const markCol = col;
 function fmtRms(s){ return s.aRmsN>0.5 ? Math.sqrt(s.aRmsAcc/s.aRmsN).toFixed(2)+" m/s²" : "—"; }
 
+/* Live leaderboard — one row per rider, reordered every frame by race
+   position. Rows are built once and mutated, so this is cheap at 60 fps. */
+let hudRows = null;
+function buildHud(){
+  const wrap = $("hudBoard"); wrap.innerHTML = "";
+  hudRows = [];
+  for(let i=0;i<=BIKES.length;i++){
+    const you = i === BIKES.length;
+    const el = document.createElement("div");
+    el.className = "hudchip" + (you ? " you" : "");
+    el.innerHTML = '<span class="pos"></span><i class="swatch"></i><span class="nm"></span>'
+      + '<span class="sp"></span><span class="gap"></span>'
+      + (you ? '<span class="stamina" title="Anaerobic reserve (W′)"><i></i></span>' : "")
+      + '<span class="hudbadge"></span>';
+    wrap.appendChild(el);
+    hudRows.push({ el, sw:el.querySelector(".swatch"), pos:el.querySelector(".pos"),
+      nm:el.querySelector(".nm"), sp:el.querySelector(".sp"), gap:el.querySelector(".gap"),
+      stam: you ? el.querySelector(".stamina i") : null,
+      badge: el.querySelector(".hudbadge"), you });
+  }
+}
+
+function riderBadge(s, row){
+  const b = row.badge;
+  if(row.you){
+    const P = s;
+    if(P.crashT > 0) return set(b,"DOWN — remounting","crash");
+    if(P.finished)   return set(b,"✓ "+P.finishT.toFixed(1)+"s","done");
+    if(P.airCnt>0.06) return set(b,"AIRBORNE","air");
+    if(P.slip)       return set(b,"SLIDING","air");
+    if(P.risk > 0.55) return set(b,"TOO FAST FOR THE GROUND","air");
+    if(P.risk > 0.15) return set(b,"ON THE EDGE","warn");
+    if(P.draftMul < 0.985) return set(b,"DRAFT −"+Math.round((1-P.draftMul)*100)+"%","draft");
+    if(P.v < -0.05)  return set(b,"REVERSE","");
+    if(P.crashes)    return set(b,P.crashes+(P.crashes===1?" crash":" crashes"),"");
+    return set(b,"","");
+  }
+  if(s.done) return set(b,"✓ "+s.finishT.toFixed(1)+"s","done");
+  if(s.airCnt>0.06) return set(b,"AIRBORNE","air");
+  if(raceMode && running && course.len - s.x < s.brain.sprintFrom) return set(b,"SPRINTING","warn");
+  if(raceMode && s.draftMul < 0.93) return set(b,"DRAFTING","draft");
+  return set(b,"","");
+}
+function set(el, text, cls){ el.textContent = text; el.className = "hudbadge "+cls; }
+
 function updateHUD(){
-  states.forEach((s,i)=>{
-    $("hudV"+i).textContent = (s.v*3.6).toFixed(1);
-    $("hudD"+i).textContent = Math.round(s.x)+" m";
-    $("hudN"+i).textContent = riderName(i);
-    const b = $("hudB"+i);
-    if(s.done){ b.textContent = "✓ "+s.finishT.toFixed(1)+"s"; b.className="hudbadge done"; }
-    else if(s.airCnt>0.06){ b.textContent = "AIRBORNE"; b.className="hudbadge air"; }
-    else if(raceMode && running && course.len - s.x < s.brain.sprintFrom && !s.done){
-      b.textContent = "SPRINTING"; b.className="hudbadge warn"; }
-    else if(raceMode && s.draftMul < 0.93){ b.textContent = "DRAFTING"; b.className="hudbadge draft"; }
-    else { b.textContent = ""; b.className="hudbadge"; }
+  if(!hudRows) buildHud();
+  const entries = states.map((s,i)=>({ s, i, name: riderName(i), c: col(i) }));
+  entries.push({ s: player, i: BIKES.length, name: "You", c: cssVar("--you") });
+  const prog = s => (s.done || s.finished) ? 1e7 - s.finishT : s.x;
+  const sorted = [...entries].sort((a,b)=>prog(b.s) - prog(a.s));
+  const leadX = Math.min(sorted[0].s.x, course.len);
+
+  sorted.forEach((e, rank)=>{
+    const row = hudRows[e.i], s = e.s;
+    row.el.style.order = rank;
+    row.sw.style.background = e.c;
+    row.pos.textContent = rank+1;
+    row.nm.textContent = e.name;
+    row.sp.textContent = (Math.max(0,s.v)*3.6).toFixed(1)+" km/h";
+    const behind = leadX - Math.min(s.x, course.len);
+    row.gap.textContent = rank===0 ? "leader" : "−"+behind.toFixed(0)+" m";
+    if(row.stam) row.stam.style.width = (s.wBal/W_PRIME*100).toFixed(0)+"%";
+    riderBadge(s, row);
   });
-  const P = player;
-  $("hudVp").textContent = (Math.max(0,P.v)*3.6).toFixed(1);
-  $("hudDp").textContent = Math.round(clamp(P.x,0,course.len))+" m";
-  $("staminaBar").style.width = (P.wBal/W_PRIME*100).toFixed(0)+"%";
-  $("hudSurf").textContent = surfaceName(course, P.x, P.lat);
-  const pb = $("hudBp");
-  if(P.crashT > 0){ pb.textContent = "DOWN — remounting"; pb.className="hudbadge crash"; }
-  else if(P.finished){ pb.textContent = "✓ "+P.finishT.toFixed(1)+"s"; pb.className="hudbadge done"; }
-  else if(P.airCnt>0.06){ pb.textContent = "AIRBORNE"; pb.className="hudbadge air"; }
-  else if(P.slip){ pb.textContent = "SLIDING"; pb.className="hudbadge air"; }
-  else if(P.risk > 0.55){ pb.textContent = "TOO FAST FOR THE GROUND"; pb.className="hudbadge air"; }
-  else if(P.risk > 0.15){ pb.textContent = "ON THE EDGE"; pb.className="hudbadge warn"; }
-  else if(P.draftMul < 0.985){
-    pb.textContent = "DRAFTING −"+Math.round((1-P.draftMul)*100)+"% drag"; pb.className="hudbadge draft"; }
-  else if(P.v < -0.05){ pb.textContent = "REVERSE"; pb.className="hudbadge"; }
-  else { pb.textContent = ""; pb.className="hudbadge"; }
-  $("hudCrash").textContent = P.crashes ? P.crashes+(P.crashes===1?" crash":" crashes") : "";
-  $("clock").textContent = "t = "+states[0].t.toFixed(1)+" s";
+  $("clock").textContent = "t = "+states[0].t.toFixed(1)+" s"
+    + "   ·   you " + surfaceName(course, player.x, player.lat).toLowerCase();
 }
 
 function updateStandings(){
@@ -448,48 +493,100 @@ function updateStandings(){
 const cv2 = $("chart"), ctx2 = cv2.getContext("2d");
 const tip = $("tip");
 const PADL=44,PADR=14,PADT=14,PADB=30;
+const LIVE_WINDOW = 40;               // seconds shown in the live view
+let chartMode = "live";               // live | course
+
 function drawChart(){
   const W=cv2.width,H=cv2.height, c=course;
   ctx2.clearRect(0,0,W,H);
   const pw=W-PADL-PADR, ph=H-PADT-PADB;
   const series = [...states, player];
-  let vmax=6; for(const s of series) for(const p of s.trace) vmax=Math.max(vmax,p[1]);
-  vmax=Math.ceil(vmax*3.6/10)*10/3.6;
-  const X=d=>PADL+d/c.len*pw, Y=v=>PADT+ph-(v/vmax)*ph;
+  const live = chartMode === "live";
+
+  // clock runs off the player so the view keeps scrolling before the race starts
+  const now = Math.max(player.t, states[0].t);
+  const t0 = live ? Math.max(0, now - LIVE_WINDOW) : 0;
+  const t1 = live ? Math.max(LIVE_WINDOW, now) : 0;
+
+  let vmax = 6;
+  for(const s of series) for(const p of s.trace)
+    if(!live || p[0] >= t0) vmax = Math.max(vmax, p[2]);
+  vmax = Math.ceil(vmax*3.6/10)*10/3.6;
+
+  const X = live ? (t=>PADL+(t-t0)/(t1-t0)*pw) : (d=>PADL+d/c.len*pw);
+  const Y = v => PADT+ph-(v/vmax)*ph;
+
   ctx2.strokeStyle=cssVar("--line"); ctx2.lineWidth=1;
   ctx2.fillStyle=cssVar("--ink3"); ctx2.font="11px ui-monospace,monospace"; ctx2.textAlign="right";
   for(let k=0;k<=vmax*3.6+0.01;k+=10){ const y=Y(k/3.6);
     ctx2.beginPath(); ctx2.moveTo(PADL,y); ctx2.lineTo(W-PADR,y); ctx2.stroke();
     ctx2.fillText(k+"",PADL-6,y+3); }
   ctx2.textAlign="center";
-  for(let d=0;d<=c.len;d+=300){ ctx2.fillText(d+" m",X(d),H-8); }
+  if(live){
+    const step = 10, first = Math.ceil(t0/step)*step;
+    for(let t=first;t<=t1;t+=step){
+      const x=X(t); if(x<PADL-1) continue;
+      ctx2.fillText((t===Math.round(now)?"now":t+"s"), x, H-8);
+    }
+  } else {
+    for(let d=0;d<=c.len;d+=300) ctx2.fillText(d+" m",X(d),H-8);
+  }
   ctx2.save(); ctx2.translate(12,PADT+ph/2); ctx2.rotate(-Math.PI/2); ctx2.textAlign="center";
   ctx2.fillText("km/h",0,0); ctx2.restore();
+
+  const YOU = series.length-1;
+  const labels = [];
   series.forEach((s,i)=>{
-    if(s.trace.length<2) return;
-    const isYou = i===3;
+    const isYou = i===YOU;
+    const tr = s.trace;
+    if(tr.length<2) return;
     ctx2.strokeStyle = isYou ? cssVar("--you") : markCol(i);
-    ctx2.lineWidth = isYou ? 2.6 : 2; ctx2.lineJoin="round"; ctx2.beginPath();
-    s.trace.forEach((p,j)=> j===0?ctx2.moveTo(X(p[0]),Y(p[1])):ctx2.lineTo(X(p[0]),Y(p[1])));
+    ctx2.lineWidth = isYou ? 2.6 : 1.8; ctx2.lineJoin="round"; ctx2.beginPath();
+    let started=false, lastPt=null;
+    for(const p of tr){
+      if(live && p[0] < t0) continue;
+      const px = live ? X(p[0]) : X(p[1]);
+      const py = Y(p[2]);
+      started ? ctx2.lineTo(px,py) : (ctx2.moveTo(px,py), started=true);
+      lastPt = [px,py];
+    }
     ctx2.stroke();
-    const last=s.trace[s.trace.length-1];
-    const ly=clamp(Y(last[1])+[-6,4,14,24][i]-4, PADT+8, H-PADB-4);
-    ctx2.fillStyle=ctx2.strokeStyle; ctx2.beginPath(); ctx2.arc(X(last[0]),Y(last[1]),3.2,0,7); ctx2.fill();
-    ctx2.fillStyle=cssVar("--ink2"); ctx2.font="700 11px Arial Narrow,sans-serif"; ctx2.textAlign="left";
-    ctx2.fillText(isYou ? "YOU" : riderName(i).toUpperCase(), clamp(X(last[0])+6,PADL,W-90), ly);
+    if(!lastPt) return;
+    ctx2.fillStyle=ctx2.strokeStyle; ctx2.beginPath(); ctx2.arc(lastPt[0],lastPt[1],3.2,0,7); ctx2.fill();
+    labels.push({ x:lastPt[0], y:lastPt[1], text: isYou ? "YOU" : riderName(i).toUpperCase(), you:isYou });
   });
+  // push the direct labels apart so a bunched field stays readable
+  labels.sort((a,b)=>a.y-b.y);
+  const GAP = 12;
+  for(let i=1;i<labels.length;i++)
+    if(labels[i].y - labels[i-1].y < GAP) labels[i].y = labels[i-1].y + GAP;
+  const overflow = labels.length ? labels[labels.length-1].y - (H-PADB-4) : 0;
+  if(overflow > 0) for(const l of labels) l.y -= overflow;
+  ctx2.font="700 11px Arial Narrow,sans-serif"; ctx2.textAlign="left";
+  for(const l of labels){
+    ctx2.fillStyle = l.you ? cssVar("--ink") : cssVar("--ink2");
+    ctx2.fillText(l.text, clamp(l.x+6, PADL, W-84), clamp(l.y+3, PADT+8, H-PADB-2));
+  }
 }
 cv2.addEventListener("mousemove",e=>{
   const r=cv2.getBoundingClientRect(), c=course;
   const mx=(e.clientX-r.left)*(cv2.width/r.width);
-  if(mx<PADL||mx>cv2.width-PADR||states.every(s=>s.trace.length<2)){tip.style.display="none";return;}
-  const d=(mx-PADL)/(cv2.width-PADL-PADR)*c.len;
-  let html="<b>"+Math.round(d)+" m</b>";
-  [...states, player].forEach((s,i)=>{
+  const series=[...states, player], YOU=series.length-1;
+  if(mx<PADL||mx>cv2.width-PADR||series.every(s=>s.trace.length<2)){tip.style.display="none";return;}
+  const live = chartMode === "live";
+  const now = Math.max(player.t, states[0].t);
+  const t0 = live ? Math.max(0, now-LIVE_WINDOW) : 0, t1 = live ? Math.max(LIVE_WINDOW, now) : 0;
+  const frac = (mx-PADL)/(cv2.width-PADL-PADR);
+  const key = live ? t0 + frac*(t1-t0) : frac*c.len;    // axis value under the cursor
+  const kIdx = live ? 0 : 1;
+  let html = "<b>"+(live ? key.toFixed(1)+" s" : Math.round(key)+" m")+"</b>";
+  series.forEach((s,i)=>{
     let sp=null;
-    for(let j=1;j<s.trace.length;j++) if(s.trace[j][0]>=d){ sp=lerp(s.trace[j-1][1],s.trace[j][1],(d-s.trace[j-1][0])/Math.max(1e-6,s.trace[j][0]-s.trace[j-1][0])); break; }
-    if(sp!=null) html+="<br><span style='color:"+(i===3?cssVar("--you"):markCol(i))+"'>●</span> "+
-      (i===3?"You":riderName(i))+"  "+(sp*3.6).toFixed(1)+" km/h";
+    for(let j=1;j<s.trace.length;j++) if(s.trace[j][kIdx]>=key){
+      const a=s.trace[j-1], b=s.trace[j];
+      sp=lerp(a[2],b[2],(key-a[kIdx])/Math.max(1e-6,b[kIdx]-a[kIdx])); break; }
+    if(sp!=null) html+="<br><span style='color:"+(i===YOU?cssVar("--you"):markCol(i))+"'>●</span> "+
+      (i===YOU?"You":riderName(i))+"  "+(sp*3.6).toFixed(1)+" km/h";
   });
   tip.innerHTML=html; tip.style.display="block";
   tip.style.left=Math.min(e.clientX-r.left+14, r.width-150)+"px";
@@ -541,7 +638,7 @@ function showResults(){
 }
 
 /* ================= main loop ================= */
-let lastT = performance.now(), acc = 0, chartT = 0, standT = 0;
+let lastT = performance.now(), acc = 0;
 function tick(now){
   const dt = Math.min(0.1, (now-lastT)/1000); lastT = now;
   const power = +$("power").value;
@@ -561,10 +658,10 @@ function tick(now){
     finished=true; running=false; $("startBtn").textContent="Race again";
     showResults(); drawChart(); updateStandings();
   }
+  // everything on screen refreshes every frame — speed, chart and standings
   updateHUD();
-  chartT += dt; standT += dt;
-  if(chartT > 0.18){ chartT=0; drawChart(); }
-  if(standT > 0.3){ standT=0; updateStandings(); }
+  drawChart();
+  updateStandings();
   states.forEach((s,i)=>placeBike(s, views[i], s.lat));
   placePlayer();
   updateCamera(dt);
@@ -598,6 +695,14 @@ $("startBtn").addEventListener("click",()=>{
   $("startBtn").textContent=running?"Pause race":"Resume race";
 });
 $("resetBtn").addEventListener("click",resetSim);
+document.querySelectorAll("#chartTabs button").forEach(btn=>{
+  btn.addEventListener("click",()=>{
+    document.querySelectorAll("#chartTabs button").forEach(b=>b.setAttribute("aria-pressed","false"));
+    btn.setAttribute("aria-pressed","true");
+    chartMode = btn.dataset.chart;
+    $("chartTitle").textContent = chartMode==="live" ? "Speed — live" : "Speed over distance";
+  });
+});
 addEventListener("keyup", e=>{
   if(e.key === " " && document.activeElement.tagName !== "INPUT") $("startBtn").click();
 });

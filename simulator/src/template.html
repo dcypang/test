@@ -1,11 +1,12 @@
-<title>Hybrid Bike Physics Lab 3D — Quick 2 vs Sirrus X 4.0 vs Quick CX 2</title>
+<title>Hybrid Bike Physics Lab 3D — Six Real Bikes, One Race</title>
 <style>
 /* ---------- Design tokens ---------- */
 :root{
   --paper:#F6F5F1; --paper2:#EDEBE4; --card:#FFFFFF;
   --ink:#26241F; --ink2:#5C594F; --ink3:#8B877A;
   --line:#DAD7CC; --line2:#C9C5B8;
-  --quick:#3E8A4B; --quickMark:#62C46F; --sirrus:#9E3535; --cx:#3B7DD8;
+  --r0:#62C46F; --r1:#9E3535; --r2:#3B7DD8; --r3:#C2569B; --r4:#6B4E9E; --r5:#0E959F;
+  --quick:#3E8A4B; --sirrus:#9E3535; --cx:#3B7DD8;
   --good:#3E7A46; --warn:#9B6A1F; --crit:#A03333; --you:#C8871F;
   --disp:"Avenir Next Condensed","Helvetica Neue Condensed","Arial Narrow","Liberation Sans Narrow",ui-sans-serif,sans-serif;
   --body:ui-sans-serif,system-ui,"Segoe UI",Helvetica,Arial,sans-serif;
@@ -16,7 +17,8 @@
     --paper:#171A1E; --paper2:#1F2329; --card:#21262D;
     --ink:#E8E6E0; --ink2:#A9A69C; --ink3:#787568;
     --line:#333941; --line2:#414855;
-    --quick:#49AB59; --quickMark:#49AB59; --sirrus:#B84444; --cx:#5B93E8;
+    --r0:#49AB59; --r1:#B84444; --r2:#5B93E8; --r3:#BF5F9B; --r4:#7057C4; --r5:#16A0AB;
+    --quick:#49AB59; --sirrus:#B84444; --cx:#5B93E8;
     --good:#5CAE68; --warn:#C79A45; --crit:#CC6B5F; --you:#BC8626;
   }
 }
@@ -24,14 +26,16 @@
   --paper:#F6F5F1; --paper2:#EDEBE4; --card:#FFFFFF;
   --ink:#26241F; --ink2:#5C594F; --ink3:#8B877A;
   --line:#DAD7CC; --line2:#C9C5B8;
-  --quick:#3E8A4B; --quickMark:#62C46F; --sirrus:#9E3535; --cx:#3B7DD8;
+  --r0:#62C46F; --r1:#9E3535; --r2:#3B7DD8; --r3:#C2569B; --r4:#6B4E9E; --r5:#0E959F;
+  --quick:#3E8A4B; --sirrus:#9E3535; --cx:#3B7DD8;
   --good:#3E7A46; --warn:#9B6A1F; --crit:#A03333; --you:#C8871F;
 }
 :root[data-theme="dark"]{
   --paper:#171A1E; --paper2:#1F2329; --card:#21262D;
   --ink:#E8E6E0; --ink2:#A9A69C; --ink3:#787568;
   --line:#333941; --line2:#414855;
-  --quick:#49AB59; --quickMark:#49AB59; --sirrus:#B84444; --cx:#5B93E8;
+  --r0:#49AB59; --r1:#B84444; --r2:#5B93E8; --r3:#BF5F9B; --r4:#7057C4; --r5:#16A0AB;
+    --quick:#49AB59; --sirrus:#B84444; --cx:#5B93E8;
   --good:#5CAE68; --warn:#C79A45; --crit:#CC6B5F; --you:#BC8626;
 }
 *{box-sizing:border-box}
@@ -67,8 +71,11 @@ input[type=range]{width:150px;accent-color:var(--ink)}
 #gl{display:block;width:100%;height:auto}
 .hud{position:absolute;top:10px;left:10px;display:flex;flex-direction:column;gap:6px;pointer-events:none}
 .hudchip{display:flex;align-items:center;gap:8px;background:color-mix(in srgb, var(--paper) 82%, transparent);backdrop-filter:blur(3px);border:1px solid var(--line);border-radius:8px;padding:5px 10px;font-family:var(--mono);font-size:12px;font-variant-numeric:tabular-nums;color:var(--ink)}
-.hudchip .nm{font-family:var(--disp);font-weight:700;letter-spacing:.06em;text-transform:uppercase;font-size:12px}
-.hudchip .sp{min-width:74px;text-align:right}
+.hudchip .nm{font-family:var(--disp);font-weight:700;letter-spacing:.06em;text-transform:uppercase;font-size:12px;min-width:38px}
+.hudchip .sp{min-width:66px;text-align:right}
+.hudchip .pos{font-family:var(--disp);font-weight:700;font-size:12px;color:var(--ink3);min-width:12px}
+.hudchip .gap{min-width:56px;text-align:right;color:var(--ink2)}
+.hud{max-height:calc(100% - 20px);flex-wrap:wrap}
 .hudbadge{font-family:var(--disp);font-weight:700;font-size:10.5px;letter-spacing:.08em}
 .hudbadge.air{color:var(--crit)}
 .hudbadge.warn{color:var(--warn)}
@@ -141,12 +148,15 @@ footer .src{font-size:12px;color:var(--ink3)}
 <div class="wrap">
 <header>
   <div class="eyebrow">True-spec 3D physics simulation · flat-bar hybrids</div>
-  <h1>Three hybrids, four roads. Same rider, same watts.</h1>
-  <p class="lede"><strong>Three riders will race you.</strong> Rae, Sam and Kit take wheels, hide in each other's draft, chase you down when you get away and empty the tank in the last few hundred metres. Pick your bike, then use the arrow keys (or the on-screen pad) to pedal, brake, back up and steer anywhere on the map — and sit in their slipstream to save a third of your drag. The engine models aerodynamic drag, tire rolling resistance, gearing, sprung-mass suspension dynamics, bump-impedance losses, grip-limited cornering and W′ sprint stamina — all from each bike's published spec sheet, on procedurally generated terrain.</p>
+  <h1>Six hybrids, four roads. One of them is yours.</h1>
+  <p class="lede"><strong>A six-rider field will race you</strong> on real bikes from Cannondale, Specialized, Trek, Giant and Marin. They take wheels, hide in each other's draft, chase you down when you get away and empty the tank in the last few hundred metres. Pick your bike, then use the arrow keys (or the on-screen pad) to pedal, brake, back up and steer anywhere on the map — and sit in their slipstream to save a third of your drag. Speed, the leaderboard and the graph all update live. The engine models aerodynamic drag, tire rolling resistance, gearing, sprung-mass suspension dynamics, bump-impedance losses, grip-limited cornering and W′ sprint stamina — all from each bike's published spec sheet, on procedurally generated terrain.</p>
   <div class="bikekey">
-    <span><i class="swatch" style="background:var(--quick)"></i>Rae · Quick 2</span>
-    <span><i class="swatch" style="background:var(--sirrus)"></i>Sam · Sirrus X 4.0</span>
-    <span><i class="swatch" style="background:var(--cx)"></i>Kit · Quick CX 2</span>
+    <span><i class="swatch" style="background:var(--r0)"></i>Rae · Quick 2</span>
+    <span><i class="swatch" style="background:var(--r1)"></i>Sam · Sirrus X 4.0</span>
+    <span><i class="swatch" style="background:var(--r2)"></i>Kit · Quick CX 2</span>
+    <span><i class="swatch" style="background:var(--r3)"></i>Yuki · Trek FX 3</span>
+    <span><i class="swatch" style="background:var(--r4)"></i>Bo · Giant Escape 3</span>
+    <span><i class="swatch" style="background:var(--r5)"></i>Ines · Marin DSX 1</span>
     <span><i class="swatch" style="background:var(--you)"></i>You</span>
   </div>
   <p style="font-size:12.5px;color:var(--ink3);margin:8px 0 0">Dots mark each rider's jersey and chart color. The bikes wear their factory paint — Quick 2 in Rally Red, Sirrus X 4.0 in Satin Dark Navy Metallic, Quick CX 2 in Sabre.</p>
@@ -175,6 +185,9 @@ footer .src{font-size:12px;color:var(--ink3)}
       <button data-bike="0" aria-pressed="false">Quick 2</button>
       <button data-bike="1" aria-pressed="true">Sirrus X 4.0</button>
       <button data-bike="2" aria-pressed="false">Quick CX 2</button>
+      <button data-bike="3" aria-pressed="false">FX 3 Disc</button>
+      <button data-bike="4" aria-pressed="false">Escape 3</button>
+      <button data-bike="5" aria-pressed="false">DSX 1</button>
     </div>
   </div>
   <div class="ctl">
@@ -195,12 +208,7 @@ footer .src{font-size:12px;color:var(--ink3)}
 
 <div class="race" id="glHolder">
   <canvas id="gl" aria-label="3D view of the three bikes riding the selected course"></canvas>
-  <div class="hud">
-    <div class="hudchip"><i class="swatch" style="background:var(--quick)"></i><span class="nm" id="hudN0">Rae</span><span class="sp"><span id="hudV0">0.0</span> km/h</span><span id="hudD0">0 m</span><span class="hudbadge" id="hudB0"></span></div>
-    <div class="hudchip"><i class="swatch" style="background:var(--sirrus)"></i><span class="nm" id="hudN1">Sam</span><span class="sp"><span id="hudV1">0.0</span> km/h</span><span id="hudD1">0 m</span><span class="hudbadge" id="hudB1"></span></div>
-    <div class="hudchip"><i class="swatch" style="background:var(--cx)"></i><span class="nm" id="hudN2">Kit</span><span class="sp"><span id="hudV2">0.0</span> km/h</span><span id="hudD2">0 m</span><span class="hudbadge" id="hudB2"></span></div>
-    <div class="hudchip you"><i class="swatch" style="background:var(--you)"></i><span class="nm">You</span><span class="sp"><span id="hudVp">0.0</span> km/h</span><span id="hudDp">0 m</span><span class="stamina" title="Anaerobic reserve (W′)"><i id="staminaBar"></i></span><span id="hudSurf">Asphalt</span><span class="hudbadge" id="hudCrash"></span><span class="hudbadge" id="hudBp"></span></div>
-  </div>
+  <div class="hud" id="hudBoard"></div>
   <div class="camhud">
     <div class="camtabs" role="group" aria-label="Camera follows">
       <button data-cam="you" aria-pressed="true">You</button>
@@ -228,7 +236,13 @@ footer .src{font-size:12px;color:var(--ink3)}
 
 <div class="grid2">
   <div class="card">
-    <h2>Speed over distance</h2>
+    <div style="display:flex;align-items:baseline;justify-content:space-between;gap:12px;flex-wrap:wrap">
+      <h2 id="chartTitle" style="margin-bottom:6px">Speed — live</h2>
+      <div class="tabs" id="chartTabs" role="group" aria-label="Chart axis">
+        <button data-chart="live" aria-pressed="true">Live</button>
+        <button data-chart="course" aria-pressed="false">Whole course</button>
+      </div>
+    </div>
     <div id="chartWrap">
       <canvas id="chart" width="640" height="300" aria-label="Line chart of speed versus distance for the three bikes"></canvas>
       <div id="tip"></div>
@@ -298,7 +312,50 @@ footer .src{font-size:12px;color:var(--ink3)}
         <p class="note">The trail mule: heaviest and slowest-rolling on tarmac, with pedal-bob losses from the coil fork — but the only one with real suspension when the ground turns hostile.</p>
       </div>
     </div>
+    <div class="card spec" style="border-top-color:var(--r3)">
+      <div class="card-inner">
+        <h3>Trek FX 3 Disc</h3>
+        <div class="cls">Rigid fitness hybrid · 11.5 kg</div>
+        <dl>
+          <dt>Frame / fork</dt><dd>Alpha Gold alloy / full-carbon rigid</dd>
+          <dt>Tires</dt><dd>Bontrager 700×35c, Hard-Case Lite casing</dd>
+          <dt>Drivetrain</dt><dd>Shimano 1×10, 40T × 11-46</dd>
+          <dt>Brakes</dt><dd>Shimano hydraulic disc</dd>
+          <dt>Compliance</dt><dd>tire casing only (~65 psi)</dd>
+        </dl>
+        <p class="note">The Quick 2's closest rival: same recipe, 0.7&nbsp;kg heavier, and puncture-belted tires that cost a little rolling speed for a lot of peace of mind.</p>
+      </div>
+    </div>
+    <div class="card spec" style="border-top-color:var(--r4)">
+      <div class="card-inner">
+        <h3>Giant Escape 3 Disc</h3>
+        <div class="cls">Budget commuter hybrid · 12.1 kg</div>
+        <dl>
+          <dt>Frame / fork</dt><dd>ALUXX alloy / <em>alloy</em> rigid</dd>
+          <dt>Tires</dt><dd>Giant S-X3 700×38c</dd>
+          <dt>Drivetrain</dt><dd>Shimano Tourney 2×7, 48/34T × 11-34</dd>
+          <dt>Brakes</dt><dd>Tektro mechanical disc</dd>
+          <dt>Compliance</dt><dd>none — alloy fork and post (~60 psi)</dd>
+        </dl>
+        <p class="note">The value pick, and the harshest ride here: an alloy fork transmits everything. But the 48T big ring gives it the tallest top gear in the field — it will out-drag anything downhill.</p>
+      </div>
+    </div>
+    <div class="card spec" style="border-top-color:var(--r5)">
+      <div class="card-inner">
+        <h3>Marin DSX 1</h3>
+        <div class="cls">Flat-bar gravel · 11.9 kg</div>
+        <dl>
+          <dt>Frame / fork</dt><dd>Series 3 6061 alloy / full-carbon rigid</dd>
+          <dt>Tires</dt><dd>700×45c, supple gravel casing</dd>
+          <dt>Drivetrain</dt><dd>Shimano Deore 1×11, 40T × 11-51</dd>
+          <dt>Brakes</dt><dd>Flat-mount hydraulic disc</dd>
+          <dt>Compliance</dt><dd>45 mm tire volume at ~35 psi</dd>
+        </dl>
+        <p class="note">The quiet threat. Big supple tires at low pressure give away almost nothing on tarmac and transform the dirt — no suspension, just volume doing the work.</p>
+      </div>
+    </div>
   </div>
+  <p style="font-size:12.5px;color:var(--ink3);margin:14px 0 0;max-width:74ch">Weights are the manufacturers' published figures for a medium frame. Rolling-resistance coefficients are assigned per casing and tread following bicyclerollingresistance.com's test methodology — measured values are not published for every one of these exact tires, so treat the C<sub>rr</sub> ranking as sound and the absolute numbers as close estimates.</p>
 </section>
 
 <footer>
@@ -308,10 +365,11 @@ footer .src{font-size:12px;color:var(--ink3)}
     <li><strong>Rolling resistance:</strong> per-tire C<sub>rr</sub> (G-One Allround 35c ≈ 0.0045, Pathfinder 40c ≈ 0.0055, Terreno Dry ≈ 0.0070 on smooth asphalt) scaled by surface: knobs are a penalty on tarmac but an advantage on loose ground.</li>
     <li><strong>Suspension:</strong> each bike is a sprung mass (heave + pitch) on two spring-damper corners — tire casing stiffness in series with the Suntour 50&nbsp;mm coil fork (Quick CX) — plus a separate 20&nbsp;mm Future Shock DOF at the bars (Sirrus X). Bump energy dissipated in dampers and the rider's body is charged back as impedance drag; the vertical acceleration at saddle and grips gives the ride-comfort RMS.</li>
     <li><strong>Control envelope:</strong> on rough or loose ground each bike gets a max controllable speed from tire grip, tread and suspension travel; the rider AI brakes ahead of tree gates, rock gardens and washboard using a μ-limited braking envelope, exactly like a real rider scrubbing speed before trouble.</li>
+    <li><strong>Live telemetry:</strong> every rider's speed, the position-ordered leaderboard and the graph all refresh on the render frame, and traces are sampled on simulation time rather than distance so a stopped rider still plots. The graph's <em>Live</em> view is a rolling 40-second window that scrolls as you ride; <em>Whole course</em> shows speed against distance for the full route.</li>
     <li><strong>3D scene:</strong> the road mesh is the exact heightfield the physics integrates over — wheels, fork travel and Future Shock motion you see are the simulation state. Asphalt, gravel, forest floor, bark and foliage textures are synthesized at load time from fractal value noise (the page ships no image assets).</li>
     <li><strong>Rider:</strong> 75 kg, steady power (slider), coasts past spin-out, brakes at up to 0.65·μ·g.</li>
     <li><strong>Your bike:</strong> steered with a kinematic bicycle model (ψ̇ = v·tanδ/wheelbase) on the same suspension and drag physics. Steering lock tightens with speed; cornering draws on the same friction circle as drive and braking, so grip spent leaning is grip you no longer have for power — ask for more than μ·g and the front washes out. Sprinting spends a 20&nbsp;kJ W′ anaerobic reserve that refills only below threshold, and leaving the pavement puts you on the verge's own rolling resistance and grip.</li>
-    <li><strong>Racing you:</strong> in Race mode each rider has a brain rather than a metronome. <em>Rae</em> is a pure roadie who lights it up on tarmac and suffers when it turns rough; <em>Sam</em> is a tactician who hides in wheels and kicks inside the last 170&nbsp;m; <em>Kit</em> is fearless once the ground gets ugly. They watch your position, raise power to chase when you get up the road, move across to take a wheel when one is available, and spend their own 20&nbsp;kJ reserve to do it. <strong>Drafting</strong> follows the wind-tunnel numbers for road cyclists — about 38% less aerodynamic drag at a metre off the wheel, ~25% at three metres, gone by ten, and worth nothing if you are not lined up behind them. It works for you too: sit in and watch your drag drop. Switch to <em>Time trial</em> to turn all of this off and get the clean, identical-rider bike comparison back.</li>
+    <li><strong>Racing you:</strong> in Race mode each rider has a brain rather than a metronome. <em>Rae</em> (Quick 2) is a pure roadie who lights it up on tarmac and suffers when it turns rough; <em>Sam</em> (Sirrus X 4.0) is a tactician who hides in wheels and kicks inside the last 170&nbsp;m; <em>Kit</em> (Quick CX 2) is fearless once the ground gets ugly; <em>Yuki</em> (Trek FX 3) attacks from distance and dares the pack to come across; <em>Bo</em> (Giant Escape 3) is a diesel who never leaves a wheel and is deadly in a drag race off that 48T ring; <em>Ines</em> (Marin DSX 1) comes alive the moment the tarmac ends. They watch your position, raise power to chase when you get up the road, move across to take a wheel when one is available, and spend their own 20&nbsp;kJ reserve to do it. <strong>Drafting</strong> follows the wind-tunnel numbers for road cyclists — about 38% less aerodynamic drag at a metre off the wheel, ~25% at three metres, gone by ten, and worth nothing if you are not lined up behind them. It works for you too: sit in and watch your drag drop. Switch to <em>Time trial</em> to turn all of this off and get the clean, identical-rider bike comparison back.</li>
     <li><strong>Staying upright:</strong> you are held to the same control limit the AI respects — the speed at which <em>your</em> tires, tread and suspension travel can still hold <em>that</em> ground. Ride 35% beyond it on loose or broken surfaces, land a jump with more than 3.2&nbsp;m/s of vertical speed, or hold a slide for half a second, and you go down and remount. It is why holding full throttle down the singletrack is slower than riding within the bike: over 1.2&nbsp;km the rigid Quick 2 crashes 22 times flat-out versus 6 ridden with restraint, while the 50&nbsp;mm-travel Quick CX 2 gets away with 9 — the suspension is buying you control, exactly as it does in the real world.</li>
   </ul>
   <p class="src">Spec sources: cannondale.com (Quick 2, Quick CX 2), specialized.com (Sirrus X 4.0), 99spokes.com, rei.com. Rolling-resistance figures follow bicyclerollingresistance.com test methodology for comparable casings. This is a comparative model — real-world results vary with rider, pressure and conditions. Rendered with three.js (MIT license, bundled inline).</p>
