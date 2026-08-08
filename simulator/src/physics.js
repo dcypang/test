@@ -170,6 +170,7 @@ export function makeState(bike, course){
   const Ms = M - bike.unsprung;
   return {
     bike, course, envInfo:null,
+    lat:0, latTarget:0, draftMul:1, pwrTarget:0, wBal:20000, brain:null,
     x:0, v:0, t:0, done:false, finishT:0,
     z:0, th:0, zd:0, thd:0,
     fsZ:0, fsZd:0,
@@ -260,7 +261,7 @@ export function stepBike(S, power){
   const vTarget = env[i];
   const crr = b.crr0 * CRR_MULT[cls][b.tread];
   const Froll = crr*S.M*G*cosT * (S.airF&&S.airR?0:1);
-  const Faero = 0.5*RHO*b.cda*S.v*S.v;
+  const Faero = 0.5*RHO*b.cda*S.draftMul*S.v*S.v;
   const Fgrade= S.M*G*sinT;
   const vSpinout = b.topRatio*WHEEL_CIRC*CADENCE_MAX;
   let Fdrive=0, Fbrake=0;
@@ -282,6 +283,87 @@ export function stepBike(S, power){
 
   if(S.x - S.lastTrace >= 5){ S.trace.push([S.x, S.v]); S.lastTrace=S.x; }
   if(S.x>=c.len){ S.done=true; S.finishT=S.t; S.x=c.len; }
+}
+
+/* =====================================================================
+   Racing: drafting, tactics and a sprint finish
+   In Race mode the three AI riders stop riding private time trials and
+   start racing whoever is on the road — including you. They take wheels,
+   save energy in the draft, chase when you get away, and empty the tank
+   in the last few hundred metres.
+   ===================================================================== */
+
+/* Aerodynamic saving from sitting behind another rider. Wind-tunnel work
+   on road cyclists puts the saving near 35-40% at a metre, ~25% at three,
+   and negligible past ten — and it vanishes if you are not lined up. */
+export function draftMultiplier(gap, latOffset){
+  if(gap <= 0.35 || gap > 10) return 1;
+  const lat = Math.abs(latOffset);
+  if(lat > 1.1) return 1;
+  const latF = clamp(1 - (lat - 0.4)/0.7, 0, 1);
+  const g = clamp((10 - gap)/9.3, 0, 1);
+  return 1 - 0.38*latF*Math.pow(g, 1.35);
+}
+
+export const BRAINS = [
+  { name:"Rae", bike:0, cpScale:1.00, chase:0.35, sit:0.06, sprintFrom:250, sprintScale:1.75,
+    lane:-2.4, blurb:"pure roadie — lights it up on tarmac, suffers when it turns rough" },
+  { name:"Sam", bike:1, cpScale:0.99, chase:0.26, sit:0.14, sprintFrom:170, sprintScale:1.95,
+    lane:-0.8, blurb:"tactician — hides in wheels all day, then kicks late" },
+  { name:"Kit", bike:2, cpScale:1.01, chase:0.30, sit:0.08, sprintFrom:220, sprintScale:1.65,
+    lane:0.8,  blurb:"trail hound — fearless once the ground gets ugly" },
+];
+
+/* Called every physics step in Race mode: sets each rider's draft saving,
+   power target and where on the road they want to be. */
+export function raceTactics(states, player, course, cp){
+  const field = [];
+  for(const s of states) if(!s.done) field.push(s);
+  const bodies = [...states, player];
+
+  const draftFor = (me, myLat) => {
+    let best = 1;
+    for(const o of bodies){
+      if(o === me) continue;
+      const gap = o.x - me.x;
+      if(gap > 0.35 && gap < 10) best = Math.min(best, draftMultiplier(gap, o.lat - myLat));
+    }
+    return best;
+  };
+  player.draftMul = draftFor(player, player.lat);
+
+  for(const S of states){
+    if(S.done){ S.draftMul = 1; S.pwrTarget = 0; continue; }
+    const b = S.brain;
+    S.draftMul = draftFor(S, S.lat);
+
+    let target = cp*b.cpScale;
+    const toPlayer = player.x - S.x;            // positive: you are up the road
+    const left = course.len - S.x;
+    if(toPlayer > 4) target *= 1 + b.chase*clamp(toPlayer/70, 0, 1);   // chase you down
+    if(S.draftMul < 0.92) target *= 1 - b.sit;                          // sit in and save
+    if(left < b.sprintFrom) target *= b.sprintScale;                    // empty the tank
+
+    if(target > cp){
+      if(S.wBal <= 0) target = cp;
+      else S.wBal -= (target - cp)*DT;
+    } else S.wBal = Math.min(W_PRIME, S.wBal + (cp - target)*DT*0.45);
+    S.wBal = clamp(S.wBal, 0, W_PRIME);
+    S.pwrTarget = target;
+
+    // look for a wheel to sit on, otherwise drift back to their own line
+    let want = b.lane;
+    let bestGap = Infinity;
+    for(const o of bodies){
+      if(o === S) continue;
+      const gap = o.x - S.x;
+      if(gap > 1.0 && gap < 9 && Math.abs(o.lat - S.lat) < 2.8 && gap < bestGap){
+        bestGap = gap; want = o.lat;
+      }
+    }
+    S.latTarget = clamp(want, -3.0, 3.0);
+    S.lat += clamp(S.latTarget - S.lat, -1.3*DT, 1.3*DT);
+  }
 }
 
 /* =====================================================================
@@ -433,7 +515,7 @@ export function stepPlayer(S, inp, cp){
     }
   }
 
-  const Faero = 0.5*RHO*b.cda*S.v*av;
+  const Faero = 0.5*RHO*b.cda*S.draftMul*S.v*av;
   const Froll = crr*S.M*G*cosT*(S.airF&&S.airR?0:1)*Math.sign(S.v||1);
   const Fgrade = S.M*G*sinT;
   const a = (Fdrive - Faero - Froll - Fgrade - Fbump - Math.sign(S.v||1)*Fbrake)/S.M;

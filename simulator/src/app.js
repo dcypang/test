@@ -3,6 +3,7 @@
 import * as THREE from "three";
 import { BIKES, COURSES, getCourse, buildEnvelope, makeState, stepBike,
          makePlayer, stepPlayer, surfaceY, surfaceName, W_PRIME,
+         BRAINS, raceTactics,
          groundAt, elevAt, DT, clamp, lerp, mulberry32, WB, AF, AR } from "./physics.js";
 import { makeTextures } from "./textures.js";
 import { buildBike, poseBikeParts } from "./bike3d.js";
@@ -267,18 +268,24 @@ let curCourse = 0, running = false, finished = false, simMult = 1;
 let states = [];
 const SIM_SPEEDS = [1,2,4,8];
 let course = null;
-let player = null, playerBikeIdx = 1;
+let player = null, playerBikeIdx = 1, raceMode = true;
+const riderName = i => raceMode ? BRAINS[i].name : BIKES[i].name;
 
 function resetSim(){
   running = false; finished = false;
   course = getCourse(curCourse);
-  states = BIKES.map(b=>{ const s = makeState(b, course); s.envInfo = buildEnvelope(course, b); return s; });
+  states = BIKES.map((b,i)=>{
+    const s = makeState(b, course);
+    s.envInfo = buildEnvelope(course, b);
+    s.brain = BRAINS[i]; s.lat = LANES[i]; s.latTarget = LANES[i];
+    return s;
+  });
   player = makePlayer(BIKES[playerBikeIdx], course, PLAYER_LANE);
   $("verdict").style.display = "none";
   $("startBtn").textContent = "Start race";
   $("courseInfo").textContent = course.desc;
   $("clock").textContent = "t = 0.0 s";
-  states.forEach((s,i)=>placeBike(s, views[i], LANES[i]));
+  states.forEach((s,i)=>placeBike(s, views[i], s.lat));
   placePlayer();
   updateHUD(); updateStandings(); drawChart();
 }
@@ -395,9 +402,13 @@ function updateHUD(){
   states.forEach((s,i)=>{
     $("hudV"+i).textContent = (s.v*3.6).toFixed(1);
     $("hudD"+i).textContent = Math.round(s.x)+" m";
+    $("hudN"+i).textContent = riderName(i);
     const b = $("hudB"+i);
     if(s.done){ b.textContent = "✓ "+s.finishT.toFixed(1)+"s"; b.className="hudbadge done"; }
     else if(s.airCnt>0.06){ b.textContent = "AIRBORNE"; b.className="hudbadge air"; }
+    else if(raceMode && running && course.len - s.x < s.brain.sprintFrom && !s.done){
+      b.textContent = "SPRINTING"; b.className="hudbadge warn"; }
+    else if(raceMode && s.draftMul < 0.93){ b.textContent = "DRAFTING"; b.className="hudbadge draft"; }
     else { b.textContent = ""; b.className="hudbadge"; }
   });
   const P = player;
@@ -412,6 +423,8 @@ function updateHUD(){
   else if(P.slip){ pb.textContent = "SLIDING"; pb.className="hudbadge air"; }
   else if(P.risk > 0.55){ pb.textContent = "TOO FAST FOR THE GROUND"; pb.className="hudbadge air"; }
   else if(P.risk > 0.15){ pb.textContent = "ON THE EDGE"; pb.className="hudbadge warn"; }
+  else if(P.draftMul < 0.985){
+    pb.textContent = "DRAFTING −"+Math.round((1-P.draftMul)*100)+"% drag"; pb.className="hudbadge draft"; }
   else if(P.v < -0.05){ pb.textContent = "REVERSE"; pb.className="hudbadge"; }
   else { pb.textContent = ""; pb.className="hudbadge"; }
   $("hudCrash").textContent = P.crashes ? P.crashes+(P.crashes===1?" crash":" crashes") : "";
@@ -420,7 +433,7 @@ function updateHUD(){
 
 function updateStandings(){
   const tb = $("standings");
-  const rows = states.map((s,i)=>({ s, name: BIKES[i].name, c: col(i) }));
+  const rows = states.map((s,i)=>({ s, name: riderName(i), c: col(i) }));
   rows.push({ s: player, name: "You ("+BIKES[playerBikeIdx].name+")", c: cssVar("--you"), you: true });
   rows.sort((a,b)=> prog(b.s) - prog(a.s));
   function prog(s){ return (s.done||s.finished) ? 1e6-s.finishT : s.x; }
@@ -463,7 +476,7 @@ function drawChart(){
     const ly=clamp(Y(last[1])+[-6,4,14,24][i]-4, PADT+8, H-PADB-4);
     ctx2.fillStyle=ctx2.strokeStyle; ctx2.beginPath(); ctx2.arc(X(last[0]),Y(last[1]),3.2,0,7); ctx2.fill();
     ctx2.fillStyle=cssVar("--ink2"); ctx2.font="700 11px Arial Narrow,sans-serif"; ctx2.textAlign="left";
-    ctx2.fillText(isYou ? "YOU" : BIKES[i].name.toUpperCase(), clamp(X(last[0])+6,PADL,W-90), ly);
+    ctx2.fillText(isYou ? "YOU" : riderName(i).toUpperCase(), clamp(X(last[0])+6,PADL,W-90), ly);
   });
 }
 cv2.addEventListener("mousemove",e=>{
@@ -476,7 +489,7 @@ cv2.addEventListener("mousemove",e=>{
     let sp=null;
     for(let j=1;j<s.trace.length;j++) if(s.trace[j][0]>=d){ sp=lerp(s.trace[j-1][1],s.trace[j][1],(d-s.trace[j-1][0])/Math.max(1e-6,s.trace[j][0]-s.trace[j-1][0])); break; }
     if(sp!=null) html+="<br><span style='color:"+(i===3?cssVar("--you"):markCol(i))+"'>●</span> "+
-      (i===3?"You":BIKES[i].name)+"  "+(sp*3.6).toFixed(1)+" km/h";
+      (i===3?"You":riderName(i))+"  "+(sp*3.6).toFixed(1)+" km/h";
   });
   tip.innerHTML=html; tip.style.display="block";
   tip.style.left=Math.min(e.clientX-r.left+14, r.width-150)+"px";
@@ -490,7 +503,8 @@ cv2.addEventListener("mouseleave",()=>{ tip.style.display="none"; drawChart(); }
 function showResults(){
   $("verdict").style.display="block";
   const c = course;
-  const finishers = states.map((s,i)=>({ s, label: BIKES[i].brand+" "+BIKES[i].name, c: col(i) }));
+  const finishers = states.map((s,i)=>({ s,
+    label: (raceMode ? BRAINS[i].name+" · " : "")+BIKES[i].brand+" "+BIKES[i].name, c: col(i) }));
   if(player.finished) finishers.push({ s: player, label: "You — "+BIKES[playerBikeIdx].name,
                                        c: cssVar("--you"), you: true });
   finishers.sort((a,b)=>a.s.finishT-b.s.finishT);
@@ -513,7 +527,8 @@ function showResults(){
   const beatAll = player.finished && player.finishT < w.finishT;
   $("winnerLine").textContent = beatAll
     ? "You win by "+(w.finishT-player.finishT).toFixed(1)+" s"
-    : BIKES[order[0]].brand+" "+BIKES[order[0]].name+" wins by "+(states[order[1]].finishT-w.finishT).toFixed(1)+" s";
+    : (raceMode ? BRAINS[order[0]].name+" ("+BIKES[order[0]].name+")" : BIKES[order[0]].brand+" "+BIKES[order[0]].name)
+      +" wins by "+(states[order[1]].finishT-w.finishT).toFixed(1)+" s";
   const comfy=[...states.keys()].sort((a,b)=>Math.sqrt(states[a].aRmsAcc/Math.max(.1,states[a].aRmsN))-Math.sqrt(states[b].aRmsAcc/Math.max(.1,states[b].aRmsN)))[0];
   $("verdictText").textContent =
     "On "+w.course.name.toLowerCase()+", "+BIKES[order[0]].name+" finished "+COURSES[curCourse].len+" m in "+w.finishT.toFixed(1)+" s. "+
@@ -535,7 +550,10 @@ function tick(now){
   acc += dt*(running && !finished ? simMult : 1);
   let n = 0;
   while(acc >= DT && n < 4000){
-    if(running && !finished) for(const s of states) stepBike(s, power);
+    if(running && !finished){
+      if(raceMode) raceTactics(states, player, course, power);
+      for(const s of states) stepBike(s, raceMode ? s.pwrTarget : power);
+    }
     stepPlayer(player, inp, power);
     acc -= DT; n++;
   }
@@ -547,7 +565,7 @@ function tick(now){
   chartT += dt; standT += dt;
   if(chartT > 0.18){ chartT=0; drawChart(); }
   if(standT > 0.3){ standT=0; updateStandings(); }
-  states.forEach((s,i)=>placeBike(s, views[i], LANES[i]));
+  states.forEach((s,i)=>placeBike(s, views[i], s.lat));
   placePlayer();
   updateCamera(dt);
   renderer.render(scene, camera);
@@ -583,6 +601,14 @@ $("resetBtn").addEventListener("click",resetSim);
 addEventListener("keyup", e=>{
   if(e.key === " " && document.activeElement.tagName !== "INPUT") $("startBtn").click();
 });
+document.querySelectorAll("#modeTabs button").forEach(btn=>{
+  btn.addEventListener("click",()=>{
+    document.querySelectorAll("#modeTabs button").forEach(b=>b.setAttribute("aria-pressed","false"));
+    btn.setAttribute("aria-pressed","true");
+    raceMode = btn.dataset.mode === "race";
+    resetSim();
+  });
+});
 document.querySelectorAll("#youBike button").forEach(btn=>{
   btn.addEventListener("click",()=>{
     document.querySelectorAll("#youBike button").forEach(b=>b.setAttribute("aria-pressed","false"));
@@ -602,6 +628,11 @@ window.__lab = {
   teleport(x, lat, psi){ player.x=x; player.lat=lat; player.psi=psi; player.v=0;
     player.z=0; player.zd=0; player.th=0; player.thd=0; snapNext=true; },
   input: () => playerInput(),
+  stepRace(){
+    const power = +$("power").value;
+    if(raceMode) raceTactics(states, player, course, power);
+    for(const s of states) stepBike(s, raceMode ? s.pwrTarget : power);
+  },
   driveStep(inp){
     stepPlayer(player, { throttle:0, brake:0, steer:0, sprint:false, ...inp }, +$("power").value);
   },
@@ -615,7 +646,10 @@ window.__lab = {
   lookAt(p, a){ camMode = "manual"; manualP.set(...p); manualA.set(...a); snapNext = true; },
   fastForward(seconds){
     const power = +$("power").value, n = Math.round(seconds/DT);
-    for(let k=0;k<n && !states.every(s=>s.done);k++) for(const s of states) stepBike(s, power);
+    for(let k=0;k<n && !states.every(s=>s.done);k++){
+      if(raceMode) raceTactics(states, player, course, power);
+      for(const s of states) stepBike(s, raceMode ? s.pwrTarget : power);
+    }
   },
 };
 
