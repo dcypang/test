@@ -64,9 +64,11 @@ run(`
     v.setPose(0, 0, 0, 0);
     return v;
   }
-  function accelTest() {
+  // Run the same launch at several frame rates. Handling must not depend on
+  // how fast the machine happens to be painting.
+  function accelTest(dt) {
     var v = newCar(true), w = flatWorld();
-    var dt = 1 / 120, t = 0, t100 = -1, t200 = -1, topSpeed = 0;
+    var t = 0, t100 = -1, t200 = -1, topSpeed = 0;
     while (t < 45) {
       v.throttle = 1; v.brake = 0; v.steerInput = 0;
       v.update(dt, w); t += dt;
@@ -75,12 +77,22 @@ run(`
       if (t200 < 0 && kmh >= 200) t200 = t;
       topSpeed = Math.max(topSpeed, kmh);
     }
-    return { t100: t100, t200: t200, topSpeed: topSpeed, gear: v.gear, rpm: v.rpm };
+    return { t100: t100, t200: t200, topSpeed: topSpeed };
   }
-  var accel = accelTest();
+  var accel = accelTest(1 / 120);
+  var accel60 = accelTest(1 / 60);
+  var accel30 = accelTest(1 / 30);
 `);
 const accel = run('accel');
+const accel60 = run('accel60');
+const accel30 = run('accel30');
+console.log(`0-100 km/h at 120/60/30 fps: ${accel.t100.toFixed(2)} / ${accel60.t100.toFixed(2)} / ${accel30.t100.toFixed(2)} s`);
 check('0-100 km/h', accel.t100, 2.4, 5.5, ' s');
+check('0-100 km/h at 60 fps', accel60.t100, 2.4, 5.5, ' s');
+check('0-100 km/h at 30 fps', accel30.t100, 2.4, 5.5, ' s');
+// The whole point: the car must feel the same on a fast desktop and a phone.
+check('frame-rate spread in 0-100', Math.abs(accel60.t100 - accel.t100), 0, 0.35, ' s');
+check('frame-rate spread at 30 fps', Math.abs(accel30.t100 - accel.t100), 0, 0.60, ' s');
 check('0-200 km/h', accel.t200, 8.0, 20.0, ' s');
 check('top speed (45 s run)', accel.topSpeed, 240, 330, ' km/h');
 

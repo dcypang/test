@@ -23,6 +23,7 @@ const FILES = [
   'ai.js',
   'audio.js',
   'hud.js',
+  'touch.js',
   'ui.js',
   'game.js',
   'main.js',

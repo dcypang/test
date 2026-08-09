@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
 <title>Apex &amp; Home — race, then drive back</title>
 <meta name="description" content="A racing game with a realistic race car: run the circuit, then drive home through the countryside and the village.">
 <style>
@@ -28,6 +28,127 @@
   }
   #hud { pointer-events: none; z-index: 2; }
   #gl { z-index: 1; }
+
+  /* ---- touch controls -------------------------------------------------- */
+  /* Sit above the game, below the menus. Nothing here may scroll, zoom or
+     show a tap highlight - all of those fight the steering pad. */
+  .touch {
+    position: fixed; inset: 0; z-index: 4;
+    pointer-events: none;
+    touch-action: none;
+    -webkit-user-select: none; user-select: none;
+    -webkit-tap-highlight-color: transparent;
+    padding: max(10px, env(safe-area-inset-top)) max(10px, env(safe-area-inset-right))
+             max(10px, env(safe-area-inset-bottom)) max(10px, env(safe-area-inset-left));
+  }
+  .touch.hidden, .touch .hidden { display: none; }
+  .touch * { touch-action: none; }
+
+  .touch-steer {
+    position: absolute; left: 0; bottom: 0;
+    width: min(46%, 340px); height: min(44%, 172px);
+    pointer-events: auto;
+    display: flex; flex-direction: column; align-items: center; justify-content: flex-end;
+    gap: 10px; padding: 0 12px 14px;
+  }
+  .touch-steer-track {
+    position: relative; width: 100%; max-width: 240px; height: 62px;
+    border-radius: 31px;
+    background: rgba(12, 14, 19, 0.60);
+    border: 1px solid var(--line);
+    box-shadow: inset 0 1px 0 rgba(255,255,255,0.06);
+    display: flex; align-items: center; justify-content: center;
+    transition: border-color 0.12s, background 0.12s;
+  }
+  .touch-steer.active .touch-steer-track {
+    background: rgba(18, 21, 28, 0.78);
+    border-color: rgba(255, 255, 255, 0.30);
+  }
+  .touch-steer-thumb {
+    width: 52px; height: 46px; border-radius: 23px;
+    background: linear-gradient(180deg, rgba(255,255,255,0.22), rgba(255,255,255,0.10));
+    border: 1px solid rgba(255,255,255,0.34);
+    transition: transform 0.06s linear;
+  }
+  .touch-steer.active .touch-steer-thumb { background: linear-gradient(180deg, #ff5544, #d92b1e); border-color: rgba(255,140,120,0.8); }
+  .touch-steer-label {
+    font-size: 11px; letter-spacing: 0.14em; text-transform: uppercase;
+    color: rgba(242,244,248,0.42);
+  }
+  .touch-steer.active .touch-steer-label, .touch.tilt .touch-steer-label { opacity: 0; }
+  .touch.tilt .touch-steer-track { opacity: 0.35; }
+
+  .touch-pedals {
+    position: absolute; right: 0; bottom: 0;
+    display: flex; align-items: flex-end; gap: 12px;
+    padding: 0 14px 14px; pointer-events: none;
+  }
+  .touch-pedal {
+    pointer-events: auto;
+    width: clamp(74px, 15vw, 104px);
+    height: clamp(74px, 22vh, 116px);
+    border-radius: 20px;
+    font-family: var(--font); font-weight: 700; letter-spacing: 0.08em;
+    font-size: 13px; color: var(--ink);
+    display: flex; align-items: center; justify-content: center;
+    border: 1px solid var(--line);
+    transition: transform 0.06s, filter 0.1s;
+  }
+  .touch-pedal.brake {
+    background: linear-gradient(180deg, rgba(255,59,47,0.30), rgba(150,26,20,0.42));
+    border-color: rgba(255, 90, 76, 0.52);
+  }
+  .touch-pedal.gas {
+    background: linear-gradient(180deg, rgba(74,222,128,0.30), rgba(22,120,62,0.44));
+    border-color: rgba(96, 232, 146, 0.52);
+    height: clamp(84px, 26vh, 132px);
+  }
+  .touch-pedal.active { transform: translateY(2px); filter: brightness(1.55); }
+
+  /* The corners are spoken for: race info top-left, minimap top-right, thumbs
+     along the bottom. These two groups slot into the gaps between them. */
+  .touch-aux, .touch-road { position: absolute; pointer-events: none; gap: 6px; }
+  .touch-aux {
+    left: 12px; top: 112px;
+    display: flex; flex-direction: row;
+  }
+  .touch-road {
+    right: 12px; top: 142px;
+    display: grid; grid-template-columns: repeat(2, auto);
+  }
+  .touch-btn {
+    pointer-events: auto;
+    width: 36px; height: 36px; padding: 0; border-radius: 50%;
+    background: rgba(12, 14, 19, 0.62);
+    border: 1px solid var(--line);
+    color: rgba(242, 244, 248, 0.82);
+    display: flex; align-items: center; justify-content: center;
+  }
+  .touch-btn svg { width: 19px; height: 19px; display: block; }
+  .touch-btn.active { background: rgba(255, 59, 47, 0.30); border-color: rgba(255,120,100,0.7); color: #fff; }
+
+  /* ---- rotate prompt ---------------------------------------------------- */
+  #rotate {
+    position: fixed; inset: 0; z-index: 8; display: none;
+    align-items: center; justify-content: center; text-align: center;
+    padding: 30px; background: #05070b; color: var(--ink);
+  }
+  #rotate h2 { margin-bottom: 6px; }
+  #rotate button { margin-top: 18px; }
+  #rotate .phone {
+    width: 52px; height: 88px; margin: 0 auto 20px;
+    border: 2px solid var(--line); border-radius: 10px;
+    animation: tip 2.2s ease-in-out infinite;
+  }
+  @keyframes tip {
+    0%, 40% { transform: rotate(0deg); }
+    60%, 100% { transform: rotate(-90deg); }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    #rotate h2 { margin-bottom: 6px; }
+  #rotate button { margin-top: 18px; }
+  #rotate .phone { animation: none; transform: rotate(-90deg); }
+  }
 
   .overlay {
     position: fixed; inset: 0; z-index: 5;
@@ -183,6 +304,15 @@
 <body>
 <canvas id="gl"></canvas>
 <canvas id="hud"></canvas>
+
+<div id="rotate">
+  <div>
+    <div class="phone"></div>
+    <h2>Turn your phone sideways</h2>
+    <p class="tagline">The road is much easier to read in landscape.</p>
+    <button id="rotateAnyway" class="secondary" type="button">Play in portrait anyway</button>
+  </div>
+</div>
 
 <div id="loading" class="overlay">
   <div class="panel narrow">

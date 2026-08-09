@@ -57,6 +57,8 @@ class Input {
     if (this.tapped('KeyE')) out.shiftUp = true;
     if (this.tapped('KeyQ')) out.shiftDown = true;
 
+    if (this.touch) this.touch.driving(out);
+
     const p = this.pad();
     if (p) {
       const ax = p.axes[0] || 0;
@@ -220,6 +222,14 @@ class Game {
     this.camera = new Camera();
     this.ui = ui;
 
+    // Phones and tablets get on-screen controls and a lighter render preset.
+    this.isTouch = isTouchDevice();
+    this.touch = new TouchControls(this);
+    this.touch.mount();
+    this.input.touch = this.touch;
+    this.orientationBlocked = false;
+    this.watchOrientation();
+
     this.state = 'loading';
     this.time = 0;
     this.accumulator = 0;
@@ -229,10 +239,18 @@ class Game {
       laps: 3,
       difficulty: 0.55,
       assists: true,
-      quality: 'high',
+      quality: this.isTouch ? 'fast' : 'high',
       playerLivery: 0,
       volume: 0.7,
+      tiltSteer: false,
     };
+    if (this.isTouch) {
+      // Shadow passes walk the whole opaque queue twice, which is the single
+      // biggest cost on a phone.
+      this.renderer.settings.shadows = false;
+      this.renderer.settings.bloom = 0.3;
+      this.renderer.settings.particles = false;
+    }
 
     this.carMeshes = buildCarMeshes(this.renderer.gl);
     this.trafficMeshes = this.buildTrafficMeshes();
@@ -248,6 +266,34 @@ class Game {
     this.driveState = null;
     this.transition = 0;
     this.hintTimer = 0;
+  }
+
+  // A driving game in portrait is unreadable, so ask for landscape and stop
+  // taking driving input until the phone turns.
+  watchOrientation() {
+    const el = document.getElementById('rotate');
+    const dismiss = document.getElementById('rotateAnyway');
+    // Embedded in a frame the page can be portrait-shaped whichever way the
+    // phone is held, so the prompt must never be a dead end.
+    this.ignorePortrait = false;
+    if (dismiss) {
+      dismiss.addEventListener('click', () => {
+        this.ignorePortrait = true;
+        if (el) el.style.display = 'none';
+        this.orientationBlocked = false;
+      });
+    }
+    const check = () => {
+      const portrait = this.isTouch && !this.ignorePortrait
+        && window.innerHeight > window.innerWidth * 1.05;
+      this.orientationBlocked = portrait && (this.state === 'race' || this.state === 'drive');
+      const show = portrait && this.state !== 'loading';
+      if (el) el.style.display = show ? 'flex' : 'none';
+    };
+    this.checkOrientation = check;
+    window.addEventListener('resize', check);
+    window.addEventListener('orientationchange', () => setTimeout(check, 120));
+    check();
   }
 
   buildTrafficMeshes() {
@@ -513,6 +559,20 @@ class Game {
     }
     if (this.paused) return;
 
+    // Keep the on-screen controls in step with what the player is doing.
+    const driving = this.state === 'race' || this.state === 'drive';
+    this.touch.setVisible(this.isTouch && driving && !this.paused, this.state);
+    if (this.checkOrientation) this.checkOrientation();
+    this.handleTouchTaps();
+    if (this.orientationBlocked) {
+      this.hud.update(dt);
+      if (this.player) {
+        this.player.vehicle.throttle = 0;
+        this.player.vehicle.brake = 1;
+      }
+      return;
+    }
+
     if (this.input.tapped('KeyC')) this.camera.cycle();
     this.camera.lookBack = this.input.held('KeyB');
     if (this.input.tapped('KeyL')) {
@@ -537,6 +597,42 @@ class Game {
 
     this.renderer.updateParticles(dt);
     this.updateAudio(dt);
+  }
+
+  // On-screen buttons map onto the same actions as the keyboard shortcuts.
+  handleTouchTaps() {
+    const taps = this.touch.drainTaps();
+    if (!taps) return;
+    for (const tap of taps) {
+      switch (tap) {
+        case 'camera':
+          this.camera.cycle();
+          break;
+        case 'reset':
+          if (this.state === 'race' || this.state === 'drive') this.resetPlayerToTrack();
+          break;
+        case 'pause':
+          if (this.state === 'race' || this.state === 'drive') {
+            this.paused = !this.paused;
+            this.ui.setPaused(this.paused);
+          }
+          break;
+        case 'lights':
+          this.player.headlightsOn = !this.player.headlightsOn;
+          this.hud.message(this.player.headlightsOn ? 'Headlights on' : 'Headlights off', 1.2);
+          break;
+        case 'indicateLeft':
+          this.player.indicator = this.player.indicator === -1 ? 0 : -1;
+          if (this.player.indicator) this.audio.indicator();
+          break;
+        case 'indicateRight':
+          this.player.indicator = this.player.indicator === 1 ? 0 : 1;
+          if (this.player.indicator) this.audio.indicator();
+          break;
+        default:
+          break;
+      }
+    }
   }
 
   updateIdle(dt) {
@@ -872,7 +968,7 @@ class Game {
       car.indicator = car.indicator === 1 ? 0 : 1;
       if (car.indicator) this.audio.indicator();
     }
-    this.audio.horn(this.input.held('KeyH'));
+    this.audio.horn(this.input.held('KeyH') || this.touch.hornHeld());
 
     // Traffic: only simulate what is nearby.
     const alive = [];
@@ -1058,11 +1154,13 @@ class Game {
 
   draw(dt) {
     const canvas = this.renderer.canvas;
-    const dpr = Math.min(window.devicePixelRatio || 1, this.settings.quality === 'high' ? 2 : 1);
+    const maxDpr = this.isTouch ? 1.5 : (this.settings.quality === 'high' ? 2 : 1);
+    const dpr = Math.min(window.devicePixelRatio || 1, maxDpr);
     const w = canvas.clientWidth || window.innerWidth;
     const h = canvas.clientHeight || window.innerHeight;
     this.renderer.resize(w, h, dpr);
     this.hud.resize(w, h, Math.min(window.devicePixelRatio || 1, 2));
+    this.hud.compact = this.isTouch || Math.min(w, h) < 520;
 
     if (this.state === 'loading' || !this.scene) return;
 

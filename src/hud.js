@@ -26,6 +26,7 @@ class Hud {
     this.height = 0;
     this.dpr = 1;
     this.messages = [];
+    this.compact = false;   // small screens get a different layout, not a scale
     this.font = '"DIN Alternate", "Bahnschrift", "Roboto Condensed", "Arial Narrow", system-ui, sans-serif';
   }
 
@@ -208,6 +209,39 @@ class Hud {
     ctx.restore();
   }
 
+  // On a phone the round dial eats the space the thumbs need, so speed, gear
+  // and revs collapse into one small block along the bottom edge.
+  drawCompactGauge(cx, cy, rpm, gear, speedKmh) {
+    const ctx = this.ctx;
+    const w = 148, h = 50;
+    this.panel(cx - w / 2, cy - h, w, h, 0.55);
+
+    const redline = 7900;
+    const t = clamp(rpm / 8500, 0, 1);
+    const barX = cx - w / 2 + 12, barY = cy - h + 10, barW = w - 24, barH = 5;
+    ctx.fillStyle = 'rgba(255,255,255,0.14)';
+    this.roundRect(barX, barY, barW, barH, 2.5); ctx.fill();
+    const grad = ctx.createLinearGradient(barX, 0, barX + barW, 0);
+    grad.addColorStop(0, '#39d1ff');
+    grad.addColorStop(0.62, '#7bff6a');
+    grad.addColorStop(0.86, '#ffd53d');
+    grad.addColorStop(1, '#ff3b30');
+    ctx.fillStyle = grad;
+    this.roundRect(barX, barY, Math.max(3, barW * t), barH, 2.5); ctx.fill();
+    if (rpm > redline - 400) {
+      ctx.save();
+      ctx.shadowColor = '#ff2d1f'; ctx.shadowBlur = 14;
+      ctx.fillStyle = '#ff2d1f';
+      this.roundRect(barX, barY, barW, barH, 2.5); ctx.fill();
+      ctx.restore();
+    }
+
+    this.text(String(Math.round(Math.abs(speedKmh))), cx + 22, cy - 12, 30, '#fff', 'right', 700);
+    this.text('km/h', cx + 26, cy - 13, 11, 'rgba(255,255,255,0.55)', 'left', 500);
+    this.text(gear, cx - w / 2 + 22, cy - 12, 26, '#fff', 'center', 700);
+    this.text('GEAR', cx - w / 2 + 22, cy - 30, 8, 'rgba(255,255,255,0.45)', 'center', 600);
+  }
+
   // --- minimap --------------------------------------------------------------
 
   drawMinimap(x, y, size, spline, cars, player, extra) {
@@ -290,6 +324,11 @@ class Hud {
     const W = this.width, H = this.height;
     const v = state.player.vehicle;
 
+    if (this.compact) {
+      this.drawRaceCompact(state);
+      return;
+    }
+
     this.drawTacho(W - 130, H - 110, 78, v.rpm, v.gearLabel, v.speedKmh, v.throttle, v.brake);
 
     // Position and lap.
@@ -336,6 +375,32 @@ class Hud {
     this.drawMessages();
   }
 
+  // Phone layout: the corners the thumbs occupy are left clear, and the
+  // standings table is dropped - it is unreadable at this size anyway.
+  drawRaceCompact(state) {
+    const W = this.width, H = this.height;
+    const v = state.player.vehicle;
+
+    this.panel(10, 10, 132, 46, 0.5);
+    this.text('POS', 22, 28, 9, 'rgba(255,255,255,0.5)', 'left', 600);
+    this.text(`${state.position}`, 22, 48, 22, '#fff', 'left', 700);
+    this.text(`/${state.fieldSize}`, 42, 48, 12, 'rgba(255,255,255,0.5)', 'left', 600);
+    this.text('LAP', 82, 28, 9, 'rgba(255,255,255,0.5)', 'left', 600);
+    this.text(`${Math.min(state.lap, state.totalLaps)}`, 82, 48, 22, '#fff', 'left', 700);
+    this.text(`/${state.totalLaps}`, 100, 48, 12, 'rgba(255,255,255,0.5)', 'left', 600);
+
+    this.panel(10, 62, 132, 40, 0.45);
+    this.text(formatTime(state.currentLapTime), 22, 80, 15, '#fff', 'left', 700);
+    this.text(`BEST ${formatTime(state.bestLapTime)}`, 22, 95, 10, '#8ef2a0', 'left', 600);
+
+    const mm = Math.min(124, W * 0.22);
+    this.drawMinimap(W - mm - 10, 10, mm, state.trackSpline, state.cars, state.player, null);
+
+    this.drawCompactGauge(W / 2, H - 8, v.rpm, v.gearLabel, v.speedKmh);
+    this.drawFlags(state);
+    this.drawMessages();
+  }
+
   drawFlags(state) {
     const W = this.width;
     if (state.countdown > 0) {
@@ -343,11 +408,12 @@ class Hud {
       const ctx = this.ctx;
       // Five red lights, like the real thing.
       const lit = 5 - Math.min(5, Math.floor(state.countdown));
-      const cx = W / 2, cy = 110;
-      this.panel(cx - 150, cy - 44, 300, 88, 0.55);
+      const k = this.compact ? 0.62 : 1;
+      const cx = W / 2, cy = this.compact ? 64 : 110;
+      this.panel(cx - 150 * k, cy - 44 * k, 300 * k, 88 * k, 0.55);
       for (let i = 0; i < 5; i++) {
         ctx.beginPath();
-        ctx.arc(cx - 108 + i * 54, cy, 20, 0, TAU);
+        ctx.arc(cx - 108 * k + i * 54 * k, cy, 20 * k, 0, TAU);
         const on = i < lit;
         ctx.fillStyle = on ? '#ff2418' : 'rgba(255,255,255,0.10)';
         ctx.fill();
@@ -358,7 +424,8 @@ class Hud {
       }
     }
     if (state.wrongWay) {
-      this.text('WRONG WAY', W / 2, 190, 40, '#ff4d3d', 'center', 800);
+      this.text('WRONG WAY', W / 2, this.compact ? 130 : 190,
+        this.compact ? 26 : 40, '#ff4d3d', 'center', 800);
     }
   }
 
@@ -368,6 +435,11 @@ class Hud {
     const ctx = this.ctx;
     const W = this.width, H = this.height;
     const v = state.player.vehicle;
+
+    if (this.compact) {
+      this.drawDriveCompact(state);
+      return;
+    }
 
     this.drawTacho(W - 130, H - 110, 78, v.rpm, v.gearLabel, v.speedKmh, v.throttle, v.brake);
 
@@ -423,6 +495,75 @@ class Hud {
     this.drawMessages();
   }
 
+  drawDriveCompact(state) {
+    const ctx = this.ctx;
+    const W = this.width, H = this.height;
+    const v = state.player.vehicle;
+
+    // Speed limit roundel, kept large enough to read at a glance.
+    const lx = 36, ly = 36;
+    ctx.beginPath();
+    ctx.arc(lx, ly, 22, 0, TAU);
+    ctx.fillStyle = '#f2f2ef';
+    ctx.fill();
+    ctx.lineWidth = 5.5;
+    ctx.strokeStyle = state.speeding ? '#ff3b30' : '#c62828';
+    ctx.stroke();
+    this.text(String(state.speedLimit), lx, ly + 7, 19, '#15171c', 'center', 800);
+    this.text(state.roadName, lx + 32, ly - 2, 13, '#fff', 'left', 700);
+    this.text(`${(state.distanceRemaining / 1000).toFixed(2)} km`, lx + 32, ly + 14, 11,
+      'rgba(255,255,255,0.7)', 'left', 500);
+    if (state.speeding) this.text('SLOW DOWN', lx + 32, ly + 30, 11, '#ff6b60', 'left', 700);
+
+    // Turn instruction, centred but kept shallow so it clears the road ahead.
+    const nx = W / 2, ny = 30;
+    this.panel(nx - 104, ny - 22, 208, 46, 0.45);
+    ctx.save();
+    ctx.translate(nx - 80, ny + 1);
+    ctx.rotate(clamp(state.turnAngle, -1.4, 1.4));
+    ctx.beginPath();
+    ctx.moveTo(0, -14); ctx.lineTo(10, 3); ctx.lineTo(4, 3);
+    ctx.lineTo(4, 14); ctx.lineTo(-4, 14); ctx.lineTo(-4, 3); ctx.lineTo(-10, 3);
+    ctx.closePath();
+    ctx.fillStyle = '#4ade80';
+    ctx.fill();
+    ctx.restore();
+    this.text(state.instruction, nx - 62, ny - 2, 13, '#fff', 'left', 700);
+    this.text(state.turnDistance > 0 ? `in ${Math.round(state.turnDistance)} m` : 'now',
+      nx - 62, ny + 14, 10, 'rgba(255,255,255,0.7)', 'left', 500);
+
+    const mm = Math.min(124, W * 0.22);
+    this.drawMinimap(W - mm - 10, 10, mm, state.routeSpline, state.cars, state.player, {
+      destination: state.destination,
+      lights: state.lights,
+    });
+
+    // Rating only earns space when it is moving.
+    if (state.penaltyText) {
+      this.text(state.penaltyText, W / 2, 74, 13, '#ff8a80', 'center', 700);
+    }
+    this.text(`${Math.round(state.rating)}`, 14, H - 14, 15,
+      state.rating > 80 ? '#8ef2a0' : (state.rating > 55 ? '#ffd166' : '#ff6b60'), 'left', 700);
+
+    this.drawCompactGauge(W / 2, H - 8, v.rpm, v.gearLabel, v.speedKmh);
+
+    if (state.player.indicator !== 0 && Math.sin(state.player.indicatorPhase * Math.PI) > 0) {
+      const ix = W / 2 + (state.player.indicator > 0 ? 96 : -96);
+      ctx.save();
+      ctx.translate(ix, H - 30);
+      ctx.rotate(state.player.indicator > 0 ? 0 : Math.PI);
+      ctx.beginPath();
+      ctx.moveTo(9, 0); ctx.lineTo(-3, -8); ctx.lineTo(-3, -3);
+      ctx.lineTo(-9, -3); ctx.lineTo(-9, 3); ctx.lineTo(-3, 3); ctx.lineTo(-3, 8);
+      ctx.closePath();
+      ctx.fillStyle = '#4ade80';
+      ctx.fill();
+      ctx.restore();
+    }
+
+    this.drawMessages();
+  }
+
   drawNavArrow(cx, cy, angle, distance, instruction) {
     const ctx = this.ctx;
     this.panel(cx - 130, cy - 44, 260, 88, 0.42);
@@ -456,12 +597,13 @@ class Hud {
       ctx.save();
       ctx.globalAlpha = clamp(fade, 0, 1);
       const color = m.kind === 'bad' ? '#ff6b60' : (m.kind === 'good' ? '#8ef2a0' : '#ffffff');
-      const size = m.kind === 'big' ? 46 : 24;
+      const base = m.kind === 'big' ? 46 : 24;
+      const size = this.compact ? base * 0.62 : base;
       ctx.shadowColor = 'rgba(0,0,0,0.8)';
       ctx.shadowBlur = 14;
       this.text(m.text, W / 2, y, size, color, 'center', 700);
       ctx.restore();
-      y += 34;
+      y += this.compact ? 24 : 34;
     }
   }
 }

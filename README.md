@@ -23,6 +23,22 @@ then a suburban street. There is a satnav, there are speed limits, and there is
 a rating out of 100 that notices if you ignore either. It ends when the car is
 stopped on the driveway with the garage light on.
 
+## On a phone
+
+It plays on a touchscreen. Turn the phone sideways and the game swaps to an
+on-screen layout: a drag pad for steering under your left thumb, BRAKE and GO
+pedals under your right, and a compact HUD that keeps the corners your thumbs
+need clear.
+
+Steering is a **drag pad rather than arrow buttons**, deliberately. The car has
+speed-sensitive steering and needs small, precise inputs at racing speed;
+buttons can only ask for full lock, which just makes the front tyres slide.
+Slide your thumb left or right as far as you want lock, and let go to
+straighten up.
+
+Touch devices also get a lighter render preset automatically — no shadows, no
+particles, capped resolution.
+
 ## Controls
 
 | | |
@@ -79,7 +95,8 @@ out. `scripts/simtest.mjs` asserts all of that.
       car.js        a drivable car: physics + visuals + effects
       ai.js         the racing driver and the traffic driver
       audio.js      synthesised engine, tyres, wind — no samples
-      hud.js        the canvas overlay
+      hud.js        the canvas overlay, desktop and compact layouts
+      touch.js      on-screen driving controls for phones
       ui.js         menus and results
       game.js       input, camera, race logic, the drive home
     build.mjs       bundles src/ into index.html, plus dist/embed.html for
@@ -91,6 +108,7 @@ out. `scripts/simtest.mjs` asserts all of that.
     node build.mjs              # rebuild index.html from src/
     node scripts/simtest.mjs    # physics + AI assertions, no browser
     node scripts/smoke.mjs      # drive it in headless Chromium, capture shots
+    node scripts/mobile.mjs     # emulate a phone and exercise the touch controls
 
 `simtest.mjs` runs the simulation in plain Node with a stubbed WebGL object, so
 handling and AI regressions get caught in seconds without a GPU.

@@ -22,6 +22,127 @@
   #hud { pointer-events: none; z-index: 2; }
   #gl { z-index: 1; }
 
+  /* ---- touch controls -------------------------------------------------- */
+  /* Sit above the game, below the menus. Nothing here may scroll, zoom or
+     show a tap highlight - all of those fight the steering pad. */
+  .touch {
+    position: fixed; inset: 0; z-index: 4;
+    pointer-events: none;
+    touch-action: none;
+    -webkit-user-select: none; user-select: none;
+    -webkit-tap-highlight-color: transparent;
+    padding: max(10px, env(safe-area-inset-top)) max(10px, env(safe-area-inset-right))
+             max(10px, env(safe-area-inset-bottom)) max(10px, env(safe-area-inset-left));
+  }
+  .touch.hidden, .touch .hidden { display: none; }
+  .touch * { touch-action: none; }
+
+  .touch-steer {
+    position: absolute; left: 0; bottom: 0;
+    width: min(46%, 340px); height: min(44%, 172px);
+    pointer-events: auto;
+    display: flex; flex-direction: column; align-items: center; justify-content: flex-end;
+    gap: 10px; padding: 0 12px 14px;
+  }
+  .touch-steer-track {
+    position: relative; width: 100%; max-width: 240px; height: 62px;
+    border-radius: 31px;
+    background: rgba(12, 14, 19, 0.60);
+    border: 1px solid var(--line);
+    box-shadow: inset 0 1px 0 rgba(255,255,255,0.06);
+    display: flex; align-items: center; justify-content: center;
+    transition: border-color 0.12s, background 0.12s;
+  }
+  .touch-steer.active .touch-steer-track {
+    background: rgba(18, 21, 28, 0.78);
+    border-color: rgba(255, 255, 255, 0.30);
+  }
+  .touch-steer-thumb {
+    width: 52px; height: 46px; border-radius: 23px;
+    background: linear-gradient(180deg, rgba(255,255,255,0.22), rgba(255,255,255,0.10));
+    border: 1px solid rgba(255,255,255,0.34);
+    transition: transform 0.06s linear;
+  }
+  .touch-steer.active .touch-steer-thumb { background: linear-gradient(180deg, #ff5544, #d92b1e); border-color: rgba(255,140,120,0.8); }
+  .touch-steer-label {
+    font-size: 11px; letter-spacing: 0.14em; text-transform: uppercase;
+    color: rgba(242,244,248,0.42);
+  }
+  .touch-steer.active .touch-steer-label, .touch.tilt .touch-steer-label { opacity: 0; }
+  .touch.tilt .touch-steer-track { opacity: 0.35; }
+
+  .touch-pedals {
+    position: absolute; right: 0; bottom: 0;
+    display: flex; align-items: flex-end; gap: 12px;
+    padding: 0 14px 14px; pointer-events: none;
+  }
+  .touch-pedal {
+    pointer-events: auto;
+    width: clamp(74px, 15vw, 104px);
+    height: clamp(74px, 22vh, 116px);
+    border-radius: 20px;
+    font-family: var(--font); font-weight: 700; letter-spacing: 0.08em;
+    font-size: 13px; color: var(--ink);
+    display: flex; align-items: center; justify-content: center;
+    border: 1px solid var(--line);
+    transition: transform 0.06s, filter 0.1s;
+  }
+  .touch-pedal.brake {
+    background: linear-gradient(180deg, rgba(255,59,47,0.30), rgba(150,26,20,0.42));
+    border-color: rgba(255, 90, 76, 0.52);
+  }
+  .touch-pedal.gas {
+    background: linear-gradient(180deg, rgba(74,222,128,0.30), rgba(22,120,62,0.44));
+    border-color: rgba(96, 232, 146, 0.52);
+    height: clamp(84px, 26vh, 132px);
+  }
+  .touch-pedal.active { transform: translateY(2px); filter: brightness(1.55); }
+
+  /* The corners are spoken for: race info top-left, minimap top-right, thumbs
+     along the bottom. These two groups slot into the gaps between them. */
+  .touch-aux, .touch-road { position: absolute; pointer-events: none; gap: 6px; }
+  .touch-aux {
+    left: 12px; top: 112px;
+    display: flex; flex-direction: row;
+  }
+  .touch-road {
+    right: 12px; top: 142px;
+    display: grid; grid-template-columns: repeat(2, auto);
+  }
+  .touch-btn {
+    pointer-events: auto;
+    width: 36px; height: 36px; padding: 0; border-radius: 50%;
+    background: rgba(12, 14, 19, 0.62);
+    border: 1px solid var(--line);
+    color: rgba(242, 244, 248, 0.82);
+    display: flex; align-items: center; justify-content: center;
+  }
+  .touch-btn svg { width: 19px; height: 19px; display: block; }
+  .touch-btn.active { background: rgba(255, 59, 47, 0.30); border-color: rgba(255,120,100,0.7); color: #fff; }
+
+  /* ---- rotate prompt ---------------------------------------------------- */
+  #rotate {
+    position: fixed; inset: 0; z-index: 8; display: none;
+    align-items: center; justify-content: center; text-align: center;
+    padding: 30px; background: #05070b; color: var(--ink);
+  }
+  #rotate h2 { margin-bottom: 6px; }
+  #rotate button { margin-top: 18px; }
+  #rotate .phone {
+    width: 52px; height: 88px; margin: 0 auto 20px;
+    border: 2px solid var(--line); border-radius: 10px;
+    animation: tip 2.2s ease-in-out infinite;
+  }
+  @keyframes tip {
+    0%, 40% { transform: rotate(0deg); }
+    60%, 100% { transform: rotate(-90deg); }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    #rotate h2 { margin-bottom: 6px; }
+  #rotate button { margin-top: 18px; }
+  #rotate .phone { animation: none; transform: rotate(-90deg); }
+  }
+
   .overlay {
     position: fixed; inset: 0; z-index: 5;
     display: flex; align-items: center; justify-content: center;
@@ -174,6 +295,15 @@
 </style>
 <canvas id="gl"></canvas>
 <canvas id="hud"></canvas>
+
+<div id="rotate">
+  <div>
+    <div class="phone"></div>
+    <h2>Turn your phone sideways</h2>
+    <p class="tagline">The road is much easier to read in landscape.</p>
+    <button id="rotateAnyway" class="secondary" type="button">Play in portrait anyway</button>
+  </div>
+</div>
 
 <div id="loading" class="overlay">
   <div class="panel narrow">
@@ -1941,8 +2071,9 @@ void main() {
 //
 // Four wheel model with a simplified Pacejka tyre, longitudinal and lateral
 // load transfer, aerodynamic drag and downforce, a real gearbox and per-wheel
-// slip ratios integrated through wheel inertia. Runs on fixed substeps so the
-// tyre model stays stable no matter what the frame rate does.
+// slip ratios integrated through wheel inertia. The substep count adapts to the
+// frame time so the tyre model stays stable, and the car handles identically at
+// 30 fps on a phone and 144 fps on a desktop.
 // ---------------------------------------------------------------------------
 
 const GRAVITY = 9.81;
@@ -2103,8 +2234,18 @@ class Vehicle {
     return [v[0] * c + v[2] * s, v[1], -v[0] * s + v[2] * c];
   }
 
+  // Substep count follows the frame time rather than being fixed.
+  //
+  // The tyre model is stiff at low speed: slip ratio is (wheel speed - road
+  // speed) over a small reference speed, so a coarse step lets the wheel
+  // overshoot and the slip ratio oscillates between large positive and
+  // negative values. Traction control reads that as wheelspin and cuts the
+  // throttle, and the car crawls away from a standing start. With a fixed four
+  // substeps it took 4.0 s to reach 100 km/h at 120 fps but 6.7 s at 30 fps -
+  // the same car, slower on a slower machine. Holding the substep at ~1/480 s
+  // makes handling identical at 30, 60 or 144 fps.
   update(dt, world) {
-    const steps = 4;
+    const steps = clamp(Math.ceil(dt * 480), 4, 24);
     const h = dt / steps;
     for (let i = 0; i < steps; i++) this.step(h, world);
     this.updateVisualAttitude(dt);
@@ -6706,6 +6847,7 @@ class Hud {
     this.height = 0;
     this.dpr = 1;
     this.messages = [];
+    this.compact = false;   // small screens get a different layout, not a scale
     this.font = '"DIN Alternate", "Bahnschrift", "Roboto Condensed", "Arial Narrow", system-ui, sans-serif';
   }
 
@@ -6888,6 +7030,39 @@ class Hud {
     ctx.restore();
   }
 
+  // On a phone the round dial eats the space the thumbs need, so speed, gear
+  // and revs collapse into one small block along the bottom edge.
+  drawCompactGauge(cx, cy, rpm, gear, speedKmh) {
+    const ctx = this.ctx;
+    const w = 148, h = 50;
+    this.panel(cx - w / 2, cy - h, w, h, 0.55);
+
+    const redline = 7900;
+    const t = clamp(rpm / 8500, 0, 1);
+    const barX = cx - w / 2 + 12, barY = cy - h + 10, barW = w - 24, barH = 5;
+    ctx.fillStyle = 'rgba(255,255,255,0.14)';
+    this.roundRect(barX, barY, barW, barH, 2.5); ctx.fill();
+    const grad = ctx.createLinearGradient(barX, 0, barX + barW, 0);
+    grad.addColorStop(0, '#39d1ff');
+    grad.addColorStop(0.62, '#7bff6a');
+    grad.addColorStop(0.86, '#ffd53d');
+    grad.addColorStop(1, '#ff3b30');
+    ctx.fillStyle = grad;
+    this.roundRect(barX, barY, Math.max(3, barW * t), barH, 2.5); ctx.fill();
+    if (rpm > redline - 400) {
+      ctx.save();
+      ctx.shadowColor = '#ff2d1f'; ctx.shadowBlur = 14;
+      ctx.fillStyle = '#ff2d1f';
+      this.roundRect(barX, barY, barW, barH, 2.5); ctx.fill();
+      ctx.restore();
+    }
+
+    this.text(String(Math.round(Math.abs(speedKmh))), cx + 22, cy - 12, 30, '#fff', 'right', 700);
+    this.text('km/h', cx + 26, cy - 13, 11, 'rgba(255,255,255,0.55)', 'left', 500);
+    this.text(gear, cx - w / 2 + 22, cy - 12, 26, '#fff', 'center', 700);
+    this.text('GEAR', cx - w / 2 + 22, cy - 30, 8, 'rgba(255,255,255,0.45)', 'center', 600);
+  }
+
   // --- minimap --------------------------------------------------------------
 
   drawMinimap(x, y, size, spline, cars, player, extra) {
@@ -6970,6 +7145,11 @@ class Hud {
     const W = this.width, H = this.height;
     const v = state.player.vehicle;
 
+    if (this.compact) {
+      this.drawRaceCompact(state);
+      return;
+    }
+
     this.drawTacho(W - 130, H - 110, 78, v.rpm, v.gearLabel, v.speedKmh, v.throttle, v.brake);
 
     // Position and lap.
@@ -7016,6 +7196,32 @@ class Hud {
     this.drawMessages();
   }
 
+  // Phone layout: the corners the thumbs occupy are left clear, and the
+  // standings table is dropped - it is unreadable at this size anyway.
+  drawRaceCompact(state) {
+    const W = this.width, H = this.height;
+    const v = state.player.vehicle;
+
+    this.panel(10, 10, 132, 46, 0.5);
+    this.text('POS', 22, 28, 9, 'rgba(255,255,255,0.5)', 'left', 600);
+    this.text(`${state.position}`, 22, 48, 22, '#fff', 'left', 700);
+    this.text(`/${state.fieldSize}`, 42, 48, 12, 'rgba(255,255,255,0.5)', 'left', 600);
+    this.text('LAP', 82, 28, 9, 'rgba(255,255,255,0.5)', 'left', 600);
+    this.text(`${Math.min(state.lap, state.totalLaps)}`, 82, 48, 22, '#fff', 'left', 700);
+    this.text(`/${state.totalLaps}`, 100, 48, 12, 'rgba(255,255,255,0.5)', 'left', 600);
+
+    this.panel(10, 62, 132, 40, 0.45);
+    this.text(formatTime(state.currentLapTime), 22, 80, 15, '#fff', 'left', 700);
+    this.text(`BEST ${formatTime(state.bestLapTime)}`, 22, 95, 10, '#8ef2a0', 'left', 600);
+
+    const mm = Math.min(124, W * 0.22);
+    this.drawMinimap(W - mm - 10, 10, mm, state.trackSpline, state.cars, state.player, null);
+
+    this.drawCompactGauge(W / 2, H - 8, v.rpm, v.gearLabel, v.speedKmh);
+    this.drawFlags(state);
+    this.drawMessages();
+  }
+
   drawFlags(state) {
     const W = this.width;
     if (state.countdown > 0) {
@@ -7023,11 +7229,12 @@ class Hud {
       const ctx = this.ctx;
       // Five red lights, like the real thing.
       const lit = 5 - Math.min(5, Math.floor(state.countdown));
-      const cx = W / 2, cy = 110;
-      this.panel(cx - 150, cy - 44, 300, 88, 0.55);
+      const k = this.compact ? 0.62 : 1;
+      const cx = W / 2, cy = this.compact ? 64 : 110;
+      this.panel(cx - 150 * k, cy - 44 * k, 300 * k, 88 * k, 0.55);
       for (let i = 0; i < 5; i++) {
         ctx.beginPath();
-        ctx.arc(cx - 108 + i * 54, cy, 20, 0, TAU);
+        ctx.arc(cx - 108 * k + i * 54 * k, cy, 20 * k, 0, TAU);
         const on = i < lit;
         ctx.fillStyle = on ? '#ff2418' : 'rgba(255,255,255,0.10)';
         ctx.fill();
@@ -7038,7 +7245,8 @@ class Hud {
       }
     }
     if (state.wrongWay) {
-      this.text('WRONG WAY', W / 2, 190, 40, '#ff4d3d', 'center', 800);
+      this.text('WRONG WAY', W / 2, this.compact ? 130 : 190,
+        this.compact ? 26 : 40, '#ff4d3d', 'center', 800);
     }
   }
 
@@ -7048,6 +7256,11 @@ class Hud {
     const ctx = this.ctx;
     const W = this.width, H = this.height;
     const v = state.player.vehicle;
+
+    if (this.compact) {
+      this.drawDriveCompact(state);
+      return;
+    }
 
     this.drawTacho(W - 130, H - 110, 78, v.rpm, v.gearLabel, v.speedKmh, v.throttle, v.brake);
 
@@ -7103,6 +7316,75 @@ class Hud {
     this.drawMessages();
   }
 
+  drawDriveCompact(state) {
+    const ctx = this.ctx;
+    const W = this.width, H = this.height;
+    const v = state.player.vehicle;
+
+    // Speed limit roundel, kept large enough to read at a glance.
+    const lx = 36, ly = 36;
+    ctx.beginPath();
+    ctx.arc(lx, ly, 22, 0, TAU);
+    ctx.fillStyle = '#f2f2ef';
+    ctx.fill();
+    ctx.lineWidth = 5.5;
+    ctx.strokeStyle = state.speeding ? '#ff3b30' : '#c62828';
+    ctx.stroke();
+    this.text(String(state.speedLimit), lx, ly + 7, 19, '#15171c', 'center', 800);
+    this.text(state.roadName, lx + 32, ly - 2, 13, '#fff', 'left', 700);
+    this.text(`${(state.distanceRemaining / 1000).toFixed(2)} km`, lx + 32, ly + 14, 11,
+      'rgba(255,255,255,0.7)', 'left', 500);
+    if (state.speeding) this.text('SLOW DOWN', lx + 32, ly + 30, 11, '#ff6b60', 'left', 700);
+
+    // Turn instruction, centred but kept shallow so it clears the road ahead.
+    const nx = W / 2, ny = 30;
+    this.panel(nx - 104, ny - 22, 208, 46, 0.45);
+    ctx.save();
+    ctx.translate(nx - 80, ny + 1);
+    ctx.rotate(clamp(state.turnAngle, -1.4, 1.4));
+    ctx.beginPath();
+    ctx.moveTo(0, -14); ctx.lineTo(10, 3); ctx.lineTo(4, 3);
+    ctx.lineTo(4, 14); ctx.lineTo(-4, 14); ctx.lineTo(-4, 3); ctx.lineTo(-10, 3);
+    ctx.closePath();
+    ctx.fillStyle = '#4ade80';
+    ctx.fill();
+    ctx.restore();
+    this.text(state.instruction, nx - 62, ny - 2, 13, '#fff', 'left', 700);
+    this.text(state.turnDistance > 0 ? `in ${Math.round(state.turnDistance)} m` : 'now',
+      nx - 62, ny + 14, 10, 'rgba(255,255,255,0.7)', 'left', 500);
+
+    const mm = Math.min(124, W * 0.22);
+    this.drawMinimap(W - mm - 10, 10, mm, state.routeSpline, state.cars, state.player, {
+      destination: state.destination,
+      lights: state.lights,
+    });
+
+    // Rating only earns space when it is moving.
+    if (state.penaltyText) {
+      this.text(state.penaltyText, W / 2, 74, 13, '#ff8a80', 'center', 700);
+    }
+    this.text(`${Math.round(state.rating)}`, 14, H - 14, 15,
+      state.rating > 80 ? '#8ef2a0' : (state.rating > 55 ? '#ffd166' : '#ff6b60'), 'left', 700);
+
+    this.drawCompactGauge(W / 2, H - 8, v.rpm, v.gearLabel, v.speedKmh);
+
+    if (state.player.indicator !== 0 && Math.sin(state.player.indicatorPhase * Math.PI) > 0) {
+      const ix = W / 2 + (state.player.indicator > 0 ? 96 : -96);
+      ctx.save();
+      ctx.translate(ix, H - 30);
+      ctx.rotate(state.player.indicator > 0 ? 0 : Math.PI);
+      ctx.beginPath();
+      ctx.moveTo(9, 0); ctx.lineTo(-3, -8); ctx.lineTo(-3, -3);
+      ctx.lineTo(-9, -3); ctx.lineTo(-9, 3); ctx.lineTo(-3, 3); ctx.lineTo(-3, 8);
+      ctx.closePath();
+      ctx.fillStyle = '#4ade80';
+      ctx.fill();
+      ctx.restore();
+    }
+
+    this.drawMessages();
+  }
+
   drawNavArrow(cx, cy, angle, distance, instruction) {
     const ctx = this.ctx;
     this.panel(cx - 130, cy - 44, 260, 88, 0.42);
@@ -7136,13 +7418,256 @@ class Hud {
       ctx.save();
       ctx.globalAlpha = clamp(fade, 0, 1);
       const color = m.kind === 'bad' ? '#ff6b60' : (m.kind === 'good' ? '#8ef2a0' : '#ffffff');
-      const size = m.kind === 'big' ? 46 : 24;
+      const base = m.kind === 'big' ? 46 : 24;
+      const size = this.compact ? base * 0.62 : base;
       ctx.shadowColor = 'rgba(0,0,0,0.8)';
       ctx.shadowBlur = 14;
       this.text(m.text, W / 2, y, size, color, 'center', 700);
       ctx.restore();
-      y += 34;
+      y += this.compact ? 24 : 34;
     }
+  }
+}
+
+
+// ===== touch.js ======================================================
+// ---------------------------------------------------------------------------
+// touch.js - on-screen driving controls for phones and tablets.
+//
+// The controls are DOM elements rather than shapes drawn on the HUD canvas:
+// pointer events give reliable multi-touch hit testing for free, and CSS keeps
+// them crisp on high-density screens.
+//
+// Steering is a drag pad rather than a pair of arrows. This car has
+// speed-sensitive steering and needs small, precise inputs at racing speed -
+// buttons can only ask for full lock, which just makes the front tyres slide.
+// ---------------------------------------------------------------------------
+
+function isTouchDevice() {
+  return (typeof window !== 'undefined')
+    && (('ontouchstart' in window) || (navigator.maxTouchPoints || 0) > 0);
+}
+
+const TOUCH_SVG = {
+  camera: '<path d="M4 8h3l1.5-2h7L17 8h3v10H4z" fill="none" stroke="currentColor" stroke-width="1.7"/><circle cx="12" cy="13" r="3.2" fill="none" stroke="currentColor" stroke-width="1.7"/>',
+  pause: '<rect x="7" y="5" width="3.4" height="14" rx="1" fill="currentColor"/><rect x="13.6" y="5" width="3.4" height="14" rx="1" fill="currentColor"/>',
+  reset: '<path d="M20 12a8 8 0 1 1-2.6-5.9" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"/><path d="M20 4v5h-5" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"/>',
+  horn: '<path d="M4 10v4h3l5 4V6L7 10z" fill="currentColor"/><path d="M16 9a4 4 0 0 1 0 6" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/><path d="M18.5 6.5a7.5 7.5 0 0 1 0 11" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/>',
+  lights: '<path d="M5 7h5c4 0 7 2.2 7 5s-3 5-7 5H5z" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/><path d="M19 8.5h3M19 12h3.6M19 15.5h3" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/>',
+  left: '<path d="M14 6 8 12l6 6" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>',
+  right: '<path d="m10 6 6 6-6 6" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>',
+};
+
+class TouchControls {
+  constructor(game) {
+    this.game = game;
+    this.enabled = false;
+    this.steerMode = 'pad';        // 'pad' | 'tilt'
+    this.state = { throttle: 0, brake: 0, steer: 0, handbrake: 0 };
+    this.taps = new Set();          // one-shot presses, drained per frame
+    this.held = new Set();
+    this.steerPointer = null;
+    this.steerOrigin = 0;
+    this.tilt = { active: false, zero: null, value: 0 };
+    this.root = null;
+  }
+
+  // Build the overlay. Safe to call once; `setVisible` does the rest.
+  mount() {
+    if (this.root) return;
+    const root = document.createElement('div');
+    root.id = 'touchControls';
+    root.className = 'touch hidden';
+    root.setAttribute('aria-hidden', 'true');
+
+    const icon = (name) =>
+      `<svg viewBox="0 0 24 24" aria-hidden="true">${TOUCH_SVG[name]}</svg>`;
+
+    root.innerHTML = `
+      <div class="touch-steer" data-role="steer">
+        <div class="touch-steer-track"><div class="touch-steer-thumb"></div></div>
+        <span class="touch-steer-label">Slide to steer</span>
+      </div>
+      <div class="touch-pedals">
+        <button class="touch-pedal brake" data-hold="brake" type="button">
+          <span>BRAKE</span>
+        </button>
+        <button class="touch-pedal gas" data-hold="throttle" type="button">
+          <span>GO</span>
+        </button>
+      </div>
+      <div class="touch-aux">
+        <button class="touch-btn" data-tap="camera" type="button" title="Camera">${icon('camera')}</button>
+        <button class="touch-btn" data-tap="reset" type="button" title="Back to the road">${icon('reset')}</button>
+        <button class="touch-btn" data-tap="pause" type="button" title="Pause">${icon('pause')}</button>
+      </div>
+      <div class="touch-road">
+        <button class="touch-btn" data-tap="indicateLeft" type="button" title="Indicate left">${icon('left')}</button>
+        <button class="touch-btn" data-tap="indicateRight" type="button" title="Indicate right">${icon('right')}</button>
+        <button class="touch-btn" data-hold="horn" type="button" title="Horn">${icon('horn')}</button>
+        <button class="touch-btn" data-tap="lights" type="button" title="Headlights">${icon('lights')}</button>
+      </div>`;
+
+    document.body.appendChild(root);
+    this.root = root;
+    this.thumb = root.querySelector('.touch-steer-thumb');
+    this.steerZone = root.querySelector('[data-role="steer"]');
+    this.roadRow = root.querySelector('.touch-road');
+
+    this.bindSteer();
+    for (const el of root.querySelectorAll('[data-hold]')) this.bindHold(el);
+    for (const el of root.querySelectorAll('[data-tap]')) this.bindTap(el);
+  }
+
+  // --- steering -------------------------------------------------------------
+
+  bindSteer() {
+    const zone = this.steerZone;
+    // Full lock at a comfortable thumb sweep, never more than a sixth of the
+    // screen so it stays reachable on a small phone.
+    const travel = () => Math.min(96, Math.max(52, window.innerWidth * 0.13));
+
+    const down = (e) => {
+      if (this.steerPointer !== null) return;
+      this.steerPointer = e.pointerId;
+      this.steerOrigin = e.clientX;
+      try { zone.setPointerCapture(e.pointerId); } catch (err) { /* not capturable */ }
+      zone.classList.add('active');
+      e.preventDefault();
+    };
+    const move = (e) => {
+      if (e.pointerId !== this.steerPointer) return;
+      const dx = e.clientX - this.steerOrigin;
+      const t = clamp(dx / travel(), -1, 1);
+      // A small dead zone stops the car twitching while the thumb rests.
+      this.state.steer = Math.abs(t) < 0.06 ? 0 : t;
+      this.thumb.style.transform = `translateX(${this.state.steer * 46}px)`;
+      e.preventDefault();
+    };
+    const up = (e) => {
+      if (e.pointerId !== this.steerPointer) return;
+      this.steerPointer = null;
+      this.state.steer = 0;
+      this.thumb.style.transform = 'translateX(0px)';
+      zone.classList.remove('active');
+    };
+    zone.addEventListener('pointerdown', down);
+    zone.addEventListener('pointermove', move);
+    zone.addEventListener('pointerup', up);
+    zone.addEventListener('pointercancel', up);
+  }
+
+  bindHold(el) {
+    const key = el.dataset.hold;
+    const on = (e) => {
+      try { el.setPointerCapture(e.pointerId); } catch (err) { /* not capturable */ }
+      el.classList.add('active');
+      this.held.add(key);
+      if (key === 'throttle' || key === 'brake') this.state[key] = 1;
+      e.preventDefault();
+    };
+    const off = () => {
+      el.classList.remove('active');
+      this.held.delete(key);
+      if (key === 'throttle' || key === 'brake') this.state[key] = 0;
+    };
+    el.addEventListener('pointerdown', on);
+    el.addEventListener('pointerup', off);
+    el.addEventListener('pointercancel', off);
+    el.addEventListener('pointerleave', off);
+  }
+
+  bindTap(el) {
+    el.addEventListener('pointerdown', (e) => {
+      el.classList.add('active');
+      this.taps.add(el.dataset.tap);
+      e.preventDefault();
+    });
+    const off = () => el.classList.remove('active');
+    el.addEventListener('pointerup', off);
+    el.addEventListener('pointercancel', off);
+  }
+
+  // --- tilt steering ----------------------------------------------------------
+
+  async enableTilt() {
+    const DOE = window.DeviceOrientationEvent;
+    if (!DOE) return false;
+    // iOS needs explicit permission, and only from a user gesture.
+    if (typeof DOE.requestPermission === 'function') {
+      try {
+        const res = await DOE.requestPermission();
+        if (res !== 'granted') return false;
+      } catch (err) { return false; }
+    }
+    if (!this.tiltHandler) {
+      this.tiltHandler = (e) => {
+        if (e.beta === null && e.gamma === null) return;
+        // Which axis points across the car depends on how the phone is held.
+        const angle = (screen.orientation && screen.orientation.angle) || window.orientation || 0;
+        let raw;
+        if (angle === 90) raw = e.beta;
+        else if (angle === 270 || angle === -90) raw = -e.beta;
+        else raw = e.gamma;
+        if (raw === null || raw === undefined) return;
+        if (this.tilt.zero === null) this.tilt.zero = raw;
+        const delta = raw - this.tilt.zero;
+        this.tilt.value = clamp(delta / 26, -1, 1);
+        this.tilt.active = true;
+      };
+      window.addEventListener('deviceorientation', this.tiltHandler);
+    }
+    this.tilt.zero = null;          // recalibrate to however it is being held
+    this.steerMode = 'tilt';
+    if (this.root) this.root.classList.add('tilt');
+    return true;
+  }
+
+  disableTilt() {
+    this.steerMode = 'pad';
+    this.tilt.active = false;
+    this.tilt.value = 0;
+    if (this.root) this.root.classList.remove('tilt');
+  }
+
+  recalibrateTilt() { this.tilt.zero = null; }
+
+  // --- frame interface --------------------------------------------------------
+
+  setVisible(on, mode) {
+    if (!this.root) return;
+    this.enabled = on;
+    this.root.classList.toggle('hidden', !on);
+    this.root.setAttribute('aria-hidden', on ? 'false' : 'true');
+    // Indicators, horn and lights only mean anything on public roads.
+    if (this.roadRow) this.roadRow.classList.toggle('hidden', mode !== 'drive');
+    if (!on) {
+      this.state.throttle = this.state.brake = this.state.steer = 0;
+      this.held.clear();
+      this.taps.clear();
+    }
+  }
+
+  // Merged into the keyboard/gamepad inputs each frame.
+  driving(out) {
+    if (!this.enabled) return out;
+    out.throttle = Math.max(out.throttle, this.state.throttle);
+    out.brake = Math.max(out.brake, this.state.brake);
+    const steer = this.steerMode === 'tilt' && this.tilt.active
+      ? this.tilt.value
+      : this.state.steer;
+    if (Math.abs(steer) > Math.abs(out.steer)) out.steer = steer;
+    return out;
+  }
+
+  hornHeld() { return this.held.has('horn'); }
+
+  // One-shot presses; drained so each press fires exactly once.
+  drainTaps() {
+    if (this.taps.size === 0) return null;
+    const list = Array.from(this.taps);
+    this.taps.clear();
+    return list;
   }
 }
 
@@ -7383,6 +7908,8 @@ class Input {
     if (this.tapped('KeyE')) out.shiftUp = true;
     if (this.tapped('KeyQ')) out.shiftDown = true;
 
+    if (this.touch) this.touch.driving(out);
+
     const p = this.pad();
     if (p) {
       const ax = p.axes[0] || 0;
@@ -7546,6 +8073,14 @@ class Game {
     this.camera = new Camera();
     this.ui = ui;
 
+    // Phones and tablets get on-screen controls and a lighter render preset.
+    this.isTouch = isTouchDevice();
+    this.touch = new TouchControls(this);
+    this.touch.mount();
+    this.input.touch = this.touch;
+    this.orientationBlocked = false;
+    this.watchOrientation();
+
     this.state = 'loading';
     this.time = 0;
     this.accumulator = 0;
@@ -7555,10 +8090,18 @@ class Game {
       laps: 3,
       difficulty: 0.55,
       assists: true,
-      quality: 'high',
+      quality: this.isTouch ? 'fast' : 'high',
       playerLivery: 0,
       volume: 0.7,
+      tiltSteer: false,
     };
+    if (this.isTouch) {
+      // Shadow passes walk the whole opaque queue twice, which is the single
+      // biggest cost on a phone.
+      this.renderer.settings.shadows = false;
+      this.renderer.settings.bloom = 0.3;
+      this.renderer.settings.particles = false;
+    }
 
     this.carMeshes = buildCarMeshes(this.renderer.gl);
     this.trafficMeshes = this.buildTrafficMeshes();
@@ -7574,6 +8117,34 @@ class Game {
     this.driveState = null;
     this.transition = 0;
     this.hintTimer = 0;
+  }
+
+  // A driving game in portrait is unreadable, so ask for landscape and stop
+  // taking driving input until the phone turns.
+  watchOrientation() {
+    const el = document.getElementById('rotate');
+    const dismiss = document.getElementById('rotateAnyway');
+    // Embedded in a frame the page can be portrait-shaped whichever way the
+    // phone is held, so the prompt must never be a dead end.
+    this.ignorePortrait = false;
+    if (dismiss) {
+      dismiss.addEventListener('click', () => {
+        this.ignorePortrait = true;
+        if (el) el.style.display = 'none';
+        this.orientationBlocked = false;
+      });
+    }
+    const check = () => {
+      const portrait = this.isTouch && !this.ignorePortrait
+        && window.innerHeight > window.innerWidth * 1.05;
+      this.orientationBlocked = portrait && (this.state === 'race' || this.state === 'drive');
+      const show = portrait && this.state !== 'loading';
+      if (el) el.style.display = show ? 'flex' : 'none';
+    };
+    this.checkOrientation = check;
+    window.addEventListener('resize', check);
+    window.addEventListener('orientationchange', () => setTimeout(check, 120));
+    check();
   }
 
   buildTrafficMeshes() {
@@ -7839,6 +8410,20 @@ class Game {
     }
     if (this.paused) return;
 
+    // Keep the on-screen controls in step with what the player is doing.
+    const driving = this.state === 'race' || this.state === 'drive';
+    this.touch.setVisible(this.isTouch && driving && !this.paused, this.state);
+    if (this.checkOrientation) this.checkOrientation();
+    this.handleTouchTaps();
+    if (this.orientationBlocked) {
+      this.hud.update(dt);
+      if (this.player) {
+        this.player.vehicle.throttle = 0;
+        this.player.vehicle.brake = 1;
+      }
+      return;
+    }
+
     if (this.input.tapped('KeyC')) this.camera.cycle();
     this.camera.lookBack = this.input.held('KeyB');
     if (this.input.tapped('KeyL')) {
@@ -7863,6 +8448,42 @@ class Game {
 
     this.renderer.updateParticles(dt);
     this.updateAudio(dt);
+  }
+
+  // On-screen buttons map onto the same actions as the keyboard shortcuts.
+  handleTouchTaps() {
+    const taps = this.touch.drainTaps();
+    if (!taps) return;
+    for (const tap of taps) {
+      switch (tap) {
+        case 'camera':
+          this.camera.cycle();
+          break;
+        case 'reset':
+          if (this.state === 'race' || this.state === 'drive') this.resetPlayerToTrack();
+          break;
+        case 'pause':
+          if (this.state === 'race' || this.state === 'drive') {
+            this.paused = !this.paused;
+            this.ui.setPaused(this.paused);
+          }
+          break;
+        case 'lights':
+          this.player.headlightsOn = !this.player.headlightsOn;
+          this.hud.message(this.player.headlightsOn ? 'Headlights on' : 'Headlights off', 1.2);
+          break;
+        case 'indicateLeft':
+          this.player.indicator = this.player.indicator === -1 ? 0 : -1;
+          if (this.player.indicator) this.audio.indicator();
+          break;
+        case 'indicateRight':
+          this.player.indicator = this.player.indicator === 1 ? 0 : 1;
+          if (this.player.indicator) this.audio.indicator();
+          break;
+        default:
+          break;
+      }
+    }
   }
 
   updateIdle(dt) {
@@ -8198,7 +8819,7 @@ class Game {
       car.indicator = car.indicator === 1 ? 0 : 1;
       if (car.indicator) this.audio.indicator();
     }
-    this.audio.horn(this.input.held('KeyH'));
+    this.audio.horn(this.input.held('KeyH') || this.touch.hornHeld());
 
     // Traffic: only simulate what is nearby.
     const alive = [];
@@ -8384,11 +9005,13 @@ class Game {
 
   draw(dt) {
     const canvas = this.renderer.canvas;
-    const dpr = Math.min(window.devicePixelRatio || 1, this.settings.quality === 'high' ? 2 : 1);
+    const maxDpr = this.isTouch ? 1.5 : (this.settings.quality === 'high' ? 2 : 1);
+    const dpr = Math.min(window.devicePixelRatio || 1, maxDpr);
     const w = canvas.clientWidth || window.innerWidth;
     const h = canvas.clientHeight || window.innerHeight;
     this.renderer.resize(w, h, dpr);
     this.hud.resize(w, h, Math.min(window.devicePixelRatio || 1, 2));
+    this.hud.compact = this.isTouch || Math.min(w, h) < 520;
 
     if (this.state === 'loading' || !this.scene) return;
 
