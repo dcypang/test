@@ -15,6 +15,7 @@ const FLAG_GLASS = 2;   // tinted, strongly reflective, semi transparent
 const FLAG_FOLIAGE = 3; // cheap wrap lighting so trees are not black
 const FLAG_ROAD = 4;    // wet-ish asphalt: sharper reflections at grazing angles
 const FLAG_UNLIT = 5;   // emissive panels, light lenses, marker arrows
+const FLAG_CABIN = 6;   // inside the car: sky and sun arrive through one window
 
 function createContext(canvas) {
   const opts = {

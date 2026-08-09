@@ -99,9 +99,15 @@ const m4 = {
     return o;
   },
 
+  // The world is left handed: +X right, +Y up, +Z forward. `lookAt` builds a
+  // right handed basis, so without this the image comes out mirrored in X -
+  // steering right swings the view left, the minimap disagrees with the road,
+  // and the driver ends up sitting on the wrong side of the car. Negating clip
+  // X puts it back. The winding then runs the other way, which is why the main
+  // pass sets frontFace to CW.
   perspective(o, fovy, aspect, near, far) {
     const f = 1 / Math.tan(fovy / 2);
-    o[0] = f / aspect; o[1] = 0; o[2] = 0; o[3] = 0;
+    o[0] = -f / aspect; o[1] = 0; o[2] = 0; o[3] = 0;
     o[4] = 0; o[5] = f; o[6] = 0; o[7] = 0;
     o[8] = 0; o[9] = 0; o[10] = (far + near) / (near - far); o[11] = -1;
     o[12] = 0; o[13] = 0; o[14] = (2 * far * near) / (near - far); o[15] = 0;

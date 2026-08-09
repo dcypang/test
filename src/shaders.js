@@ -159,6 +159,9 @@ uniform vec3 uFogColor;
 uniform float uFogDensity;
 uniform float uWetness;
 uniform float uAlpha;
+// Per-draw multiplier on emissive output. Lets one small mesh be drawn dark or
+// lit without rebuilding it, which is how the shift lights follow the revs.
+uniform vec3 uEmissiveTint;
 uniform vec3 uHeadlightPos;
 uniform vec3 uHeadlightDir;
 uniform float uHeadlightOn;
@@ -265,7 +268,9 @@ vec3 applyLivery(vec3 lp, vec3 base, out float roughAdj) {
 
   // Door roundel with the race number.
   if (ax > 0.62 && uPaintOverride > 0.5) {
-    vec2 q = vec2(-sign(x) * (z + 0.18), y - 0.52);
+    // The number has to read forwards from outside the car, so the horizontal
+    // axis runs the opposite way on each flank.
+    vec2 q = vec2(sign(x) * (z + 0.18), y - 0.52);
     float r = length(q / vec2(0.42, 0.30));
     float disc = 1.0 - smoothstep(0.94, 1.0, r);
     col = mix(col, vec3(0.93, 0.93, 0.90), disc);
@@ -381,6 +386,17 @@ void main() {
   vec3 ambientSpec = envSpecular(R, rough) * envF * 0.85;
   vec3 color = direct + ambientDiffuse + ambientSpec;
 
+  // Inside the cabin the sky is not overhead, it is a windscreen. There is no
+  // ambient occlusion in this renderer, so without this every interior surface
+  // is lit as though the roof were not there and the whole cockpit washes out
+  // to pale grey. Surfaces facing forward keep more of it than ones facing up.
+  // Upright surfaces face the glass and keep more of it; the headliner and the
+  // floor face each other and keep least.
+  if (flag == 6) {
+    float toWindow = mix(0.30, 1.0, 1.0 - abs(N.y));
+    color = direct * 0.24 + (ambientDiffuse + ambientSpec) * 0.42 * toWindow;
+  }
+
   // --- clear coat on car paint --------------------------------------------------
   if (flag == 1) {
     // A perfectly smooth coat aliases badly on curved panels, so the lobe is
@@ -403,8 +419,10 @@ void main() {
   }
 
   // --- emissive & headlights ---------------------------------------------------
-  color += albedo * emissive * mix(1.0, 2.4, uNight);
-  if (flag == 5) color = albedo * (1.0 + emissive * 2.0);
+  color += albedo * emissive * uEmissiveTint * mix(1.0, 2.4, uNight);
+  // Unlit surfaces take the tint on the whole colour, not just the glow: an
+  // extinguished LED has to go dark, not sit there at full albedo.
+  if (flag == 5) color = albedo * uEmissiveTint * (1.0 + emissive * 2.0);
 
   if (uHeadlightOn > 0.5 && flag != 5) {
     vec3 toL = uHeadlightPos - vWorld;

@@ -253,6 +253,10 @@ class Renderer {
     gl.cullFace(gl.BACK);
     gl.disable(gl.BLEND);
 
+    // The shadow cascades project through an orthographic matrix that is not
+    // mirrored, so they keep the ordinary winding.
+    gl.frontFace(gl.CCW);
+
     // --- shadow cascades ------------------------------------------------------
     if (this.settings.shadows) {
       const ahead = [
@@ -282,6 +286,9 @@ class Renderer {
     }
 
     // --- scene ----------------------------------------------------------------
+    // The camera projection negates clip X to undo the handedness mismatch, and
+    // a mirrored projection reverses which way a triangle winds on screen.
+    gl.frontFace(gl.CW);
     this.scene.bind();
     gl.clearColor(a.fogColor[0], a.fogColor[1], a.fogColor[2], 1);
     gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
@@ -367,6 +374,7 @@ class Renderer {
       m4.normalMatrix(this.normalMat, matrix);
       program.m3('uNormalMat', this.normalMat);
       program.f('uAlpha', opts.alpha !== undefined ? opts.alpha : 1.0);
+      program.v3('uEmissiveTint', opts.emissiveTint || WHITE_TINT);
       if (opts.paint) {
         program.v3('uPaintColor', opts.paint);
         program.v3('uStripeColor', opts.stripe || [0.92, 0.92, 0.90]);
@@ -497,3 +505,4 @@ class Renderer {
 }
 
 const EMPTY_OPTS = {};
+const WHITE_TINT = [1, 1, 1];

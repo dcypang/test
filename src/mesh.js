@@ -301,6 +301,17 @@ class MeshBuilder {
     return this;
   }
 
+  // Re-flag every ordinary surface in this builder as cabin trim, so the shader
+  // can light it as something under a roof. Screens, lenses and painted panels
+  // keep their own flags: an unlit dash readout is unlit wherever it is.
+  markCabin() {
+    const v = this.verts;
+    for (let i = 0; i < v.length; i += VERTEX_FLOATS) {
+      if (v[i + 12] === FLAG_DEFAULT) v[i + 12] = FLAG_CABIN;
+    }
+    return this;
+  }
+
   bounds() {
     const min = [Infinity, Infinity, Infinity], max = [-Infinity, -Infinity, -Infinity];
     const v = this.verts;

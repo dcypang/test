@@ -23,6 +23,27 @@ then a suburban street. There is a satnav, there are speed limits, and there is
 a rating out of 100 that notices if you ignore either. It ends when the car is
 stopped on the driveway with the garage light on.
 
+You do not have to finish the race to get there — **Skip to the drive home** on
+the title screen goes straight to the circuit gates.
+
+## From the driver's seat
+
+The game opens in the cockpit, and the cockpit is the point. You sit behind a
+flat-bottomed suede-rimmed wheel with a screen and a shift-light strip in the
+hub; the lights come up green, amber, red as the revs climb and flash at the
+limiter. Your hands are on the rim at quarter to three and stay there — they
+ride round with the wheel, and the forearms are solved back to the elbows each
+frame rather than being frozen in one pose.
+
+Around it: a binnacle hood, air vents, a switch panel with flip guards and a
+master cut-off, the rear-view mirror, a window net on the driver's door, a
+six-point harness, the pedal box and a dead pedal for your left foot.
+
+Your head is not bolted to the chassis. It leans away from the cornering force,
+dips under braking, and looks a little way into a corner before the car gets
+there. `C` cycles through cockpit, bonnet, chase, far chase and bumper; **View**
+on the title screen picks which one you start in.
+
 ## On a phone
 
 It plays on a touchscreen. Turn the phone sideways and the game swaps to an

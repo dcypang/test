@@ -9,7 +9,7 @@ class UI {
     this.el = {};
     for (const id of ['loading', 'loadingText', 'title', 'results', 'arrived', 'pause',
       'resultsBody', 'resultsHeadline', 'arrivedBody', 'liveryRow', 'lapsRow',
-      'difficultyRow', 'assistRow', 'qualityRow', 'steerInvertRow', 'steerInvertBlock',
+      'difficultyRow', 'assistRow', 'cameraRow', 'qualityRow', 'steerInvertRow', 'steerInvertBlock',
       'startBtn', 'driveBtn', 'resultsDrive',
       'resultsRestart', 'arrivedRestart', 'arrivedDrive', 'resumeBtn', 'quitBtn']) {
       this.el[id] = document.getElementById(id);
@@ -69,6 +69,15 @@ class UI {
       (v) => { this.game.settings.difficulty = v; }, () => this.game.settings.difficulty);
     this.makeOptions(this.el.assistRow, [['On', true], ['Off', false]],
       (v) => { this.game.settings.assists = v; }, () => this.game.settings.assists);
+    this.makeOptions(this.el.cameraRow,
+      [['Cockpit', 'cockpit'], ['Bonnet', 'bonnet'], ['Chase', 'chase']],
+      (v) => {
+        this.game.settings.camera = v;
+        // Apply it immediately if a session is already running.
+        if (this.game.state === 'race' || this.game.state === 'drive') {
+          this.game.camera.mode = this.game.startCameraMode();
+        }
+      }, () => this.game.settings.camera);
     this.makeOptions(this.el.qualityRow, [['High', 'high'], ['Fast', 'fast']],
       (v) => {
         this.game.settings.quality = v;
@@ -110,7 +119,7 @@ class UI {
 
   refreshSelection() {
     for (const row of [this.el.lapsRow, this.el.difficultyRow, this.el.assistRow,
-      this.el.qualityRow, this.el.steerInvertRow]) {
+      this.el.cameraRow, this.el.qualityRow, this.el.steerInvertRow]) {
       const current = row._getter();
       for (const b of row.children) b.classList.toggle('active', b._value === current);
     }

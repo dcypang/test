@@ -93,6 +93,38 @@ if (booted) {
   });
   console.log('race telemetry:', JSON.stringify(telemetry));
 
+  // Steering direction. The world is left handed and lookAt is right handed,
+  // so it is entirely possible for the whole image to come out mirrored and
+  // still look plausible - the giveaway is that steering right swings the view
+  // the wrong way. Project a fixed landmark and watch which way it slides.
+  const steerDir = await page.evaluate(() => {
+    const g = window.__game;
+    const v = g.player.vehicle;
+    const ndcX = (pt) => {
+      g.camera.applyProjection(16 / 9);
+      const m = g.camera.viewProj;
+      const w = m[3] * pt[0] + m[7] * pt[1] + m[11] * pt[2] + m[15];
+      return { x: (m[0] * pt[0] + m[4] * pt[1] + m[8] * pt[2] + m[12]) / w, w };
+    };
+    const drive = (steer, throttle) => {
+      g.input.driving = () => ({ throttle, brake: 0, steer, handbrake: 0, shiftUp: false, shiftDown: false });
+    };
+    const restore = g.input.driving.bind(g.input);
+    drive(0, 0.7);
+    for (let i = 0; i < 120; i++) g.update(1 / 60);
+    const mark = [v.pos[0] + Math.sin(v.yaw) * 40, v.pos[1] + 1.0, v.pos[2] + Math.cos(v.yaw) * 40];
+    const before = ndcX(mark);
+    drive(1, 0.4);
+    for (let i = 0; i < 40; i++) g.update(1 / 60);
+    const after = ndcX(mark);
+    g.input.driving = restore;
+    return { before: before.x, after: after.x, wOk: before.w > 0 && after.w > 0 };
+  });
+  const steerOk = steerDir.wOk && steerDir.after < steerDir.before - 0.2;
+  console.log(`steering right turns right on screen: ${steerOk ? 'ok' : 'FAIL'} `
+    + `(landmark ndc ${steerDir.before.toFixed(2)} -> ${steerDir.after.toFixed(2)}, must decrease)`);
+  if (!steerOk) errors.push('steering is mirrored: turning right moves the view left');
+
   // Cockpit view.
   await page.evaluate(() => { window.__game.camera.mode = 3; });
   await page.waitForTimeout(800);

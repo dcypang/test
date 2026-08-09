@@ -571,33 +571,137 @@ function buildCaliper(mb, rimRadius, width) {
 
 // --- interior ---------------------------------------------------------------
 
+// Where the driver sits, and where the wheel is mounted on the column. Every
+// cockpit part is placed relative to these, so moving the seat moves the lot.
+const SEAT_X = -0.36;
+const WHEEL_POS = [SEAT_X, 0.925, 0.28];
+const WHEEL_TILT = 0.42;            // radians the rim leans away from the driver
+const WHEEL_RADIUS = 0.150;
+// The eye sits behind and above the rim. Used by the cockpit camera and by the
+// helmet, which has to be somewhere the camera is not.
+const EYE_POS = [SEAT_X, 1.10, -0.40];
+
 function buildInterior(mb) {
   useMat(mb, MAT.interior);
   // Floor and firewall.
   mb.push(); mb.translate(0, 0.44, -0.15); mb.box(1.60, 0.04, 2.10); mb.pop();
   mb.push(); mb.translate(0, 0.62, -1.05); mb.box(1.55, 0.42, 0.05); mb.pop();
-  // Dashboard and centre console.
-  mb.push(); mb.translate(0, 0.80, 0.62); mb.rotateX(-0.30); mb.chamferBox(1.50, 0.26, 0.42, 0.06); mb.pop();
+
+  // --- dashboard ------------------------------------------------------------
+  // Top pad, sloping away from the driver, with a raised lip at the screen end
+  // so it reads as a moulding rather than a slab.
+  mb.push(); mb.translate(0, 0.83, 0.66); mb.rotateX(-0.26); mb.chamferBox(1.52, 0.13, 0.52, 0.05); mb.pop();
+  mb.push(); mb.translate(0, 0.775, 0.40); mb.chamferBox(1.50, 0.20, 0.16, 0.04); mb.pop();
+  // Binnacle hood over the driver's instruments: the overhang is what stops the
+  // dash reading as a flat wall from the seat.
+  mb.push(); mb.translate(SEAT_X, 0.995, 0.50); mb.rotateX(-0.34); mb.chamferBox(0.44, 0.035, 0.20, 0.014); mb.pop();
+  for (const s of [-1, 1]) {
+    mb.push(); mb.translate(SEAT_X + s * 0.215, 0.945, 0.50); mb.rotateX(-0.34);
+    mb.chamferBox(0.028, 0.10, 0.19, 0.010); mb.pop();
+  }
+  // Steering column shroud, dash to hub.
+  useMat(mb, MAT.matte);
+  mb.push(); mb.translate(WHEEL_POS[0], WHEEL_POS[1] + 0.045, WHEEL_POS[2] + 0.16);
+  mb.rotateX(Math.PI / 2 - WHEEL_TILT); mb.cylinder(0.048, 0.062, 0.30, 12); mb.pop();
+
+  // Auxiliary screen behind the rim. The readout the driver actually uses is on
+  // the wheel, so this one stays small and dim - a lit panel this close to the
+  // eye blows out through the tone mapping and washes the whole cockpit.
+  mb.mat([0.016, 0.024, 0.024], 0.20, 0.0, 0.05, FLAG_UNLIT);
+  mb.push(); mb.translate(SEAT_X, 0.952, 0.478); mb.rotateX(-0.34); mb.box(0.300, 0.088, 0.008); mb.pop();
+  mb.mat([0.07, 0.34, 0.15], 0.2, 0.0, 0.30, FLAG_UNLIT);
+  mb.push(); mb.translate(SEAT_X, 0.976, 0.470); mb.rotateX(-0.34); mb.box(0.262, 0.012, 0.004); mb.pop();
+  mb.mat([0.10, 0.16, 0.26], 0.2, 0.0, 0.28, FLAG_UNLIT);
+  for (const s of [-1, 1]) {
+    mb.push(); mb.translate(SEAT_X + s * 0.092, 0.944, 0.474); mb.rotateX(-0.34);
+    mb.box(0.078, 0.030, 0.004); mb.pop();
+  }
+
+  // Air vents across the dash face.
+  mb.mat([0.030, 0.030, 0.034], 0.85, 0.0, 0, FLAG_DEFAULT);
+  for (const vx of [-0.66, -0.02, 0.62]) {
+    mb.push(); mb.translate(vx, 0.782, 0.322); mb.box(0.19, 0.062, 0.02); mb.pop();
+    for (const f of [-0.018, 0.0, 0.018]) {
+      mb.push(); mb.translate(vx, 0.782 + f, 0.312); mb.box(0.185, 0.006, 0.012); mb.pop();
+    }
+  }
+
+  // --- centre stack ---------------------------------------------------------
+  useMat(mb, MAT.interior);
   mb.push(); mb.translate(0, 0.60, 0.20); mb.box(0.26, 0.26, 0.70); mb.pop();
-  // Digital dash panel.
-  mb.mat([0.04, 0.09, 0.07], 0.25, 0.0, 0.22, FLAG_UNLIT);
-  mb.push(); mb.translate(-0.36, 0.925, 0.455); mb.rotateX(-0.30); mb.box(0.24, 0.085, 0.01); mb.pop();
-  // Door cards.
+  useMat(mb, MAT.carbon);
+  mb.push(); mb.translate(0.05, 0.775, 0.30); mb.rotateY(-0.34); mb.rotateX(-0.18);
+  mb.chamferBox(0.20, 0.17, 0.016, 0.008); mb.pop();
+  // Toggle switches under flip guards, and the master cut-off.
+  for (let i = 0; i < 4; i++) {
+    const sx = 0.05 + (i - 1.5) * 0.043;
+    mb.mat([0.55, 0.56, 0.60], 0.30, 0.85, 0, FLAG_DEFAULT);
+    mb.push(); mb.translate(sx * 1.0, 0.800, 0.276 + sx * 0.10); mb.rotateY(-0.34);
+    mb.rotateX(0.6); mb.cylinder(0.004, 0.005, 0.026, 6); mb.pop();
+    mb.mat(i === 3 ? [0.75, 0.10, 0.06] : [0.10, 0.10, 0.12], 0.5, 0.1, 0, FLAG_DEFAULT);
+    mb.push(); mb.translate(sx * 1.0, 0.780, 0.272 + sx * 0.10); mb.rotateY(-0.34);
+    mb.box(0.030, 0.014, 0.012); mb.pop();
+  }
+  mb.mat([0.80, 0.09, 0.05], 0.45, 0.05, 0.05, FLAG_DEFAULT);
+  mb.push(); mb.translate(0.05, 0.735, 0.262); mb.rotateY(-0.34); mb.rotateX(-Math.PI / 2);
+  mb.cylinder(0.021, 0.024, 0.020, 12); mb.pop();
+
+  // --- mirrors --------------------------------------------------------------
+  useMat(mb, MAT.matte);
+  mb.push(); mb.translate(0.0, 1.185, 0.34); mb.chamferBox(0.30, 0.055, 0.035, 0.012); mb.pop();
+  mb.push(); mb.translate(0.0, 1.225, 0.36); mb.box(0.03, 0.05, 0.03); mb.pop();
+  mb.mat([0.10, 0.11, 0.13], 0.06, 0.9, 0, FLAG_DEFAULT);
+  mb.push(); mb.translate(0.0, 1.185, 0.318); mb.box(0.276, 0.044, 0.004); mb.pop();
+
+  // --- doors ----------------------------------------------------------------
   useMat(mb, MAT.interior);
   for (const s of [-1, 1]) {
     mb.push(); mb.translate(s * 0.80, 0.62, 0.05); mb.box(0.06, 0.40, 1.50); mb.pop();
+    // Pull strap where a road car would have a handle.
+    mb.mat([0.55, 0.16, 0.07], 0.85, 0, 0, FLAG_DEFAULT);
+    mb.push(); mb.translate(s * 0.765, 0.74, 0.06); mb.box(0.012, 0.11, 0.16); mb.pop();
+    useMat(mb, MAT.interior);
   }
-  // Bucket seats with harnesses.
+  // Window net on the driver's side, the way a race car is scrutineered.
+  mb.mat([0.05, 0.05, 0.06], 0.90, 0.0, 0, FLAG_DEFAULT);
+  for (let i = 0; i < 5; i++) {
+    const y = 0.90 + i * 0.055;
+    mb.push(); mb.translate(-0.755, y, -0.14); mb.rotateY(Math.PI / 2); mb.box(0.72, 0.012, 0.006); mb.pop();
+  }
+  for (let i = 0; i < 6; i++) {
+    const z = -0.44 + i * 0.118;
+    mb.push(); mb.translate(-0.755, 1.01, z); mb.box(0.006, 0.235, 0.012); mb.pop();
+  }
+
+  // --- seats and harnesses --------------------------------------------------
   for (const s of [-1, 1]) {
     useMat(mb, MAT.seat);
     mb.push(); mb.translate(s * 0.36, 0.56, -0.30); mb.box(0.50, 0.12, 0.52); mb.pop();
     mb.push(); mb.translate(s * 0.36, 0.86, -0.58); mb.rotateX(0.16); mb.chamferBox(0.50, 0.62, 0.14, 0.05); mb.pop();
     mb.push(); mb.translate(s * 0.36, 1.18, -0.62); mb.box(0.44, 0.16, 0.14); mb.pop();
-    mb.mat([0.72, 0.28, 0.06], 0.8, 0, 0, FLAG_DEFAULT);
-    for (const h of [-0.12, 0.12]) {
-      mb.push(); mb.translate(s * 0.36 + h, 0.90, -0.50); mb.rotateX(0.16); mb.box(0.055, 0.52, 0.02); mb.pop();
+    // Side bolsters: a bucket seat is mostly its bolsters seen from inside.
+    for (const b of [-1, 1]) {
+      mb.push(); mb.translate(s * 0.36 + b * 0.245, 0.66, -0.32); mb.rotateZ(-b * 0.22);
+      mb.chamferBox(0.075, 0.19, 0.46, 0.035); mb.pop();
+      mb.push(); mb.translate(s * 0.36 + b * 0.215, 0.92, -0.545); mb.rotateX(0.16); mb.rotateY(-b * 0.30);
+      mb.chamferBox(0.070, 0.54, 0.16, 0.032); mb.pop();
     }
+    // Six-point harness.
+    mb.mat([0.78, 0.30, 0.05], 0.85, 0, 0, FLAG_DEFAULT);
+    for (const h of [-0.13, 0.13]) {
+      mb.push(); mb.translate(s * 0.36 + h, 0.90, -0.495); mb.rotateX(0.16); mb.box(0.062, 0.54, 0.014); mb.pop();
+    }
+    for (const h of [-1, 1]) {
+      mb.push(); mb.translate(s * 0.36 + h * 0.17, 0.625, -0.34); mb.rotateZ(h * 0.5);
+      mb.box(0.055, 0.15, 0.014); mb.pop();
+    }
+    mb.mat([0.20, 0.21, 0.24], 0.35, 0.7, 0, FLAG_DEFAULT);
+    mb.push(); mb.translate(s * 0.36, 0.635, -0.40); mb.box(0.085, 0.075, 0.026); mb.pop();
   }
+
+  // Extinguisher bottle strapped behind the passenger seat.
+  mb.mat([0.72, 0.10, 0.07], 0.35, 0.15, 0, FLAG_DEFAULT);
+  mb.push(); mb.translate(0.36, 0.60, -0.86); mb.rotateZ(Math.PI / 2); mb.cylinder(0.058, 0.058, 0.30, 12); mb.pop();
   // Roll cage.
   useMat(mb, MAT.cage);
   const tube = (from, to, r = 0.028) => {
@@ -628,77 +732,223 @@ function buildInterior(mb) {
   tube([0.66, 1.18, -0.84], [0.60, 0.50, -1.60]);
   tube([-0.70, 0.60, -0.70], [-0.66, 0.72, 0.40], 0.024);
   tube([0.70, 0.60, -0.70], [0.66, 0.72, 0.40], 0.024);
-  // Pedals.
+  // Pedal box: clutch, brake, throttle, plus a dead pedal for the left foot.
   useMat(mb, MAT.steel);
   for (const px of [-0.44, -0.30, -0.16]) {
     mb.push(); mb.translate(px, 0.55, 0.90); mb.rotateX(0.35); mb.box(0.07, 0.16, 0.02); mb.pop();
+    mb.push(); mb.translate(px, 0.475, 0.905); mb.box(0.018, 0.075, 0.018); mb.pop();
   }
+  mb.push(); mb.translate(-0.585, 0.545, 0.86); mb.rotateX(0.30); mb.rotateZ(-0.16);
+  mb.box(0.085, 0.24, 0.018); mb.pop();
 }
 
-// Steering wheel is its own mesh so it can be rotated by the input.
+// --- steering wheel ---------------------------------------------------------
+//
+// Local frame: the rim lies in XY with +Y up and the wheel's own origin at the
+// hub. The driver is on the -Z side, so everything meant to be read or pressed
+// faces -Z and the paddles hide behind at +Z. The mesh is separate from the
+// interior so the input can rotate it.
+
+// How far round the rim the hands sit, measured from 3 o'clock. Quarter to
+// three, the way you are taught, is a small lift above the horizontal.
+const GRIP_ANGLE = 0.16;
+
+// A smooth window that peaks at 9 and 3 o'clock: where the rim is thickest and
+// where the suede goes.
+function rimGrip(a) {
+  const s = clamp((Math.abs(Math.cos(a)) - 0.52) / 0.42, 0, 1);
+  return s * s * (3 - 2 * s);
+}
+
 function buildSteeringWheel(mb) {
-  useMat(mb, MAT.matte);
-  const r = 0.155;
-  const seg = 22, tubeSeg = 8, tubeR = 0.021;
-  const rings = [];
-  for (let i = 0; i <= seg; i++) {
+  const R = WHEEL_RADIUS;
+  const FLAT = -0.60 * R;             // flat bottom, the way a race wheel is cut
+  const seg = 56, tubeSeg = 12;
+
+  // Centreline first, then a tube swept along it. Sweeping off the centreline
+  // rather than off the circle is what lets the bottom go flat without the
+  // section shearing where the curve straightens out.
+  const centre = [];
+  for (let i = 0; i < seg; i++) {
     const a = (i / seg) * TAU;
-    // Squared-off race wheel: flat top and bottom.
-    const rr = r * (1 - 0.16 * Math.pow(Math.abs(Math.sin(a)), 4));
-    const cx = Math.cos(a) * rr, cy = Math.sin(a) * rr;
+    centre.push([Math.cos(a) * R, Math.max(Math.sin(a) * R, FLAT)]);
+  }
+  const rings = [], grips = [];
+  for (let i = 0; i <= seg; i++) {
+    const k = i % seg;
+    const p = centre[k];
+    const pPrev = centre[(k - 1 + seg) % seg], pNext = centre[(k + 1) % seg];
+    let tx = pNext[0] - pPrev[0], ty = pNext[1] - pPrev[1];
+    const tl = Math.hypot(tx, ty) || 1;
+    tx /= tl; ty /= tl;
+    const ux = ty, uy = -tx;          // outward normal; the curve runs anticlockwise
+    const g = rimGrip(Math.atan2(p[1], p[0]));
+    grips.push(g);
+    // D-section: deeper front-to-back than it is thick, and fatter in the grips.
+    const rr = 0.0155 + 0.0080 * g;
+    const rz = 0.0205 + 0.0090 * g;
     const ring = [];
     for (let j = 0; j < tubeSeg; j++) {
       const b = (j / tubeSeg) * TAU;
-      const nx = Math.cos(a) * Math.cos(b), ny = Math.sin(a) * Math.cos(b), nz = Math.sin(b);
-      ring.push([cx + nx * tubeR, cy + ny * tubeR, nz * tubeR]);
+      const cb = Math.cos(b), sb = Math.sin(b);
+      ring.push([p[0] + ux * rr * cb, p[1] + uy * rr * cb, sb * rz]);
     }
     rings.push(ring);
   }
-  mb.loft(rings, true, false, false);
-  // Spokes and hub.
+  mb.loft(rings, true, false, false, (i, j, b) => {
+    if (grips[i] > 0.5) b.mat([0.052, 0.048, 0.052], 0.96, 0.0, 0, FLAG_DEFAULT);
+    else b.mat([0.028, 0.028, 0.032], 0.52, 0.08, 0, FLAG_DEFAULT);
+  });
+
+  // Spokes: two horizontal, one down to the flat bottom.
   useMat(mb, MAT.carbon);
-  for (const a of [Math.PI, 0, -Math.PI / 2]) {
-    mb.push(); mb.rotateZ(a); mb.translate(r * 0.45, 0, 0); mb.box(r * 0.9, 0.045, 0.022); mb.pop();
+  for (const a of [0, Math.PI]) {
+    mb.push(); mb.rotateZ(a);
+    mb.translate(R * 0.56, 0, 0.004);
+    mb.chamferBox(R * 0.78, 0.050, 0.018, 0.007);
+    mb.pop();
   }
-  mb.push(); mb.translate(0, 0, -0.01); mb.rotateX(Math.PI / 2); mb.cylinder(0.055, 0.055, 0.05, 12); mb.pop();
-  // Shift lights across the top.
-  for (let i = 0; i < 7; i++) {
-    const t = (i - 3) / 3;
-    mb.mat(i < 3 ? [0.1, 0.9, 0.15] : (i < 5 ? [0.95, 0.4, 0.05] : [0.9, 0.05, 0.05]), 0.2, 0, 0.9, FLAG_UNLIT);
-    mb.push(); mb.translate(t * 0.085, 0.062, 0.012); mb.box(0.016, 0.012, 0.006); mb.pop();
+  mb.push(); mb.translate(0, -0.048, 0.004); mb.chamferBox(0.038, 0.080, 0.016, 0.006); mb.pop();
+
+  // Hub, quick release collar, and the flat plate the controls sit on.
+  mb.push(); mb.translate(0, 0, 0.014); mb.rotateX(Math.PI / 2); mb.cylinder(0.058, 0.050, 0.056, 16); mb.pop();
+  useMat(mb, MAT.matte);
+  mb.push(); mb.translate(0, 0, 0.040); mb.rotateX(Math.PI / 2); mb.cylinder(0.036, 0.044, 0.030, 14); mb.pop();
+  useMat(mb, MAT.carbon);
+  mb.push(); mb.translate(0, 0.002, -0.016); mb.chamferBox(0.142, 0.094, 0.012, 0.006); mb.pop();
+
+  // Screen, with a lit strip that stands in for the readout.
+  mb.mat([0.012, 0.016, 0.019], 0.18, 0.0, 0.04, FLAG_UNLIT);
+  mb.push(); mb.translate(0, -0.006, -0.0235); mb.box(0.112, 0.046, 0.005); mb.pop();
+  // The gear block, then a speed field beside it. Dim: this sits 60 cm from the
+  // eye, and anything brighter reads as a torch rather than an LCD.
+  mb.mat([0.10, 0.42, 0.20], 0.2, 0.0, 0.42, FLAG_UNLIT);
+  mb.push(); mb.translate(-0.024, -0.006, -0.0265); mb.box(0.030, 0.026, 0.002); mb.pop();
+  mb.mat([0.16, 0.24, 0.34], 0.2, 0.0, 0.34, FLAG_UNLIT);
+  mb.push(); mb.translate(0.028, -0.010, -0.0265); mb.box(0.046, 0.012, 0.002); mb.pop();
+
+  // Thumb buttons and two rotaries, all facing the driver.
+  const button = (x, y, col) => {
+    mb.mat(col, 0.42, 0.05, 0.10, FLAG_DEFAULT);
+    mb.push(); mb.translate(x, y, -0.0255); mb.rotateX(-Math.PI / 2);
+    mb.cylinder(0.0080, 0.0092, 0.008, 10); mb.pop();
+  };
+  button(-0.043, -0.036, [0.70, 0.09, 0.06]);
+  button(-0.015, -0.036, [0.85, 0.62, 0.05]);
+  button(0.015, -0.036, [0.10, 0.34, 0.80]);
+  button(0.043, -0.036, [0.80, 0.81, 0.84]);
+  button(-0.052, 0.030, [0.14, 0.15, 0.17]);
+  button(0.052, 0.030, [0.14, 0.15, 0.17]);
+  mb.mat([0.17, 0.18, 0.20], 0.32, 0.75, 0, FLAG_DEFAULT);
+  for (const s of [-1, 1]) {
+    mb.push(); mb.translate(s * 0.094, 0.004, -0.012); mb.rotateX(-Math.PI / 2);
+    mb.cylinder(0.016, 0.019, 0.018, 12); mb.pop();
+  }
+
+  // Shift paddles, tucked behind the rim where the fingers reach.
+  useMat(mb, MAT.carbon);
+  for (const s of [-1, 1]) {
+    mb.push();
+    mb.translate(s * 0.070, 0.050, 0.052);
+    mb.rotateY(s * 0.28);
+    mb.rotateZ(-s * 0.52);
+    mb.chamferBox(0.028, 0.090, 0.009, 0.004);
+    mb.pop();
   }
 }
 
-function buildDriver(mb) {
-  useMat(mb, MAT.suit);
-  // Torso, shoulders and arms reaching for the wheel.
-  mb.push(); mb.translate(-0.36, 0.86, -0.42); mb.rotateX(0.20); mb.chamferBox(0.40, 0.44, 0.26, 0.09); mb.pop();
-  for (const s of [-1, 1]) {
+// The shift lights are their own meshes, one per colour band, because the
+// renderer can tint an unlit mesh per draw call - that is what lets them come
+// up in sequence with the revs instead of being painted on.
+const SHIFT_LIGHT_BANDS = [[0, 3], [3, 6], [6, 8]];
+
+function buildShiftLights(mb, from, to) {
+  for (let i = from; i < to; i++) {
+    const t = (i - 3.5) / 3.5;
+    const col = i < 3 ? [0.12, 1.00, 0.24] : (i < 6 ? [1.00, 0.52, 0.03] : [1.00, 0.10, 0.05]);
+    mb.mat(col, 0.25, 0.0, 1.4, FLAG_UNLIT);
     mb.push();
-    mb.translate(-0.36 + s * 0.20, 0.92, -0.30);
-    mb.rotateX(-0.95);
-    mb.rotateZ(s * 0.22);
-    mb.cylinder(0.055, 0.050, 0.46, 8);
+    mb.translate(t * 0.047, 0.032, -0.0245);
+    mb.box(0.0105, 0.0095, 0.004);
     mb.pop();
   }
-  // Gloves.
-  mb.mat([0.55, 0.10, 0.08], 0.7, 0, 0, FLAG_DEFAULT);
-  for (const s of [-1, 1]) {
-    mb.push(); mb.translate(-0.36 + s * 0.135, 0.90, -0.03); mb.sphere(0.055, 8, 6); mb.pop();
+}
+
+// --- driver -----------------------------------------------------------------
+
+// The arms are not part of the driver mesh: they are two bones per side, aimed
+// each frame from a fixed shoulder to a hand that rides round with the rim. A
+// baked-in pose can only ever be right at one steering angle.
+
+// One glove, gripping a rim that runs along local +Y, with the wheel's centre
+// towards -X and the driver towards -Z. The wrist enters from -Z, because that
+// is where the arm comes from at every point around the rim. `side` is -1 for
+// the left hand.
+function buildGlove(mb, side) {
+  mb.mat([0.56, 0.10, 0.08], 0.74, 0.0, 0, FLAG_DEFAULT);
+  // Palm and back of the hand, closed around the rim.
+  mb.push(); mb.translate(side * 0.003, 0.002, -0.004); mb.chamferBox(0.054, 0.104, 0.082, 0.022); mb.pop();
+  // Fingers curling round to the inside of the rim.
+  for (let i = 0; i < 4; i++) {
+    const y = 0.036 - i * 0.025;
+    mb.push();
+    mb.translate(-side * 0.026, y, 0.002);
+    mb.rotateY(side * 0.10);
+    mb.chamferBox(0.030, 0.020, 0.070, 0.009);
+    mb.pop();
   }
-  // Legs.
+  // Thumb, hooked up over the driver's face of the rim.
+  mb.push();
+  mb.translate(-side * 0.006, 0.050, -0.032);
+  mb.rotateZ(side * 0.42);
+  mb.chamferBox(0.024, 0.058, 0.026, 0.010);
+  mb.pop();
+  // A narrow cuff band, then straight into the sleeve. Anything chunkier here
+  // reads as a boxing glove from the driver's seat.
+  mb.mat([0.86, 0.87, 0.90], 0.80, 0.0, 0, FLAG_DEFAULT);
+  mb.push(); mb.translate(0, -0.002, -0.048); mb.chamferBox(0.050, 0.062, 0.014, 0.006); mb.pop();
   useMat(mb, MAT.suit);
+  mb.push(); mb.translate(0, -0.004, -0.070); mb.chamferBox(0.046, 0.058, 0.034, 0.014); mb.pop();
+}
+
+// A bone running from the origin along +Z with unit length, so the render code
+// can scale it to whatever the shoulder-to-hand distance happens to be.
+function buildArmBone(mb, rootR, tipR) {
+  useMat(mb, MAT.suit);
+  mb.push();
+  mb.rotateX(Math.PI / 2);
+  mb.translate(0, 0.5, 0);
+  mb.cylinder(tipR, rootR, 1.0, 10);
+  mb.pop();
+}
+
+// `withHead` is false for the cockpit view, which is sitting inside the helmet.
+function buildDriver(mb, withHead) {
+  useMat(mb, MAT.suit);
+  // Torso and shoulders. The arms are added at render time.
+  mb.push(); mb.translate(SEAT_X, 0.86, -0.42); mb.rotateX(0.20); mb.chamferBox(0.40, 0.44, 0.26, 0.09); mb.pop();
   for (const s of [-1, 1]) {
-    mb.push(); mb.translate(-0.36 + s * 0.11, 0.60, 0.28); mb.rotateX(1.42); mb.cylinder(0.065, 0.060, 0.62, 8); mb.pop();
+    mb.push(); mb.translate(SEAT_X + s * 0.205, 0.965, -0.40); mb.sphere(0.078, 8, 6); mb.pop();
   }
-  // Helmet with a visor band.
-  useMat(mb, MAT.helmet);
-  mb.push(); mb.translate(-0.36, 1.19, -0.46); mb.sphere(0.135, 14, 10, 1.06); mb.pop();
-  useMat(mb, MAT.visor);
-  mb.push(); mb.translate(-0.36, 1.20, -0.36); mb.rotateX(0.05); mb.chamferBox(0.20, 0.085, 0.10, 0.04); mb.pop();
-  // HANS device.
+  // Legs, angled in towards the pedal box.
+  for (const s of [-1, 1]) {
+    mb.push(); mb.translate(SEAT_X + s * 0.115, 0.615, 0.16); mb.rotateX(1.36); mb.rotateZ(-s * 0.10);
+    mb.cylinder(0.062, 0.078, 0.60, 8); mb.pop();
+    mb.push(); mb.translate(SEAT_X + s * 0.135, 0.545, 0.64); mb.rotateX(1.10);
+    mb.cylinder(0.052, 0.060, 0.42, 8); mb.pop();
+    mb.mat([0.06, 0.06, 0.07], 0.65, 0.0, 0, FLAG_DEFAULT);
+    mb.push(); mb.translate(SEAT_X + s * 0.140, 0.500, 0.845); mb.rotateX(0.30);
+    mb.chamferBox(0.078, 0.070, 0.185, 0.028); mb.pop();
+    useMat(mb, MAT.suit);
+  }
+  // HANS device sits on the shoulders whether or not the head is drawn.
   useMat(mb, MAT.carbon);
-  mb.push(); mb.translate(-0.36, 1.03, -0.50); mb.box(0.34, 0.06, 0.16); mb.pop();
+  mb.push(); mb.translate(SEAT_X, 1.03, -0.50); mb.box(0.34, 0.06, 0.16); mb.pop();
+  if (!withHead) return;
+  useMat(mb, MAT.helmet);
+  mb.push(); mb.translate(SEAT_X, 1.19, -0.46); mb.sphere(0.135, 14, 10, 1.06); mb.pop();
+  useMat(mb, MAT.visor);
+  mb.push(); mb.translate(SEAT_X, 1.20, -0.36); mb.rotateX(0.05); mb.chamferBox(0.20, 0.085, 0.10, 0.04); mb.pop();
 }
 
 // --- assembly ---------------------------------------------------------------
@@ -716,12 +966,36 @@ function buildCarMeshes(gl) {
   buildInterior(interior);
 
   // The driver is separate so the cockpit camera can hide the helmet it is
-  // sitting inside.
+  // sitting inside, and the arms are separate again so they can be posed.
   const driver = new MeshBuilder();
-  buildDriver(driver);
+  buildDriver(driver, true);
+  const driverNoHead = new MeshBuilder();
+  buildDriver(driverNoHead, false);
+
+  const gloveLeft = new MeshBuilder();
+  buildGlove(gloveLeft, -1);
+  const gloveRight = new MeshBuilder();
+  buildGlove(gloveRight, 1);
+  const upperArm = new MeshBuilder();
+  buildArmBone(upperArm, 0.070, 0.052);
+  const forearm = new MeshBuilder();
+  buildArmBone(forearm, 0.050, 0.038);
 
   const steering = new MeshBuilder();
   buildSteeringWheel(steering);
+
+  // Everything above lives under the roof. Flagging it as cabin trim is what
+  // keeps the dashboard from being lit as though it were parked in the open;
+  // the helmet, the dash screens and the shift lights keep their own flags.
+  for (const b of [interior, driver, driverNoHead, gloveLeft, gloveRight, upperArm, forearm, steering]) {
+    b.markCabin();
+  }
+
+  const shiftLights = SHIFT_LIGHT_BANDS.map(([from, to]) => {
+    const b = new MeshBuilder();
+    buildShiftLights(b, from, to);
+    return b;
+  });
 
   const wheelFront = new MeshBuilder();
   buildTire(wheelFront, CAR_SPEC.wheelRadiusFront, CAR_SPEC.wheelWidthFront, CAR_SPEC.wheelRadiusFront * 0.60);
@@ -741,7 +1015,13 @@ function buildCarMeshes(gl) {
     glass: meshFromBuilder(gl, glass),
     interior: meshFromBuilder(gl, interior),
     driver: meshFromBuilder(gl, driver),
+    driverNoHead: meshFromBuilder(gl, driverNoHead),
+    gloveLeft: meshFromBuilder(gl, gloveLeft),
+    gloveRight: meshFromBuilder(gl, gloveRight),
+    upperArm: meshFromBuilder(gl, upperArm),
+    forearm: meshFromBuilder(gl, forearm),
     steering: meshFromBuilder(gl, steering),
+    shiftLights: shiftLights.map((b) => meshFromBuilder(gl, b)),
     wheelFront: meshFromBuilder(gl, wheelFront),
     wheelRear: meshFromBuilder(gl, wheelRear),
     caliperFront: meshFromBuilder(gl, caliperFront),

@@ -94,6 +94,10 @@ class Camera {
     this.shake = 0;
     this.speedBlur = 0;
     this.lookBack = false;
+    // Driver's head, lagging behind what the car is doing.
+    this.headLat = 0;
+    this.headLon = 0;
+    this.headYaw = 0;
   }
 
   cycle() { this.mode = (this.mode + 1) % CAMERA_MODES.length; }
@@ -149,14 +153,36 @@ class Camera {
       // Rigid mounts move with the body, including pitch and roll.
       const offsets = {
         bonnet: [0, 1.12, 1.15],
-        cockpit: [-0.36, 1.16, -0.34],
+        cockpit: EYE_POS,
         bumper: [0, 0.46, 2.28],
       };
       const o = offsets[mode];
       const back = this.lookBack ? -1 : 1;
       const m = m4.compose(m4.create(), [v.pos[0], v.pos[1] - drop, v.pos[2]], v.yaw, v.pitch, v.roll);
-      const p = m4.transformPoint([0, 0, 0], m, o);
-      const look = m4.transformPoint([0, 0, 0], m, [o[0], o[1] - 0.02, o[2] + 10 * back]);
+
+      // From the seat, a head is not bolted to the car. It leans away from the
+      // cornering force, dips under braking, and looks a little way into the
+      // corner before the car gets there - which is most of what makes a
+      // cockpit view feel like being in the car rather than strapped to it.
+      let eye = o, aim = [o[0], o[1] - 0.02, o[2] + 10 * back];
+      if (mode === 'cockpit') {
+        const lat = clamp(v.latAccel / GRAVITY, -1.6, 1.6);
+        const lon = clamp(v.longAccel / GRAVITY, -1.6, 1.6);
+        this.headLat = lerp(this.headLat, lat, clamp(dt * 5.5, 0, 1));
+        this.headLon = lerp(this.headLon, lon, clamp(dt * 5.5, 0, 1));
+        const glance = clamp(v.steerAngle * 2.2 + v.yawRate * 0.30, -0.42, 0.42);
+        this.headYaw = lerp(this.headYaw, glance, clamp(dt * 4.0, 0, 1));
+        eye = [
+          o[0] - this.headLat * 0.045,
+          o[1] - Math.abs(this.headLat) * 0.012 - Math.max(0, -this.headLon) * 0.020,
+          o[2] + this.headLon * 0.030,
+        ];
+        const ax = Math.sin(this.headYaw) * 10, az = Math.cos(this.headYaw) * 10;
+        aim = [eye[0] + ax * back, eye[1] + 0.30, eye[2] + az * back];
+      }
+
+      const p = m4.transformPoint([0, 0, 0], m, eye);
+      const look = m4.transformPoint([0, 0, 0], m, aim);
       this.pos[0] = p[0]; this.pos[1] = p[1]; this.pos[2] = p[2];
       this.target[0] = look[0]; this.target[1] = look[1]; this.target[2] = look[2];
     }
@@ -174,7 +200,12 @@ class Camera {
       this.pos[2] += Math.sin(t * 53.1) * amp;
     }
 
-    const targetFov = (this.inside ? 68 : 60) + clamp(speed * 0.30, 0, 20);
+    // A GT car's windscreen aperture is only about 25 degrees tall from the
+    // seat. At a wide field of view that leaves the screen mostly headliner and
+    // dashboard, so the cockpit runs narrower and the speed scaling is gentler.
+    const targetFov = this.inside
+      ? 52 + clamp(speed * 0.16, 0, 11)
+      : 60 + clamp(speed * 0.30, 0, 20);
     this.fov = lerp(this.fov, targetFov * DEG, clamp(dt * 3, 0, 1));
     this.speedBlur = lerp(this.speedBlur, clamp((speed - 24) / 200, 0, 0.16), clamp(dt * 3, 0, 1));
   }
@@ -187,8 +218,9 @@ class Camera {
     // Basis vectors for billboards.
     const f = v3.norm([0, 0, 0], v3.sub([0, 0, 0], this.target, this.pos));
     this.forward = f;
-    this.right = v3.norm([0, 0, 0], v3.cross([0, 0, 0], f, [0, 1, 0]));
-    this.up = v3.cross([0, 0, 0], this.right, f);
+    // Screen right, matching the mirrored clip X in m4.perspective.
+    this.right = v3.norm([0, 0, 0], v3.cross([0, 0, 0], [0, 1, 0], f));
+    this.up = v3.cross([0, 0, 0], f, this.right);
   }
 }
 
@@ -244,6 +276,7 @@ class Game {
       volume: 0.7,
       tiltSteer: false,
       invertSteer: false,
+      camera: 'cockpit',
     };
     if (this.isTouch) {
       // Shadow passes walk the whole opaque queue twice, which is the single
@@ -267,6 +300,13 @@ class Game {
     this.driveState = null;
     this.transition = 0;
     this.hintTimer = 0;
+  }
+
+  // Which view a session opens in. `C` and the on-screen camera button still
+  // cycle through all five from wherever this lands.
+  startCameraMode() {
+    const i = CAMERA_MODES.indexOf(this.settings.camera);
+    return i < 0 ? 0 : i;
   }
 
   // A driving game in portrait is unreadable, so ask for landscape and stop
@@ -445,7 +485,7 @@ class Game {
       car.dirt = 0;
       car.gapToLeader = 0;
     }
-    this.camera.mode = 0;
+    this.camera.mode = this.startCameraMode();
     this.state = 'race';
     this.ui.hideAll();
     this.hud.message('FORMATION LAP COMPLETE', 2.2);
@@ -493,7 +533,7 @@ class Game {
       crashes: 0,
       wrongSideTimer: 0,
     };
-    this.camera.mode = 0;
+    this.camera.mode = this.startCameraMode();
     this.state = 'drive';
     this.ui.hideAll();
     this.hud.message('HEAD HOME — FOLLOW THE SATNAV', 4.0);
@@ -1188,7 +1228,10 @@ class Game {
       const isPlayer = car === this.player;
       car.render(this.renderer, {
         hideInterior: !isPlayer && d > 45,
-        hideDriver: isPlayer && this.camera.inside,
+        inside: isPlayer && this.camera.inside,
+        // Rigging arms costs four draw calls a car; nobody can see them on a
+        // rival two corners away.
+        hideArms: !isPlayer && d > 16,
       });
       car.submitLights(this.renderer, this.renderer.ambience.night);
     }

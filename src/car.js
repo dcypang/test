@@ -18,6 +18,49 @@ const LIVERY_PRESETS = [
   { paint: [0.14, 0.14, 0.16], stripe: [0.20, 0.60, 0.95], style: 1, name: 'Notte' },
 ];
 
+// Rim turns per unit of road-wheel angle. With 0.60 rad of lock that is a shade
+// over a turn and a half hand to hand, which is what a GT car feels like.
+const WHEEL_RATIO = 3.2;
+// Revs at which the first shift light comes up.
+const SHIFT_LIGHT_FROM = 5800;
+// Shoulder sockets, matching the spheres in the driver mesh.
+const SHOULDER_LOCAL = [SEAT_X - 0.205, 0.965, -0.40];
+const UPPER_ARM_LEN = 0.30;
+const FOREARM_LEN = 0.32;
+// A driver's arms are nearly straight at this reach, and a straight arm reads
+// as a broomstick. Carrying the elbows this much further out and down is what
+// real drivers do anyway, and it gives the arm a silhouette.
+const ELBOW_BEND = 0.11;
+
+// Two-bone IK: given a shoulder and a hand, find the elbow. The arm is a
+// triangle with two known sides, so the elbow is somewhere on a circle; `hint`
+// picks which point on it, and for a driver that is down and outboard.
+function solveElbow(out, shoulder, hand, lu, lf, hint) {
+  const d = v3.sub([0, 0, 0], hand, shoulder);
+  const dist = v3.len(d);
+  if (dist < 1e-4) { out[0] = shoulder[0]; out[1] = shoulder[1]; out[2] = shoulder[2]; return out; }
+  const u = v3.scale([0, 0, 0], d, 1 / dist);
+  // Out of reach: straighten the arm and let the bones stretch to cover it.
+  const a = Math.min(dist, (dist * dist + lu * lu - lf * lf) / (2 * dist));
+  const h = Math.sqrt(Math.max(0, lu * lu - a * a)) + ELBOW_BEND;
+  let w = v3.sub([0, 0, 0], hint, v3.scale([0, 0, 0], u, v3.dot(hint, u)));
+  if (v3.len(w) < 1e-5) w = [0, -1, 0];
+  else v3.norm(w, w);
+  out[0] = shoulder[0] + u[0] * a + w[0] * h;
+  out[1] = shoulder[1] + u[1] * a + w[1] * h;
+  out[2] = shoulder[2] + u[2] * a + w[2] * h;
+  return out;
+}
+
+// Point a unit-length +Z bone from `from` to `to`, stretched to fit.
+function boneMatrix(out, from, to) {
+  const d = v3.sub([0, 0, 0], to, from);
+  const len = Math.max(v3.len(d), 1e-4);
+  const yaw = Math.atan2(d[0], d[2]);
+  const pitch = -Math.asin(clamp(d[1] / len, -1, 1));
+  return m4.compose(out, from, yaw, pitch, 0, 1, 1, len);
+}
+
 class Car {
   constructor(meshes, options = {}) {
     this.meshes = meshes;
@@ -233,20 +276,11 @@ class Car {
 
     if (!options.hideInterior) {
       renderer.submit(this.meshes.interior, this.bodyMatrix, EMPTY_OPTS);
-      if (!options.hideDriver) renderer.submit(this.meshes.driver, this.bodyMatrix, EMPTY_OPTS);
-      // Steering wheel: mounted on the dash, rotated by the driver's input.
-      const sw = m4.create();
-      m4.compose(sw, [-0.36, 0.925, 0.28], 0, 0, 0);
-      const tilt = m4.rotationX(m4.create(), 0.42);
-      m4.multiply(sw, sw, tilt);
-      // Positive steerAngle is a right-hand turn, and from the driver's seat
-      // (behind the wheel, looking along +Z) a positive Z rotation reads as
-      // clockwise - so no negation. With one, the rim turned left as the car
-      // turned right.
-      const spin = m4.rotationZ(m4.create(), v.steerAngle * 3.2);
-      m4.multiply(sw, sw, spin);
-      m4.multiply(sw, this.bodyMatrix, sw);
-      renderer.submit(this.meshes.steering, sw, EMPTY_OPTS);
+      // Inside the car the camera is sitting where the head is, so the head
+      // comes off; the body, legs and arms all stay.
+      const driver = options.inside ? this.meshes.driverNoHead : this.meshes.driver;
+      renderer.submit(driver, this.bodyMatrix, EMPTY_OPTS);
+      this.renderControls(renderer, options);
     }
 
     // Wheels.
@@ -263,5 +297,65 @@ class Car {
 
     // Glass last so it blends over everything.
     renderer.submit(this.meshes.glass, this.bodyMatrix, { transparent: true, alpha: 0.92 });
+  }
+
+  // The wheel, its shift lights and the driver's arms. Everything here hangs
+  // off one matrix, so the hands cannot drift off the rim however far it turns.
+  renderControls(renderer, options) {
+    const v = this.vehicle;
+    const meshes = this.meshes;
+
+    // Wheel, in car-local space first: the arms are rigged against it and that
+    // is far easier to reason about before the body transform goes on.
+    const local = m4.compose(m4.create(), WHEEL_POS, 0, 0, 0);
+    m4.multiply(local, local, m4.rotationX(m4.create(), WHEEL_TILT));
+    // Positive steerAngle is a right-hand turn, and from the driver's seat
+    // (behind the wheel, looking along +Z) a positive Z rotation reads as
+    // clockwise - so no negation. With one, the rim turned left as the car
+    // turned right.
+    m4.multiply(local, local, m4.rotationZ(m4.create(), v.steerAngle * WHEEL_RATIO));
+
+    const world = m4.multiply(m4.create(), this.bodyMatrix, local);
+    renderer.submit(meshes.steering, world, EMPTY_OPTS);
+
+    // Shift lights: one draw per colour band, lit in turn as the revs climb.
+    if (meshes.shiftLights) {
+      const t = clamp((v.rpm - SHIFT_LIGHT_FROM) / (LIMITER_RPM - SHIFT_LIGHT_FROM), 0, 1);
+      // The red pair flashes rather than sitting on, the way a real one nags.
+      const flash = v.rpm > LIMITER_RPM - 260 && Math.sin(performance.now() * 0.045) < 0 ? 0.06 : 1;
+      for (let b = 0; b < meshes.shiftLights.length; b++) {
+        const lit = t > (b + 0.3) / 3;
+        const level = !lit ? 0.05 : (b === 2 ? flash : 1);
+        renderer.submit(meshes.shiftLights[b], world,
+          { emissiveTint: [level, level, level] });
+      }
+    }
+
+    if (options.hideArms) return;
+
+    // Arms. The hands ride round with the rim and the elbows follow.
+    for (const side of [-1, 1]) {
+      const a = side > 0 ? GRIP_ANGLE : Math.PI - GRIP_ANGLE;
+      const grip = m4.multiply(m4.create(),
+        m4.translation(m4.create(), Math.cos(a) * WHEEL_RADIUS, Math.sin(a) * WHEEL_RADIUS, 0),
+        m4.rotationZ(m4.create(), a));
+      const gloveLocal = m4.multiply(m4.create(), local, grip);
+      renderer.submit(side > 0 ? meshes.gloveRight : meshes.gloveLeft,
+        m4.multiply(m4.create(), this.bodyMatrix, gloveLocal), EMPTY_OPTS);
+
+      const hand = m4.transformPoint([0, 0, 0], gloveLocal, [0, 0, -0.045]);
+      const shoulder = [SHOULDER_LOCAL[0] + (side > 0 ? 0.41 : 0), SHOULDER_LOCAL[1], SHOULDER_LOCAL[2]];
+      const elbow = solveElbow([0, 0, 0], shoulder, hand,
+        UPPER_ARM_LEN, FOREARM_LEN, [side * 0.75, -0.66, 0]);
+      // A shoulder sits beside the eye, so from the seat the upper arm is a
+      // slab across the lens. Real drivers see their forearms and nothing else,
+      // and so does this camera.
+      if (!options.inside) {
+        renderer.submit(meshes.upperArm,
+          m4.multiply(m4.create(), this.bodyMatrix, boneMatrix(m4.create(), shoulder, elbow)), EMPTY_OPTS);
+      }
+      renderer.submit(meshes.forearm,
+        m4.multiply(m4.create(), this.bodyMatrix, boneMatrix(m4.create(), elbow, hand)), EMPTY_OPTS);
+    }
   }
 }
