@@ -1,0 +1,252 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Apex &amp; Home — race, then drive back</title>
+<meta name="description" content="A racing game with a realistic race car: run the circuit, then drive home through the countryside and the village.">
+<style>
+  :root {
+    --ink: #f2f4f8;
+    --muted: rgba(242, 244, 248, 0.62);
+    --line: rgba(255, 255, 255, 0.14);
+    --accent: #ff3b2f;
+    --accent2: #4ade80;
+    --panel: rgba(12, 14, 19, 0.82);
+    --font: "DIN Alternate", "Bahnschrift", "Roboto Condensed", "Arial Narrow", system-ui, -apple-system, sans-serif;
+  }
+  * { box-sizing: border-box; }
+  html, body {
+    margin: 0; padding: 0; height: 100%; overflow: hidden;
+    background: #05070b; color: var(--ink);
+    font-family: var(--font);
+    -webkit-font-smoothing: antialiased;
+    overscroll-behavior: none;
+  }
+  #gl, #hud {
+    position: fixed; inset: 0; width: 100%; height: 100%; display: block;
+  }
+  #hud { pointer-events: none; z-index: 2; }
+  #gl { z-index: 1; }
+
+  .overlay {
+    position: fixed; inset: 0; z-index: 5;
+    display: flex; align-items: center; justify-content: center;
+    padding: 24px;
+    background: radial-gradient(ellipse at 50% 30%, rgba(10, 14, 22, 0.55), rgba(4, 6, 10, 0.92));
+    backdrop-filter: blur(3px);
+  }
+  .overlay.hidden { display: none; }
+
+  /* The title screen sits to one side, over a lighter wash, so the car on the
+     grid behind it stays visible. */
+  #title {
+    justify-content: flex-start;
+    padding-left: min(6vw, 70px);
+    background: linear-gradient(100deg, rgba(4, 6, 10, 0.94) 0%,
+      rgba(4, 6, 10, 0.80) 42%, rgba(4, 6, 10, 0.18) 68%, rgba(4, 6, 10, 0.05) 100%);
+    backdrop-filter: none;
+  }
+  #title .panel { width: min(560px, 92vw); background: rgba(12, 14, 19, 0.72); }
+  @media (max-width: 900px) {
+    #title { justify-content: center; padding-left: 24px;
+      background: radial-gradient(ellipse at 50% 30%, rgba(10, 14, 22, 0.6), rgba(4, 6, 10, 0.93)); }
+  }
+
+  .panel {
+    width: min(760px, 96vw);
+    max-height: 92vh; overflow-y: auto;
+    background: var(--panel);
+    border: 1px solid var(--line);
+    border-radius: 18px;
+    padding: 30px 34px;
+    box-shadow: 0 30px 80px rgba(0, 0, 0, 0.6);
+  }
+  .panel.narrow { width: min(520px, 94vw); }
+
+  h1 {
+    margin: 0 0 4px; font-size: clamp(34px, 6vw, 56px);
+    letter-spacing: 0.02em; line-height: 1;
+  }
+  h1 .accent { color: var(--accent); }
+  h2 { margin: 0 0 10px; font-size: 26px; }
+  .tagline { margin: 0 0 22px; color: var(--muted); font-size: 16px; letter-spacing: 0.04em; }
+
+  .row { margin-bottom: 16px; }
+  .row > label {
+    display: block; font-size: 12px; letter-spacing: 0.14em;
+    text-transform: uppercase; color: var(--muted); margin-bottom: 7px;
+  }
+  .opts { display: flex; flex-wrap: wrap; gap: 8px; }
+  button {
+    font-family: var(--font); font-size: 15px; color: var(--ink);
+    background: rgba(255, 255, 255, 0.07);
+    border: 1px solid var(--line); border-radius: 9px;
+    padding: 9px 16px; cursor: pointer;
+    transition: background 0.13s, border-color 0.13s, transform 0.08s;
+  }
+  button:hover { background: rgba(255, 255, 255, 0.14); }
+  button:active { transform: translateY(1px); }
+  button.opt.active {
+    background: rgba(255, 59, 47, 0.22);
+    border-color: rgba(255, 59, 47, 0.75);
+  }
+  .swatch {
+    width: 34px; height: 34px; padding: 0; border-radius: 50%;
+    border: 2px solid rgba(255, 255, 255, 0.22);
+  }
+  .swatch.active {
+    border-color: #fff;
+    box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.22);
+  }
+  .primary {
+    background: linear-gradient(180deg, #ff5544, #d92b1e);
+    border-color: rgba(255, 120, 100, 0.7);
+    font-size: 18px; padding: 13px 30px; letter-spacing: 0.06em;
+    text-transform: uppercase; font-weight: 700;
+  }
+  .primary:hover { background: linear-gradient(180deg, #ff6a59, #e53425); }
+  .secondary { padding: 12px 22px; }
+  .actions { display: flex; gap: 12px; flex-wrap: wrap; margin-top: 22px; align-items: center; }
+
+  .controls {
+    margin-top: 22px; padding-top: 18px; border-top: 1px solid var(--line);
+    display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 8px 20px;
+    font-size: 13px; color: var(--muted);
+  }
+  .controls span { color: var(--ink); font-weight: 700; }
+
+  table { width: 100%; border-collapse: collapse; font-size: 15px; }
+  th, td { text-align: left; padding: 8px 10px; border-bottom: 1px solid rgba(255,255,255,0.08); }
+  th { font-size: 11px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--muted); }
+  td.pos { width: 34px; color: var(--muted); }
+  td.num { text-align: right; font-variant-numeric: tabular-nums; }
+  tr.me td { background: rgba(255, 59, 47, 0.14); color: #fff; font-weight: 700; }
+  .note { color: var(--muted); font-size: 14px; margin-top: 16px; }
+
+  .bigscore { font-size: 76px; line-height: 1; font-weight: 700; }
+  .bigscore span { font-size: 24px; color: var(--muted); }
+  .grade { font-size: 20px; color: var(--accent2); margin: 4px 0 18px; }
+  ul.stats { list-style: none; margin: 0; padding: 0; }
+  ul.stats li {
+    display: flex; justify-content: space-between;
+    padding: 8px 0; border-bottom: 1px solid rgba(255,255,255,0.08);
+    color: var(--muted); font-size: 15px;
+  }
+  ul.stats strong { color: var(--ink); }
+
+  #loading .panel { text-align: center; }
+  .spinner {
+    width: 42px; height: 42px; margin: 0 auto 16px;
+    border: 3px solid rgba(255,255,255,0.15);
+    border-top-color: var(--accent);
+    border-radius: 50%;
+    animation: spin 0.85s linear infinite;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .error pre {
+    text-align: left; font-size: 12px; color: #ffb4ad; background: rgba(0,0,0,0.4);
+    padding: 12px; border-radius: 8px; overflow: auto; max-height: 240px;
+  }
+</style>
+</head>
+<body>
+<canvas id="gl"></canvas>
+<canvas id="hud"></canvas>
+
+<div id="loading" class="overlay">
+  <div class="panel narrow">
+    <div class="spinner"></div>
+    <h2>Apex &amp; Home</h2>
+    <p id="loadingText" class="tagline">Starting up…</p>
+  </div>
+</div>
+
+<div id="title" class="overlay hidden">
+  <div class="panel">
+    <h1>APEX <span class="accent">&amp;</span> HOME</h1>
+    <p class="tagline">Win the race. Then drive back home the long way.</p>
+
+    <div class="row">
+      <label>Your car</label>
+      <div id="liveryRow" class="opts"></div>
+    </div>
+    <div class="row">
+      <label>Race distance</label>
+      <div id="lapsRow" class="opts"></div>
+    </div>
+    <div class="row">
+      <label>Opponents</label>
+      <div id="difficultyRow" class="opts"></div>
+    </div>
+    <div class="row">
+      <label>Driving assists (ABS, traction, stability)</label>
+      <div id="assistRow" class="opts"></div>
+    </div>
+    <div class="row">
+      <label>Graphics</label>
+      <div id="qualityRow" class="opts"></div>
+    </div>
+
+    <div class="actions">
+      <button id="startBtn" class="primary">Start the race</button>
+      <button id="driveBtn" class="secondary">Skip to the drive home</button>
+    </div>
+
+    <div class="controls">
+      <div><span>W / ↑</span> throttle</div>
+      <div><span>S / ↓</span> brake &amp; reverse</div>
+      <div><span>A D / ← →</span> steer</div>
+      <div><span>Space</span> handbrake</div>
+      <div><span>Q / E</span> shift down / up</div>
+      <div><span>G</span> auto / manual box</div>
+      <div><span>C</span> camera</div>
+      <div><span>B</span> look back</div>
+      <div><span>L</span> headlights</div>
+      <div><span>Z / X</span> indicators</div>
+      <div><span>H</span> horn</div>
+      <div><span>R</span> recover to road</div>
+      <div><span>P / Esc</span> pause</div>
+      <div><span>M</span> mute</div>
+    </div>
+  </div>
+</div>
+
+<div id="results" class="overlay hidden">
+  <div class="panel">
+    <h2 id="resultsHeadline">Race result</h2>
+    <div id="resultsBody"></div>
+    <div class="actions">
+      <button id="resultsDrive" class="primary">Drive home</button>
+      <button id="resultsRestart" class="secondary">Race again</button>
+    </div>
+  </div>
+</div>
+
+<div id="arrived" class="overlay hidden">
+  <div class="panel narrow">
+    <h2>Home.</h2>
+    <div id="arrivedBody"></div>
+    <div class="actions">
+      <button id="arrivedRestart" class="primary">Back to the menu</button>
+      <button id="arrivedDrive" class="secondary">Drive home again</button>
+    </div>
+  </div>
+</div>
+
+<div id="pause" class="overlay hidden">
+  <div class="panel narrow">
+    <h2>Paused</h2>
+    <p class="tagline">Take your time.</p>
+    <div class="actions">
+      <button id="resumeBtn" class="primary">Resume</button>
+      <button id="quitBtn" class="secondary">Back to menu</button>
+    </div>
+  </div>
+</div>
+
+<script>
+/*__BUNDLE__*/
+</script>
+</body>
+</html>
