@@ -236,7 +236,7 @@ class Car {
       if (!options.hideDriver) renderer.submit(this.meshes.driver, this.bodyMatrix, EMPTY_OPTS);
       // Steering wheel: mounted on the dash, rotated by the driver's input.
       const sw = m4.create();
-      m4.compose(sw, [-0.36, 0.90, 0.32], 0, 0, 0);
+      m4.compose(sw, [-0.36, 0.925, 0.28], 0, 0, 0);
       const tilt = m4.rotationX(m4.create(), 0.42);
       m4.multiply(sw, sw, tilt);
       const spin = m4.rotationZ(m4.create(), -v.steerAngle * 3.2);

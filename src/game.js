@@ -147,7 +147,7 @@ class Camera {
       // Rigid mounts move with the body, including pitch and roll.
       const offsets = {
         bonnet: [0, 1.12, 1.15],
-        cockpit: [-0.36, 1.20, -0.30],
+        cockpit: [-0.36, 1.16, -0.34],
         bumper: [0, 0.46, 2.28],
       };
       const o = offsets[mode];

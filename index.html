@@ -1665,7 +1665,7 @@ void main() {
     float Fc = 0.04 + 0.96 * pow(clamp(1.0 - vdh, 0.0, 1.0), 5.0);
     float ccSpec = min(Dc * Gc * Fc / max(4.0 * ndv * ndl, 1e-4), 22.0);
     color += vec3(ccSpec) * uSunColor * ndl * shadow;
-    color += envSpecular(R, ccRough) * (0.045 + 0.5 * fres);
+    color += envSpecular(R, ccRough) * (0.04 + 0.30 * fres);
   }
 
   // --- glass ----------------------------------------------------------------------
@@ -1692,7 +1692,10 @@ void main() {
   // --- fog ---------------------------------------------------------------------
   float dist = length(uCameraPos - vWorld);
   float fog = 1.0 - exp(-pow(dist * uFogDensity, 2.0));
-  vec3 fogged = mix(uFogColor, skyColor(normalize(vWorld - uCameraPos)), 0.45);
+  // skyGradient, not skyColor: the cloud projection is unstable at the grazing
+  // angles distant geometry sits at, and it shows up as a noise band along the
+  // horizon on everything far away.
+  vec3 fogged = mix(uFogColor, skyGradient(normalize(vWorld - uCameraPos)), 0.45);
   color = mix(color, fogged, clamp(fog, 0.0, 1.0));
 
   fragColor = vec4(color, alpha);
@@ -2483,15 +2486,15 @@ const MAT = {
   chrome: { color: [0.86, 0.87, 0.90], rough: 0.10, metal: 1.0, emissive: 0, flag: FLAG_DEFAULT },
   steel: { color: [0.45, 0.46, 0.48], rough: 0.35, metal: 0.90, emissive: 0, flag: FLAG_DEFAULT },
   glass: { color: [0.035, 0.045, 0.055], rough: 0.05, metal: 0.0, emissive: 0, flag: FLAG_GLASS },
-  tire: { color: [0.048, 0.048, 0.052], rough: 0.90, metal: 0.0, emissive: 0, flag: FLAG_DEFAULT },
-  tireWall: { color: [0.060, 0.060, 0.065], rough: 0.80, metal: 0.0, emissive: 0, flag: FLAG_DEFAULT },
-  rim: { color: [0.55, 0.56, 0.60], rough: 0.22, metal: 0.95, emissive: 0, flag: FLAG_DEFAULT },
-  disc: { color: [0.34, 0.33, 0.33], rough: 0.30, metal: 0.85, emissive: 0, flag: FLAG_DEFAULT },
+  tire: { color: [0.070, 0.070, 0.076], rough: 0.88, metal: 0.0, emissive: 0, flag: FLAG_DEFAULT },
+  tireWall: { color: [0.095, 0.095, 0.102], rough: 0.74, metal: 0.0, emissive: 0, flag: FLAG_DEFAULT },
+  rim: { color: [0.155, 0.160, 0.175], rough: 0.42, metal: 0.65, emissive: 0, flag: FLAG_DEFAULT },
+  disc: { color: [0.26, 0.25, 0.25], rough: 0.34, metal: 0.80, emissive: 0, flag: FLAG_DEFAULT },
   caliper: { color: [0.78, 0.10, 0.04], rough: 0.35, metal: 0.30, emissive: 0, flag: FLAG_DEFAULT },
   headlight: { color: [0.88, 0.90, 0.98], rough: 0.06, metal: 0.0, emissive: 0.0, flag: FLAG_GLASS },
   tailLens: { color: [0.62, 0.03, 0.03], rough: 0.12, metal: 0.0, emissive: 0.35, flag: FLAG_UNLIT },
   reverseLens: { color: [0.85, 0.85, 0.80], rough: 0.12, metal: 0.0, emissive: 0.05, flag: FLAG_UNLIT },
-  interior: { color: [0.045, 0.045, 0.05], rough: 0.85, metal: 0.0, emissive: 0, flag: FLAG_DEFAULT },
+  interior: { color: [0.085, 0.085, 0.092], rough: 0.88, metal: 0.0, emissive: 0, flag: FLAG_DEFAULT },
   seat: { color: [0.08, 0.08, 0.09], rough: 0.80, metal: 0.0, emissive: 0, flag: FLAG_DEFAULT },
   cage: { color: [0.72, 0.12, 0.10], rough: 0.40, metal: 0.30, emissive: 0, flag: FLAG_DEFAULT },
   suit: { color: [0.13, 0.14, 0.18], rough: 0.85, metal: 0.0, emissive: 0, flag: FLAG_DEFAULT },
@@ -2655,19 +2658,19 @@ function buildBodyShell(mb) {
 
 // [z, halfWidth, roofY, waistY]
 const CABIN_STATIONS = [
-  [1.02, 0.845, 0.760, 0.735],
-  [0.86, 0.840, 0.830, 0.740],
-  [0.66, 0.825, 0.960, 0.745],
-  [0.44, 0.805, 1.080, 0.750],
-  [0.22, 0.790, 1.168, 0.755],
-  [0.00, 0.782, 1.205, 0.758],
-  [-0.30, 0.778, 1.222, 0.762],
-  [-0.62, 0.772, 1.218, 0.765],
-  [-0.90, 0.762, 1.185, 0.770],
-  [-1.14, 0.740, 1.100, 0.778],
-  [-1.38, 0.712, 0.975, 0.788],
-  [-1.62, 0.678, 0.860, 0.797],
-  [-1.80, 0.640, 0.800, 0.802],
+  [1.06, 0.848, 0.840, 0.730],
+  [0.88, 0.844, 1.020, 0.735],
+  [0.66, 0.830, 1.190, 0.740],
+  [0.44, 0.812, 1.265, 0.745],
+  [0.22, 0.798, 1.292, 0.750],
+  [0.00, 0.790, 1.292, 0.754],
+  [-0.30, 0.786, 1.308, 0.758],
+  [-0.62, 0.780, 1.302, 0.762],
+  [-0.90, 0.770, 1.262, 0.767],
+  [-1.14, 0.748, 1.165, 0.775],
+  [-1.38, 0.718, 1.020, 0.786],
+  [-1.62, 0.682, 0.885, 0.796],
+  [-1.80, 0.644, 0.810, 0.802],
 ];
 
 const CABIN_ARC = 21;
@@ -2705,7 +2708,10 @@ function cabinIsGlass(z, u) {
 }
 
 // Loft the cabin, routing each quad to the body builder or the glass builder.
-function buildCabin(bodyMB, glassMB) {
+// `innerMB`, when given, receives an inward-facing copy of the frame quads: the
+// bodywork is a single-sided shell, so without a headliner the cockpit camera
+// looks straight out through the roof and the pillars.
+function buildCabin(bodyMB, glassMB, innerMB) {
   const rows = 34;
   const rings = [];
   for (let i = 0; i < rows; i++) {
@@ -2744,6 +2750,21 @@ function buildCabin(bodyMB, glassMB) {
       };
       const a = emit(i, j), b = emit(i + 1, j), c = emit(i + 1, j + 1), d = emit(i, j + 1);
       mb.quadIdx(a, b, c, d);
+
+      if (!glass && innerMB) {
+        // Headliner: same quad, pushed inside and wound the other way.
+        useMat(innerMB, MAT.interior);
+        const emitIn = (ii, jj) => {
+          const n = normalAt(ii, jj);
+          const p = rings[ii][jj];
+          return innerMB.vertex(
+            [p[0] - n[0] * 0.035, p[1] - n[1] * 0.035, p[2] - n[2] * 0.035],
+            [-n[0], -n[1], -n[2]]);
+        };
+        const ia = emitIn(i, j), ib = emitIn(i + 1, j);
+        const ic = emitIn(i + 1, j + 1), id = emitIn(i, j + 1);
+        innerMB.quadIdx(ia, id, ic, ib);
+      }
     }
   }
 }
@@ -2848,9 +2869,9 @@ function buildAeroAndTrim(mb) {
   }
   // Roof intake.
   useMat(mb, MAT.paint);
-  mb.push(); mb.translate(0, 1.245, 0.28); mb.rotateX(-0.06); mb.chamferBox(0.30, 0.075, 0.72, 0.05); mb.pop();
+  mb.push(); mb.translate(0, 1.330, 0.28); mb.rotateX(-0.06); mb.chamferBox(0.30, 0.075, 0.72, 0.05); mb.pop();
   useMat(mb, MAT.mesh);
-  mb.push(); mb.translate(0, 1.245, 0.635); mb.box(0.24, 0.055, 0.02); mb.pop();
+  mb.push(); mb.translate(0, 1.330, 0.635); mb.box(0.24, 0.055, 0.02); mb.pop();
 
   // Mirrors on stalks.
   for (const s of [-1, 1]) {
@@ -3012,8 +3033,8 @@ function buildInterior(mb) {
   mb.push(); mb.translate(0, 0.80, 0.62); mb.rotateX(-0.30); mb.chamferBox(1.50, 0.26, 0.42, 0.06); mb.pop();
   mb.push(); mb.translate(0, 0.60, 0.20); mb.box(0.26, 0.26, 0.70); mb.pop();
   // Digital dash panel.
-  mb.mat([0.05, 0.12, 0.08], 0.25, 0.0, 0.55, FLAG_UNLIT);
-  mb.push(); mb.translate(-0.30, 0.895, 0.475); mb.rotateX(-0.30); mb.box(0.30, 0.11, 0.01); mb.pop();
+  mb.mat([0.04, 0.09, 0.07], 0.25, 0.0, 0.22, FLAG_UNLIT);
+  mb.push(); mb.translate(-0.36, 0.925, 0.455); mb.rotateX(-0.30); mb.box(0.24, 0.085, 0.01); mb.pop();
   // Door cards.
   useMat(mb, MAT.interior);
   for (const s of [-1, 1]) {
@@ -3046,18 +3067,18 @@ function buildInterior(mb) {
     mb.pop();
   };
   // Main hoop.
-  tube([-0.66, 0.46, -0.72], [-0.68, 1.14, -0.80]);
-  tube([0.66, 0.46, -0.72], [0.68, 1.14, -0.80]);
-  tube([-0.68, 1.14, -0.80], [0.68, 1.14, -0.80]);
+  tube([-0.66, 0.46, -0.72], [-0.68, 1.22, -0.80]);
+  tube([0.66, 0.46, -0.72], [0.68, 1.22, -0.80]);
+  tube([-0.68, 1.22, -0.80], [0.68, 1.22, -0.80]);
   // A pillar bars and roof rails.
-  tube([-0.68, 1.14, -0.80], [-0.62, 1.08, 0.30]);
-  tube([0.68, 1.14, -0.80], [0.62, 1.08, 0.30]);
-  tube([-0.62, 1.08, 0.30], [-0.58, 0.80, 0.86]);
-  tube([0.62, 1.08, 0.30], [0.58, 0.80, 0.86]);
-  tube([-0.62, 1.08, 0.30], [0.62, 1.08, 0.30]);
+  tube([-0.68, 1.22, -0.80], [-0.62, 1.17, 0.28]);
+  tube([0.68, 1.22, -0.80], [0.62, 1.17, 0.28]);
+  tube([-0.62, 1.17, 0.28], [-0.58, 0.82, 0.88]);
+  tube([0.62, 1.17, 0.28], [0.58, 0.82, 0.88]);
+  tube([-0.62, 1.17, 0.28], [0.62, 1.17, 0.28]);
   // Rear stays and door bars.
-  tube([-0.66, 1.10, -0.84], [-0.60, 0.50, -1.60]);
-  tube([0.66, 1.10, -0.84], [0.60, 0.50, -1.60]);
+  tube([-0.66, 1.18, -0.84], [-0.60, 0.50, -1.60]);
+  tube([0.66, 1.18, -0.84], [0.60, 0.50, -1.60]);
   tube([-0.70, 0.60, -0.70], [-0.66, 0.72, 0.40], 0.024);
   tube([0.70, 0.60, -0.70], [0.66, 0.72, 0.40], 0.024);
   // Pedals.
@@ -3138,13 +3159,13 @@ function buildDriver(mb) {
 function buildCarMeshes(gl) {
   const body = new MeshBuilder();
   const glass = new MeshBuilder();
+  const interior = new MeshBuilder();
   buildBodyShell(body);
-  buildCabin(body, glass);
+  buildCabin(body, glass, interior);
   buildAeroAndTrim(body);
   buildRearWing(body);
   buildLights(body);
 
-  const interior = new MeshBuilder();
   buildInterior(interior);
 
   // The driver is separate so the cockpit camera can hide the helmet it is
@@ -3156,17 +3177,17 @@ function buildCarMeshes(gl) {
   buildSteeringWheel(steering);
 
   const wheelFront = new MeshBuilder();
-  buildTire(wheelFront, CAR_SPEC.wheelRadiusFront, CAR_SPEC.wheelWidthFront, CAR_SPEC.wheelRadiusFront * 0.66);
-  buildRim(wheelFront, CAR_SPEC.wheelRadiusFront * 0.66, CAR_SPEC.wheelWidthFront);
+  buildTire(wheelFront, CAR_SPEC.wheelRadiusFront, CAR_SPEC.wheelWidthFront, CAR_SPEC.wheelRadiusFront * 0.60);
+  buildRim(wheelFront, CAR_SPEC.wheelRadiusFront * 0.60, CAR_SPEC.wheelWidthFront);
 
   const wheelRear = new MeshBuilder();
-  buildTire(wheelRear, CAR_SPEC.wheelRadiusRear, CAR_SPEC.wheelWidthRear, CAR_SPEC.wheelRadiusRear * 0.66);
-  buildRim(wheelRear, CAR_SPEC.wheelRadiusRear * 0.66, CAR_SPEC.wheelWidthRear);
+  buildTire(wheelRear, CAR_SPEC.wheelRadiusRear, CAR_SPEC.wheelWidthRear, CAR_SPEC.wheelRadiusRear * 0.60);
+  buildRim(wheelRear, CAR_SPEC.wheelRadiusRear * 0.60, CAR_SPEC.wheelWidthRear);
 
   const caliperFront = new MeshBuilder();
-  buildCaliper(caliperFront, CAR_SPEC.wheelRadiusFront * 0.66, CAR_SPEC.wheelWidthFront);
+  buildCaliper(caliperFront, CAR_SPEC.wheelRadiusFront * 0.60, CAR_SPEC.wheelWidthFront);
   const caliperRear = new MeshBuilder();
-  buildCaliper(caliperRear, CAR_SPEC.wheelRadiusRear * 0.66, CAR_SPEC.wheelWidthRear);
+  buildCaliper(caliperRear, CAR_SPEC.wheelRadiusRear * 0.60, CAR_SPEC.wheelWidthRear);
 
   return {
     body: meshFromBuilder(gl, body),
@@ -3799,18 +3820,34 @@ function buildTree(mb, rng, style = 0) {
 
 function rnd2(rng, a, b) { return a + rng() * (b - a); }
 
+// A clipped hedge: one continuous lofted mass with a slightly uneven top,
+// rather than a row of separate boxes with daylight between them.
 function buildHedge(mb, length, height = 1.2, depth = 0.8, rng) {
   pm(mb, PROP_MAT.leaf, [0.09, 0.20, 0.08]);
-  const segs = Math.max(2, Math.round(length / 1.1));
-  for (let i = 0; i < segs; i++) {
-    const t = (i + 0.5) / segs;
-    const x = (t - 0.5) * length;
-    const jitter = rng ? rnd2(rng, 0.9, 1.12) : 1;
-    mb.push();
-    mb.translate(x, height * 0.5 * jitter, 0);
-    mb.chamferBox(length / segs * 1.12, height * jitter, depth, depth * 0.35);
-    mb.pop();
+  const cols = Math.max(6, Math.round(length / 0.55));
+  const profile = [];
+  const M = 9;
+  for (let k = 0; k < M; k++) {
+    const u = k / (M - 1);
+    const th = u * Math.PI;
+    const n = 3.6;
+    profile.push([
+      Math.sign(Math.cos(th)) * Math.pow(Math.abs(Math.cos(th)), 2 / n),
+      Math.pow(Math.abs(Math.sin(th)), 2 / n),
+    ]);
   }
+  const rings = [];
+  for (let i = 0; i <= cols; i++) {
+    const t = i / cols;
+    const x = (t - 0.5) * length;
+    // Ends taper in; the top wobbles a little so it does not look extruded.
+    const taper = Math.min(1, Math.sin(Math.min(t, 1 - t) * Math.PI * 2.2) * 1.6 + 0.35);
+    const wob = rng ? 1 + (rng() - 0.5) * 0.10 : 1;
+    const h = height * wob * taper;
+    const d = depth * 0.5 * taper;
+    rings.push(profile.map(([pz, py]) => [x, py * h, pz * d]));
+  }
+  mb.loft(rings, false, false, false);
 }
 
 // --- circuit furniture ------------------------------------------------------
@@ -4083,18 +4120,18 @@ function buildHouse(mb, rng, opts = {}) {
     mb.box(slopeLen, 0.14, d + overhang * 2);
     mb.pop();
   }
+  // Gable ends: two real triangles, not a staircase of boxes.
   mb.mat(wall, 0.9, 0, 0, FLAG_DEFAULT);
   for (const s of [-1, 1]) {
-    const steps = 5;
-    for (let i = 0; i < steps; i++) {
-      const t = i / steps, t2 = (i + 1) / steps;
-      const y0 = lerp(wallH, ridge, t), y1 = lerp(wallH, ridge, t2);
-      const hw0 = (w / 2) * (1 - t), hw1 = (w / 2) * (1 - t2);
-      mb.push();
-      mb.translate(0, (y0 + y1) / 2, s * d / 2);
-      mb.box((hw0 + hw1), (y1 - y0), 0.14);
-      mb.pop();
-    }
+    const zf = s * d / 2, zb = s * (d / 2 - 0.14);
+    const apex = [0, ridge, zf], left = [-w / 2, wallH, zf], right = [w / 2, wallH, zf];
+    const nrm = [0, 0, s];
+    const a = mb.vertex(left, nrm), b = mb.vertex(right, nrm), c = mb.vertex(apex, nrm);
+    if (s > 0) mb.tri(a, b, c); else mb.tri(a, c, b);
+    const apex2 = [0, ridge, zb], left2 = [-w / 2, wallH, zb], right2 = [w / 2, wallH, zb];
+    const nrm2 = [0, 0, -s];
+    const a2 = mb.vertex(left2, nrm2), b2 = mb.vertex(right2, nrm2), c2 = mb.vertex(apex2, nrm2);
+    if (s > 0) mb.tri(a2, c2, b2); else mb.tri(a2, b2, c2);
   }
   // Chimney.
   if (rng() < 0.6) {
@@ -5128,10 +5165,10 @@ function buildHomeRoute(gl) {
       yaw: garageYaw,
     },
     ambience: {
-      sunAngle: 0.17, sunAzimuth: -1.25,
-      sky: { zenith: [0.16, 0.24, 0.52], horizon: [0.92, 0.55, 0.30], cloud: 0.7 },
-      fogDensity: 0.0012,
-      night: 0.45,
+      sunAngle: 0.26, sunAzimuth: -1.25,
+      sky: { zenith: [0.11, 0.20, 0.46], horizon: [0.86, 0.52, 0.32], cloud: 0.55 },
+      fogDensity: 0.00065,
+      night: 0.35,
     },
   };
 }
@@ -5568,7 +5605,16 @@ class Renderer {
       const alpha = p.alpha * (1 - t) * (t < 0.12 ? t / 0.12 : 1);
       write(p.pos, size, alpha, p.rot, p.tint);
     }
-    for (const g of glows) write(g.pos, g.size, g.alpha, 0, g.tint);
+    for (const g of glows) {
+      const dx = g.pos[0] - camera.pos[0], dy = g.pos[1] - camera.pos[1], dz = g.pos[2] - camera.pos[2];
+      const d2 = dx * dx + dy * dy + dz * dz;
+      if (d2 > 240 * 240) continue;
+      // Hold a minimum on-screen size, and fade rather than pop.
+      const dist = Math.sqrt(d2);
+      const size = Math.max(g.size, dist * 0.006);
+      const fade = 1 - smoothstep(170, 240, dist);
+      write(g.pos, size, g.alpha * fade, 0, g.tint);
+    }
 
     gl.bindBuffer(gl.ARRAY_BUFFER, this.particleVbo);
     gl.bufferSubData(gl.ARRAY_BUFFER, 0, data.subarray(0, n * 4 * 12));
@@ -5880,7 +5926,7 @@ class Car {
       if (!options.hideDriver) renderer.submit(this.meshes.driver, this.bodyMatrix, EMPTY_OPTS);
       // Steering wheel: mounted on the dash, rotated by the driver's input.
       const sw = m4.create();
-      m4.compose(sw, [-0.36, 0.90, 0.32], 0, 0, 0);
+      m4.compose(sw, [-0.36, 0.925, 0.28], 0, 0, 0);
       const tilt = m4.rotationX(m4.create(), 0.42);
       m4.multiply(sw, sw, tilt);
       const spin = m4.rotationZ(m4.create(), -v.steerAngle * 3.2);
@@ -7400,7 +7446,7 @@ class Camera {
       // Rigid mounts move with the body, including pitch and roll.
       const offsets = {
         bonnet: [0, 1.12, 1.15],
-        cockpit: [-0.36, 1.20, -0.30],
+        cockpit: [-0.36, 1.16, -0.34],
         bumper: [0, 0.46, 2.28],
       };
       const o = offsets[mode];

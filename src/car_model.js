@@ -33,15 +33,15 @@ const MAT = {
   chrome: { color: [0.86, 0.87, 0.90], rough: 0.10, metal: 1.0, emissive: 0, flag: FLAG_DEFAULT },
   steel: { color: [0.45, 0.46, 0.48], rough: 0.35, metal: 0.90, emissive: 0, flag: FLAG_DEFAULT },
   glass: { color: [0.035, 0.045, 0.055], rough: 0.05, metal: 0.0, emissive: 0, flag: FLAG_GLASS },
-  tire: { color: [0.048, 0.048, 0.052], rough: 0.90, metal: 0.0, emissive: 0, flag: FLAG_DEFAULT },
-  tireWall: { color: [0.060, 0.060, 0.065], rough: 0.80, metal: 0.0, emissive: 0, flag: FLAG_DEFAULT },
-  rim: { color: [0.55, 0.56, 0.60], rough: 0.22, metal: 0.95, emissive: 0, flag: FLAG_DEFAULT },
-  disc: { color: [0.34, 0.33, 0.33], rough: 0.30, metal: 0.85, emissive: 0, flag: FLAG_DEFAULT },
+  tire: { color: [0.070, 0.070, 0.076], rough: 0.88, metal: 0.0, emissive: 0, flag: FLAG_DEFAULT },
+  tireWall: { color: [0.095, 0.095, 0.102], rough: 0.74, metal: 0.0, emissive: 0, flag: FLAG_DEFAULT },
+  rim: { color: [0.155, 0.160, 0.175], rough: 0.42, metal: 0.65, emissive: 0, flag: FLAG_DEFAULT },
+  disc: { color: [0.26, 0.25, 0.25], rough: 0.34, metal: 0.80, emissive: 0, flag: FLAG_DEFAULT },
   caliper: { color: [0.78, 0.10, 0.04], rough: 0.35, metal: 0.30, emissive: 0, flag: FLAG_DEFAULT },
   headlight: { color: [0.88, 0.90, 0.98], rough: 0.06, metal: 0.0, emissive: 0.0, flag: FLAG_GLASS },
   tailLens: { color: [0.62, 0.03, 0.03], rough: 0.12, metal: 0.0, emissive: 0.35, flag: FLAG_UNLIT },
   reverseLens: { color: [0.85, 0.85, 0.80], rough: 0.12, metal: 0.0, emissive: 0.05, flag: FLAG_UNLIT },
-  interior: { color: [0.045, 0.045, 0.05], rough: 0.85, metal: 0.0, emissive: 0, flag: FLAG_DEFAULT },
+  interior: { color: [0.085, 0.085, 0.092], rough: 0.88, metal: 0.0, emissive: 0, flag: FLAG_DEFAULT },
   seat: { color: [0.08, 0.08, 0.09], rough: 0.80, metal: 0.0, emissive: 0, flag: FLAG_DEFAULT },
   cage: { color: [0.72, 0.12, 0.10], rough: 0.40, metal: 0.30, emissive: 0, flag: FLAG_DEFAULT },
   suit: { color: [0.13, 0.14, 0.18], rough: 0.85, metal: 0.0, emissive: 0, flag: FLAG_DEFAULT },
@@ -205,19 +205,19 @@ function buildBodyShell(mb) {
 
 // [z, halfWidth, roofY, waistY]
 const CABIN_STATIONS = [
-  [1.02, 0.845, 0.760, 0.735],
-  [0.86, 0.840, 0.830, 0.740],
-  [0.66, 0.825, 0.960, 0.745],
-  [0.44, 0.805, 1.080, 0.750],
-  [0.22, 0.790, 1.168, 0.755],
-  [0.00, 0.782, 1.205, 0.758],
-  [-0.30, 0.778, 1.222, 0.762],
-  [-0.62, 0.772, 1.218, 0.765],
-  [-0.90, 0.762, 1.185, 0.770],
-  [-1.14, 0.740, 1.100, 0.778],
-  [-1.38, 0.712, 0.975, 0.788],
-  [-1.62, 0.678, 0.860, 0.797],
-  [-1.80, 0.640, 0.800, 0.802],
+  [1.06, 0.848, 0.840, 0.730],
+  [0.88, 0.844, 1.020, 0.735],
+  [0.66, 0.830, 1.190, 0.740],
+  [0.44, 0.812, 1.265, 0.745],
+  [0.22, 0.798, 1.292, 0.750],
+  [0.00, 0.790, 1.292, 0.754],
+  [-0.30, 0.786, 1.308, 0.758],
+  [-0.62, 0.780, 1.302, 0.762],
+  [-0.90, 0.770, 1.262, 0.767],
+  [-1.14, 0.748, 1.165, 0.775],
+  [-1.38, 0.718, 1.020, 0.786],
+  [-1.62, 0.682, 0.885, 0.796],
+  [-1.80, 0.644, 0.810, 0.802],
 ];
 
 const CABIN_ARC = 21;
@@ -255,7 +255,10 @@ function cabinIsGlass(z, u) {
 }
 
 // Loft the cabin, routing each quad to the body builder or the glass builder.
-function buildCabin(bodyMB, glassMB) {
+// `innerMB`, when given, receives an inward-facing copy of the frame quads: the
+// bodywork is a single-sided shell, so without a headliner the cockpit camera
+// looks straight out through the roof and the pillars.
+function buildCabin(bodyMB, glassMB, innerMB) {
   const rows = 34;
   const rings = [];
   for (let i = 0; i < rows; i++) {
@@ -294,6 +297,21 @@ function buildCabin(bodyMB, glassMB) {
       };
       const a = emit(i, j), b = emit(i + 1, j), c = emit(i + 1, j + 1), d = emit(i, j + 1);
       mb.quadIdx(a, b, c, d);
+
+      if (!glass && innerMB) {
+        // Headliner: same quad, pushed inside and wound the other way.
+        useMat(innerMB, MAT.interior);
+        const emitIn = (ii, jj) => {
+          const n = normalAt(ii, jj);
+          const p = rings[ii][jj];
+          return innerMB.vertex(
+            [p[0] - n[0] * 0.035, p[1] - n[1] * 0.035, p[2] - n[2] * 0.035],
+            [-n[0], -n[1], -n[2]]);
+        };
+        const ia = emitIn(i, j), ib = emitIn(i + 1, j);
+        const ic = emitIn(i + 1, j + 1), id = emitIn(i, j + 1);
+        innerMB.quadIdx(ia, id, ic, ib);
+      }
     }
   }
 }
@@ -398,9 +416,9 @@ function buildAeroAndTrim(mb) {
   }
   // Roof intake.
   useMat(mb, MAT.paint);
-  mb.push(); mb.translate(0, 1.245, 0.28); mb.rotateX(-0.06); mb.chamferBox(0.30, 0.075, 0.72, 0.05); mb.pop();
+  mb.push(); mb.translate(0, 1.330, 0.28); mb.rotateX(-0.06); mb.chamferBox(0.30, 0.075, 0.72, 0.05); mb.pop();
   useMat(mb, MAT.mesh);
-  mb.push(); mb.translate(0, 1.245, 0.635); mb.box(0.24, 0.055, 0.02); mb.pop();
+  mb.push(); mb.translate(0, 1.330, 0.635); mb.box(0.24, 0.055, 0.02); mb.pop();
 
   // Mirrors on stalks.
   for (const s of [-1, 1]) {
@@ -562,8 +580,8 @@ function buildInterior(mb) {
   mb.push(); mb.translate(0, 0.80, 0.62); mb.rotateX(-0.30); mb.chamferBox(1.50, 0.26, 0.42, 0.06); mb.pop();
   mb.push(); mb.translate(0, 0.60, 0.20); mb.box(0.26, 0.26, 0.70); mb.pop();
   // Digital dash panel.
-  mb.mat([0.05, 0.12, 0.08], 0.25, 0.0, 0.55, FLAG_UNLIT);
-  mb.push(); mb.translate(-0.30, 0.895, 0.475); mb.rotateX(-0.30); mb.box(0.30, 0.11, 0.01); mb.pop();
+  mb.mat([0.04, 0.09, 0.07], 0.25, 0.0, 0.22, FLAG_UNLIT);
+  mb.push(); mb.translate(-0.36, 0.925, 0.455); mb.rotateX(-0.30); mb.box(0.24, 0.085, 0.01); mb.pop();
   // Door cards.
   useMat(mb, MAT.interior);
   for (const s of [-1, 1]) {
@@ -596,18 +614,18 @@ function buildInterior(mb) {
     mb.pop();
   };
   // Main hoop.
-  tube([-0.66, 0.46, -0.72], [-0.68, 1.14, -0.80]);
-  tube([0.66, 0.46, -0.72], [0.68, 1.14, -0.80]);
-  tube([-0.68, 1.14, -0.80], [0.68, 1.14, -0.80]);
+  tube([-0.66, 0.46, -0.72], [-0.68, 1.22, -0.80]);
+  tube([0.66, 0.46, -0.72], [0.68, 1.22, -0.80]);
+  tube([-0.68, 1.22, -0.80], [0.68, 1.22, -0.80]);
   // A pillar bars and roof rails.
-  tube([-0.68, 1.14, -0.80], [-0.62, 1.08, 0.30]);
-  tube([0.68, 1.14, -0.80], [0.62, 1.08, 0.30]);
-  tube([-0.62, 1.08, 0.30], [-0.58, 0.80, 0.86]);
-  tube([0.62, 1.08, 0.30], [0.58, 0.80, 0.86]);
-  tube([-0.62, 1.08, 0.30], [0.62, 1.08, 0.30]);
+  tube([-0.68, 1.22, -0.80], [-0.62, 1.17, 0.28]);
+  tube([0.68, 1.22, -0.80], [0.62, 1.17, 0.28]);
+  tube([-0.62, 1.17, 0.28], [-0.58, 0.82, 0.88]);
+  tube([0.62, 1.17, 0.28], [0.58, 0.82, 0.88]);
+  tube([-0.62, 1.17, 0.28], [0.62, 1.17, 0.28]);
   // Rear stays and door bars.
-  tube([-0.66, 1.10, -0.84], [-0.60, 0.50, -1.60]);
-  tube([0.66, 1.10, -0.84], [0.60, 0.50, -1.60]);
+  tube([-0.66, 1.18, -0.84], [-0.60, 0.50, -1.60]);
+  tube([0.66, 1.18, -0.84], [0.60, 0.50, -1.60]);
   tube([-0.70, 0.60, -0.70], [-0.66, 0.72, 0.40], 0.024);
   tube([0.70, 0.60, -0.70], [0.66, 0.72, 0.40], 0.024);
   // Pedals.
@@ -688,13 +706,13 @@ function buildDriver(mb) {
 function buildCarMeshes(gl) {
   const body = new MeshBuilder();
   const glass = new MeshBuilder();
+  const interior = new MeshBuilder();
   buildBodyShell(body);
-  buildCabin(body, glass);
+  buildCabin(body, glass, interior);
   buildAeroAndTrim(body);
   buildRearWing(body);
   buildLights(body);
 
-  const interior = new MeshBuilder();
   buildInterior(interior);
 
   // The driver is separate so the cockpit camera can hide the helmet it is
@@ -706,17 +724,17 @@ function buildCarMeshes(gl) {
   buildSteeringWheel(steering);
 
   const wheelFront = new MeshBuilder();
-  buildTire(wheelFront, CAR_SPEC.wheelRadiusFront, CAR_SPEC.wheelWidthFront, CAR_SPEC.wheelRadiusFront * 0.66);
-  buildRim(wheelFront, CAR_SPEC.wheelRadiusFront * 0.66, CAR_SPEC.wheelWidthFront);
+  buildTire(wheelFront, CAR_SPEC.wheelRadiusFront, CAR_SPEC.wheelWidthFront, CAR_SPEC.wheelRadiusFront * 0.60);
+  buildRim(wheelFront, CAR_SPEC.wheelRadiusFront * 0.60, CAR_SPEC.wheelWidthFront);
 
   const wheelRear = new MeshBuilder();
-  buildTire(wheelRear, CAR_SPEC.wheelRadiusRear, CAR_SPEC.wheelWidthRear, CAR_SPEC.wheelRadiusRear * 0.66);
-  buildRim(wheelRear, CAR_SPEC.wheelRadiusRear * 0.66, CAR_SPEC.wheelWidthRear);
+  buildTire(wheelRear, CAR_SPEC.wheelRadiusRear, CAR_SPEC.wheelWidthRear, CAR_SPEC.wheelRadiusRear * 0.60);
+  buildRim(wheelRear, CAR_SPEC.wheelRadiusRear * 0.60, CAR_SPEC.wheelWidthRear);
 
   const caliperFront = new MeshBuilder();
-  buildCaliper(caliperFront, CAR_SPEC.wheelRadiusFront * 0.66, CAR_SPEC.wheelWidthFront);
+  buildCaliper(caliperFront, CAR_SPEC.wheelRadiusFront * 0.60, CAR_SPEC.wheelWidthFront);
   const caliperRear = new MeshBuilder();
-  buildCaliper(caliperRear, CAR_SPEC.wheelRadiusRear * 0.66, CAR_SPEC.wheelWidthRear);
+  buildCaliper(caliperRear, CAR_SPEC.wheelRadiusRear * 0.60, CAR_SPEC.wheelWidthRear);
 
   return {
     body: meshFromBuilder(gl, body),

@@ -682,10 +682,10 @@ function buildHomeRoute(gl) {
       yaw: garageYaw,
     },
     ambience: {
-      sunAngle: 0.17, sunAzimuth: -1.25,
-      sky: { zenith: [0.16, 0.24, 0.52], horizon: [0.92, 0.55, 0.30], cloud: 0.7 },
-      fogDensity: 0.0012,
-      night: 0.45,
+      sunAngle: 0.26, sunAzimuth: -1.25,
+      sky: { zenith: [0.11, 0.20, 0.46], horizon: [0.86, 0.52, 0.32], cloud: 0.55 },
+      fogDensity: 0.00065,
+      night: 0.35,
     },
   };
 }

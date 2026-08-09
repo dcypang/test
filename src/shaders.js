@@ -391,7 +391,7 @@ void main() {
     float Fc = 0.04 + 0.96 * pow(clamp(1.0 - vdh, 0.0, 1.0), 5.0);
     float ccSpec = min(Dc * Gc * Fc / max(4.0 * ndv * ndl, 1e-4), 22.0);
     color += vec3(ccSpec) * uSunColor * ndl * shadow;
-    color += envSpecular(R, ccRough) * (0.045 + 0.5 * fres);
+    color += envSpecular(R, ccRough) * (0.04 + 0.30 * fres);
   }
 
   // --- glass ----------------------------------------------------------------------
@@ -418,7 +418,10 @@ void main() {
   // --- fog ---------------------------------------------------------------------
   float dist = length(uCameraPos - vWorld);
   float fog = 1.0 - exp(-pow(dist * uFogDensity, 2.0));
-  vec3 fogged = mix(uFogColor, skyColor(normalize(vWorld - uCameraPos)), 0.45);
+  // skyGradient, not skyColor: the cloud projection is unstable at the grazing
+  // angles distant geometry sits at, and it shows up as a noise band along the
+  // horizon on everything far away.
+  vec3 fogged = mix(uFogColor, skyGradient(normalize(vWorld - uCameraPos)), 0.45);
   color = mix(color, fogged, clamp(fog, 0.0, 1.0));
 
   fragColor = vec4(color, alpha);

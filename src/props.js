@@ -74,18 +74,34 @@ function buildTree(mb, rng, style = 0) {
 
 function rnd2(rng, a, b) { return a + rng() * (b - a); }
 
+// A clipped hedge: one continuous lofted mass with a slightly uneven top,
+// rather than a row of separate boxes with daylight between them.
 function buildHedge(mb, length, height = 1.2, depth = 0.8, rng) {
   pm(mb, PROP_MAT.leaf, [0.09, 0.20, 0.08]);
-  const segs = Math.max(2, Math.round(length / 1.1));
-  for (let i = 0; i < segs; i++) {
-    const t = (i + 0.5) / segs;
-    const x = (t - 0.5) * length;
-    const jitter = rng ? rnd2(rng, 0.9, 1.12) : 1;
-    mb.push();
-    mb.translate(x, height * 0.5 * jitter, 0);
-    mb.chamferBox(length / segs * 1.12, height * jitter, depth, depth * 0.35);
-    mb.pop();
+  const cols = Math.max(6, Math.round(length / 0.55));
+  const profile = [];
+  const M = 9;
+  for (let k = 0; k < M; k++) {
+    const u = k / (M - 1);
+    const th = u * Math.PI;
+    const n = 3.6;
+    profile.push([
+      Math.sign(Math.cos(th)) * Math.pow(Math.abs(Math.cos(th)), 2 / n),
+      Math.pow(Math.abs(Math.sin(th)), 2 / n),
+    ]);
   }
+  const rings = [];
+  for (let i = 0; i <= cols; i++) {
+    const t = i / cols;
+    const x = (t - 0.5) * length;
+    // Ends taper in; the top wobbles a little so it does not look extruded.
+    const taper = Math.min(1, Math.sin(Math.min(t, 1 - t) * Math.PI * 2.2) * 1.6 + 0.35);
+    const wob = rng ? 1 + (rng() - 0.5) * 0.10 : 1;
+    const h = height * wob * taper;
+    const d = depth * 0.5 * taper;
+    rings.push(profile.map(([pz, py]) => [x, py * h, pz * d]));
+  }
+  mb.loft(rings, false, false, false);
 }
 
 // --- circuit furniture ------------------------------------------------------
@@ -358,18 +374,18 @@ function buildHouse(mb, rng, opts = {}) {
     mb.box(slopeLen, 0.14, d + overhang * 2);
     mb.pop();
   }
+  // Gable ends: two real triangles, not a staircase of boxes.
   mb.mat(wall, 0.9, 0, 0, FLAG_DEFAULT);
   for (const s of [-1, 1]) {
-    const steps = 5;
-    for (let i = 0; i < steps; i++) {
-      const t = i / steps, t2 = (i + 1) / steps;
-      const y0 = lerp(wallH, ridge, t), y1 = lerp(wallH, ridge, t2);
-      const hw0 = (w / 2) * (1 - t), hw1 = (w / 2) * (1 - t2);
-      mb.push();
-      mb.translate(0, (y0 + y1) / 2, s * d / 2);
-      mb.box((hw0 + hw1), (y1 - y0), 0.14);
-      mb.pop();
-    }
+    const zf = s * d / 2, zb = s * (d / 2 - 0.14);
+    const apex = [0, ridge, zf], left = [-w / 2, wallH, zf], right = [w / 2, wallH, zf];
+    const nrm = [0, 0, s];
+    const a = mb.vertex(left, nrm), b = mb.vertex(right, nrm), c = mb.vertex(apex, nrm);
+    if (s > 0) mb.tri(a, b, c); else mb.tri(a, c, b);
+    const apex2 = [0, ridge, zb], left2 = [-w / 2, wallH, zb], right2 = [w / 2, wallH, zb];
+    const nrm2 = [0, 0, -s];
+    const a2 = mb.vertex(left2, nrm2), b2 = mb.vertex(right2, nrm2), c2 = mb.vertex(apex2, nrm2);
+    if (s > 0) mb.tri(a2, c2, b2); else mb.tri(a2, b2, c2);
   }
   // Chimney.
   if (rng() < 0.6) {

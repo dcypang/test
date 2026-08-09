@@ -417,7 +417,16 @@ class Renderer {
       const alpha = p.alpha * (1 - t) * (t < 0.12 ? t / 0.12 : 1);
       write(p.pos, size, alpha, p.rot, p.tint);
     }
-    for (const g of glows) write(g.pos, g.size, g.alpha, 0, g.tint);
+    for (const g of glows) {
+      const dx = g.pos[0] - camera.pos[0], dy = g.pos[1] - camera.pos[1], dz = g.pos[2] - camera.pos[2];
+      const d2 = dx * dx + dy * dy + dz * dz;
+      if (d2 > 240 * 240) continue;
+      // Hold a minimum on-screen size, and fade rather than pop.
+      const dist = Math.sqrt(d2);
+      const size = Math.max(g.size, dist * 0.006);
+      const fade = 1 - smoothstep(170, 240, dist);
+      write(g.pos, size, g.alpha * fade, 0, g.tint);
+    }
 
     gl.bindBuffer(gl.ARRAY_BUFFER, this.particleVbo);
     gl.bufferSubData(gl.ARRAY_BUFFER, 0, data.subarray(0, n * 4 * 12));
