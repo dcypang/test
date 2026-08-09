@@ -4,9 +4,12 @@ A racing game that doesn't end at the chequered flag: win the race, then drive
 the car home through the countryside, a village and your own street — and park
 it in the garage.
 
-Open **`index.html`** in a browser. That's it: no build step, no server, no
-dependencies, no network access. Everything — the car, the circuit, the town,
-the engine note — is generated procedurally at load time.
+**[Play it here](https://claude.ai/code/artifact/9aeff0d7-8647-42c4-a15c-09d67a286fa2)**,
+or clone the repo and open **`index.html`** in a browser. That's it: no build
+step, no server, no dependencies, no network access. Everything — the car, the
+circuit, the town, the engine note — is generated procedurally at load time.
+
+Click the page once before driving, so it can hear the keyboard.
 
 ## The two halves
 
@@ -79,7 +82,8 @@ out. `scripts/simtest.mjs` asserts all of that.
       hud.js        the canvas overlay
       ui.js         menus and results
       game.js       input, camera, race logic, the drive home
-    build.mjs       bundles src/ into a single self-contained index.html
+    build.mjs       bundles src/ into index.html, plus dist/embed.html for
+                    hosts that supply their own document shell
     scripts/        headless test harnesses
 
 ## Working on it

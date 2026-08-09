@@ -41,6 +41,9 @@ function startGame() {
   const resume = () => {
     game.audio.start();
     game.audio.resume();
+    // When the page is embedded, key events go to the host until the frame
+    // itself has focus. Claim it on the first click or keypress.
+    try { window.focus(); } catch (e) { /* cross-origin host, nothing to do */ }
   };
   window.addEventListener('pointerdown', resume, { once: true });
   window.addEventListener('keydown', resume, { once: true });

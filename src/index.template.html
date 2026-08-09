@@ -109,12 +109,41 @@
   .secondary { padding: 12px 22px; }
   .actions { display: flex; gap: 12px; flex-wrap: wrap; margin-top: 22px; align-items: center; }
 
+  .controlsWrap {
+    margin-top: 18px; padding-top: 16px; border-top: 1px solid var(--line);
+  }
+  .controlsWrap > summary {
+    cursor: pointer; font-size: 12px; letter-spacing: 0.14em;
+    text-transform: uppercase; color: var(--muted); list-style: none;
+    display: flex; align-items: center; gap: 8px;
+  }
+  .controlsWrap > summary::-webkit-details-marker { display: none; }
+  .controlsWrap > summary::before {
+    content: "+"; font-size: 15px; line-height: 1; color: var(--accent);
+  }
+  .controlsWrap[open] > summary::before { content: "–"; }
+  .controlsWrap > summary:hover { color: var(--ink); }
+  .controlsWrap > summary:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
   .controls {
-    margin-top: 22px; padding-top: 18px; border-top: 1px solid var(--line);
+    margin-top: 14px;
     display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 8px 20px;
     font-size: 13px; color: var(--muted);
   }
   .controls span { color: var(--ink); font-weight: 700; }
+
+  /* Short viewports - an embedded frame, or a laptop in landscape - must still
+     show the primary action without scrolling. */
+  @media (max-height: 720px) {
+    #title .panel { padding: 20px 26px; }
+    h1 { font-size: clamp(26px, 4.5vw, 38px); }
+    .tagline { margin-bottom: 14px; font-size: 14px; }
+    .row { margin-bottom: 11px; }
+    .swatch { width: 28px; height: 28px; }
+    button { padding: 7px 13px; font-size: 14px; }
+    .primary { font-size: 16px; padding: 11px 24px; }
+    .actions { margin-top: 16px; }
+    .controlsWrap { margin-top: 14px; padding-top: 12px; }
+  }
 
   table { width: 100%; border-collapse: collapse; font-size: 15px; }
   th, td { text-align: left; padding: 8px 10px; border-bottom: 1px solid rgba(255,255,255,0.08); }
@@ -136,6 +165,7 @@
   ul.stats strong { color: var(--ink); }
 
   #loading .panel { text-align: center; }
+  .hint { margin: 10px 0 0; font-size: 13px; color: var(--muted); }
   .spinner {
     width: 42px; height: 42px; margin: 0 auto 16px;
     border: 3px solid rgba(255,255,255,0.15);
@@ -159,6 +189,7 @@
     <div class="spinner"></div>
     <h2>Apex &amp; Home</h2>
     <p id="loadingText" class="tagline">Starting up…</p>
+    <p class="hint">Click the page once so it can hear the keyboard.</p>
   </div>
 </div>
 
@@ -193,22 +224,27 @@
       <button id="driveBtn" class="secondary">Skip to the drive home</button>
     </div>
 
-    <div class="controls">
-      <div><span>W / ↑</span> throttle</div>
-      <div><span>S / ↓</span> brake &amp; reverse</div>
-      <div><span>A D / ← →</span> steer</div>
-      <div><span>Space</span> handbrake</div>
-      <div><span>Q / E</span> shift down / up</div>
-      <div><span>G</span> auto / manual box</div>
-      <div><span>C</span> camera</div>
-      <div><span>B</span> look back</div>
-      <div><span>L</span> headlights</div>
-      <div><span>Z / X</span> indicators</div>
-      <div><span>H</span> horn</div>
-      <div><span>R</span> recover to road</div>
-      <div><span>P / Esc</span> pause</div>
-      <div><span>M</span> mute</div>
-    </div>
+    <details class="controlsWrap">
+      <summary>Controls</summary>
+      <div class="controls">
+        <div><span>W / ↑</span> throttle</div>
+        <div><span>S / ↓</span> brake &amp; reverse</div>
+        <div><span>A D / ← →</span> steer</div>
+        <div><span>Space</span> handbrake</div>
+        <div><span>Q / E</span> shift down / up</div>
+        <div><span>G</span> auto / manual box</div>
+        <div><span>C</span> camera</div>
+        <div><span>B</span> look back</div>
+        <div><span>L</span> headlights</div>
+        <div><span>Z / X</span> indicators</div>
+        <div><span>H</span> horn</div>
+        <div><span>R</span> recover to road</div>
+        <div><span>P / Esc</span> pause</div>
+        <div><span>M</span> mute</div>
+      </div>
+      <p class="note">A gamepad works too: left stick steers, triggers are the
+        pedals, shoulder buttons shift.</p>
+    </details>
   </div>
 </div>
 
