@@ -15,6 +15,11 @@ function isTouchDevice() {
     && (('ontouchstart' in window) || (navigator.maxTouchPoints || 0) > 0);
 }
 
+// How far the knob's centre can travel from the base, in CSS pixels. Kept in
+// step with the CSS: ring radius 80 minus knob radius 28, so the knob rolls to
+// the inside edge of the ring at full lock rather than spilling over it.
+const STICK_RADIUS = 52;
+
 const TOUCH_SVG = {
   camera: '<path d="M4 8h3l1.5-2h7L17 8h3v10H4z" fill="none" stroke="currentColor" stroke-width="1.7"/><circle cx="12" cy="13" r="3.2" fill="none" stroke="currentColor" stroke-width="1.7"/>',
   pause: '<rect x="7" y="5" width="3.4" height="14" rx="1" fill="currentColor"/><rect x="13.6" y="5" width="3.4" height="14" rx="1" fill="currentColor"/>',
@@ -34,7 +39,8 @@ class TouchControls {
     this.taps = new Set();          // one-shot presses, drained per frame
     this.held = new Set();
     this.steerPointer = null;
-    this.steerOrigin = 0;
+    this.stickCenter = { x: 0, y: 0 };
+    this.invertSteer = false;
     this.tilt = { active: false, zero: null, value: 0 };
     this.root = null;
   }
@@ -52,7 +58,11 @@ class TouchControls {
 
     root.innerHTML = `
       <div class="touch-steer" data-role="steer">
-        <div class="touch-steer-track"><div class="touch-steer-thumb"></div></div>
+        <div class="touch-stick">
+          <div class="touch-stick-ring"></div>
+          <div class="touch-stick-axis"></div>
+          <div class="touch-stick-knob"></div>
+        </div>
         <span class="touch-steer-label">Slide to steer</span>
       </div>
       <div class="touch-pedals">
@@ -77,7 +87,8 @@ class TouchControls {
 
     document.body.appendChild(root);
     this.root = root;
-    this.thumb = root.querySelector('.touch-steer-thumb');
+    this.stick = root.querySelector('.touch-stick');
+    this.knob = root.querySelector('.touch-stick-knob');
     this.steerZone = root.querySelector('[data-role="steer"]');
     this.roadRow = root.querySelector('.touch-road');
 
@@ -88,40 +99,81 @@ class TouchControls {
 
   // --- steering -------------------------------------------------------------
 
+  // A floating 360-degree stick: the base appears wherever the thumb lands, so
+  // there is no small target to find without looking, and the knob is free to
+  // sit anywhere in the circle rather than on a narrow bar. Only the sideways
+  // component steers - the circle is what makes it comfortable to hold.
   bindSteer() {
     const zone = this.steerZone;
-    // Full lock at a comfortable thumb sweep, never more than a sixth of the
-    // screen so it stays reachable on a small phone.
-    const travel = () => Math.min(96, Math.max(52, window.innerWidth * 0.13));
+
+    const placeAt = (clientX, clientY) => {
+      const r = zone.getBoundingClientRect();
+      // Keep the base fully inside its zone even if the thumb lands at an edge.
+      const x = clamp(clientX - r.left, STICK_RADIUS + 4, r.width - STICK_RADIUS - 4);
+      const y = clamp(clientY - r.top, STICK_RADIUS + 4, r.height - STICK_RADIUS - 4);
+      this.stick.style.left = `${x}px`;
+      this.stick.style.top = `${y}px`;
+      this.stickCenter = { x: r.left + x, y: r.top + y };
+    };
 
     const down = (e) => {
       if (this.steerPointer !== null) return;
       this.steerPointer = e.pointerId;
-      this.steerOrigin = e.clientX;
+      placeAt(e.clientX, e.clientY);
       try { zone.setPointerCapture(e.pointerId); } catch (err) { /* not capturable */ }
       zone.classList.add('active');
+      this.moveKnob(0, 0);
       e.preventDefault();
     };
+
     const move = (e) => {
       if (e.pointerId !== this.steerPointer) return;
-      const dx = e.clientX - this.steerOrigin;
-      const t = clamp(dx / travel(), -1, 1);
+      let dx = e.clientX - this.stickCenter.x;
+      let dy = e.clientY - this.stickCenter.y;
+      const len = Math.hypot(dx, dy);
+      if (len > STICK_RADIUS) {
+        dx = dx / len * STICK_RADIUS;
+        dy = dy / len * STICK_RADIUS;
+      }
+      this.moveKnob(dx, dy);
+      const t = clamp(dx / STICK_RADIUS, -1, 1);
       // A small dead zone stops the car twitching while the thumb rests.
-      this.state.steer = Math.abs(t) < 0.06 ? 0 : t;
-      this.thumb.style.transform = `translateX(${this.state.steer * 46}px)`;
+      const raw = Math.abs(t) < 0.07 ? 0 : t;
+      this.state.steer = this.invertSteer ? -raw : raw;
       e.preventDefault();
     };
+
     const up = (e) => {
       if (e.pointerId !== this.steerPointer) return;
       this.steerPointer = null;
       this.state.steer = 0;
-      this.thumb.style.transform = 'translateX(0px)';
+      this.moveKnob(0, 0);
+      this.recenterStick();
       zone.classList.remove('active');
     };
+
     zone.addEventListener('pointerdown', down);
     zone.addEventListener('pointermove', move);
     zone.addEventListener('pointerup', up);
     zone.addEventListener('pointercancel', up);
+    this.recenterStick();
+    window.addEventListener('resize', () => this.recenterStick());
+  }
+
+  moveKnob(dx, dy) {
+    if (this.knob) this.knob.style.transform = `translate(${dx}px, ${dy}px)`;
+  }
+
+  // Resting position: centred in its zone so the control is discoverable.
+  recenterStick() {
+    if (!this.stick || !this.steerZone) return;
+    if (this.steerPointer !== null) return;
+    const r = this.steerZone.getBoundingClientRect();
+    const x = Math.max(STICK_RADIUS + 4, r.width * 0.42);
+    const y = r.height * 0.55;
+    this.stick.style.left = `${x}px`;
+    this.stick.style.top = `${y}px`;
+    this.stickCenter = { x: r.left + x, y: r.top + y };
   }
 
   bindHold(el) {
@@ -220,8 +272,9 @@ class TouchControls {
     if (!this.enabled) return out;
     out.throttle = Math.max(out.throttle, this.state.throttle);
     out.brake = Math.max(out.brake, this.state.brake);
+    // state.steer already has the inversion baked in; tilt is read live.
     const steer = this.steerMode === 'tilt' && this.tilt.active
-      ? this.tilt.value
+      ? (this.invertSteer ? -this.tilt.value : this.tilt.value)
       : this.state.steer;
     if (Math.abs(steer) > Math.abs(out.steer)) out.steer = steer;
     return out;

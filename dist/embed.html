@@ -37,39 +37,52 @@
   .touch.hidden, .touch .hidden { display: none; }
   .touch * { touch-action: none; }
 
+  /* A floating round stick. The base follows the thumb down, so there is no
+     small target to hit without looking. STICK_RADIUS in touch.js must match
+     half of .touch-stick's size. */
   .touch-steer {
     position: absolute; left: 0; bottom: 0;
-    width: min(46%, 340px); height: min(44%, 172px);
+    width: min(48%, 360px); height: min(62%, 210px);
     pointer-events: auto;
-    display: flex; flex-direction: column; align-items: center; justify-content: flex-end;
-    gap: 10px; padding: 0 12px 14px;
   }
-  .touch-steer-track {
-    position: relative; width: 100%; max-width: 240px; height: 62px;
-    border-radius: 31px;
-    background: rgba(12, 14, 19, 0.60);
+  .touch-stick {
+    position: absolute; width: 160px; height: 160px;
+    margin-left: -80px; margin-top: -80px;
+    display: grid; place-items: center;
+    opacity: 0.42; transition: opacity 0.15s;
+  }
+  .touch-steer.active .touch-stick { opacity: 1; }
+  .touch-stick-ring {
+    position: absolute; inset: 0; border-radius: 50%;
+    background: radial-gradient(circle at 50% 42%, rgba(28,32,41,0.30), rgba(10,12,17,0.52));
     border: 1px solid var(--line);
-    box-shadow: inset 0 1px 0 rgba(255,255,255,0.06);
-    display: flex; align-items: center; justify-content: center;
-    transition: border-color 0.12s, background 0.12s;
+    box-shadow: inset 0 1px 0 rgba(255,255,255,0.07);
   }
-  .touch-steer.active .touch-steer-track {
-    background: rgba(18, 21, 28, 0.78);
-    border-color: rgba(255, 255, 255, 0.30);
+  /* A faint horizontal guide: the circle is what the thumb rests in, but it is
+     the sideways component that steers. */
+  .touch-stick-axis {
+    position: absolute; left: 18px; right: 18px; height: 1px;
+    background: linear-gradient(90deg, transparent, rgba(255,255,255,0.20), transparent);
   }
-  .touch-steer-thumb {
-    width: 52px; height: 46px; border-radius: 23px;
-    background: linear-gradient(180deg, rgba(255,255,255,0.22), rgba(255,255,255,0.10));
-    border: 1px solid rgba(255,255,255,0.34);
-    transition: transform 0.06s linear;
+  .touch-stick-knob {
+    position: relative; width: 56px; height: 56px; border-radius: 50%;
+    background: linear-gradient(180deg, rgba(255,255,255,0.24), rgba(255,255,255,0.09));
+    border: 1px solid rgba(255,255,255,0.36);
+    box-shadow: 0 3px 10px rgba(0,0,0,0.45);
+    transition: transform 0.05s linear, background 0.12s;
   }
-  .touch-steer.active .touch-steer-thumb { background: linear-gradient(180deg, #ff5544, #d92b1e); border-color: rgba(255,140,120,0.8); }
+  .touch-steer.active .touch-stick-knob {
+    background: linear-gradient(180deg, #ff5544, #d92b1e);
+    border-color: rgba(255, 150, 130, 0.85);
+  }
   .touch-steer-label {
+    position: absolute; left: 0; right: 0; bottom: 6px; text-align: center;
     font-size: 11px; letter-spacing: 0.14em; text-transform: uppercase;
     color: rgba(242,244,248,0.42);
+    transition: opacity 0.15s;
   }
   .touch-steer.active .touch-steer-label, .touch.tilt .touch-steer-label { opacity: 0; }
-  .touch.tilt .touch-steer-track { opacity: 0.35; }
+  .touch.tilt .touch-stick { opacity: 0.25; }
 
   .touch-pedals {
     position: absolute; right: 0; bottom: 0;
@@ -187,6 +200,7 @@
   .tagline { margin: 0 0 22px; color: var(--muted); font-size: 16px; letter-spacing: 0.04em; }
 
   .row { margin-bottom: 16px; }
+  .row.hidden { display: none; }
   .row > label {
     display: block; font-size: 12px; letter-spacing: 0.14em;
     text-transform: uppercase; color: var(--muted); margin-bottom: 7px;
@@ -257,6 +271,25 @@
     .primary { font-size: 16px; padding: 11px 24px; }
     .actions { margin-top: 16px; }
     .controlsWrap { margin-top: 14px; padding-top: 12px; }
+  }
+
+  /* A phone held sideways gives the panel only a few hundred pixels of height,
+     and there are six option rows. Move each label alongside its buttons so the
+     whole menu fits without scrolling. */
+  @media (max-height: 480px) {
+    #title .panel { padding: 14px 20px; }
+    h1 { font-size: 26px; }
+    .tagline { margin-bottom: 10px; font-size: 13px; }
+    .row {
+      display: grid; grid-template-columns: 120px 1fr;
+      align-items: center; gap: 12px; margin-bottom: 8px;
+    }
+    .row > label { margin-bottom: 0; font-size: 10px; line-height: 1.3; }
+    .swatch { width: 22px; height: 22px; }
+    button { padding: 5px 11px; font-size: 13px; }
+    .primary { font-size: 15px; padding: 9px 20px; }
+    .actions { margin-top: 12px; }
+    .controlsWrap { margin-top: 10px; padding-top: 10px; }
   }
 
   table { width: 100%; border-collapse: collapse; font-size: 15px; }
@@ -338,6 +371,10 @@
     <div class="row">
       <label>Graphics</label>
       <div id="qualityRow" class="opts"></div>
+    </div>
+    <div class="row hidden" id="steerInvertBlock">
+      <label>Stick direction</label>
+      <div id="steerInvertRow" class="opts"></div>
     </div>
 
     <div class="actions">
@@ -6097,7 +6134,11 @@ class Car {
       m4.compose(sw, [-0.36, 0.925, 0.28], 0, 0, 0);
       const tilt = m4.rotationX(m4.create(), 0.42);
       m4.multiply(sw, sw, tilt);
-      const spin = m4.rotationZ(m4.create(), -v.steerAngle * 3.2);
+      // Positive steerAngle is a right-hand turn, and from the driver's seat
+      // (behind the wheel, looking along +Z) a positive Z rotation reads as
+      // clockwise - so no negation. With one, the rim turned left as the car
+      // turned right.
+      const spin = m4.rotationZ(m4.create(), v.steerAngle * 3.2);
       m4.multiply(sw, sw, spin);
       m4.multiply(sw, this.bodyMatrix, sw);
       renderer.submit(this.meshes.steering, sw, EMPTY_OPTS);
@@ -7448,6 +7489,11 @@ function isTouchDevice() {
     && (('ontouchstart' in window) || (navigator.maxTouchPoints || 0) > 0);
 }
 
+// How far the knob's centre can travel from the base, in CSS pixels. Kept in
+// step with the CSS: ring radius 80 minus knob radius 28, so the knob rolls to
+// the inside edge of the ring at full lock rather than spilling over it.
+const STICK_RADIUS = 52;
+
 const TOUCH_SVG = {
   camera: '<path d="M4 8h3l1.5-2h7L17 8h3v10H4z" fill="none" stroke="currentColor" stroke-width="1.7"/><circle cx="12" cy="13" r="3.2" fill="none" stroke="currentColor" stroke-width="1.7"/>',
   pause: '<rect x="7" y="5" width="3.4" height="14" rx="1" fill="currentColor"/><rect x="13.6" y="5" width="3.4" height="14" rx="1" fill="currentColor"/>',
@@ -7467,7 +7513,8 @@ class TouchControls {
     this.taps = new Set();          // one-shot presses, drained per frame
     this.held = new Set();
     this.steerPointer = null;
-    this.steerOrigin = 0;
+    this.stickCenter = { x: 0, y: 0 };
+    this.invertSteer = false;
     this.tilt = { active: false, zero: null, value: 0 };
     this.root = null;
   }
@@ -7485,7 +7532,11 @@ class TouchControls {
 
     root.innerHTML = `
       <div class="touch-steer" data-role="steer">
-        <div class="touch-steer-track"><div class="touch-steer-thumb"></div></div>
+        <div class="touch-stick">
+          <div class="touch-stick-ring"></div>
+          <div class="touch-stick-axis"></div>
+          <div class="touch-stick-knob"></div>
+        </div>
         <span class="touch-steer-label">Slide to steer</span>
       </div>
       <div class="touch-pedals">
@@ -7510,7 +7561,8 @@ class TouchControls {
 
     document.body.appendChild(root);
     this.root = root;
-    this.thumb = root.querySelector('.touch-steer-thumb');
+    this.stick = root.querySelector('.touch-stick');
+    this.knob = root.querySelector('.touch-stick-knob');
     this.steerZone = root.querySelector('[data-role="steer"]');
     this.roadRow = root.querySelector('.touch-road');
 
@@ -7521,40 +7573,81 @@ class TouchControls {
 
   // --- steering -------------------------------------------------------------
 
+  // A floating 360-degree stick: the base appears wherever the thumb lands, so
+  // there is no small target to find without looking, and the knob is free to
+  // sit anywhere in the circle rather than on a narrow bar. Only the sideways
+  // component steers - the circle is what makes it comfortable to hold.
   bindSteer() {
     const zone = this.steerZone;
-    // Full lock at a comfortable thumb sweep, never more than a sixth of the
-    // screen so it stays reachable on a small phone.
-    const travel = () => Math.min(96, Math.max(52, window.innerWidth * 0.13));
+
+    const placeAt = (clientX, clientY) => {
+      const r = zone.getBoundingClientRect();
+      // Keep the base fully inside its zone even if the thumb lands at an edge.
+      const x = clamp(clientX - r.left, STICK_RADIUS + 4, r.width - STICK_RADIUS - 4);
+      const y = clamp(clientY - r.top, STICK_RADIUS + 4, r.height - STICK_RADIUS - 4);
+      this.stick.style.left = `${x}px`;
+      this.stick.style.top = `${y}px`;
+      this.stickCenter = { x: r.left + x, y: r.top + y };
+    };
 
     const down = (e) => {
       if (this.steerPointer !== null) return;
       this.steerPointer = e.pointerId;
-      this.steerOrigin = e.clientX;
+      placeAt(e.clientX, e.clientY);
       try { zone.setPointerCapture(e.pointerId); } catch (err) { /* not capturable */ }
       zone.classList.add('active');
+      this.moveKnob(0, 0);
       e.preventDefault();
     };
+
     const move = (e) => {
       if (e.pointerId !== this.steerPointer) return;
-      const dx = e.clientX - this.steerOrigin;
-      const t = clamp(dx / travel(), -1, 1);
+      let dx = e.clientX - this.stickCenter.x;
+      let dy = e.clientY - this.stickCenter.y;
+      const len = Math.hypot(dx, dy);
+      if (len > STICK_RADIUS) {
+        dx = dx / len * STICK_RADIUS;
+        dy = dy / len * STICK_RADIUS;
+      }
+      this.moveKnob(dx, dy);
+      const t = clamp(dx / STICK_RADIUS, -1, 1);
       // A small dead zone stops the car twitching while the thumb rests.
-      this.state.steer = Math.abs(t) < 0.06 ? 0 : t;
-      this.thumb.style.transform = `translateX(${this.state.steer * 46}px)`;
+      const raw = Math.abs(t) < 0.07 ? 0 : t;
+      this.state.steer = this.invertSteer ? -raw : raw;
       e.preventDefault();
     };
+
     const up = (e) => {
       if (e.pointerId !== this.steerPointer) return;
       this.steerPointer = null;
       this.state.steer = 0;
-      this.thumb.style.transform = 'translateX(0px)';
+      this.moveKnob(0, 0);
+      this.recenterStick();
       zone.classList.remove('active');
     };
+
     zone.addEventListener('pointerdown', down);
     zone.addEventListener('pointermove', move);
     zone.addEventListener('pointerup', up);
     zone.addEventListener('pointercancel', up);
+    this.recenterStick();
+    window.addEventListener('resize', () => this.recenterStick());
+  }
+
+  moveKnob(dx, dy) {
+    if (this.knob) this.knob.style.transform = `translate(${dx}px, ${dy}px)`;
+  }
+
+  // Resting position: centred in its zone so the control is discoverable.
+  recenterStick() {
+    if (!this.stick || !this.steerZone) return;
+    if (this.steerPointer !== null) return;
+    const r = this.steerZone.getBoundingClientRect();
+    const x = Math.max(STICK_RADIUS + 4, r.width * 0.42);
+    const y = r.height * 0.55;
+    this.stick.style.left = `${x}px`;
+    this.stick.style.top = `${y}px`;
+    this.stickCenter = { x: r.left + x, y: r.top + y };
   }
 
   bindHold(el) {
@@ -7653,8 +7746,9 @@ class TouchControls {
     if (!this.enabled) return out;
     out.throttle = Math.max(out.throttle, this.state.throttle);
     out.brake = Math.max(out.brake, this.state.brake);
+    // state.steer already has the inversion baked in; tilt is read live.
     const steer = this.steerMode === 'tilt' && this.tilt.active
-      ? this.tilt.value
+      ? (this.invertSteer ? -this.tilt.value : this.tilt.value)
       : this.state.steer;
     if (Math.abs(steer) > Math.abs(out.steer)) out.steer = steer;
     return out;
@@ -7684,7 +7778,8 @@ class UI {
     this.el = {};
     for (const id of ['loading', 'loadingText', 'title', 'results', 'arrived', 'pause',
       'resultsBody', 'resultsHeadline', 'arrivedBody', 'liveryRow', 'lapsRow',
-      'difficultyRow', 'assistRow', 'qualityRow', 'startBtn', 'driveBtn', 'resultsDrive',
+      'difficultyRow', 'assistRow', 'qualityRow', 'steerInvertRow', 'steerInvertBlock',
+      'startBtn', 'driveBtn', 'resultsDrive',
       'resultsRestart', 'arrivedRestart', 'arrivedDrive', 'resumeBtn', 'quitBtn']) {
       this.el[id] = document.getElementById(id);
     }
@@ -7752,6 +7847,16 @@ class UI {
         r.settings.particles = v === 'high';
       }, () => this.game.settings.quality);
 
+    // Only meaningful with the on-screen stick, so it stays out of the way on
+    // desktop. Some players read the stick as "tilt the car" rather than "point
+    // the wheels", and want it the other way round.
+    this.makeOptions(this.el.steerInvertRow, [['Normal', false], ['Inverted', true]],
+      (v) => {
+        this.game.settings.invertSteer = v;
+        this.game.touch.invertSteer = v;
+      }, () => this.game.settings.invertSteer);
+    if (this.game.isTouch) this.el.steerInvertBlock.classList.remove('hidden');
+
     this.refreshSelection();
   }
 
@@ -7773,7 +7878,8 @@ class UI {
   }
 
   refreshSelection() {
-    for (const row of [this.el.lapsRow, this.el.difficultyRow, this.el.assistRow, this.el.qualityRow]) {
+    for (const row of [this.el.lapsRow, this.el.difficultyRow, this.el.assistRow,
+      this.el.qualityRow, this.el.steerInvertRow]) {
       const current = row._getter();
       for (const b of row.children) b.classList.toggle('active', b._value === current);
     }
@@ -8094,6 +8200,7 @@ class Game {
       playerLivery: 0,
       volume: 0.7,
       tiltSteer: false,
+      invertSteer: false,
     };
     if (this.isTouch) {
       // Shadow passes walk the whole opaque queue twice, which is the single

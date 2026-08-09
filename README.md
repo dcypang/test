@@ -26,15 +26,21 @@ stopped on the driveway with the garage light on.
 ## On a phone
 
 It plays on a touchscreen. Turn the phone sideways and the game swaps to an
-on-screen layout: a drag pad for steering under your left thumb, BRAKE and GO
-pedals under your right, and a compact HUD that keeps the corners your thumbs
-need clear.
+on-screen layout: a round thumbstick for steering under your left thumb, BRAKE
+and GO pedals under your right, and a compact HUD that keeps the corners your
+thumbs need clear.
 
-Steering is a **drag pad rather than arrow buttons**, deliberately. The car has
-speed-sensitive steering and needs small, precise inputs at racing speed;
-buttons can only ask for full lock, which just makes the front tyres slide.
-Slide your thumb left or right as far as you want lock, and let go to
-straighten up.
+Steering is a **360° thumbstick rather than arrow buttons**, deliberately. The
+car has speed-sensitive steering and needs small, precise inputs at racing
+speed; buttons can only ask for full lock, which just makes the front tyres
+slide. The stick floats: put your thumb down anywhere in the bottom-left
+quadrant and the ring appears there, so you never have to find a target without
+looking. Push it as far left or right as you want lock — the knob is free to
+move anywhere in the circle, but it is the sideways component that steers — and
+lift off to straighten up.
+
+If pushing right feels like it should turn left, **Stick direction → Inverted**
+on the title screen flips it.
 
 Touch devices also get a lighter render preset automatically — no shadows, no
 particles, capped resolution.

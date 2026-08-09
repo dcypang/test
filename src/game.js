@@ -243,6 +243,7 @@ class Game {
       playerLivery: 0,
       volume: 0.7,
       tiltSteer: false,
+      invertSteer: false,
     };
     if (this.isTouch) {
       // Shadow passes walk the whole opaque queue twice, which is the single

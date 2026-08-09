@@ -9,7 +9,8 @@ class UI {
     this.el = {};
     for (const id of ['loading', 'loadingText', 'title', 'results', 'arrived', 'pause',
       'resultsBody', 'resultsHeadline', 'arrivedBody', 'liveryRow', 'lapsRow',
-      'difficultyRow', 'assistRow', 'qualityRow', 'startBtn', 'driveBtn', 'resultsDrive',
+      'difficultyRow', 'assistRow', 'qualityRow', 'steerInvertRow', 'steerInvertBlock',
+      'startBtn', 'driveBtn', 'resultsDrive',
       'resultsRestart', 'arrivedRestart', 'arrivedDrive', 'resumeBtn', 'quitBtn']) {
       this.el[id] = document.getElementById(id);
     }
@@ -77,6 +78,16 @@ class UI {
         r.settings.particles = v === 'high';
       }, () => this.game.settings.quality);
 
+    // Only meaningful with the on-screen stick, so it stays out of the way on
+    // desktop. Some players read the stick as "tilt the car" rather than "point
+    // the wheels", and want it the other way round.
+    this.makeOptions(this.el.steerInvertRow, [['Normal', false], ['Inverted', true]],
+      (v) => {
+        this.game.settings.invertSteer = v;
+        this.game.touch.invertSteer = v;
+      }, () => this.game.settings.invertSteer);
+    if (this.game.isTouch) this.el.steerInvertBlock.classList.remove('hidden');
+
     this.refreshSelection();
   }
 
@@ -98,7 +109,8 @@ class UI {
   }
 
   refreshSelection() {
-    for (const row of [this.el.lapsRow, this.el.difficultyRow, this.el.assistRow, this.el.qualityRow]) {
+    for (const row of [this.el.lapsRow, this.el.difficultyRow, this.el.assistRow,
+      this.el.qualityRow, this.el.steerInvertRow]) {
       const current = row._getter();
       for (const b of row.children) b.classList.toggle('active', b._value === current);
     }

@@ -58,7 +58,9 @@ await page.screenshot({ path: join(shots, 'm1-menu.png') });
 
 // --- race with touch --------------------------------------------------------
 await page.evaluate(() => { window.__game.startRace(); });
-await page.waitForTimeout(600);
+// The overlay is shown from inside the game loop, so step the loop rather than
+// waiting on wall-clock time - software rendering paints about once a second.
+await pump(0.2);
 check('touch overlay is showing', await page.evaluate(
   () => !document.getElementById('touchControls').classList.contains('hidden')));
 check('HUD switched to the compact layout', await page.evaluate(() => window.__game.hud.compact));
@@ -96,9 +98,33 @@ const steerLeft = await page.evaluate(() => window.__game.player.vehicle.steerIn
 await page.mouse.up();
 await pump(0.3);
 const steerRest = await page.evaluate(() => window.__game.touch.state.steer);
-check('drag pad steers right', steerRight > 0.5, `steer=${steerRight.toFixed(2)}`);
-check('drag pad steers left', steerLeft < -0.5, `steer=${steerLeft.toFixed(2)}`);
+check('stick steers right', steerRight > 0.5, `steer=${steerRight.toFixed(2)}`);
+check('stick steers left', steerLeft < -0.5, `steer=${steerLeft.toFixed(2)}`);
 check('steering recentres on release', Math.abs(steerRest) < 0.01);
+
+// The stick is a circle, so a thumb that wanders off the horizontal must still
+// steer by its sideways component alone.
+await page.mouse.move(px, py);
+await page.mouse.down();
+await page.mouse.move(px + 70, py - 70, { steps: 6 });
+await pump(0.2);
+const diagonal = await page.evaluate(() => window.__game.touch.state.steer);
+await page.mouse.up();
+await pump(0.2);
+check('diagonal push still steers by its sideways part', diagonal > 0.5 && diagonal <= 1.0,
+  `steer=${diagonal.toFixed(2)}`);
+
+// Inverting the stick must flip the sign and nothing else.
+await page.evaluate(() => { window.__game.touch.invertSteer = true; });
+await page.mouse.move(px, py);
+await page.mouse.down();
+await page.mouse.move(px + 80, py, { steps: 6 });
+await pump(0.2);
+const inverted = await page.evaluate(() => window.__game.touch.state.steer);
+await page.mouse.up();
+await page.evaluate(() => { window.__game.touch.invertSteer = false; });
+await pump(0.2);
+check('inverted stick reverses the direction', inverted < -0.5, `steer=${inverted.toFixed(2)}`);
 await page.screenshot({ path: join(shots, 'm3-driving.png') });
 
 // Brake pedal.
@@ -124,7 +150,7 @@ check('camera button cycles the view',
 
 // --- drive home extras ------------------------------------------------------
 await page.evaluate(() => { window.__game.startDriveHome(); });
-await page.waitForTimeout(900);
+await pump(0.2);
 check('road buttons appear for the drive home', await page.evaluate(
   () => !document.querySelector('.touch-road').classList.contains('hidden')));
 await page.locator('.touch-btn[data-tap="indicateRight"]').dispatchEvent('pointerdown');

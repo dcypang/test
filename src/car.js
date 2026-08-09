@@ -239,7 +239,11 @@ class Car {
       m4.compose(sw, [-0.36, 0.925, 0.28], 0, 0, 0);
       const tilt = m4.rotationX(m4.create(), 0.42);
       m4.multiply(sw, sw, tilt);
-      const spin = m4.rotationZ(m4.create(), -v.steerAngle * 3.2);
+      // Positive steerAngle is a right-hand turn, and from the driver's seat
+      // (behind the wheel, looking along +Z) a positive Z rotation reads as
+      // clockwise - so no negation. With one, the rim turned left as the car
+      // turned right.
+      const spin = m4.rotationZ(m4.create(), v.steerAngle * 3.2);
       m4.multiply(sw, sw, spin);
       m4.multiply(sw, this.bodyMatrix, sw);
       renderer.submit(this.meshes.steering, sw, EMPTY_OPTS);
