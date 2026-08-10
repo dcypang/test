@@ -4,10 +4,10 @@
 import * as THREE from "three";
 import { WHEEL_R, AF, AR, clamp, lerp } from "./physics.js";
 
-function tubeBetween(a, b, r, mat){
+function tubeBetween(a, b, r, mat, seg=18){
   const d = new THREE.Vector3().subVectors(b,a);
   const len = d.length();
-  const geo = new THREE.CylinderGeometry(r, r, len, 10);
+  const geo = new THREE.CylinderGeometry(r, r, len, seg);
   const m = new THREE.Mesh(geo, mat);
   m.position.copy(a).addScaledVector(d, 0.5);
   m.quaternion.setFromUnitVectors(new THREE.Vector3(0,1,0), d.normalize());
@@ -17,32 +17,54 @@ function tubeBetween(a, b, r, mat){
 
 function makeWheel(mats, knobby){
   const g = new THREE.Group();
-  const tire = new THREE.Mesh(new THREE.TorusGeometry(WHEEL_R-0.02, knobby?0.024:0.019, 12, 28), mats.tire);
+  const tire = new THREE.Mesh(new THREE.TorusGeometry(WHEEL_R-0.02, knobby?0.024:0.019, 20, 56), mats.tire);
   tire.castShadow = true;
   g.add(tire);
-  const rim = new THREE.Mesh(new THREE.TorusGeometry(WHEEL_R-0.045, 0.008, 8, 28), mats.rim);
+  // rim: a deep-section box profile rather than a thin ring
+  const rim = new THREE.Mesh(new THREE.TorusGeometry(WHEEL_R-0.045, 0.011, 14, 56), mats.rim);
   g.add(rim);
-  for(let k=0;k<8;k++){
-    const sp = tubeBetween(new THREE.Vector3(0,0,0),
-      new THREE.Vector3(Math.cos(k/8*Math.PI*2)*(WHEEL_R-0.05), Math.sin(k/8*Math.PI*2)*(WHEEL_R-0.05), 0),
-      0.0035, mats.rim);
+  const rimBed = new THREE.Mesh(new THREE.CylinderGeometry(WHEEL_R-0.036, WHEEL_R-0.036, 0.021, 56, 1, true), mats.rim);
+  rimBed.rotation.x = Math.PI/2;
+  g.add(rimBed);
+  // 16 spokes, laced alternately to each flange
+  for(let k=0;k<16;k++){
+    const a = k/16*Math.PI*2;
+    const sp = tubeBetween(new THREE.Vector3(0,0,(k%2?0.032:-0.032)),
+      new THREE.Vector3(Math.cos(a)*(WHEEL_R-0.05), Math.sin(a)*(WHEEL_R-0.05), 0),
+      0.0028, mats.rim, 6);
     g.add(sp);
   }
-  const hub = new THREE.Mesh(new THREE.CylinderGeometry(0.022,0.022,0.09,10), mats.rim);
+  const hub = new THREE.Mesh(new THREE.CylinderGeometry(0.024,0.024,0.10,18), mats.rim);
   hub.rotation.x = Math.PI/2;
   g.add(hub);
-  if(knobby){
-    const knobGeo = new THREE.BoxGeometry(0.016,0.014,0.03);
-    const knobs = new THREE.InstancedMesh(knobGeo, mats.tire, 18);
-    const M = new THREE.Matrix4(), q = new THREE.Quaternion(), up = new THREE.Vector3(0,0,1);
-    for(let k=0;k<18;k++){
-      const a = k/18*Math.PI*2;
-      q.setFromAxisAngle(up, a);
-      M.compose(new THREE.Vector3(Math.cos(a)*WHEEL_R, Math.sin(a)*WHEEL_R, (k%2? 0.018:-0.018)), q, new THREE.Vector3(1,1,1));
-      knobs.setMatrixAt(k, M);
-    }
-    g.add(knobs);
+  for(const z of [-0.038, 0.038]){                      // hub flanges
+    const fl = new THREE.Mesh(new THREE.CylinderGeometry(0.036,0.036,0.008,18), mats.rim);
+    fl.rotation.x = Math.PI/2; fl.position.z = z; g.add(fl);
   }
+  // brake rotor — every bike here is disc-braked
+  const rotor = new THREE.Mesh(new THREE.TorusGeometry(0.082, 0.004, 6, 36), mats.rotor);
+  rotor.position.z = -0.05; g.add(rotor);
+  const rotorFace = new THREE.Mesh(new THREE.CylinderGeometry(0.082,0.082,0.002,36), mats.rotor);
+  rotorFace.rotation.x = Math.PI/2; rotorFace.position.z = -0.05; g.add(rotorFace);
+
+  // tread: side knobs on knobbies, a fine file pattern on the slicks
+  const n = knobby ? 34 : 44;
+  const knobGeo = knobby ? new THREE.BoxGeometry(0.018,0.016,0.034)
+                         : new THREE.BoxGeometry(0.010,0.004,0.026);
+  const knobs = new THREE.InstancedMesh(knobGeo, mats.tire, n*2);
+  const M = new THREE.Matrix4(), q = new THREE.Quaternion(), up = new THREE.Vector3(0,0,1);
+  const one = new THREE.Vector3(1,1,1);
+  let idx = 0;
+  for(let k=0;k<n;k++){
+    const a = k/n*Math.PI*2;
+    q.setFromAxisAngle(up, a);
+    for(const z of knobby ? [0.019,-0.019] : [0.011,-0.011]){
+      M.compose(new THREE.Vector3(Math.cos(a)*WHEEL_R, Math.sin(a)*WHEEL_R, z), q, one);
+      knobs.setMatrixAt(idx++, M);
+    }
+  }
+  knobs.castShadow = true;
+  g.add(knobs);
   return g;
 }
 
@@ -80,9 +102,12 @@ export function buildBike(bike, kitHex, paint){
     dark:  new THREE.MeshStandardMaterial({ color: 0x24262a, metalness: 0.4, roughness: 0.55 }),
     tire:  new THREE.MeshStandardMaterial({ color: 0x1c1c1e, roughness: 0.95 }),
     rim:   new THREE.MeshStandardMaterial({ color: 0x3d4147, metalness: 0.75, roughness: 0.4 }),
+    rotor: new THREE.MeshStandardMaterial({ color: 0xb9bdc4, metalness: 0.95, roughness: 0.25 }),
     skin:  new THREE.MeshStandardMaterial({ color: 0xd9a87e, roughness: 0.7 }),
     kit:   new THREE.MeshStandardMaterial({ color: kitHex, roughness: 0.6 }),
+    kit2:  new THREE.MeshPhysicalMaterial({ color: kitHex, roughness: 0.45, sheen: 0.6 }),
     pants: new THREE.MeshStandardMaterial({ color: 0x2c2f33, roughness: 0.8 }),
+    shoe:  new THREE.MeshStandardMaterial({ color: 0x15171a, roughness: 0.5 }),
   };
   const root = new THREE.Group();          // placed on terrain (pitch + position)
   const sprung = new THREE.Group();        // frame+rider; bounces with heave
@@ -109,8 +134,9 @@ export function buildBike(bike, kitHex, paint){
   }
   // saddle + post
   sprung.add(tubeBetween(P.seat, P.seat.clone().add(new THREE.Vector3(0.04,0.09,0)), 0.014, mats.dark));
-  const saddle = new THREE.Mesh(new THREE.BoxGeometry(0.26,0.03,0.09), mats.dark);
-  saddle.position.copy(P.seat).add(new THREE.Vector3(0.02,0.11,0)); saddle.castShadow=true;
+  const saddle = new THREE.Mesh(new THREE.CapsuleGeometry(0.045, 0.19, 8, 18), mats.dark);
+  saddle.rotation.z = Math.PI/2; saddle.scale.set(1, 1, 0.55);
+  saddle.position.copy(P.seat).add(new THREE.Vector3(0.02,0.12,0)); saddle.castShadow=true;
   sprung.add(saddle);
 
   // fork: steerer + two legs; for suspension bikes the lowers telescope
@@ -142,17 +168,55 @@ export function buildBike(bike, kitHex, paint){
   }
   function lerpV(a,b,t){ return a.clone().lerp(b,t); }
 
-  // drivetrain
-  const ring = new THREE.Mesh(new THREE.TorusGeometry(0.085,0.008,6,24), mats.dark);
+  // drivetrain: chainring with teeth, cassette, chain runs and rear mech
+  const ring = new THREE.Mesh(new THREE.TorusGeometry(0.085,0.007,10,40), mats.rim);
   ring.position.copy(P.bb).add(new THREE.Vector3(0,0,0.06)); sprung.add(ring);
+  const ringFace = new THREE.Mesh(new THREE.CylinderGeometry(0.080,0.080,0.003,40), mats.rim);
+  ringFace.rotation.x = Math.PI/2; ringFace.position.copy(ring.position); sprung.add(ringFace);
+  {
+    const teeth = new THREE.InstancedMesh(new THREE.BoxGeometry(0.008,0.011,0.004), mats.rim, 38);
+    const M = new THREE.Matrix4(), q = new THREE.Quaternion(), up = new THREE.Vector3(0,0,1);
+    const one = new THREE.Vector3(1,1,1);
+    for(let k=0;k<38;k++){
+      const a = k/38*Math.PI*2;
+      q.setFromAxisAngle(up, a);
+      M.compose(new THREE.Vector3(ring.position.x+Math.cos(a)*0.091,
+        ring.position.y+Math.sin(a)*0.091, ring.position.z), q, one);
+      teeth.setMatrixAt(k, M);
+    }
+    sprung.add(teeth);
+  }
+  const cassette = new THREE.Mesh(new THREE.CylinderGeometry(0.055,0.032,0.042,28), mats.rim);
+  cassette.rotation.x = Math.PI/2; cassette.position.copy(P.rAxle).setZ(0.045);
+  sprung.add(cassette);
+  sprung.add(tubeBetween(P.bb.clone().add(new THREE.Vector3(0.08,0,0.06)),
+    P.rAxle.clone().setZ(0.045).add(new THREE.Vector3(0,0.05,0)), 0.004, mats.dark, 6));  // chain top run
+  sprung.add(tubeBetween(P.bb.clone().add(new THREE.Vector3(-0.06,-0.02,0.06)),
+    P.rAxle.clone().setZ(0.045).add(new THREE.Vector3(0,-0.05,0)), 0.004, mats.dark, 6)); // chain bottom
+  const mech = new THREE.Mesh(new THREE.BoxGeometry(0.05,0.10,0.028), mats.dark);
+  mech.position.copy(P.rAxle).add(new THREE.Vector3(0.02,-0.10,0.05)); mech.castShadow = true;
+  sprung.add(mech);
+
   const crank = new THREE.Group(); crank.position.copy(P.bb); sprung.add(crank);
   for(const s of [1,-1]){
-    const arm = new THREE.Mesh(new THREE.BoxGeometry(0.03,0.17,0.014), mats.dark);
+    const arm = new THREE.Mesh(new THREE.BoxGeometry(0.028,0.17,0.013), mats.rim);
     arm.position.set(0, s*0.085, s*0.075); arm.castShadow=true;
     crank.add(arm);
-    const pedal = new THREE.Mesh(new THREE.BoxGeometry(0.09,0.02,0.05), mats.dark);
+    const pedal = new THREE.Mesh(new THREE.BoxGeometry(0.095,0.016,0.058), mats.dark);
     pedal.position.set(0, s*0.17, s*0.075);
     crank.add(pedal);
+  }
+  // bottles and cage
+  for(const [a,b,r] of [[P.bb, P.head, 0.42]]){
+    const p = a.clone().lerp(b, r);
+    const bottle = new THREE.Mesh(new THREE.CylinderGeometry(0.033,0.033,0.19,16), mats.kit);
+    bottle.position.copy(p).add(new THREE.Vector3(0.02,0.07,0.045));
+    bottle.rotation.z = -0.35; bottle.castShadow = true;
+    sprung.add(bottle);
+    const cap = new THREE.Mesh(new THREE.CylinderGeometry(0.014,0.017,0.035,12), mats.dark);
+    cap.position.copy(bottle.position).add(new THREE.Vector3(0.033,0.095,0));
+    cap.rotation.z = -0.35;
+    sprung.add(cap);
   }
 
   // wheels
@@ -163,30 +227,42 @@ export function buildBike(bike, kitHex, paint){
   const rider = new THREE.Group(); sprung.add(rider);
   const hip = new THREE.Vector3(-0.28, 0.98, 0);
   const shoulder = new THREE.Vector3(0.10, 1.28, 0);
-  const torso = new THREE.Mesh(new THREE.CapsuleGeometry(0.11, 0.34, 4, 10), mats.kit);
+  const torso = new THREE.Mesh(new THREE.CapsuleGeometry(0.11, 0.34, 10, 24), mats.kit2);
   torso.position.copy(hip).lerp(shoulder,0.5).add(new THREE.Vector3(0,0.02,0));
   torso.quaternion.setFromUnitVectors(new THREE.Vector3(0,1,0), shoulder.clone().sub(hip).normalize());
   torso.castShadow = true;
   rider.add(torso);
-  const head = new THREE.Mesh(new THREE.SphereGeometry(0.105, 14, 12), mats.skin);
+  const head = new THREE.Mesh(new THREE.SphereGeometry(0.105, 26, 20), mats.skin);
   head.position.copy(shoulder).add(new THREE.Vector3(0.10,0.16,0)); head.castShadow=true;
   rider.add(head);
-  const helmet = new THREE.Mesh(new THREE.SphereGeometry(0.115, 14, 10, 0, Math.PI*2, 0, Math.PI*0.55), mats.kit);
+  const helmet = new THREE.Mesh(new THREE.SphereGeometry(0.117, 26, 18, 0, Math.PI*2, 0, Math.PI*0.55), mats.kit);
   helmet.position.copy(head.position).add(new THREE.Vector3(-0.01,0.02,0));
+  helmet.castShadow = true;
   rider.add(helmet);
-  // arms shoulder->bars
-  for(const s of [-0.14, 0.14]){
-    rider.add(tubeBetween(shoulder.clone().add(new THREE.Vector3(0,-0.02,s)),
-      P.barC.clone().add(new THREE.Vector3(-0.02,-0.01,s*0.9)), 0.032, mats.kit));
+  for(let v=0;v<4;v++){                                   // helmet vents
+    const vent = new THREE.Mesh(new THREE.BoxGeometry(0.055,0.02,0.016), mats.dark);
+    vent.position.copy(helmet.position).add(new THREE.Vector3(-0.03+v*0.026, 0.098-v*0.006, 0));
+    rider.add(vent);
   }
-  // legs: thigh + shin per side, animated
+  // arms: upper arm + forearm per side
+  for(const s of [-0.14, 0.14]){
+    const sh = shoulder.clone().add(new THREE.Vector3(0,-0.02,s));
+    const grip = P.barC.clone().add(new THREE.Vector3(-0.02,-0.01,s*1.5));
+    const elbow = sh.clone().lerp(grip,0.5).add(new THREE.Vector3(-0.03,-0.04,0));
+    rider.add(tubeBetween(sh, elbow, 0.036, mats.kit2, 14));
+    rider.add(tubeBetween(elbow, grip, 0.029, mats.skin, 14));
+    const hand = new THREE.Mesh(new THREE.SphereGeometry(0.036, 14, 12), mats.dark);
+    hand.position.copy(grip); rider.add(hand);
+  }
+  // legs: thigh + shin + shoe per side, animated
   const legs = [];
   for(const s of [-0.075, 0.075]){
-    const thigh = new THREE.Mesh(new THREE.CapsuleGeometry(0.05, 0.30, 4, 8), mats.pants);
-    const shin  = new THREE.Mesh(new THREE.CapsuleGeometry(0.038, 0.30, 4, 8), mats.pants);
-    thigh.castShadow = shin.castShadow = true;
-    rider.add(thigh); rider.add(shin);
-    legs.push({ s, thigh, shin });
+    const thigh = new THREE.Mesh(new THREE.CapsuleGeometry(0.052, 0.30, 8, 18), mats.pants);
+    const shin  = new THREE.Mesh(new THREE.CapsuleGeometry(0.039, 0.30, 8, 18), mats.pants);
+    const shoe  = new THREE.Mesh(new THREE.BoxGeometry(0.10,0.04,0.055), mats.shoe);
+    thigh.castShadow = shin.castShadow = shoe.castShadow = true;
+    rider.add(thigh); rider.add(shin); rider.add(shoe);
+    legs.push({ s, thigh, shin, shoe });
   }
 
   return { root, sprung, rider, wheelF, wheelR, lowers, crank, barsG,
@@ -228,6 +304,7 @@ export function poseBikeParts(V, S){
     mid.x += bend*0.9; mid.y += bend*0.25;             // knee forward
     placeCapsule(L.thigh, hip, mid);
     placeCapsule(L.shin, mid, pedal);
+    if(L.shoe){ L.shoe.position.copy(pedal).add(new THREE.Vector3(0,0.028,0)); }
   }
 }
 function placeCapsule(mesh, a, b){

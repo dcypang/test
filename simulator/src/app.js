@@ -16,20 +16,20 @@ const BIKE_HEX_DARK = [0x49AB59, 0xB84444, 0x5B93E8, 0xBF5F9B, 0x7057C4, 0x16A0A
    Metallic", Quick CX 2 "Sabre". Rider kits keep the ID palette colors. */
 const PLAYER_HEX = 0xC8871F, PLAYER_HEX_DARK = 0xBC8626;   // your jersey
 const PAINTS = [
-  { color:0xC8202A, css:"#C8202A", metalness:0.25, roughness:0.22, clearcoat:0.9,
+  { color:0xC8202A, css:"#C8202A", metalness:0.05, roughness:0.22, clearcoat:0.9,
     logo:"cannondale", logoColor:"#FFFFFF", font:"italic 700 62px Arial, Helvetica, sans-serif" },
-  { color:0x1B2A44, css:"#1B2A44", metalness:0.65, roughness:0.46, clearcoat:0.2,
+  { color:0x1B2A44, css:"#1B2A44", metalness:0.10, roughness:0.46, clearcoat:0.2,
     logo:"SPECIALIZED", logoColor:"#E9E9ED", font:"700 46px 'Arial Narrow', Arial, sans-serif" },
-  { color:0x8B927F, css:"#8B927F", metalness:0.35, roughness:0.5, clearcoat:0.25,
+  { color:0x8B927F, css:"#8B927F", metalness:0.05, roughness:0.5, clearcoat:0.25,
     logo:"cannondale", logoColor:"#23262B", font:"italic 700 62px Arial, Helvetica, sans-serif" },
   // Trek FX 3 Disc — Satin Lithium Grey
-  { color:0x9AA0A6, css:"#9AA0A6", metalness:0.45, roughness:0.42, clearcoat:0.3,
+  { color:0x9AA0A6, css:"#9AA0A6", metalness:0.12, roughness:0.42, clearcoat:0.3,
     logo:"TREK", logoColor:"#1A1C1F", font:"700 58px 'Arial Narrow', Arial, sans-serif" },
   // Giant Escape 3 Disc — Metallic Black
-  { color:0x2B2F36, css:"#2B2F36", metalness:0.5, roughness:0.38, clearcoat:0.6,
+  { color:0x2B2F36, css:"#2B2F36", metalness:0.12, roughness:0.38, clearcoat:0.6,
     logo:"GIANT", logoColor:"#E4E6EA", font:"700 52px 'Arial Narrow', Arial, sans-serif" },
   // Marin DSX 1 — Gloss Teal
-  { color:0x18707A, css:"#18707A", metalness:0.3, roughness:0.28, clearcoat:0.85,
+  { color:0x18707A, css:"#18707A", metalness:0.05, roughness:0.28, clearcoat:0.85,
     logo:"MARIN", logoColor:"#F0F2F0", font:"700 52px 'Arial Narrow', Arial, sans-serif" },
 ];
 const isDark = () => matchMedia("(prefers-color-scheme: dark)").matches;
@@ -43,6 +43,8 @@ const renderer = new THREE.WebGLRenderer({ antialias: true, canvas: $("gl") });
 renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
 renderer.shadowMap.enabled = true;
 renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+renderer.toneMapping = THREE.ACESFilmicToneMapping;   // filmic highlight rolloff
+renderer.toneMappingExposure = 1.05;
 const scene = new THREE.Scene();
 const camera = new THREE.PerspectiveCamera(55, 16/9, 0.1, 900);
 
@@ -50,12 +52,35 @@ const hemi = new THREE.HemisphereLight(0xcfe6ff, 0x6b6250, 0.85);
 scene.add(hemi);
 const sun = new THREE.DirectionalLight(0xfff2dc, 2.4);
 sun.castShadow = true;
-sun.shadow.mapSize.set(2048, 2048);
-sun.shadow.camera.left = -30; sun.shadow.camera.right = 30;
-sun.shadow.camera.top = 30; sun.shadow.camera.bottom = -30;
+sun.shadow.mapSize.set(4096, 4096);                   // crisper contact shadows
+sun.shadow.camera.left = -26; sun.shadow.camera.right = 26;
+sun.shadow.camera.top = 26; sun.shadow.camera.bottom = -26;
 sun.shadow.camera.near = 1; sun.shadow.camera.far = 160;
-sun.shadow.bias = -0.0004;
+sun.shadow.bias = -0.0002;
+sun.shadow.normalBias = 0.02;
 scene.add(sun); scene.add(sun.target);
+// cool bounce from the opposite side so shadowed paint isn't dead flat
+const fill = new THREE.DirectionalLight(0xbcd4f0, 0.45);
+fill.position.set(-24, 16, -18);
+scene.add(fill);
+
+/* A procedural sky/ground probe gives the painted metal something to
+   reflect — without it the frames read as flat plastic. */
+function buildEnvironment(topHex, botHex){
+  const cv = document.createElement("canvas"); cv.width = 32; cv.height = 128;
+  const g = cv.getContext("2d");
+  const grad = g.createLinearGradient(0,0,0,128);
+  grad.addColorStop(0, topHex); grad.addColorStop(0.52, "#dfe6ea");
+  grad.addColorStop(0.54, botHex); grad.addColorStop(1, "#4a4438");
+  g.fillStyle = grad; g.fillRect(0,0,32,128);
+  const tex = new THREE.CanvasTexture(cv);
+  tex.mapping = THREE.EquirectangularReflectionMapping;
+  tex.colorSpace = THREE.SRGBColorSpace;
+  const pmrem = new THREE.PMREMGenerator(renderer);
+  const rt = pmrem.fromEquirectangular(tex);
+  pmrem.dispose(); tex.dispose();
+  return rt.texture;
+}
 
 const TX = makeTextures();
 for(const k of Object.keys(TX)) if(TX[k].anisotropy) TX[k].anisotropy = Math.min(8, renderer.capabilities.getMaxAnisotropy());
@@ -71,21 +96,31 @@ addEventListener("resize", sizeRenderer);
 let world = null;
 
 const COURSE_LOOK = [
-  { road: "asphalt", shoulder: "grass",  sky: "skyDay",    fog:[0xcfe0ea, 70, 460], roadTile:4,   sunPos:[30,48,26] },
-  { road: "cracked", shoulder: "grass",  sky: "skyHazy",   fog:[0xd2d5cc, 60, 400], roadTile:7,   sunPos:[30,44,22] },
-  { road: "dirt",    shoulder: "meadow", sky: "skyGold",   fog:[0xe0d6bd, 55, 360], roadTile:3.5, sunPos:[26,40,30] },
-  { road: "forest",  shoulder: "grass",  sky: "skyForest", fog:[0xb9c6b4, 22, 170], roadTile:3,   sunPos:[18,42,-20], shoulderTint:0x87936a },
+  { road: "asphalt", shoulder: "grass",  sky: "skyDay",    fog:[0xcfe0ea, 70, 460], roadTile:4,   sunPos:[30,48,26],
+    envTop:"#7fb2e0", envGround:"#6d7a5c" },
+  { road: "cracked", shoulder: "grass",  sky: "skyHazy",   fog:[0xd2d5cc, 60, 400], roadTile:7,   sunPos:[30,44,22],
+    envTop:"#8fb3d6", envGround:"#6f7a60" },
+  { road: "dirt",    shoulder: "meadow", sky: "skyGold",   fog:[0xe0d6bd, 55, 360], roadTile:3.5, sunPos:[26,40,30],
+    envTop:"#87a8cc", envGround:"#8a7a52" },
+  { road: "forest",  shoulder: "grass",  sky: "skyForest", fog:[0xb9c6b4, 22, 170], roadTile:3,   sunPos:[18,42,-20],
+    shoulderTint:0x87936a, envTop:"#6f95b5", envGround:"#55603f" },
 ];
 
-function ribbon(c, z0, z1, cols, yFn, uvScale){
-  if(z0 > z1){ const t = z0; z0 = z1; z1 = t; }   // keep +z winding → up normals
-  const ds = 0.5, x0 = -40, x1 = c.len + 25;
+/* `ease` redistributes the cross-road vertices: the shoulders pass a
+   squared curve so the mesh is dense at the road edge, where the rider
+   actually is, and coarse out at 30 m where nobody can tell. */
+function ribbon(c, z0, z1, cols, yFn, uvScale, ds = 0.3, ease = null){
+  let flip = false;
+  if(z0 > z1){ const t = z0; z0 = z1; z1 = t; flip = true; }   // keep +z winding → up normals
+  const x0 = -40, x1 = c.len + 25;
   const rows = Math.ceil((x1-x0)/ds)+1;
   const pos = new Float32Array(rows*cols*3), uv = new Float32Array(rows*cols*2);
   for(let r=0;r<rows;r++){
     const x = Math.min(x0 + r*ds, x1);
     for(let k=0;k<cols;k++){
-      const t = k/(cols-1), z = lerp(z0, z1, t);
+      let t = k/(cols-1);
+      if(ease) t = flip ? 1-ease(1-t) : ease(t);
+      const z = lerp(z0, z1, t);
       const i = (r*cols+k);
       pos[i*3] = x; pos[i*3+1] = yFn(x, z, t); pos[i*3+2] = z;
       uv[i*2] = (z-z0)/(z1-z0)*uvScale[0]; uv[i*2+1] = x/uvScale[1];
@@ -118,11 +153,14 @@ function buildWorld(ci){
   scene.add(world);
   scene.background = TX[look.sky];
   scene.fog = new THREE.Fog(look.fog[0], look.fog[1], look.fog[2]);
+  if(scene.environment) scene.environment.dispose();
+  scene.environment = buildEnvironment(look.envTop, look.envGround);
+  scene.environmentIntensity = 0.95;
   sun.intensity = ci===3 ? 1.7 : 2.4;
   hemi.intensity = ci===3 ? 0.7 : 0.9;
 
   // --- road: rides exactly on the physics heightfield, slight crown ---
-  const roadGeo = ribbon(c, -3.5, 3.5, 10, (x,z)=>surfaceY(c,x,z), [1, look.roadTile]);
+  const roadGeo = ribbon(c, -3.5, 3.5, 16, (x,z)=>surfaceY(c,x,z), [1, look.roadTile], 0.3);
   const roadMat = new THREE.MeshStandardMaterial({
     map: TX[look.road], roughness: 0.94, metalness: 0.0,
     bumpMap: TX[look.road], bumpScale: ci>=2 ? 0.9 : 0.35,
@@ -141,7 +179,7 @@ function buildWorld(ci){
   // shoulders share the terrain function with the physics, so they meet the
   // road edge exactly and a rider who leaves the tarmac stays on the ground
   for(const side of [-1, 1]){
-    const geo = ribbon(c, side*3.5, side*30, 12, (x,z)=>surfaceY(c,x,z), [7, 2.5]);
+    const geo = ribbon(c, side*3.5, side*30, 14, (x,z)=>surfaceY(c,x,z), [7, 2.5], 0.5, t=>t*t);
     const m = new THREE.Mesh(geo, shoulderMat);
     m.receiveShadow = true;
     world.add(m);
@@ -161,15 +199,17 @@ function buildWorld(ci){
     }
   }
   const shoulderY = (x,z)=>surfaceY(c,x,z);
-  const trunkGeo = new THREE.CylinderGeometry(0.09, 0.15, 2.6, 7);
-  const cone1Geo = new THREE.ConeGeometry(1.25, 3.0, 8);
-  const cone2Geo = new THREE.ConeGeometry(0.85, 2.3, 8);
+  const trunkGeo = new THREE.CylinderGeometry(0.09, 0.16, 2.6, 14);
+  const cone1Geo = new THREE.ConeGeometry(1.35, 2.6, 16);
+  const cone2Geo = new THREE.ConeGeometry(1.05, 2.3, 16);
+  const cone3Geo = new THREE.ConeGeometry(0.70, 1.9, 14);
   const trunkMat = new THREE.MeshStandardMaterial({ map: TX.bark, roughness: 1 });
   const leafMat  = new THREE.MeshStandardMaterial({ map: TX.foliage, roughness: 1 });
   const trunks = new THREE.InstancedMesh(trunkGeo, trunkMat, spots.length);
   const cones1 = new THREE.InstancedMesh(cone1Geo, leafMat, spots.length);
   const cones2 = new THREE.InstancedMesh(cone2Geo, leafMat, spots.length);
-  trunks.castShadow = cones1.castShadow = cones2.castShadow = true;
+  const cones3 = new THREE.InstancedMesh(cone3Geo, leafMat, spots.length);
+  trunks.castShadow = cones1.castShadow = cones2.castShadow = cones3.castShadow = true;
   const M = new THREE.Matrix4(), Q = new THREE.Quaternion(), V = new THREE.Vector3(), SC = new THREE.Vector3();
   spots.forEach((p,i)=>{
     const y = p.gate ? groundAt(c,p.x) : shoulderY(p.x, p.z);
@@ -177,15 +217,35 @@ function buildWorld(ci){
     Q.setFromAxisAngle(V.set(0,1,0), (i*2.399));
     SC.set(s,s,s);
     M.compose(V.set(p.x, y+1.3*s, p.z), Q, SC); trunks.setMatrixAt(i, M);
-    M.compose(V.set(p.x, y+(2.6+1.5)*s*0.85, p.z), Q, SC); cones1.setMatrixAt(i, M);
-    M.compose(V.set(p.x, y+(2.6+3.1)*s*0.85, p.z), Q, SC); cones2.setMatrixAt(i, M);
+    M.compose(V.set(p.x, y+3.4*s, p.z), Q, SC); cones1.setMatrixAt(i, M);
+    M.compose(V.set(p.x, y+4.5*s, p.z), Q, SC); cones2.setMatrixAt(i, M);
+    M.compose(V.set(p.x, y+5.5*s, p.z), Q, SC); cones3.setMatrixAt(i, M);
   });
-  world.add(trunks, cones1, cones2);
+  world.add(trunks, cones1, cones2, cones3);
+  // low scrub along the verges, denser on the wooded course
+  {
+    const nB = ci===3 ? 900 : 420;
+    const bushGeo = new THREE.IcosahedronGeometry(0.42, 1);
+    const bushMat = new THREE.MeshStandardMaterial({ map: TX.foliage, roughness: 1,
+      color: ci===3 ? 0x87936a : 0xffffff });
+    const bushes = new THREE.InstancedMesh(bushGeo, bushMat, nB);
+    bushes.castShadow = true;
+    for(let i=0;i<nB;i++){
+      const x = rr()*c.len;
+      const side = rr()<0.5 ? -1 : 1;
+      const z = side*(4.0 + rr()*13);
+      const s = 0.5 + rr()*1.0;
+      Q.setFromAxisAngle(V.set(0,1,0), rr()*6.28);
+      M.compose(V.set(x, shoulderY(x,z)+0.18*s, z), Q, SC.set(s, s*0.72, s));
+      bushes.setMatrixAt(i, M);
+    }
+    world.add(bushes);
+  }
 
   // --- rocks near rock gardens + scattered on trail shoulders ---
   if(c.rocksEx.length){
     const rocks = new THREE.InstancedMesh(
-      new THREE.DodecahedronGeometry(0.36, 0),
+      new THREE.DodecahedronGeometry(0.36, 1),
       new THREE.MeshStandardMaterial({ map: TX.rock, roughness: 1 }), c.rocksEx.length*5);
     rocks.castShadow = true;
     let i=0;
@@ -409,24 +469,20 @@ function fmtRms(s){ return s.aRmsN>0.5 ? Math.sqrt(s.aRmsAcc/s.aRmsN).toFixed(2)
 
 /* Live leaderboard — one row per rider, reordered every frame by race
    position. Rows are built once and mutated, so this is cheap at 60 fps. */
-let hudRows = null;
+let miniRow = null;
 function buildHud(){
-  const wrap = $("hudBoard"); wrap.innerHTML = "";
-  hudRows = [];
-  for(let i=0;i<=BIKES.length;i++){
-    const you = i === BIKES.length;
-    const el = document.createElement("div");
-    el.className = "hudchip" + (you ? " you" : "");
-    el.innerHTML = '<span class="pos"></span><i class="swatch"></i><span class="nm"></span>'
-      + '<span class="sp"></span><span class="gap"></span>'
-      + (you ? '<span class="stamina" title="Anaerobic reserve (W′)"><i></i></span>' : "")
-      + '<span class="hudbadge"></span>';
-    wrap.appendChild(el);
-    hudRows.push({ el, sw:el.querySelector(".swatch"), pos:el.querySelector(".pos"),
-      nm:el.querySelector(".nm"), sp:el.querySelector(".sp"), gap:el.querySelector(".gap"),
-      stam: you ? el.querySelector(".stamina i") : null,
-      badge: el.querySelector(".hudbadge"), you });
-  }
+  const wrap = $("hudMini"); wrap.innerHTML = "";
+  const el = document.createElement("div");
+  el.className = "hudchip you";
+  el.innerHTML = '<span class="pos"></span><i class="swatch"></i><span class="nm">You</span>'
+    + '<span class="sp"></span><span class="gap"></span>'
+    + '<span class="stamina" title="Anaerobic reserve (W′)"><i></i></span>'
+    + '<span class="hudbadge"></span>';
+  wrap.appendChild(el);
+  miniRow = { el, sw:el.querySelector(".swatch"), pos:el.querySelector(".pos"),
+    sp:el.querySelector(".sp"), gap:el.querySelector(".gap"),
+    stam: el.querySelector(".stamina i"), badge: el.querySelector(".hudbadge"), you:true };
+  miniRow.sw.style.background = cssVar("--you");
 }
 
 function riderBadge(s, row){
@@ -452,42 +508,47 @@ function riderBadge(s, row){
 }
 function set(el, text, cls){ el.textContent = text; el.className = "hudbadge "+cls; }
 
-function updateHUD(){
-  if(!hudRows) buildHud();
+/* Race order, shared by the on-screen chip and the standings panel. */
+function raceOrder(){
   const entries = states.map((s,i)=>({ s, i, name: riderName(i), c: col(i) }));
-  entries.push({ s: player, i: BIKES.length, name: "You", c: cssVar("--you") });
+  entries.push({ s: player, i: BIKES.length, name: "You", c: cssVar("--you"), you:true });
   const prog = s => (s.done || s.finished) ? 1e7 - s.finishT : s.x;
-  const sorted = [...entries].sort((a,b)=>prog(b.s) - prog(a.s));
-  const leadX = Math.min(sorted[0].s.x, course.len);
+  entries.sort((a,b)=>prog(b.s) - prog(a.s));
+  return entries;
+}
 
-  sorted.forEach((e, rank)=>{
-    const row = hudRows[e.i], s = e.s;
-    row.el.style.order = rank;
-    row.sw.style.background = e.c;
-    row.pos.textContent = rank+1;
-    row.nm.textContent = e.name;
-    row.sp.textContent = (Math.max(0,s.v)*3.6).toFixed(1)+" km/h";
-    const behind = leadX - Math.min(s.x, course.len);
-    row.gap.textContent = rank===0 ? "leader" : "−"+behind.toFixed(0)+" m";
-    if(row.stam) row.stam.style.width = (s.wBal/W_PRIME*100).toFixed(0)+"%";
-    riderBadge(s, row);
-  });
+function updateHUD(){
+  if(!miniRow) buildHud();
+  const order = raceOrder();
+  const leadX = Math.min(order[0].s.x, course.len);
+  const rank = order.findIndex(e=>e.you);
+  const P = player;
+  miniRow.pos.textContent = "P"+(rank+1);
+  miniRow.sp.textContent = (Math.max(0,P.v)*3.6).toFixed(1)+" km/h";
+  const behind = leadX - Math.min(P.x, course.len);
+  miniRow.gap.textContent = rank===0 ? "leader" : "−"+behind.toFixed(0)+" m";
+  miniRow.stam.style.width = (P.wBal/W_PRIME*100).toFixed(0)+"%";
+  riderBadge(P, miniRow);
   $("clock").textContent = "t = "+states[0].t.toFixed(1)+" s"
-    + "   ·   you " + surfaceName(course, player.x, player.lat).toLowerCase();
+    + "   ·   you " + surfaceName(course, P.x, P.lat).toLowerCase();
 }
 
 function updateStandings(){
-  const tb = $("standings");
-  const rows = states.map((s,i)=>({ s, name: riderName(i), c: col(i) }));
-  rows.push({ s: player, name: "You ("+BIKES[playerBikeIdx].name+")", c: cssVar("--you"), you: true });
-  rows.sort((a,b)=> prog(b.s) - prog(a.s));
-  function prog(s){ return (s.done||s.finished) ? 1e6-s.finishT : s.x; }
-  tb.innerHTML = rows.map((r,rank)=>
-    "<tr"+(r.you?" style='font-weight:600'":"")+"><td><span class='bikecell'><i class='swatch' style='background:"+r.c+"'></i>"+r.name+
-      (rank===0?" <span class='leader'>▲ lead</span>":"")+"</span></td>"+
-      "<td class='num'>"+Math.round(clamp(r.s.x,0,course.len))+" m</td>"+
-      "<td class='num'>"+(Math.max(0,r.s.v)*3.6).toFixed(1)+"</td>"+
-      "<td class='num'>"+fmtRms(r.s)+"</td></tr>").join("");
+  const order = raceOrder();
+  const leadX = Math.min(order[0].s.x, course.len);
+  $("standings").innerHTML = order.map((r,rank)=>{
+    const s = r.s;
+    const label = r.you ? "You · "+BIKES[playerBikeIdx].name
+                        : r.name+" · "+BIKES[r.i].name;
+    const behind = leadX - Math.min(s.x, course.len);
+    const gap = (s.done||s.finished) ? s.finishT.toFixed(1)+" s"
+              : rank===0 ? "leader" : "−"+behind.toFixed(0)+" m";
+    return "<tr"+(r.you?" class='mine'":"")+"><td class='pos'>"+(rank+1)+"</td>"+
+      "<td><span class='bikecell'><i class='swatch' style='background:"+r.c+"'></i>"+label+"</span></td>"+
+      "<td class='num'>"+(Math.max(0,s.v)*3.6).toFixed(1)+"</td>"+
+      "<td class='num'>"+gap+"</td>"+
+      "<td class='num'>"+fmtRms(s)+"</td></tr>";
+  }).join("");
 }
 
 const cv2 = $("chart"), ctx2 = cv2.getContext("2d");
@@ -733,6 +794,7 @@ window.__lab = {
   teleport(x, lat, psi){ player.x=x; player.lat=lat; player.psi=psi; player.v=0;
     player.z=0; player.zd=0; player.th=0; player.thd=0; snapNext=true; },
   input: () => playerInput(),
+  tris: () => renderer.info.render.triangles,
   stepRace(){
     const power = +$("power").value;
     if(raceMode) raceTactics(states, player, course, power);

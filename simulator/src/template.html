@@ -75,7 +75,13 @@ input[type=range]{width:150px;accent-color:var(--ink)}
 .hudchip .sp{min-width:66px;text-align:right}
 .hudchip .pos{font-family:var(--disp);font-weight:700;font-size:12px;color:var(--ink3);min-width:12px}
 .hudchip .gap{min-width:56px;text-align:right;color:var(--ink2)}
-.hud{max-height:calc(100% - 20px);flex-wrap:wrap}
+/* only the rider's own readout sits over the 3D view; the full order
+   lives in the standings panel so nothing blocks the road */
+#hudMini .hudchip{padding:4px 9px;font-size:11.5px}
+#hudMini .pos{font-size:14px;color:var(--ink)}
+th.pos,td.pos{width:22px;text-align:right;padding-right:2px;color:var(--ink3);font-family:var(--disp);font-weight:700}
+tr.mine td{background:color-mix(in srgb, var(--you) 12%, transparent);font-weight:600}
+table.standings td{padding:5px 8px}
 .hudbadge{font-family:var(--disp);font-weight:700;font-size:10.5px;letter-spacing:.08em}
 .hudbadge.air{color:var(--crit)}
 .hudbadge.warn{color:var(--warn)}
@@ -208,7 +214,7 @@ footer .src{font-size:12px;color:var(--ink3)}
 
 <div class="race" id="glHolder">
   <canvas id="gl" aria-label="3D view of the three bikes riding the selected course"></canvas>
-  <div class="hud" id="hudBoard"></div>
+  <div class="hud" id="hudMini"></div>
   <div class="camhud">
     <div class="camtabs" role="group" aria-label="Camera follows">
       <button data-cam="you" aria-pressed="true">You</button>
@@ -250,8 +256,8 @@ footer .src{font-size:12px;color:var(--ink3)}
   </div>
   <div class="card">
     <h2>Live standings</h2>
-    <table aria-live="polite">
-      <thead><tr><th>Bike</th><th class="num">Dist</th><th class="num">Speed</th><th class="num">Vibration</th></tr></thead>
+    <table aria-live="polite" class="standings">
+      <thead><tr><th class="pos">#</th><th>Rider</th><th class="num">Speed</th><th class="num">Gap</th><th class="num">Vibration</th></tr></thead>
       <tbody id="standings"></tbody>
     </table>
     <p style="font-size:12px;color:var(--ink3);margin:10px 0 0">Vibration = RMS vertical acceleration felt by the rider (ISO 2631-style ride comfort; lower is smoother).</p>
