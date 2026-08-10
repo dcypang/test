@@ -189,6 +189,7 @@ export function makeTextures(rndSeed=7){
   }
 
   const A = 8; // anisotropy; caller may re-set from renderer caps
+  void 0;
   return {
     asphalt:  tex(aCv, 1, 1, A),   // repeat set per-mesh
     cracked:  tex(cCv, 1, 1, A),
@@ -204,4 +205,153 @@ export function makeTextures(rndSeed=7){
     skyGold:   skyCanvas("#87a8cc","#d8cfae","#f0e3c2"),
     skyForest: skyCanvas("#6f95b5","#a8bfb4","#d7e0ce"),
   };
+}
+
+/* =====================================================================
+   Human textures. Skin, faces and race kit are painted on canvases at
+   load time — same constraint as the terrain (no external images), but
+   the riders get real tone variation, features and fabric detail rather
+   than flat plastic colour.
+   ===================================================================== */
+
+function shade(hex, f){
+  const r=(hex>>16&255), g=(hex>>8&255), b=(hex&255);
+  const m = v => Math.max(0, Math.min(255, Math.round(v*f)));
+  return `rgb(${m(r)},${m(g)},${m(b)})`;
+}
+
+/* Skin with pore mottling and a warm blush through the cheeks. */
+export function makeSkinTexture(baseHex){
+  const S = 256;
+  const cv = document.createElement("canvas"); cv.width = cv.height = S;
+  const ctx = cv.getContext("2d");
+  const r=(baseHex>>16&255), g=(baseHex>>8&255), b=(baseHex&255);
+  pixelFill(ctx, S, (u,v)=>{
+    const n = fbm(u*70, v*70, 4, 311);          // pores
+    const big = fbm(u*7, v*7, 3, 907);          // tonal drift
+    const k = 0.90 + n*0.14 + (big-0.5)*0.10;
+    return [r*k, g*k*0.985, b*k*0.97];
+  });
+  const t = new THREE.CanvasTexture(cv);
+  t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = 8;
+  return t;
+}
+
+/* A face painted onto the head sphere. Three's sphere UVs put +X — the
+   direction the rider faces — at u = 0.5, so the features are centred. */
+export function makeFaceTexture(baseHex, opts = {}){
+  const W = 512, H = 256;
+  const cv = document.createElement("canvas"); cv.width = W; cv.height = H;
+  const ctx = cv.getContext("2d");
+  const r=(baseHex>>16&255), g=(baseHex>>8&255), b=(baseHex&255);
+  const img = ctx.createImageData(W,H), d = img.data;
+  for(let y=0;y<H;y++) for(let x=0;x<W;x++){
+    const n = fbm(x/W*80, y/H*80, 4, 311), big = fbm(x/W*8, y/H*8, 3, 907);
+    const k = 0.90 + n*0.13 + (big-0.5)*0.09;
+    const i=(y*W+x)*4;
+    d[i]=r*k; d[i+1]=g*k*0.985; d[i+2]=b*k*0.97; d[i+3]=255;
+  }
+  ctx.putImageData(img,0,0);
+
+  const cx = W*0.5, eyeY = H*0.46;
+  // brow shadow + eye sockets
+  ctx.fillStyle = shade(baseHex, 0.80);
+  ctx.beginPath(); ctx.ellipse(cx, eyeY+2, 62, 20, 0, 0, 7); ctx.fill();
+  for(const s of [-1, 1]){
+    const ex = cx + s*26;
+    ctx.fillStyle = "#fdfbf6";
+    ctx.beginPath(); ctx.ellipse(ex, eyeY, 12, 7.5, 0, 0, 7); ctx.fill();
+    ctx.fillStyle = opts.eye || "#4a3a2a";
+    ctx.beginPath(); ctx.arc(ex, eyeY, 5.2, 0, 7); ctx.fill();
+    ctx.fillStyle = "#12100e";
+    ctx.beginPath(); ctx.arc(ex, eyeY, 2.4, 0, 7); ctx.fill();
+    ctx.strokeStyle = shade(baseHex, 0.42); ctx.lineWidth = 3.2;   // brow
+    ctx.beginPath(); ctx.moveTo(ex-14, eyeY-15); ctx.lineTo(ex+13, eyeY-18); ctx.stroke();
+    ctx.strokeStyle = "#2a2018"; ctx.lineWidth = 1.6;              // lash line
+    ctx.beginPath(); ctx.moveTo(ex-11, eyeY-6); ctx.lineTo(ex+11, eyeY-7); ctx.stroke();
+  }
+  // nose and mouth
+  ctx.strokeStyle = shade(baseHex, 0.78); ctx.lineWidth = 3;
+  ctx.beginPath(); ctx.moveTo(cx, eyeY+4); ctx.lineTo(cx-3, eyeY+26); ctx.stroke();
+  ctx.fillStyle = shade(baseHex, 0.62);
+  ctx.beginPath(); ctx.ellipse(cx, eyeY+30, 9, 5, 0, 0, 7); ctx.fill();
+  ctx.strokeStyle = "#8d4c46"; ctx.lineWidth = 3.4; ctx.lineCap = "round";
+  ctx.beginPath(); ctx.moveTo(cx-13, eyeY+50); ctx.quadraticCurveTo(cx, eyeY+56, cx+13, eyeY+50); ctx.stroke();
+  // effort: flushed cheeks
+  const blush = ctx.createRadialGradient(cx-40, eyeY+26, 2, cx-40, eyeY+26, 30);
+  blush.addColorStop(0, "rgba(190,90,80,0.30)"); blush.addColorStop(1, "rgba(190,90,80,0)");
+  ctx.fillStyle = blush; ctx.fillRect(cx-72, eyeY-4, 64, 62);
+  const blush2 = ctx.createRadialGradient(cx+40, eyeY+26, 2, cx+40, eyeY+26, 30);
+  blush2.addColorStop(0, "rgba(190,90,80,0.30)"); blush2.addColorStop(1, "rgba(190,90,80,0)");
+  ctx.fillStyle = blush2; ctx.fillRect(cx+8, eyeY-4, 64, 62);
+  // hair at the back and sides (wraps the u seam)
+  const hair = opts.hair || "#2b2220";
+  ctx.fillStyle = hair;
+  ctx.fillRect(0, 0, W, H*0.22);
+  ctx.fillRect(0, 0, W*0.16, H*0.52);
+  ctx.fillRect(W*0.84, 0, W*0.16, H*0.52);
+  ctx.beginPath(); ctx.ellipse(cx, H*0.20, 96, 26, 0, 0, 7); ctx.fill();
+
+  const t = new THREE.CanvasTexture(cv);
+  t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = 8;
+  return t;
+}
+
+/* Race jersey: team blocks, shoulder panels, sponsor bar and a number. */
+export function makeJerseyTexture(primaryHex, accentHex, num){
+  const W = 512, H = 512;
+  const cv = document.createElement("canvas"); cv.width = W; cv.height = H;
+  const ctx = cv.getContext("2d");
+  ctx.fillStyle = shade(primaryHex, 1); ctx.fillRect(0,0,W,H);
+  // side panels darker, so the torso reads as fitted
+  const sideGrad = ctx.createLinearGradient(0,0,W,0);
+  sideGrad.addColorStop(0, shade(primaryHex, 0.62));
+  sideGrad.addColorStop(0.28, shade(primaryHex, 1));
+  sideGrad.addColorStop(0.72, shade(primaryHex, 1));
+  sideGrad.addColorStop(1, shade(primaryHex, 0.62));
+  ctx.fillStyle = sideGrad; ctx.fillRect(0,0,W,H);
+  // shoulder yoke
+  ctx.fillStyle = shade(accentHex, 1); ctx.fillRect(0, 0, W, H*0.16);
+  ctx.fillStyle = "rgba(255,255,255,0.85)"; ctx.fillRect(0, H*0.16, W, H*0.022);
+  // chest sponsor bar
+  ctx.fillStyle = "rgba(20,20,22,0.88)"; ctx.fillRect(0, H*0.40, W, H*0.10);
+  ctx.fillStyle = "#f2f2ee";
+  ctx.font = "700 40px 'Arial Narrow', Arial, sans-serif";
+  ctx.textAlign = "center"; ctx.textBaseline = "middle";
+  ctx.fillText("VELOLAB", W*0.5, H*0.45);
+  ctx.fillText("VELOLAB", W*0.0, H*0.45);          // repeat across the wrap seam
+  // hem band and race number
+  ctx.fillStyle = shade(accentHex, 1); ctx.fillRect(0, H*0.88, W, H*0.12);
+  ctx.fillStyle = "#f7f7f4"; ctx.fillRect(W*0.30, H*0.60, W*0.16, H*0.16);
+  ctx.fillStyle = "#16171a"; ctx.font = "700 58px Arial, sans-serif";
+  ctx.fillText(String(num), W*0.38, H*0.685);
+  // fabric weave
+  ctx.globalAlpha = 0.10;
+  for(let y=0;y<H;y+=3){ ctx.fillStyle = y%6 ? "#000" : "#fff"; ctx.fillRect(0,y,W,1); }
+  ctx.globalAlpha = 1;
+  const t = new THREE.CanvasTexture(cv);
+  t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = 8;
+  return t;
+}
+
+/* Bib shorts: black lycra with a leg gripper and a side flash. */
+export function makeShortsTexture(accentHex){
+  const S = 256;
+  const cv = document.createElement("canvas"); cv.width = cv.height = S;
+  const ctx = cv.getContext("2d");
+  pixelFill(ctx, S, (u,v)=>{
+    const n = fbm(u*90, v*90, 3, 733);
+    const k = 26 + n*16;
+    return [k, k+1, k+3];
+  });
+  ctx.fillStyle = shade(accentHex, 1);
+  ctx.fillRect(S*0.02, 0, S*0.07, S);              // side flash
+  ctx.fillStyle = "rgba(10,10,12,0.9)";
+  ctx.fillRect(0, S*0.86, S, S*0.14);              // gripper band
+  ctx.globalAlpha = 0.5;
+  for(let y=Math.floor(S*0.86);y<S;y+=4){ ctx.fillStyle="#3a3a3e"; ctx.fillRect(0,y,S,1); }
+  ctx.globalAlpha = 1;
+  const t = new THREE.CanvasTexture(cv);
+  t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = 8;
+  return t;
 }

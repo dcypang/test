@@ -15,6 +15,19 @@ const BIKE_HEX_DARK = [0x49AB59, 0xB84444, 0x5B93E8, 0xBF5F9B, 0x7057C4, 0x16A0A
 /* factory colorways: Quick 2 "Rally Red", Sirrus X 4.0 "Satin Dark Navy
    Metallic", Quick CX 2 "Sabre". Rider kits keep the ID palette colors. */
 const PLAYER_HEX = 0xC8871F, PLAYER_HEX_DARK = 0xBC8626;   // your jersey
+/* Rider looks. The archetypes are drawn from the classic racing types the
+   sport is built on — the all-round "cannibal" who attacks from anywhere,
+   the wheel-sucking sprinter, the descender, the rouleur — rather than any
+   real athlete's name, likeness or team branding. */
+const RIDERS = [
+  { skin:0xe0b48c, hair:"#3a2a1c", accent:0x14532d, num:11 },
+  { skin:0x8a5a3b, hair:"#141010", accent:0x7f1d1d, num:24 },
+  { skin:0xd9a87e, hair:"#5a3b1e", accent:0x1e3a8a, num:7  },
+  { skin:0xf0c9a6, hair:"#8a6a3a", accent:0x86198f, num:33 },
+  { skin:0x6e4326, hair:"#0f0d0c", accent:0x3b0764, num:5  },
+  { skin:0xc9915f, hair:"#2a1a12", accent:0x134e4a, num:19 },
+];
+const PLAYER_RIDER = { skin:0xd9a87e, hair:"#2b2220", accent:0x7c2d12, num:1 };
 const PAINTS = [
   { color:0xC8202A, css:"#C8202A", metalness:0.05, roughness:0.22, clearcoat:0.9,
     logo:"cannondale", logoColor:"#FFFFFF", font:"italic 700 62px Arial, Helvetica, sans-serif" },
@@ -294,13 +307,14 @@ let views = [], playerView = null;
 function buildBikes(){
   for(const v of views){ scene.remove(v.root); v.root.traverse(o=>{ if(o.geometry) o.geometry.dispose(); }); }
   const hex = isDark() ? BIKE_HEX_DARK : BIKE_HEX;
-  views = BIKES.map((b,i)=>{ const v = buildBike(b, hex[i], PAINTS[i]); scene.add(v.root); return v; });
+  views = BIKES.map((b,i)=>{ const v = buildBike(b, hex[i], PAINTS[i], RIDERS[i]); scene.add(v.root); return v; });
   buildPlayerBike();
 }
 function buildPlayerBike(){
   if(playerView){ scene.remove(playerView.root);
     playerView.root.traverse(o=>{ if(o.geometry) o.geometry.dispose(); }); }
-  playerView = buildBike(BIKES[playerBikeIdx], isDark()?PLAYER_HEX_DARK:PLAYER_HEX, PAINTS[playerBikeIdx]);
+  playerView = buildBike(BIKES[playerBikeIdx], isDark()?PLAYER_HEX_DARK:PLAYER_HEX,
+    PAINTS[playerBikeIdx], PLAYER_RIDER);
   scene.add(playerView.root);
 }
 

@@ -3,6 +3,12 @@
    midpoint between wheel contact patches. */
 import * as THREE from "three";
 import { WHEEL_R, AF, AR, clamp, lerp } from "./physics.js";
+import { makeSkinTexture, makeFaceTexture, makeJerseyTexture, makeShortsTexture } from "./textures.js";
+
+/* Rider looks are cached: six racers share a handful of skin tones, and
+   rebuilding these canvases per bike would stall the first frame. */
+const skinCache = new Map(), faceCache = new Map(), jerseyCache = new Map(), shortsCache = new Map();
+const cached = (map, key, make) => { let v = map.get(key); if(!v){ v = make(); map.set(key, v); } return v; };
 
 function tubeBetween(a, b, r, mat, seg=18){
   const d = new THREE.Vector3().subVectors(b,a);
@@ -92,7 +98,15 @@ function makeDecalTexture(paint){
   return t;
 }
 
-export function buildBike(bike, kitHex, paint){
+export function buildBike(bike, kitHex, paint, look = {}){
+  const skinHex = look.skin ?? 0xd9a87e;
+  const hair = look.hair ?? "#2b2220";
+  const accent = look.accent ?? 0x1b1c20;
+  const num = look.num ?? 1;
+  const skinTex   = cached(skinCache, skinHex, ()=>makeSkinTexture(skinHex));
+  const faceTex   = cached(faceCache, skinHex+"|"+hair, ()=>makeFaceTexture(skinHex, { hair }));
+  const jerseyTex = cached(jerseyCache, kitHex+"|"+accent+"|"+num, ()=>makeJerseyTexture(kitHex, accent, num));
+  const shortsTex = cached(shortsCache, accent, ()=>makeShortsTexture(accent));
   const paintProps = { color: paint.color, metalness: paint.metalness,
     roughness: paint.roughness, clearcoat: paint.clearcoat, clearcoatRoughness: 0.3 };
   const mats = {
@@ -103,11 +117,17 @@ export function buildBike(bike, kitHex, paint){
     tire:  new THREE.MeshStandardMaterial({ color: 0x1c1c1e, roughness: 0.95 }),
     rim:   new THREE.MeshStandardMaterial({ color: 0x3d4147, metalness: 0.75, roughness: 0.4 }),
     rotor: new THREE.MeshStandardMaterial({ color: 0xb9bdc4, metalness: 0.95, roughness: 0.25 }),
-    skin:  new THREE.MeshStandardMaterial({ color: 0xd9a87e, roughness: 0.7 }),
+    // skin gets a hint of subsurface warmth rather than reading as plastic
+    skin:  new THREE.MeshPhysicalMaterial({ map: skinTex, roughness: 0.62,
+             sheen: 0.35, sheenColor: new THREE.Color(0xff9d7a), clearcoat: 0.12 }),
+    face:  new THREE.MeshPhysicalMaterial({ map: faceTex, roughness: 0.6,
+             sheen: 0.3, sheenColor: new THREE.Color(0xff9d7a) }),
     kit:   new THREE.MeshStandardMaterial({ color: kitHex, roughness: 0.6 }),
-    kit2:  new THREE.MeshPhysicalMaterial({ color: kitHex, roughness: 0.45, sheen: 0.6 }),
-    pants: new THREE.MeshStandardMaterial({ color: 0x2c2f33, roughness: 0.8 }),
-    shoe:  new THREE.MeshStandardMaterial({ color: 0x15171a, roughness: 0.5 }),
+    kit2:  new THREE.MeshPhysicalMaterial({ map: jerseyTex, roughness: 0.52, sheen: 0.5 }),
+    pants: new THREE.MeshStandardMaterial({ map: shortsTex, roughness: 0.68 }),
+    shoe:  new THREE.MeshPhysicalMaterial({ color: 0xf2f3f5, roughness: 0.3, clearcoat: 0.7 }),
+    glass: new THREE.MeshPhysicalMaterial({ color: 0x14161a, roughness: 0.08,
+             metalness: 0.2, clearcoat: 1, transparent: true, opacity: 0.86 }),
   };
   const root = new THREE.Group();          // placed on terrain (pitch + position)
   const sprung = new THREE.Group();        // frame+rider; bounces with heave
@@ -232,9 +252,26 @@ export function buildBike(bike, kitHex, paint){
   torso.quaternion.setFromUnitVectors(new THREE.Vector3(0,1,0), shoulder.clone().sub(hip).normalize());
   torso.castShadow = true;
   rider.add(torso);
-  const head = new THREE.Mesh(new THREE.SphereGeometry(0.105, 26, 20), mats.skin);
-  head.position.copy(shoulder).add(new THREE.Vector3(0.10,0.16,0)); head.castShadow=true;
+  // head carries the painted face; three's sphere UVs put +X at u=0.5,
+  // which is the direction the rider is looking
+  const head = new THREE.Mesh(new THREE.SphereGeometry(0.105, 26, 20), mats.face);
+  head.position.copy(shoulder).add(new THREE.Vector3(0.10,0.16,0));
+  head.scale.set(0.94, 1.06, 0.98);
+  head.castShadow=true;
   rider.add(head);
+  // sunglasses: lens shell plus arms
+  const lens = new THREE.Mesh(new THREE.SphereGeometry(0.104, 22, 12, Math.PI*0.30, Math.PI*0.40, Math.PI*0.36, Math.PI*0.20), mats.glass);
+  lens.position.copy(head.position); lens.scale.set(1.03, 1.0, 1.10);
+  rider.add(lens);
+  for(const s of [-1, 1]){
+    const arm = new THREE.Mesh(new THREE.BoxGeometry(0.075, 0.007, 0.006), mats.glass);
+    arm.position.copy(head.position).add(new THREE.Vector3(-0.028, 0.028, s*0.086));
+    rider.add(arm);
+  }
+  const neck = new THREE.Mesh(new THREE.CylinderGeometry(0.042,0.05,0.09,14), mats.skin);
+  neck.position.copy(head.position).add(new THREE.Vector3(-0.045,-0.085,0));
+  neck.rotation.z = 0.5;
+  rider.add(neck);
   const helmet = new THREE.Mesh(new THREE.SphereGeometry(0.117, 26, 18, 0, Math.PI*2, 0, Math.PI*0.55), mats.kit);
   helmet.position.copy(head.position).add(new THREE.Vector3(-0.01,0.02,0));
   helmet.castShadow = true;
@@ -249,20 +286,21 @@ export function buildBike(bike, kitHex, paint){
     const sh = shoulder.clone().add(new THREE.Vector3(0,-0.02,s));
     const grip = P.barC.clone().add(new THREE.Vector3(-0.02,-0.01,s*1.5));
     const elbow = sh.clone().lerp(grip,0.5).add(new THREE.Vector3(-0.03,-0.04,0));
-    rider.add(tubeBetween(sh, elbow, 0.036, mats.kit2, 14));
-    rider.add(tubeBetween(elbow, grip, 0.029, mats.skin, 14));
-    const hand = new THREE.Mesh(new THREE.SphereGeometry(0.036, 14, 12), mats.dark);
-    hand.position.copy(grip); rider.add(hand);
+    rider.add(tubeBetween(sh, elbow, 0.036, mats.kit2, 14));      // jersey sleeve
+    rider.add(tubeBetween(elbow, grip, 0.029, mats.skin, 14));    // bare forearm
+    const hand = new THREE.Mesh(new THREE.SphereGeometry(0.036, 16, 14), mats.dark);
+    hand.position.copy(grip); hand.scale.set(1, 0.8, 1.1); rider.add(hand);  // mitt
   }
   // legs: thigh + shin + shoe per side, animated
   const legs = [];
   for(const s of [-0.075, 0.075]){
     const thigh = new THREE.Mesh(new THREE.CapsuleGeometry(0.052, 0.30, 8, 18), mats.pants);
-    const shin  = new THREE.Mesh(new THREE.CapsuleGeometry(0.039, 0.30, 8, 18), mats.pants);
-    const shoe  = new THREE.Mesh(new THREE.BoxGeometry(0.10,0.04,0.055), mats.shoe);
+    const shin  = new THREE.Mesh(new THREE.CapsuleGeometry(0.039, 0.30, 8, 18), mats.skin);  // bare calf
+    const sock  = new THREE.Mesh(new THREE.CylinderGeometry(0.041,0.044,0.11,14), mats.shoe);
+    const shoe  = new THREE.Mesh(new THREE.BoxGeometry(0.105,0.042,0.058), mats.shoe);
     thigh.castShadow = shin.castShadow = shoe.castShadow = true;
-    rider.add(thigh); rider.add(shin); rider.add(shoe);
-    legs.push({ s, thigh, shin, shoe });
+    rider.add(thigh); rider.add(shin); rider.add(sock); rider.add(shoe);
+    legs.push({ s, thigh, shin, sock, shoe });
   }
 
   return { root, sprung, rider, wheelF, wheelR, lowers, crank, barsG,
@@ -304,13 +342,17 @@ export function poseBikeParts(V, S){
     mid.x += bend*0.9; mid.y += bend*0.25;             // knee forward
     placeCapsule(L.thigh, hip, mid);
     placeCapsule(L.shin, mid, pedal);
-    if(L.shoe){ L.shoe.position.copy(pedal).add(new THREE.Vector3(0,0.028,0)); }
+    if(L.shoe){
+      L.shoe.position.copy(pedal).add(new THREE.Vector3(0,0.028,0));
+      if(L.sock) placeCapsule(L.sock, pedal.clone().add(new THREE.Vector3(0,0.055,0)),
+        mid.clone().lerp(pedal, 0.62), 0.11);
+    }
   }
 }
-function placeCapsule(mesh, a, b){
+function placeCapsule(mesh, a, b, baseLen = 0.38){
   mesh.position.copy(a).lerp(b, 0.5);
   const d = b.clone().sub(a);
   const len = d.length();
-  mesh.scale.y = len/0.38;
+  mesh.scale.y = len/baseLen;
   mesh.quaternion.setFromUnitVectors(_up, d.normalize());
 }
