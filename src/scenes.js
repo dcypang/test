@@ -652,6 +652,23 @@ function buildHomeRoute(gl) {
     }
     placeProp(propMB, world, lib.mailbox, homePoint[0] + homeNormal[0] * 6.2, homePoint[2] + homeNormal[2] * 6.2, homeYaw);
     placeProp(propMB, world, lib.bin, homePoint[0] + homeNormal[0] * 7.4, homePoint[2] + homeNormal[2] * 7.4 + 2.5, homeYaw);
+
+    // Lit gate posts at the mouth of the drive. The turn off the road is the
+    // one the satnav cannot infer from the shape of the route, so it needs
+    // something you can actually see coming - especially at this hour.
+    const dsp = driveway.spline;
+    const mouth = dsp.points[1], mouthN = dsp.normals[1];
+    for (const side of [-1, 1]) {
+      const gx = mouth[0] + mouthN[0] * 3.4 * side;
+      const gz = mouth[2] + mouthN[2] * 3.4 * side;
+      const postMB = new MeshBuilder();
+      postMB.mat([0.34, 0.31, 0.28], 0.85, 0.0, 0, FLAG_DEFAULT);
+      postMB.push(); postMB.translate(0, 0.62, 0); postMB.box(0.42, 1.24, 0.42); postMB.pop();
+      postMB.push(); postMB.translate(0, 1.30, 0); postMB.box(0.52, 0.12, 0.52); postMB.pop();
+      postMB.mat([1.0, 0.86, 0.58], 0.3, 0.0, 0.9, FLAG_UNLIT);
+      postMB.push(); postMB.translate(0, 1.46, 0); postMB.box(0.22, 0.20, 0.22); postMB.pop();
+      placeProp(propMB, world, postMB, gx, gz, garageYaw);
+    }
   }
 
   const meshes = {
@@ -671,6 +688,13 @@ function buildHomeRoute(gl) {
     zoneAt,
     trafficLights,
     routeLength: total,
+    // The satnav needs both of these: the drive is the last 35 m of the journey
+    // but it is not part of the route spline, and which way you turn into it is
+    // the one instruction the shape of the road cannot supply.
+    drivewayLength: driveway.spline.length,
+    drivewaySide: Math.sign(
+      (drivewayEnd[0] - sp.points[count - 1][0]) * sp.normals[count - 1][0]
+      + (drivewayEnd[2] - sp.points[count - 1][2]) * sp.normals[count - 1][2]) || 1,
     start: {
       x: sp.points[1][0], z: sp.points[1][2],
       yaw: Math.atan2(sp.tangents[1][0], sp.tangents[1][2]),

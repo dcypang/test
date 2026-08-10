@@ -1045,7 +1045,16 @@ class Game {
     ds.hint = prog.index;
     const frac = prog.along / scene.routeLength;
     const zone = scene.zoneAt(clamp(frac, 0, 1));
-    const remaining = Math.max(0, scene.routeLength - prog.along);
+
+    // The last stretch is the driveway, which is its own path and not part of
+    // the route spline. Counting only the route runs the satnav down to zero
+    // while the house is still 35 m away, and then says nothing at all - you
+    // are told you have arrived while parked in the street. Add the driveway,
+    // and once the route is behind you measure straight to the door.
+    const dest = scene.destination;
+    const distHome = Math.hypot(car.pos[0] - dest.x, car.pos[2] - dest.z);
+    const onRoute = Math.max(0, scene.routeLength - prog.along);
+    const remaining = onRoute > 25 ? onRoute + scene.drivewayLength : distHome;
 
     // Speeding.
     const kmh = Math.abs(v.speedKmh);
@@ -1086,11 +1095,9 @@ class Game {
     }
 
     // Satnav instruction from the shape of the road ahead.
-    const nav = this.computeNavigation(sp, prog, remaining, scene);
+    const nav = this.computeNavigation(sp, prog, remaining, scene, onRoute);
 
     // Arrival.
-    const dest = scene.destination;
-    const distHome = Math.hypot(car.pos[0] - dest.x, car.pos[2] - dest.z);
     if (!ds.arrived && distHome < dest.radius && v.speed < 1.2) {
       ds.arrived = true;
       ds.arrivalTimer = 0;
@@ -1129,7 +1136,7 @@ class Game {
     } else if (v.speed > 3) this.hintTimer = 0;
   }
 
-  computeNavigation(sp, prog, remaining, scene) {
+  computeNavigation(sp, prog, remaining, scene, onRoute) {
     const n = sp.count;
     const spacing = sp.length / n;
     // Find where the road next changes direction meaningfully.
@@ -1144,10 +1151,21 @@ class Game {
     }
     let instruction = 'Continue ahead';
     let distance = 0;
-    if (remaining < 90) {
-      instruction = 'Arrive home';
-      distance = Math.max(0, remaining - 6);
+    if (remaining < 12) {
+      instruction = 'Stop on the driveway';
+      distance = 0;
       turnAngle = 0;
+    } else if (onRoute <= 25) {
+      // Off the end of the road and onto the concrete.
+      instruction = 'Up the drive to the garage';
+      distance = Math.max(0, remaining - 4);
+      turnAngle = 0;
+    } else if (remaining < 110) {
+      // The driveway leaves the road on the side the house is on, and this is
+      // the one turn the road itself gives no hint about.
+      instruction = `Turn ${scene.drivewaySide < 0 ? 'left' : 'right'} into the driveway`;
+      distance = Math.max(0, onRoute);
+      turnAngle = scene.drivewaySide < 0 ? -1 : 1;
     } else if (turnIdx >= 0) {
       distance = (turnIdx - start) * spacing;
       const dir = turnAngle > 0 ? 'right' : 'left';

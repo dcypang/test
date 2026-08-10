@@ -184,7 +184,7 @@ class UI {
     const secs = Math.floor(summary.time % 60);
     this.el.arrivedBody.innerHTML = `
       <div class="bigscore">${summary.rating}<span>/100</span></div>
-      <div class="grade">${grade}</div>
+      <div class="grade${summary.rating < 55 ? ' poor' : ''}">${grade}</div>
       <ul class="stats">
         <li><span>Journey time</span><strong>${mins}m ${String(secs).padStart(2, '0')}s</strong></li>
         <li><span>Distance driven</span><strong>${(summary.distance / 1000).toFixed(2)} km</strong></li>

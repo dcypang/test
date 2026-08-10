@@ -20,11 +20,14 @@ Three laps by default, live timing, positions and a lap chart.
 **The drive home.** The same car, now dusty from the race, on public roads:
 a country lane, a village with working traffic lights and oncoming traffic,
 then a suburban street. There is a satnav, there are speed limits, and there is
-a rating out of 100 that notices if you ignore either. It ends when the car is
-stopped on the driveway with the garage light on.
+a rating out of 100 that notices if you ignore either. The satnav counts you
+down through the village, calls the turn into your own driveway — lit gate
+posts, so you can see it coming — and it ends when the car is stopped in front
+of the garage with the light on.
 
-You do not have to finish the race to get there — **Skip to the drive home** on
-the title screen goes straight to the circuit gates.
+Two ways to get there: take the chequered flag and press **Drive home** on the
+results screen, or **Skip to the drive home** on the title screen to go straight
+to the circuit gates.
 
 ## From the driver's seat
 
@@ -136,6 +139,14 @@ out. `scripts/simtest.mjs` asserts all of that.
     node scripts/simtest.mjs    # physics + AI assertions, no browser
     node scripts/smoke.mjs      # drive it in headless Chromium, capture shots
     node scripts/mobile.mjs     # emulate a phone and exercise the touch controls
+    node scripts/drivehome.mjs  # race to the flag, then drive the whole way home
 
 `simtest.mjs` runs the simulation in plain Node with a stubbed WebGL object, so
 handling and AI regressions get caught in seconds without a GPU.
+
+`drivehome.mjs` is the end-to-end one: it puts an AI driver in the player's seat,
+takes the race to the chequered flag, clicks through the results screen, drives
+the full 2 km route, turns into the driveway and parks. It exists because the
+satnav used to count down to zero 35 m short of the house — the route spline
+ended at the kerb and the driveway is a separate path — which left you stranded
+in the street with the game insisting you had arrived.
