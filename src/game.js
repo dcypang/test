@@ -493,9 +493,94 @@ class Game {
 
   // --- drive home setup -----------------------------------------------------
 
+  // The journey home is a chain of roads: down the pit lane, out through the
+  // paddock gate, then the public road and finally the driveway. The first two
+  // are in the circuit's world and the third is in the town's, so somewhere in
+  // the middle the ground has to be swapped underneath a moving car. Each leg
+  // presents the same handful of fields and updateDrive never has to know which
+  // one it is on.
+  buildDriveLegs() {
+    const c = this.circuitScene, h = this.homeScene;
+    const legs = [
+      { scene: c, route: c.pitLane, label: 'Pit lane', limit: 60,
+        endText: 'Follow the lane out of the paddock' },
+      { scene: c, route: c.exitRoute, label: 'Circuit exit road', limit: 60,
+        endText: 'Through the gate onto the road' },
+      { scene: h, route: h.route, home: true },
+    ];
+    // How much journey is left after each leg ends, so the satnav can show one
+    // distance for the whole way home rather than restarting at every gate.
+    let ahead = h.drivewayLength;
+    for (let i = legs.length - 1; i >= 0; i--) {
+      legs[i].ahead = ahead;
+      ahead += legs[i].route.spline.length;
+    }
+    this.legs = legs;
+    this.legIndex = 0;
+  }
+
+  // The current leg, shaped the way updateDrive wants to read it.
+  leg() {
+    const L = this.legs[this.legIndex];
+    const h = this.homeScene;
+    if (L.home) {
+      return {
+        route: L.route, length: h.routeLength, zoneAt: h.zoneAt,
+        lights: h.trafficLights, destination: h.destination,
+        tail: h.drivewayLength, tailSide: h.drivewaySide,
+        ahead: 0, last: true,
+      };
+    }
+    const zone = { limit: L.limit, label: L.label };
+    return {
+      route: L.route, length: L.route.spline.length, zoneAt: () => zone,
+      lights: [], destination: null, tail: 0, tailSide: 1,
+      ahead: L.ahead, last: false, endText: L.endText,
+    };
+  }
+
+  // Cross onto the next road. Within a world that is just a change of
+  // reference spline; between worlds the car is moved to the far side of the
+  // gate still carrying its speed, gear and revs.
+  advanceLeg() {
+    if (this.legIndex >= this.legs.length - 1) return;
+    const from = this.leg();
+    const sp = from.route.spline;
+    const car = this.player, v = car.vehicle;
+
+    // How the car is sitting on the road it is leaving.
+    const prog = progressOnSpline(sp, car.pos[0], car.pos[2], sp.count - 2);
+    // Keep the crossing on the tarmac: the gate piers stand just off the verge,
+    // and landing on one would be a collision the player never saw coming.
+    const room = Math.max(1.0, from.route.halfWidth - 1.3);
+    const lateral = clamp(prog.lateral, -room, room);
+    const endTan = sp.tangents[sp.count - 1];
+    const heading = wrapAngle(v.yaw - Math.atan2(endTan[0], endTan[2]));
+
+    this.legIndex++;
+    const next = this.legs[this.legIndex];
+    if (next.scene === this.scene) return;
+
+    // --- into the next world --------------------------------------------------
+    this.scene = next.scene;
+    this.applyAmbience(this.scene.ambience);
+    this.renderer.clearDecals();
+    const nsp = next.route.spline;
+    const p = nsp.points[1], n = nsp.normals[1], t = nsp.tangents[1];
+    car.rebase(p[0] + n[0] * lateral, p[2] + n[2] * lateral,
+      Math.atan2(t[0], t[2]) + heading, this.scene.world);
+    car.headlightsOn = car.headlightsOn || this.scene.ambience.night > 0.2;
+    this.cars = [car];
+    this.lightSystem = new TrafficLightSystem(this.scene.trafficLights || []);
+    this.spawnTraffic(car.pos);
+    this.driveState.hint = 1;
+    this.driveState.redLightArmed = new Map();
+  }
+
   startDriveHome() {
     this.audio.start();
-    this.scene = this.homeScene;
+    this.buildDriveLegs();
+    this.scene = this.legs[0].scene;
     this.applyAmbience(this.scene.ambience);
     this.renderer.clearDecals();
 
@@ -507,16 +592,14 @@ class Game {
     });
     car.dirt = this.player ? Math.max(0.25, this.player.dirt) : 0.25;
     car.headlightsOn = this.scene.ambience.night > 0.2;
-    const s = this.scene.start;
-    // Start on the correct side of the road.
-    const sp = this.scene.route.spline;
-    const n = sp.normals[1];
-    car.setPose(s.x + n[0] * 2.1, s.z + n[2] * 2.1, s.yaw, this.scene.world);
+    // Parked in the pit lane, facing the way out.
+    const s = this.scene.exitStart;
+    car.setPose(s.x, s.z, s.yaw, this.scene.world);
     this.cars = [car];
     this.player = car;
     this.drivers = [];
 
-    this.lightSystem = new TrafficLightSystem(this.scene.trafficLights);
+    this.lightSystem = new TrafficLightSystem(this.scene.trafficLights || []);
     this.spawnTraffic();
 
     this.driveState = {
@@ -536,13 +619,18 @@ class Game {
     this.camera.mode = this.startCameraMode();
     this.state = 'drive';
     this.ui.hideAll();
-    this.hud.message('HEAD HOME — FOLLOW THE SATNAV', 4.0);
-    this.hud.message('Obey the limits and the lights', 4.0);
+    this.hud.message('DOWN THE PIT LANE AND OUT THE GATE', 4.0);
+    this.hud.message('The road home starts at the circuit exit', 4.0);
   }
 
-  spawnTraffic() {
+  // `clearOf`, when given, is a spot no traffic may occupy: the handover drops
+  // the player at the start of the route, which is also where traffic spawns.
+  spawnTraffic(clearOf) {
     this.traffic = [];
     const scene = this.scene;
+    // Only the public road carries traffic; the pit lane and the paddock are
+    // the circuit's, and it has just emptied out.
+    if (!scene.route) return;
     const rng = makeRng(555);
     const palette = [
       [0.72, 0.72, 0.74], [0.10, 0.11, 0.13], [0.55, 0.09, 0.08], [0.10, 0.22, 0.45],
@@ -570,6 +658,10 @@ class Game {
     };
     addOn(scene.route, 16, 52);
     for (const s of scene.sideStreets) addOn(s, 2, 40);
+    if (clearOf) {
+      this.traffic = this.traffic.filter((t) =>
+        Math.hypot(t.car.pos[0] - clearOf[0], t.car.pos[2] - clearOf[2]) > 50);
+    }
   }
 
   // --- main loop ------------------------------------------------------------
@@ -950,7 +1042,9 @@ class Game {
   resetPlayerToTrack() {
     const scene = this.scene;
     const car = this.player;
-    const sp = scene.track ? scene.track.spline : scene.route.spline;
+    const legRoute = this.state === 'drive' && this.legs ? this.leg().route : null;
+    const sp = legRoute ? legRoute.spline
+      : (scene.track ? scene.track.spline : scene.route.spline);
     const i = nearestIndex(sp, car.pos[0], car.pos[2], car.hint || 0, 40);
     const p = sp.points[i], t = sp.tangents[i];
     const yaw = Math.atan2(t[0], t[2]);
@@ -1016,7 +1110,7 @@ class Game {
     for (const t of this.traffic) {
       const d = Math.hypot(t.car.pos[0] - car.pos[0], t.car.pos[2] - car.pos[2]);
       if (d < 320) {
-        t.update(dt, world, [car, ...this.traffic.map((o) => o.car)], scene.trafficLights);
+        t.update(dt, world, [car, ...this.traffic.map((o) => o.car)], scene.trafficLights || []);
         t.car.update(dt, world, d < 110 ? this.renderer : null);
       }
       if (!t.done) alive.push(t);
@@ -1040,21 +1134,30 @@ class Game {
     });
 
     // --- progress and navigation ------------------------------------------
-    const sp = scene.route.spline;
+    const leg = this.leg();
+    const sp = leg.route.spline;
     const prog = progressOnSpline(sp, car.pos[0], car.pos[2], ds.hint);
     ds.hint = prog.index;
-    const frac = prog.along / scene.routeLength;
-    const zone = scene.zoneAt(clamp(frac, 0, 1));
+    const frac = prog.along / leg.length;
+    const zone = leg.zoneAt(clamp(frac, 0, 1));
 
     // The last stretch is the driveway, which is its own path and not part of
     // the route spline. Counting only the route runs the satnav down to zero
     // while the house is still 35 m away, and then says nothing at all - you
     // are told you have arrived while parked in the street. Add the driveway,
     // and once the route is behind you measure straight to the door.
-    const dest = scene.destination;
-    const distHome = Math.hypot(car.pos[0] - dest.x, car.pos[2] - dest.z);
-    const onRoute = Math.max(0, scene.routeLength - prog.along);
-    const remaining = onRoute > 25 ? onRoute + scene.drivewayLength : distHome;
+    const dest = leg.destination;
+    const distHome = dest ? Math.hypot(car.pos[0] - dest.x, car.pos[2] - dest.z) : Infinity;
+    const onRoute = Math.max(0, leg.length - prog.along);
+    const remaining = (onRoute > 25 || !leg.last)
+      ? onRoute + leg.tail + leg.ahead
+      : distHome;
+
+    // Reached the end of this road: cross onto the next one.
+    if (!leg.last && onRoute < 5 && Math.abs(prog.lateral) < leg.route.halfWidth + 6) {
+      this.advanceLeg();
+      return;
+    }
 
     // Speeding.
     const kmh = Math.abs(v.speedKmh);
@@ -1068,7 +1171,7 @@ class Game {
     } else ds.speedingTimer = 0;
 
     // Wrong side of the road (right-hand traffic).
-    const onRoad = Math.abs(prog.lateral) < scene.route.halfWidth + 0.5;
+    const onRoad = Math.abs(prog.lateral) < leg.route.halfWidth + 0.5;
     const forwardish = (car.forward()[0] * sp.tangents[prog.index][0] + car.forward()[2] * sp.tangents[prog.index][2]) > 0.2;
     if (onRoad && forwardish && prog.lateral < -0.9 && kmh > 12) {
       ds.wrongSideTimer += dt;
@@ -1079,7 +1182,7 @@ class Game {
     } else ds.wrongSideTimer = 0;
 
     // Red lights.
-    for (const light of scene.trafficLights) {
+    for (const light of leg.lights) {
       const key = light;
       const dist = light.along - prog.along;
       const armed = ds.redLightArmed.get(key);
@@ -1095,10 +1198,10 @@ class Game {
     }
 
     // Satnav instruction from the shape of the road ahead.
-    const nav = this.computeNavigation(sp, prog, remaining, scene, onRoute);
+    const nav = this.computeNavigation(sp, prog, remaining, leg, onRoute);
 
-    // Arrival.
-    if (!ds.arrived && distHome < dest.radius && v.speed < 1.2) {
+    // Arrival. Only the last leg has a driveway at the end of it.
+    if (dest && !ds.arrived && distHome < dest.radius && v.speed < 1.2) {
       ds.arrived = true;
       ds.arrivalTimer = 0;
       this.audio.chime();
@@ -1136,7 +1239,7 @@ class Game {
     } else if (v.speed > 3) this.hintTimer = 0;
   }
 
-  computeNavigation(sp, prog, remaining, scene, onRoute) {
+  computeNavigation(sp, prog, remaining, leg, onRoute) {
     const n = sp.count;
     const spacing = sp.length / n;
     // Find where the road next changes direction meaningfully.
@@ -1151,6 +1254,20 @@ class Game {
     }
     let instruction = 'Continue ahead';
     let distance = 0;
+    // The house only exists at the end of the last leg. Approaching the end of
+    // the pit lane is not approaching a driveway.
+    if (!leg.last) {
+      if (onRoute < 140) {
+        instruction = leg.endText;
+        distance = Math.max(0, onRoute);
+        turnAngle = 0;
+      } else if (turnIdx >= 0) {
+        distance = (turnIdx - start) * spacing;
+        const dir = turnAngle > 0 ? 'right' : 'left';
+        instruction = distance < 45 ? `Bear ${dir} now` : `Bear ${dir}`;
+      }
+      return { instruction, distance, angle: turnAngle };
+    }
     if (remaining < 12) {
       instruction = 'Stop on the driveway';
       distance = 0;
@@ -1163,9 +1280,9 @@ class Game {
     } else if (remaining < 110) {
       // The driveway leaves the road on the side the house is on, and this is
       // the one turn the road itself gives no hint about.
-      instruction = `Turn ${scene.drivewaySide < 0 ? 'left' : 'right'} into the driveway`;
+      instruction = `Turn ${leg.tailSide < 0 ? 'left' : 'right'} into the driveway`;
       distance = Math.max(0, onRoute);
-      turnAngle = scene.drivewaySide < 0 ? -1 : 1;
+      turnAngle = leg.tailSide < 0 ? -1 : 1;
     } else if (turnIdx >= 0) {
       distance = (turnIdx - start) * spacing;
       const dir = turnAngle > 0 ? 'right' : 'left';
@@ -1175,7 +1292,7 @@ class Game {
         : `${sharp ? 'Turn' : 'Bear'} ${dir}`;
     }
     // Upcoming traffic light overrides the instruction when close.
-    for (const light of scene.trafficLights) {
+    for (const light of leg.lights) {
       const d = light.along - prog.along;
       if (d > 0 && d < 120) {
         instruction = light.state === 'red' ? 'Stop at the lights' : 'Lights ahead';
@@ -1357,9 +1474,9 @@ class Game {
       this.hud.drawDrive({
         player: this.player,
         cars: [this.player, ...this.traffic.map((t) => t.car)],
-        routeSpline: this.scene.route.spline,
-        destination: this.scene.destination,
-        lights: this.scene.trafficLights,
+        routeSpline: (this.legs ? this.leg().route : this.scene.route).spline,
+        destination: this.legs ? this.leg().destination : this.scene.destination,
+        lights: (this.legs ? this.leg().lights : this.scene.trafficLights) || [],
         speedLimit: ds.zone.limit,
         roadName: ds.zone.label,
         speeding: ds.speeding,

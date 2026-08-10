@@ -33,6 +33,36 @@ function placeProp(target, world, builder, x, z, yaw = 0, yOffset = 0, scale = 1
 }
 
 // Build a small library of prop meshes once, then stamp them around the world.
+// The circuit gate. It stands at the end of the paddock exit road and again at
+// the start of the road home, because those are the same gate: the two halves
+// of the journey are separate worlds, and the handover happens as you pass
+// under it. Matching geometry either side, plus the trees the callers plant
+// alongside, means there is nothing to see at the join.
+function buildCircuitGate(mb) {
+  const pierH = 4.2, pierW = 1.15, span = 11.0;
+  for (const side of [-1, 1]) {
+    mb.mat([0.40, 0.38, 0.35], 0.90, 0.0, 0, FLAG_DEFAULT);
+    mb.push(); mb.translate(side * span / 2, pierH / 2, 0);
+    mb.box(pierW, pierH, pierW); mb.pop();
+    mb.mat([0.30, 0.29, 0.27], 0.85, 0.0, 0, FLAG_DEFAULT);
+    mb.push(); mb.translate(side * span / 2, pierH + 0.10, 0);
+    mb.box(pierW + 0.30, 0.22, pierW + 0.30); mb.pop();
+  }
+  // Beam across the top, with a board hung under it.
+  mb.mat([0.16, 0.17, 0.19], 0.55, 0.35, 0, FLAG_DEFAULT);
+  mb.push(); mb.translate(0, pierH + 0.42, 0); mb.box(span + 0.9, 0.42, 0.34); mb.pop();
+  mb.mat([0.06, 0.07, 0.09], 0.70, 0.05, 0, FLAG_DEFAULT);
+  mb.push(); mb.translate(0, pierH - 0.05, 0.02); mb.box(4.6, 0.80, 0.10); mb.pop();
+  mb.mat([0.85, 0.86, 0.88], 0.6, 0.0, 0.12, FLAG_UNLIT);
+  mb.push(); mb.translate(0, pierH - 0.05, -0.05); mb.box(3.9, 0.16, 0.03); mb.pop();
+  // A lamp on each pier, so the gate reads at dusk from either side.
+  mb.mat([1.0, 0.88, 0.62], 0.3, 0.0, 0.9, FLAG_UNLIT);
+  for (const side of [-1, 1]) {
+    mb.push(); mb.translate(side * span / 2, pierH + 0.42, 0);
+    mb.box(0.26, 0.26, 0.26); mb.pop();
+  }
+}
+
 function makePropLibrary(rng) {
   const lib = {};
   const make = (fn) => { const mb = new MeshBuilder(); fn(mb); return mb; };
@@ -143,6 +173,29 @@ function buildCircuit(gl) {
     type: 'road', markings: false, spacing: 5.0, name: 'Pit lane',
   }));
 
+  // The way out. Rather than rejoining the track, the pit exit carries straight
+  // on, swings away from the circuit and runs out to the gate on the public
+  // road - so the drive home starts by actually driving off the racetrack.
+  // Plotted from the pit lane rather than hard coded, so it still lines up if
+  // the circuit shape is regenerated.
+  const exitRoute = (() => {
+    const psp = pitLane.spline;
+    const last = psp.count - 1;
+    const p0 = psp.points[last], t0 = psp.tangents[last], n0 = psp.normals[last];
+    // The pit lane sits at -12 along the track normal, so the circuit is in the
+    // +normal direction and away from it is -normal.
+    const fwd = [t0[0], 0, t0[2]], out = [-n0[0], 0, -n0[2]];
+    const ctl = [];
+    for (const [f, a] of [[-14, 0], [10, 1], [34, 6], [56, 18], [70, 38],
+      [80, 66], [86, 102], [90, 150], [93, 205], [95, 262], [96, 318]]) {
+      ctl.push([p0[0] + fwd[0] * f + out[0] * a, p0[2] + fwd[2] * f + out[2] * a]);
+    }
+    return world.addPath(new Path(xz(ctl), {
+      closed: false, halfWidth: 4.4, surface: SURFACES.asphalt, kerbs: false,
+      type: 'road', markings: true, spacing: 5.0, name: 'Paddock exit',
+    }));
+  })();
+
   world.index();
   world.conformPathsToTerrain(60);
 
@@ -156,6 +209,7 @@ function buildCircuit(gl) {
   const roadMB = new MeshBuilder();
   buildPathMesh(world, track, roadMB);
   buildPathMesh(world, pitLane, roadMB);
+  buildPathMesh(world, exitRoute, roadMB);
 
   // Start / finish line and the painted grid boxes.
   {
@@ -303,6 +357,39 @@ function buildCircuit(gl) {
     }
   }
 
+  // --- the gate out ---------------------------------------------------------
+  {
+    const esp = exitRoute.spline;
+    const last = esp.count - 1;
+    const gp = esp.points[last], gt = esp.tangents[last], gn = esp.normals[last];
+    const gateYaw = Math.atan2(gt[0], gt[2]);
+    const gateMB = new MeshBuilder();
+    buildCircuitGate(gateMB);
+    placeProp(propMB, world, gateMB, gp[0], gp[2], gateYaw);
+
+    // An avenue of trees for the last stretch up to the gate. This is what
+    // closes the view in: you cannot see the landscape change if there is no
+    // landscape in shot when it does.
+    for (let k = 1; k <= 9; k++) {
+      const i = clamp(last - k * 2, 0, last);
+      const p = esp.points[i], n = esp.normals[i];
+      for (const side of [-1, 1]) {
+        const d = exitRoute.halfWidth + 3.2;
+        placeProp(propMB, world, lib.trees[k % lib.trees.length],
+          p[0] + n[0] * d * side, p[2] + n[2] * d * side, rng() * TAU, 0, 1.25);
+      }
+    }
+    // Fences running up to the piers so the gate reads as the boundary.
+    for (const side of [-1, 1]) {
+      for (let k = 0; k < 3; k++) {
+        placeProp(propMB, world, lib.fence,
+          gp[0] + gn[0] * (6.2 + k * 7.9) * side - gt[0] * 0.2,
+          gp[2] + gn[2] * (6.2 + k * 7.9) * side - gt[2] * 0.2,
+          gateYaw + Math.PI / 2);
+      }
+    }
+  }
+
   // --- start grid -----------------------------------------------------------
   const grid = [];
   {
@@ -336,6 +423,14 @@ function buildCircuit(gl) {
     world,
     track,
     pitLane,
+    exitRoute,
+    // Where the drive home begins: the pit lane entry, so you roll off the
+    // circuit, down the pit lane and out through the gate.
+    exitStart: (() => {
+      const psp = pitLane.spline;
+      const p = psp.points[2], t = psp.tangents[2];
+      return { x: p[0], z: p[2], yaw: Math.atan2(t[0], t[2]) };
+    })(),
     racingLine,
     grid,
     meshes,
@@ -542,6 +637,35 @@ function buildHomeRoute(gl) {
         const d = route.halfWidth + 5.5;
         placeProp(propMB, world, lib.fence,
           p[0] + n[0] * d * side, p[2] + n[2] * d * side, yaw);
+      }
+    }
+  }
+
+  // --- the gate in ----------------------------------------------------------
+  // The other face of the circuit gate. Driving out of the paddock hands over
+  // to this world right here, so this end has to match the other one: same
+  // gate, same avenue of trees closing the view in, same fences.
+  {
+    const gp = sp.points[0], gt = sp.tangents[0], gn = sp.normals[0];
+    const gateYaw = Math.atan2(gt[0], gt[2]);
+    const gateMB = new MeshBuilder();
+    buildCircuitGate(gateMB);
+    placeProp(propMB, world, gateMB, gp[0], gp[2], gateYaw);
+    for (let k = 0; k <= 9; k++) {
+      const i = clamp(k * 2, 0, count - 1);
+      const p = sp.points[i], n = sp.normals[i];
+      for (const side of [-1, 1]) {
+        const d = route.halfWidth + 3.2;
+        placeProp(propMB, world, lib.trees[k % lib.trees.length],
+          p[0] + n[0] * d * side, p[2] + n[2] * d * side, rng() * TAU, 0, 1.25);
+      }
+    }
+    for (const side of [-1, 1]) {
+      for (let k = 0; k < 3; k++) {
+        placeProp(propMB, world, lib.fence,
+          gp[0] + gn[0] * (6.2 + k * 7.9) * side + gt[0] * 0.2,
+          gp[2] + gn[2] * (6.2 + k * 7.9) * side + gt[2] * 0.2,
+          gateYaw + Math.PI / 2);
       }
     }
   }

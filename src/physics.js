@@ -149,6 +149,19 @@ class Vehicle {
     for (const w of this.wheels) { w.omega = 0; w.slipRatio = 0; w.slipAngle = 0; }
   }
 
+  // Move the car somewhere else without stopping it. The drive home crosses
+  // from the circuit's world into the town's at speed, and the join is only
+  // invisible if the car keeps its momentum, its gear and its revs through it.
+  rebase(x, z, yaw, surfaceY = 0) {
+    const d = yaw - this.yaw;
+    const c = Math.cos(d), s = Math.sin(d);
+    const vx = this.vel[0], vz = this.vel[2];
+    this.vel[0] = vx * c + vz * s;
+    this.vel[2] = -vx * s + vz * c;
+    this.pos[0] = x; this.pos[2] = z; this.pos[1] = surfaceY;
+    this.yaw = yaw;
+  }
+
   // Steering lock falls off with speed, both because it is what real racks do
   // and because full lock at 250 km/h would be undriveable.
   maxSteerAngle() {

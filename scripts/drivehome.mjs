@@ -48,8 +48,7 @@ const raced = await page.evaluate(() => {
     seed = (seed * 1664525 + 1013904223) >>> 0;
     return seed / 4294967296;
   };
-  // The bundle is inside an IIFE, so reach the classes through live instances.
-  const RacingDriver = g.drivers[0].constructor;
+  const { RacingDriver } = window.__drivers;
   const auto = new RacingDriver(g.player, g.scene.racingLine, 0.85);
   // The driver has to run inside the input hook: applyPlayerInput overwrites
   // the vehicle every frame, so anything written before g.update is lost.
@@ -85,57 +84,89 @@ await page.evaluate(() => window.__game.update(1 / 60));
 check('the drive home starts from the results screen',
   await page.evaluate(() => window.__game.state === 'drive'));
 
-const startInfo = await page.evaluate(() => ({
-  route: Math.round(window.__game.scene.route.spline.length),
-  remaining: Math.round(window.__game.driveState.remaining),
-  onRoad: window.__game.scene.world.sampleSurface(
-    window.__game.player.pos[0], window.__game.player.pos[2]).onRoad,
-}));
-check('the car starts on the road', startInfo.onRoad, `route ${startInfo.route} m`);
+await page.evaluate(() => window.__game.update(1 / 60));
+const startInfo = await page.evaluate(() => {
+  const g = window.__game;
+  return {
+    kind: g.scene.kind,
+    legs: g.legs.map((l) => Math.round(l.route.spline.length)),
+    remaining: Math.round(g.driveState.remaining),
+    onRoad: g.scene.world.sampleSurface(g.player.pos[0], g.player.pos[2]).onRoad,
+  };
+});
+check('the drive home starts at the circuit, not in the town',
+  startInfo.kind === 'circuit', `scene=${startInfo.kind}`);
+check('the car starts on the road', startInfo.onRoad,
+  `legs ${startInfo.legs.join(' + ')} m, ${startInfo.remaining} m to go`);
+check('the satnav counts the whole journey from the pit lane',
+  startInfo.remaining > 2200, `${startInfo.remaining} m`);
 await page.screenshot({ path: join(shots, 'h2-road.png') });
 
 // Drive the whole way with a traffic driver at the wheel of the player's car.
 const home = await page.evaluate(() => {
   const g = window.__game;
-  const lane = g.scene.route.spline.normals[1];
-  const offset = ((g.player.pos[0] - g.scene.route.spline.points[1][0]) * lane[0]
-    + (g.player.pos[2] - g.scene.route.spline.points[1][2]) * lane[2]);
-  const TrafficDriver = g.traffic[0].constructor;
-  let auto = new TrafficDriver(g.player, g.scene.route, 1, offset, 999);
+  const first = g.legs[0].route.spline;
+  const lane = first.normals[1];
+  const offset = ((g.player.pos[0] - first.points[1][0]) * lane[0]
+    + (g.player.pos[2] - first.points[1][2]) * lane[2]);
+  const { TrafficDriver } = window.__drivers;
+  let auto = new TrafficDriver(g.player, g.legs[0].route, 1, offset, 999);
   let onDrive = false;
+  let legSeen = 0;
+  const handover = [];
   const v = g.player.vehicle;
   g.input.driving = () => {
-    // At the end of the road, hand over to a driver following the driveway -
-    // exactly the turn a human has to make, and the part the satnav has to
-    // call out.
-    if (auto.done && !onDrive) {
+    // Follow whichever road the game puts us on: pit lane, paddock exit,
+    // public road, and finally the driveway - the same chain a player drives.
+    if (g.legIndex !== legSeen) {
+      legSeen = g.legIndex;
+      handover.push({ leg: g.legIndex, scene: g.scene.kind, kmh: Math.round(v.speedKmh) });
+      auto = new TrafficDriver(g.player, g.legs[g.legIndex].route, 1, 0, 999);
+      auto.index = 0;
+      auto.done = false;
+    }
+    if (!auto.done) {
+      // Same obstacle list the game gives its own traffic, so this driver
+      // queues at lights instead of rear-ending the back of the queue.
+      auto.update(1 / 60, g.scene.world, g.traffic.map((t) => t.car), g.lightSystem.lights);
+    }
+    if (auto.done && !onDrive && g.legIndex === g.legs.length - 1) {
       onDrive = true;
       auto = new TrafficDriver(g.player, g.scene.driveway, 1, 0, 999);
       auto.index = 0;
     }
-    if (!auto.done) {
-      auto.update(1 / 60, g.scene.world, [], g.lightSystem.lights);
-    } else {
-      // The path driver gives up a few points short of the end. Park it the
-      // way a person would: creep at the garage door and stop on it.
-      const d = g.scene.destination;
-      const dx = d.x - v.pos[0], dz = d.z - v.pos[2];
-      const dist = Math.hypot(dx, dz);
-      const err = Math.atan2(dx, dz) - v.yaw;
-      const bearing = Math.atan2(Math.sin(err), Math.cos(err));
-      v.steerInput = Math.max(-1, Math.min(1, bearing * 2.0));
-      const creep = dist > 1.4 && v.speed < 2.2;
-      v.throttle = creep ? 0.16 : 0;
-      v.brake = creep ? 0 : 1;
+    if (auto.done) {
+      const d = onDrive ? g.scene.destination : null;
+      if (d) {
+        // Park it the way a person would: creep at the garage door and stop.
+        const dx = d.x - v.pos[0], dz = d.z - v.pos[2];
+        const dist = Math.hypot(dx, dz);
+        const bearing = Math.atan2(Math.sin(Math.atan2(dx, dz) - v.yaw),
+          Math.cos(Math.atan2(dx, dz) - v.yaw));
+        v.steerInput = Math.max(-1, Math.min(1, bearing * 2.0));
+        const creep = dist > 1.4 && v.speed < 2.2;
+        v.throttle = creep ? 0.16 : 0;
+        v.brake = creep ? 0 : 1;
+      } else {
+        // The path driver gives up a few points short; keep rolling so the
+        // game sees us cross the end of the leg.
+        v.steerInput = 0;
+        v.throttle = v.speed < 9 ? 0.35 : 0;
+        v.brake = 0;
+      }
     }
     return { throttle: v.throttle, brake: v.brake, steer: v.steerInput,
              handbrake: v.handbrake, shiftUp: false, shiftDown: false };
   };
   let minDist = Infinity, offRoad = 0, frames = 0;
   const navSeen = new Set();
-  for (let i = 0; i < 60 * 600 && g.state === 'drive'; i++) {
+  let stalled = 0;
+  for (let i = 0; i < 60 * 900 && g.state === 'drive'; i++) {
     g.update(1 / 60);
     frames++;
+    // The R key, in test form: never let one wedged car hang the whole run.
+    stalled = (v.speed < 0.6 && !g.driveState.arrived) ? stalled + 1 / 60 : 0;
+    if (stalled > 25) { g.resetPlayerToTrack(); stalled = 0; }
     minDist = Math.min(minDist, g.driveState.distHome === undefined ? Infinity : g.driveState.distHome);
     if (g.driveState.nav) navSeen.add(g.driveState.nav.instruction);
     if (!g.scene.world.sampleSurface(g.player.pos[0], g.player.pos[2]).onRoad) offRoad++;
@@ -152,6 +183,7 @@ const home = await page.evaluate(() => {
     offRoadPct: +(100 * offRoad / frames).toFixed(1),
     minutes: +(g.driveState.elapsed / 60).toFixed(1),
     nav: Array.from(navSeen),
+    handover,
   };
 });
 console.log('   ', JSON.stringify(home));
@@ -166,6 +198,12 @@ check('the satnav calls the turn into the driveway',
   home.nav.some((n) => n.includes('driveway')), home.nav.join(' | '));
 check('the satnav counts the driveway, not just the road',
   home.nav.some((n) => n.includes('drive to the garage')));
+check('the road leaves the circuit and reaches the town',
+  home.handover.length === 2 && home.handover[1].scene === 'home',
+  JSON.stringify(home.handover));
+check('the car keeps its momentum through the gate',
+  home.handover.length === 2 && home.handover[1].kmh > 25,
+  `${home.handover.length === 2 ? home.handover[1].kmh : '?'} km/h crossing into the town`);
 await page.screenshot({ path: join(shots, 'h3-arrived.png') });
 
 console.log('\n--- console errors ---');

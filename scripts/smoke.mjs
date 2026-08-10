@@ -156,9 +156,11 @@ if (booted) {
   });
   console.log('drive telemetry:', JSON.stringify(driveTel));
 
-  // Teleport to the driveway to check the arrival flow and the house.
+  // Skip to the last leg and teleport to the driveway, to check the arrival
+  // flow and the house without driving the whole 2.7 km.
   await page.evaluate(() => {
     const g = window.__game;
+    while (g.legIndex < g.legs.length - 1) g.advanceLeg();
     const d = g.scene.destination;
     g.player.setPose(d.x, d.z - 14, d.yaw, g.scene.world);
     g.driveState.hint = g.scene.route.spline.count - 3;

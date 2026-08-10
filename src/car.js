@@ -105,6 +105,14 @@ class Car {
     this.vehicle.setPose(x, z, yaw, y);
   }
 
+  // Same, but the car keeps moving. Used where the drive home hands over from
+  // one world to the next.
+  rebase(x, z, yaw, world) {
+    const y = world ? world.groundHeight(x, z) : 0;
+    this.vehicle.rebase(x, z, yaw, y);
+    this.lastSkid = [null, null, null, null];
+  }
+
   // Forward vector in world space.
   forward(out = [0, 0, 0]) {
     out[0] = Math.sin(this.vehicle.yaw); out[1] = 0; out[2] = Math.cos(this.vehicle.yaw);
