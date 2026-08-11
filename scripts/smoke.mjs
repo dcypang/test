@@ -25,6 +25,9 @@ const browser = await chromium.launch({
   ],
 });
 const page = await browser.newPage({ viewport: { width: 1280, height: 720 }, deviceScaleFactor: 1 });
+// A 1280x720 frame of a million triangles through SwiftShader can take the
+// better part of a minute. That is a property of the test rig, not the game.
+page.setDefaultTimeout(120000);
 
 page.on('console', (msg) => {
   const t = `${msg.type()}: ${msg.text()}`;

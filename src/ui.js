@@ -65,7 +65,7 @@ class UI {
     this.makeOptions(this.el.lapsRow, [['2', 2], ['3', 3], ['5', 5], ['8', 8]],
       (v) => { this.game.settings.laps = v; }, () => this.game.settings.laps);
     this.makeOptions(this.el.difficultyRow,
-      [['Rookie', 0.25], ['Amateur', 0.55], ['Pro', 0.80], ['Ace', 1.0]],
+      [['Rookie', 0.34], ['Amateur', 0.64], ['Pro', 0.86], ['Ace', 1.0]],
       (v) => { this.game.settings.difficulty = v; }, () => this.game.settings.difficulty);
     this.makeOptions(this.el.assistRow, [['On', true], ['Off', false]],
       (v) => { this.game.settings.assists = v; }, () => this.game.settings.assists);
@@ -189,6 +189,7 @@ class UI {
         <li><span>Journey time</span><strong>${mins}m ${String(secs).padStart(2, '0')}s</strong></li>
         <li><span>Distance driven</span><strong>${(summary.distance / 1000).toFixed(2)} km</strong></li>
       </ul>
-      <p class="note">The garage light is on and the engine is ticking as it cools.</p>`;
+      <p class="note">The garage light is on and the engine is ticking as it cools.${
+  summary.shopped ? ' The shopping is on the passenger seat.' : ''}</p>`;
   }
 }

@@ -2219,6 +2219,7 @@ class Vehicle {
     const spec = CAR_SPEC;
     this.mass = options.mass || spec.mass;
     this.inertiaYaw = this.mass * 1.72;
+    this.lastGoodPos = [0, 0, 0];
     this.wheelbase = spec.wheelbase;
     this.cgHeight = spec.cgHeight;
     this.trackFront = spec.trackFront;
@@ -2293,6 +2294,31 @@ class Vehicle {
     this.gear = GEAR_FIRST;
     this.rpm = IDLE_RPM;
     for (const w of this.wheels) { w.omega = 0; w.slipRatio = 0; w.slipAngle = 0; }
+  }
+
+  // Last line of defence after collision resolution. A single non-finite value
+  // here spreads to everything downstream within a frame or two and never
+  // clears: the car vanishes, and the audio graph throws on every update from
+  // then on. Cheap to check, and there is no sane way to recover except this.
+  sanitise() {
+    const bad = (n) => !Number.isFinite(n);
+    if (bad(this.pos[0]) || bad(this.pos[1]) || bad(this.pos[2])) {
+      this.pos[0] = this.lastGoodPos[0];
+      this.pos[1] = this.lastGoodPos[1];
+      this.pos[2] = this.lastGoodPos[2];
+      this.vel[0] = this.vel[1] = this.vel[2] = 0;
+      this.yawRate = 0;
+      this.vy = 0;
+    } else {
+      this.lastGoodPos[0] = this.pos[0];
+      this.lastGoodPos[1] = this.pos[1];
+      this.lastGoodPos[2] = this.pos[2];
+    }
+    for (let i = 0; i < 3; i++) if (bad(this.vel[i])) this.vel[i] = 0;
+    if (bad(this.yawRate)) this.yawRate = 0;
+    if (bad(this.yaw)) this.yaw = 0;
+    if (bad(this.speed)) this.speed = 0;
+    this.yawRate = clamp(this.yawRate, -8, 8);
   }
 
   // Move the car somewhere else without stopping it. The drive home crosses
@@ -2826,8 +2852,8 @@ function fenderFlare(z) {
   return f;
 }
 
-const TOP_POINTS = 15;   // across the deck, right to left
-const SIDE_POINTS = 4;   // down each flank
+const TOP_POINTS = 17;   // across the deck, right to left
+const SIDE_POINTS = 5;   // down each flank
 
 // Build one closed body section. Returns { points, kinds } where kind 0 = deck,
 // 1 = flank, 2 = underside, so the loft can switch material.
@@ -2901,7 +2927,7 @@ function sampleStations(count) {
 }
 
 function buildBodyShell(mb) {
-  const stations = sampleStations(42);
+  const stations = sampleStations(50);
   const rings = [], kinds = [];
   for (const [z, w, fy, dy] of stations) {
     const s = bodySection(z, w, fy, dy);
@@ -2932,7 +2958,7 @@ const CABIN_STATIONS = [
   [-1.80, 0.644, 0.810, 0.802],
 ];
 
-const CABIN_ARC = 21;
+const CABIN_ARC = 25;
 
 // Cross section of the cabin as an open arc: u = 0 at the right waist,
 // u = 0.5 over the roof, u = 1 at the left waist.
@@ -2971,7 +2997,7 @@ function cabinIsGlass(z, u) {
 // bodywork is a single-sided shell, so without a headliner the cockpit camera
 // looks straight out through the roof and the pillars.
 function buildCabin(bodyMB, glassMB, innerMB) {
-  const rows = 34;
+  const rows = 40;
   const rings = [];
   for (let i = 0; i < rows; i++) {
     const t = i / (rows - 1);
@@ -3199,7 +3225,7 @@ function buildTire(mb, radius, width, rimRadius) {
     [hw * 1.02, rimRadius + (radius - rimRadius) * 0.45],
     [hw, rimRadius],
   ];
-  const segments = 30;
+  const segments = 36;
   const rings = profile.map(([x, r]) => {
     const ring = [];
     for (let i = 0; i < segments; i++) {
@@ -3244,7 +3270,7 @@ function buildRim(mb, rimRadius, width) {
   // Outer lip.
   mb.push(); mb.translate(hw * 0.96, 0, 0); mb.rotateZ(Math.PI / 2); mb.cylinder(rimRadius, rimRadius * 0.94, 0.05, 26, false, false); mb.pop();
   // Hub.
-  mb.push(); mb.translate(faceX - 0.02, 0, 0); mb.rotateZ(Math.PI / 2); mb.cylinder(0.085, 0.085, 0.09, 16); mb.pop();
+  mb.push(); mb.translate(faceX - 0.02, 0, 0); mb.rotateZ(Math.PI / 2); mb.cylinder(0.085, 0.085, 0.09, 20); mb.pop();
   // Ten twisted spokes.
   const spokes = 10;
   for (let i = 0; i < spokes; i++) {
@@ -3263,7 +3289,7 @@ function buildRim(mb, rimRadius, width) {
   useMat(mb, MAT.disc);
   mb.push(); mb.rotateZ(Math.PI / 2); mb.cylinder(rimRadius * 0.78, rimRadius * 0.78, 0.030, 24); mb.pop();
   useMat(mb, MAT.steel);
-  mb.push(); mb.rotateZ(Math.PI / 2); mb.cylinder(rimRadius * 0.40, rimRadius * 0.40, 0.048, 16); mb.pop();
+  mb.push(); mb.rotateZ(Math.PI / 2); mb.cylinder(rimRadius * 0.40, rimRadius * 0.40, 0.048, 20); mb.pop();
 }
 
 // The caliper is fixed to the upright, so it lives in its own mesh that steers
@@ -3842,6 +3868,49 @@ class World {
     this.decorMeshes = [];
     this.bounds = { minX: -900, maxX: 900, minZ: -900, maxZ: 900 };
     this.skid = null;
+    // Things you cannot drive through: tree trunks, poles, gate piers, walls.
+    // Stored as upright circles, which is a fair fit for everything here and
+    // cheap enough to test thousands of them every frame.
+    this.solids = [];
+    this.solidGrid = new Map();
+    this.solidCell = 16;
+  }
+
+  // `hard` is how much of the impact the car keeps: a lamp post stops you, a
+  // hedge mostly just slows you down.
+  addSolid(x, z, r, hard = 1) { this.solids.push({ x, z, r, hard }); }
+
+  indexSolids() {
+    this.solidGrid.clear();
+    const cs = this.solidCell;
+    for (let i = 0; i < this.solids.length; i++) {
+      const s = this.solids[i];
+      const reach = Math.ceil((s.r + 3) / cs);
+      const cx = Math.floor(s.x / cs), cz = Math.floor(s.z / cs);
+      for (let dx = -reach; dx <= reach; dx++) {
+        for (let dz = -reach; dz <= reach; dz++) {
+          const k = this.key(cx + dx, cz + dz);
+          let list = this.solidGrid.get(k);
+          if (!list) { list = []; this.solidGrid.set(k, list); }
+          list.push(i);
+        }
+      }
+    }
+  }
+
+  // Every solid whose circle could touch a disc of `radius` at (x, z).
+  querySolids(x, z, radius, out) {
+    out.length = 0;
+    const list = this.solidGrid.get(this.key(
+      Math.floor(x / this.solidCell), Math.floor(z / this.solidCell)));
+    if (!list) return out;
+    for (const i of list) {
+      const s = this.solids[i];
+      const dx = x - s.x, dz = z - s.z;
+      const reach = s.r + radius;
+      if (dx * dx + dz * dz < reach * reach) out.push(s);
+    }
+    return out;
   }
 
   terrain(x, z) { return this.terrainHeightRaw(x, z) * this.terrainScale; }
@@ -4323,7 +4392,7 @@ function buildTree(mb, rng, style = 0) {
   pm(mb, PROP_MAT.bark, [0.20 + rng() * 0.08, 0.15 + rng() * 0.06, 0.10 + rng() * 0.05]);
   mb.push();
   mb.translate(0, h * 0.28, 0);
-  mb.cylinder(trunkR * 0.7, trunkR, h * 0.56, 7);
+  mb.cylinder(trunkR * 0.7, trunkR, h * 0.56, 8);
   mb.pop();
 
   const leafTint = [0.09 + rng() * 0.09, 0.22 + rng() * 0.16, 0.07 + rng() * 0.07];
@@ -4335,7 +4404,7 @@ function buildTree(mb, rng, style = 0) {
       const r = h * rnd2(rng, 0.20, 0.30);
       mb.push();
       mb.translate(rnd2(rng, -0.5, 0.5) * h * 0.22, h * rnd2(rng, 0.58, 0.86), rnd2(rng, -0.5, 0.5) * h * 0.22);
-      mb.sphere(r, 9, 6, rnd2(rng, 0.7, 0.95));
+      mb.sphere(r, 10, 7, rnd2(rng, 0.7, 0.95));
       mb.pop();
     }
   } else if (style === 1) {
@@ -4345,14 +4414,14 @@ function buildTree(mb, rng, style = 0) {
       const t = i / tiers;
       mb.push();
       mb.translate(0, h * (0.34 + t * 0.52), 0);
-      mb.cylinder(h * 0.02, h * (0.26 - t * 0.16), h * 0.26, 9, false, true);
+      mb.cylinder(h * 0.02, h * (0.26 - t * 0.16), h * 0.26, 11, false, true);
       mb.pop();
     }
   } else {
     // Poplar: tall and narrow.
     mb.push();
     mb.translate(0, h * 0.66, 0);
-    mb.sphere(h * 0.17, 8, 8, 2.6);
+    mb.sphere(h * 0.17, 10, 9, 2.6);
     mb.pop();
   }
 }
@@ -5048,10 +5117,38 @@ function offsetSamples(path, side, distance, step = 4, from = 0, to = null) {
   return out;
 }
 
-function placeProp(target, world, builder, x, z, yaw = 0, yOffset = 0, scale = 1) {
+// Never leave a collider on a surface someone is meant to drive on. Scenery is
+// laid out relative to one road at a time, so a fence beside the main route or
+// a wall behind a house happily crosses a side street - and a wall across a
+// side street is a wall across a road.
+function addSolidClearOfRoads(world, x, z, r, hard, margin = 0.5) {
+  const hit = world.query(x, z);
+  if (hit && Math.abs(hit.lateral) < hit.path.halfWidth + r + margin) return false;
+  world.addSolid(x, z, r, hard);
+  return true;
+}
+
+// `solid`, when given, is the radius of the collider left behind at this spot -
+// a tree trunk, a pole, a wall - so the world has something to hit.
+function placeProp(target, world, builder, x, z, yaw = 0, yOffset = 0, scale = 1, solid = 0, hard = 1) {
   const y = world.groundHeight(x, z) + yOffset;
   const m = m4.compose(m4.create(), [x, y, z], yaw, 0, 0, scale, scale, scale);
   target.append(builder, m);
+  // Street furniture is deliberately placed close to the kerb, so it gets a
+  // much tighter margin - hitting a lamp post is the point. The check still
+  // catches the handful that would otherwise stand in a side street.
+  if (solid > 0) addSolidClearOfRoads(world, x, z, solid * scale, hard, 0.15);
+}
+
+// A line of colliders, for things that are long rather than round: hedges,
+// fences, the side of a building.
+function placeSolidRun(world, x, z, yaw, length, r, hard = 1) {
+  const steps = Math.max(1, Math.round(length / (r * 1.4)));
+  const dx = Math.sin(yaw), dz = Math.cos(yaw);
+  for (let i = 0; i <= steps; i++) {
+    const t = (i / steps - 0.5) * length;
+    addSolidClearOfRoads(world, x + dx * t, z + dz * t, r, hard);
+  }
 }
 
 // Build a small library of prop meshes once, then stamp them around the world.
@@ -5226,7 +5323,7 @@ function buildCircuit(gl) {
 
   // --- geometry -------------------------------------------------------------
   const terrainMB = buildTerrainMesh(world, {
-    minX: -640, maxX: 1000, minZ: -720, maxZ: 760, cell: 14,
+    minX: -640, maxX: 1000, minZ: -720, maxZ: 760, cell: 12.8,
   });
   const roadMB = new MeshBuilder();
   buildPathMesh(world, track, roadMB);
@@ -5375,7 +5472,7 @@ function buildCircuit(gl) {
       const distFactor = hit ? clamp((Math.abs(hit.lateral) - 20) / 120, 0, 1) : 1;
       if (rng() > 0.28 + distFactor * 0.55) continue;
       const tree = lib.trees[Math.floor(rng() * lib.trees.length)];
-      placeProp(propMB, world, tree, x, z, rng() * TAU, 0, rnd2(rng, 0.8, 1.35));
+      placeProp(propMB, world, tree, x, z, rng() * TAU, 0, rnd2(rng, 0.8, 1.35), 0.34);
     }
   }
 
@@ -5388,6 +5485,9 @@ function buildCircuit(gl) {
     const gateMB = new MeshBuilder();
     buildCircuitGate(gateMB);
     placeProp(propMB, world, gateMB, gp[0], gp[2], gateYaw);
+    for (const side of [-1, 1]) {
+      world.addSolid(gp[0] + gn[0] * 5.5 * side, gp[2] + gn[2] * 5.5 * side, 0.75);
+    }
 
     // An avenue of trees for the last stretch up to the gate. This is what
     // closes the view in: you cannot see the landscape change if there is no
@@ -5398,7 +5498,7 @@ function buildCircuit(gl) {
       for (const side of [-1, 1]) {
         const d = exitRoute.halfWidth + 3.2;
         placeProp(propMB, world, lib.trees[k % lib.trees.length],
-          p[0] + n[0] * d * side, p[2] + n[2] * d * side, rng() * TAU, 0, 1.25);
+          p[0] + n[0] * d * side, p[2] + n[2] * d * side, rng() * TAU, 0, 1.25, 0.34);
       }
     }
     // Fences running up to the piers so the gate reads as the boundary.
@@ -5430,6 +5530,9 @@ function buildCircuit(gl) {
       });
     }
   }
+
+  // Everything solid has been placed by now, so it can be bucketed for lookup.
+  world.indexSolids();
 
   const meshes = {
     terrain: meshFromBuilder(gl, terrainMB),
@@ -5543,7 +5646,7 @@ function buildHomeRoute(gl) {
   world.conformPathsToTerrain(40);
 
   const terrainMB = buildTerrainMesh(world, {
-    minX: -320, maxX: 1180, minZ: -220, maxZ: 1120, cell: 14,
+    minX: -320, maxX: 1180, minZ: -220, maxZ: 1120, cell: 12.8,
   });
   const roadMB = new MeshBuilder();
   for (const p of world.paths) buildPathMesh(world, p, roadMB);
@@ -5606,7 +5709,7 @@ function buildHomeRoute(gl) {
       const side = Math.round(s / lightGap) % 2 === 0 ? -1 : 1;
       const d = route.halfWidth + 2.0;
       placeProp(propMB, world, side < 0 ? lib.streetLightR : lib.streetLightL,
-        p[0] + n[0] * d * side, p[2] + n[2] * d * side, yaw);
+        p[0] + n[0] * d * side, p[2] + n[2] * d * side, yaw, 0, 1, 0.20);
     }
 
     if (zone.label === 'Ashcombe village' && s - lastBuildingS > 17) {
@@ -5616,7 +5719,9 @@ function buildHomeRoute(gl) {
         const d = route.halfWidth + 3.2 + rnd2(rng, 5.5, 7.5);
         const bx = p[0] + n[0] * d * side, bz = p[2] + n[2] * d * side;
         const shop = lib.shops[Math.floor(rng() * lib.shops.length)];
-        placeProp(propMB, world, shop, bx, bz, Math.atan2(-side * n[0], -side * n[2]));
+        const facing = Math.atan2(-side * n[0], -side * n[2]);
+        placeProp(propMB, world, shop, bx, bz, facing);
+        placeSolidRun(world, bx, bz, facing + Math.PI / 2, 9.0, 1.5);
       }
     } else if (zone.label === 'Millbrook Rise' && s - lastBuildingS > 23) {
       lastBuildingS = s;
@@ -5628,6 +5733,7 @@ function buildHomeRoute(gl) {
         const bx = p[0] + n[0] * d * side, bz = p[2] + n[2] * d * side;
         const facing = Math.atan2(-side * n[0], -side * n[2]);
         placeProp(propMB, world, lib.houses[Math.floor(rng() * lib.houses.length)], bx, bz, facing);
+        placeSolidRun(world, bx, bz, facing + Math.PI / 2, 9.0, 1.5);
         // Driveway apron and a hedge along the boundary.
         const dx = p[0] + n[0] * (route.halfWidth + 3) * side;
         const dz = p[2] + n[2] * (route.halfWidth + 3) * side;
@@ -5640,6 +5746,9 @@ function buildHomeRoute(gl) {
         placeProp(propMB, world, lib.hedge,
           p[0] + n[0] * (route.halfWidth + 4.2) * side + t[0] * 6,
           p[2] + n[2] * (route.halfWidth + 4.2) * side + t[2] * 6, yaw);
+        placeSolidRun(world,
+          p[0] + n[0] * (route.halfWidth + 4.2) * side + t[0] * 6,
+          p[2] + n[2] * (route.halfWidth + 4.2) * side + t[2] * 6, yaw, 8, 0.55, 0.35);
         if (rng() < 0.5) {
           placeProp(propMB, world, lib.mailbox,
             p[0] + n[0] * (route.halfWidth + 1.6) * side,
@@ -5659,9 +5768,61 @@ function buildHomeRoute(gl) {
         const d = route.halfWidth + 5.5;
         placeProp(propMB, world, lib.fence,
           p[0] + n[0] * d * side, p[2] + n[2] * d * side, yaw);
+        placeSolidRun(world, p[0] + n[0] * d * side, p[2] + n[2] * d * side, yaw, 8, 0.45, 0.30);
       }
     }
   }
+
+  // --- the village shop -----------------------------------------------------
+  // Somewhere to stop on the way home. A layby, a shopfront and a lit sign,
+  // halfway through the village on the near side of the road so you can pull
+  // straight in. Stopping is optional and costs you nothing but time.
+  const shopStop = (() => {
+    // Middle of the village zone, which is where the buildings already are.
+    const i = clamp(Math.round(count * 0.57), 6, count - 8);
+    const p = sp.points[i], n = sp.normals[i], t = sp.tangents[i];
+    const yaw = Math.atan2(t[0], t[2]);
+    const side = 1;                       // the side you are already driving on
+    const bayD = route.halfWidth + 3.1;
+    const bx = p[0] + n[0] * bayD * side, bz = p[2] + n[2] * bayD * side;
+
+    // The layby itself: an apron of tarmac let into the verge.
+    roadMB.mat([0.20, 0.20, 0.22], 0.80, 0, 0, FLAG_DEFAULT);
+    roadMB.push();
+    roadMB.translate(bx, world.groundHeight(bx, bz) + 0.025, bz);
+    roadMB.rotateY(yaw);
+    roadMB.box(6.4, 0.02, 22);
+    roadMB.pop();
+    // Bay markings.
+    roadMB.mat([0.86, 0.86, 0.82], 0.55, 0, 0, FLAG_DEFAULT);
+    for (const off of [-5.5, 0, 5.5]) {
+      roadMB.push();
+      roadMB.translate(bx + t[0] * off, world.groundHeight(bx, bz) + 0.032, bz + t[2] * off);
+      roadMB.rotateY(yaw);
+      roadMB.box(6.0, 0.02, 0.14);
+      roadMB.pop();
+    }
+
+    const shopMB = new MeshBuilder();
+    buildTownBuilding(shopMB, makeRng(4771), { width: 14, depth: 10, floors: 2 });
+    const sx = p[0] + n[0] * (bayD + 8.4) * side, sz = p[2] + n[2] * (bayD + 8.4) * side;
+    const facing = Math.atan2(-side * n[0], -side * n[2]);
+    placeProp(propMB, world, shopMB, sx, sz, facing);
+    placeSolidRun(world, sx, sz, facing + Math.PI / 2, 13.0, 1.5);
+
+    // A lit sign over the door, so it reads as somewhere open at dusk.
+    const signMB = new MeshBuilder();
+    signMB.mat([0.10, 0.10, 0.12], 0.7, 0.1, 0, FLAG_DEFAULT);
+    signMB.push(); signMB.translate(0, 4.3, -5.3); signMB.box(5.2, 0.9, 0.22); signMB.pop();
+    signMB.mat([1.0, 0.80, 0.35], 0.3, 0.0, 0.85, FLAG_UNLIT);
+    signMB.push(); signMB.translate(0, 4.3, -5.45); signMB.box(4.4, 0.44, 0.05); signMB.pop();
+    placeProp(propMB, world, signMB, sx, sz, facing);
+
+    return {
+      x: bx, z: bz, radius: 7.0, index: i, side,
+      along: sp.cumulative[i], name: 'Ashcombe village stores',
+    };
+  })();
 
   // --- the gate in ----------------------------------------------------------
   // The other face of the circuit gate. Driving out of the paddock hands over
@@ -5673,13 +5834,16 @@ function buildHomeRoute(gl) {
     const gateMB = new MeshBuilder();
     buildCircuitGate(gateMB);
     placeProp(propMB, world, gateMB, gp[0], gp[2], gateYaw);
+    for (const side of [-1, 1]) {
+      world.addSolid(gp[0] + gn[0] * 5.5 * side, gp[2] + gn[2] * 5.5 * side, 0.75);
+    }
     for (let k = 0; k <= 9; k++) {
       const i = clamp(k * 2, 0, count - 1);
       const p = sp.points[i], n = sp.normals[i];
       for (const side of [-1, 1]) {
         const d = route.halfWidth + 3.2;
         placeProp(propMB, world, lib.trees[k % lib.trees.length],
-          p[0] + n[0] * d * side, p[2] + n[2] * d * side, rng() * TAU, 0, 1.25);
+          p[0] + n[0] * d * side, p[2] + n[2] * d * side, rng() * TAU, 0, 1.25, 0.34);
       }
     }
     for (const side of [-1, 1]) {
@@ -5699,7 +5863,7 @@ function buildHomeRoute(gl) {
     const hit = world.query(x, z);
     if (hit && Math.abs(hit.lateral) < hit.path.halfWidth + 14) continue;
     if (rng() > 0.35) continue;
-    placeProp(propMB, world, lib.trees[Math.floor(rng() * lib.trees.length)], x, z, rng() * TAU, 0, rnd2(rng, 0.75, 1.4));
+    placeProp(propMB, world, lib.trees[Math.floor(rng() * lib.trees.length)], x, z, rng() * TAU, 0, rnd2(rng, 0.75, 1.4), 0.34);
   }
 
   // --- speed limit signs at each zone change --------------------------------
@@ -5717,7 +5881,7 @@ function buildHomeRoute(gl) {
     const yaw = Math.atan2(t[0], t[2]);
     const sign = limit <= 30 ? lib.signs.s30 : (limit <= 50 ? lib.signs.s50 : lib.signs.s80);
     const d = route.halfWidth + 1.9;
-    placeProp(propMB, world, sign, p[0] + n[0] * d, p[2] + n[2] * d, yaw + Math.PI);
+    placeProp(propMB, world, sign, p[0] + n[0] * d, p[2] + n[2] * d, yaw + Math.PI, 0, 1, 0.14);
   }
 
   // --- traffic lights -------------------------------------------------------
@@ -5739,7 +5903,7 @@ function buildHomeRoute(gl) {
       [0, 1, 0]);
 
     const px = p[0] + n[0] * d, pz = p[2] + n[2] * d;
-    placeProp(propMB, world, lib.trafficLight, px, pz, yaw + Math.PI);
+    placeProp(propMB, world, lib.trafficLight, px, pz, yaw + Math.PI, 0, 1, 0.22);
     const baseY = world.groundHeight(px, pz);
     // Lamp world positions for the overhead head (arm points across the road).
     const armDir = [-n[0], 0, -n[2]];
@@ -5784,16 +5948,20 @@ function buildHomeRoute(gl) {
     buildHouse(houseMB, makeRng(88), { width: 12.5, depth: 10.5, wallHeight: 5.6 });
     const hx = drivewayEnd[0] - 9.5, hz = drivewayEnd[2] + 2.0;
     placeProp(propMB, world, houseMB, hx, hz, garageYaw + Math.PI);
+    placeSolidRun(world, hx, hz, garageYaw + Math.PI / 2, 11.0, 1.6);
 
     const garageMB = new MeshBuilder();
     buildGarage(garageMB, makeRng(91), { width: 6.4, depth: 7.0, height: 3.5 });
     placeProp(propMB, world, garageMB, drivewayEnd[0], drivewayEnd[2] + 3.4, garageYaw + Math.PI);
+    placeSolidRun(world, drivewayEnd[0], drivewayEnd[2] + 3.4, garageYaw + Math.PI / 2, 5.5, 1.4);
 
     // Hedges either side of the drive, a mailbox at the kerb, a bin out front.
     for (const side of [-1, 1]) {
       for (let k = 0; k < 3; k++) {
         placeProp(propMB, world, lib.hedge,
           drivewayEnd[0] + side * 5.0, drivewayEnd[2] - 4 - k * 8, garageYaw);
+        placeSolidRun(world, drivewayEnd[0] + side * 5.0, drivewayEnd[2] - 4 - k * 8,
+          garageYaw, 8, 0.55, 0.35);
       }
     }
     placeProp(propMB, world, lib.mailbox, homePoint[0] + homeNormal[0] * 6.2, homePoint[2] + homeNormal[2] * 6.2, homeYaw);
@@ -5813,9 +5981,12 @@ function buildHomeRoute(gl) {
       postMB.push(); postMB.translate(0, 1.30, 0); postMB.box(0.52, 0.12, 0.52); postMB.pop();
       postMB.mat([1.0, 0.86, 0.58], 0.3, 0.0, 0.9, FLAG_UNLIT);
       postMB.push(); postMB.translate(0, 1.46, 0); postMB.box(0.22, 0.20, 0.22); postMB.pop();
-      placeProp(propMB, world, postMB, gx, gz, garageYaw);
+      placeProp(propMB, world, postMB, gx, gz, garageYaw, 0, 1, 0.34);
     }
   }
+
+  // Everything solid has been placed by now, so it can be bucketed for lookup.
+  world.indexSolids();
 
   const meshes = {
     terrain: meshFromBuilder(gl, terrainMB),
@@ -5837,6 +6008,7 @@ function buildHomeRoute(gl) {
     // The satnav needs both of these: the drive is the last 35 m of the journey
     // but it is not part of the route spline, and which way you turn into it is
     // the one instruction the shape of the road cannot supply.
+    shopStop,
     drivewayLength: driveway.spline.length,
     drivewaySide: Math.sign(
       (drivewayEnd[0] - sp.points[count - 1][0]) * sp.normals[count - 1][0]
@@ -6817,9 +6989,11 @@ class RacingDriver {
     // Occasional imperfection so the field is not robotic.
     this.mistakeTimer -= dt;
     if (this.mistakeTimer <= 0) {
-      this.mistakeTimer = rnd(6, 26);
-      this.mistake = (1 - this.skill) * rnd(0.2, 1.0);
-      this.mistakeHold = rnd(0.6, 1.5);
+      // A quick driver makes fewer errors and smaller ones, and leaves longer
+      // between them.
+      this.mistakeTimer = rnd(6, 26) * lerp(1.0, 2.4, this.skill);
+      this.mistake = Math.pow(1 - this.skill, 1.4) * rnd(0.2, 1.0);
+      this.mistakeHold = rnd(0.6, 1.5) * lerp(1.0, 0.55, this.skill);
     }
     if (this.mistakeHold > 0) {
       this.mistakeHold -= dt;
@@ -6936,10 +7110,12 @@ class RacingDriver {
     }
     // The pace fraction is well under 1 because the speed profile is a static
     // per-corner upper bound: it takes no account of having to change direction
-    // between corners, or of the car arriving slightly off line. Measured on
-    // this circuit, asking for more than about 0.70 of it makes the AI slower,
-    // not faster, because it spends the difference sliding.
-    target *= lerp(0.50, 0.70, this.skill) * (1 - this.mistake * 0.22);
+    // between corners, or of the car arriving slightly off line. Push it too
+    // far and the AI gets slower, not faster, because it spends the difference
+    // sliding. Swept on this circuit with the harness seeded: 0.79 is the last
+    // value that gains, and by 0.82 the field is 23% off track and four
+    // seconds a lap slower. 0.78 sits just inside that cliff.
+    target *= lerp(0.52, 0.78, this.skill) * (1 - this.mistake * 0.22);
     target = Math.min(target, blockedSpeed);
 
     // If the car has been thrown well off the line, rejoin calmly instead of
@@ -6951,16 +7127,17 @@ class RacingDriver {
     const err2 = target - speed;
     let wantThrottle = 0, wantBrake = 0;
     if (err2 > 0.6) {
-      wantThrottle = clamp(err2 * 0.35, 0, 1);
+      wantThrottle = clamp(err2 * lerp(0.35, 0.55, this.skill), 0, 1);
     } else if (err2 < -0.6) {
       wantBrake = clamp(-err2 * 0.24, 0, 1);
     } else {
-      wantThrottle = clamp(0.25 + err2 * 0.2, 0, 0.5);
+      wantThrottle = clamp(0.25 + err2 * 0.2, 0, lerp(0.5, 0.75, this.skill));
     }
     // Roll onto the pedals rather than stamping on them: an instant jump from
-    // no brake to full brake mid-corner unloads the rear and spins the car.
-    v.throttle = approach(v.throttle, wantThrottle, dt * 6.0);
-    v.brake = approach(v.brake, wantBrake, dt * 3.6);
+    // no brake to full brake mid-corner unloads the rear and spins the car. A
+    // quicker driver rolls on faster, but still rolls.
+    v.throttle = approach(v.throttle, wantThrottle, dt * lerp(6.0, 9.0, this.skill));
+    v.brake = approach(v.brake, wantBrake, dt * lerp(3.6, 5.2, this.skill));
 
     // Braking hard while the wheel is turned is how you spin a rear-drive car.
     // Trade one against the other the way a real driver does.
@@ -7918,6 +8095,13 @@ class Hud {
     // Navigation arrow.
     this.drawNavArrow(W / 2, 92, state.turnAngle, state.turnDistance, state.instruction);
 
+    // Somewhere to stop, if you fancy it.
+    if (state.shopPrompt) {
+      const bw = 300, bx = (W - bw) / 2;
+      this.panel(bx, H - 132, bw, 44, 0.55);
+      this.text(state.shopPrompt, W / 2, H - 104, 15, '#ffd166', 'center', 700);
+    }
+
     // Minimap with the route and the destination.
     this.drawMinimap(W - 214, 24, 190, state.routeSpline, state.cars, state.player, {
       destination: state.destination,
@@ -8427,7 +8611,7 @@ class UI {
     this.makeOptions(this.el.lapsRow, [['2', 2], ['3', 3], ['5', 5], ['8', 8]],
       (v) => { this.game.settings.laps = v; }, () => this.game.settings.laps);
     this.makeOptions(this.el.difficultyRow,
-      [['Rookie', 0.25], ['Amateur', 0.55], ['Pro', 0.80], ['Ace', 1.0]],
+      [['Rookie', 0.34], ['Amateur', 0.64], ['Pro', 0.86], ['Ace', 1.0]],
       (v) => { this.game.settings.difficulty = v; }, () => this.game.settings.difficulty);
     this.makeOptions(this.el.assistRow, [['On', true], ['Off', false]],
       (v) => { this.game.settings.assists = v; }, () => this.game.settings.assists);
@@ -8551,7 +8735,8 @@ class UI {
         <li><span>Journey time</span><strong>${mins}m ${String(secs).padStart(2, '0')}s</strong></li>
         <li><span>Distance driven</span><strong>${(summary.distance / 1000).toFixed(2)} km</strong></li>
       </ul>
-      <p class="note">The garage light is on and the engine is ticking as it cools.</p>`;
+      <p class="note">The garage light is on and the engine is ticking as it cools.${
+  summary.shopped ? ' The shopping is on the passenger seat.' : ''}</p>`;
   }
 }
 
@@ -8565,6 +8750,10 @@ const CAMERA_MODES = ['chase', 'chase-far', 'bonnet', 'cockpit', 'bumper'];
 
 // Where the player sits on the grid, and how many cars take part.
 const FIELD_SIZE = 8;
+
+// Radius of each of the two circles a car is approximated by, for hitting
+// scenery. Half the car's width plus a little, so the shell is a touch generous.
+const CAR_SHELL = 0.98;
 
 // --- input ------------------------------------------------------------------
 
@@ -8828,7 +9017,7 @@ class Game {
     this.paused = false;
     this.settings = {
       laps: 3,
-      difficulty: 0.55,
+      difficulty: 0.64,
       assists: true,
       quality: this.isTouch ? 'fast' : 'high',
       playerLivery: 0,
@@ -9006,7 +9195,7 @@ class Game {
         livery,
         assists: isPlayer ? this.settings.assists : true,
         name: isPlayer ? 'YOU' : livery.name.toUpperCase(),
-        grip: isPlayer ? 1.0 : lerp(0.90, 1.02, this.settings.difficulty) + (i % 3) * 0.008,
+        grip: isPlayer ? 1.0 : lerp(0.94, 1.07, this.settings.difficulty) + (i % 3) * 0.008,
       });
       const g = this.scene.grid[i];
       car.setPose(g.x, g.z, g.yaw, this.scene.world);
@@ -9014,7 +9203,7 @@ class Game {
       this.cars.push(car);
       if (isPlayer) this.player = car;
       else {
-        const skill = clamp(this.settings.difficulty + (Math.random() - 0.5) * 0.10, 0.55, 1.0);
+        const skill = clamp(this.settings.difficulty + (Math.random() - 0.5) * 0.08, 0.62, 1.0);
         this.drivers.push(new RacingDriver(car, this.scene.racingLine, skill));
       }
     }
@@ -9174,6 +9363,9 @@ class Game {
       lastInstruction: '',
       crashes: 0,
       wrongSideTimer: 0,
+      shopped: false,
+      shopTimer: 0,
+      shopNear: false,
     };
     this.camera.mode = this.startCameraMode();
     this.state = 'drive';
@@ -9395,6 +9587,55 @@ class Game {
 
   // --- collisions -----------------------------------------------------------
 
+  // One place for everything a hit throws off: sparks along the contact,
+  // debris in the paint colour of whatever you hit, a puff of dust on a heavy
+  // one, plus the shake, the flash, the noise and the damage.
+  impact(x, z, nx, nz, strength, otherPaint) {
+    const car = this.player;
+    const y = car.pos[1] + 0.55;
+    this.audio.impact(strength);
+    this.camera.shake = Math.max(this.camera.shake, strength * 0.75);
+    this.renderer.flash = Math.min(0.30, strength * 0.22);
+    car.damage = Math.min(1, car.damage + strength * 0.09);
+
+    if (!this.renderer.settings.particles) return;
+    // Sparks fly along the surface, not out of it, so they are thrown along
+    // the tangent and dragged by the car's own motion.
+    const tx = -nz, tz = nx;
+    const v = car.vehicle;
+    const n = Math.round(4 + strength * 26);
+    for (let i = 0; i < n; i++) {
+      const s = rnd(-1, 1);
+      this.renderer.spawnParticle(
+        [x + rnd(-0.2, 0.2), y + rnd(-0.25, 0.25), z + rnd(-0.2, 0.2)],
+        [tx * s * rnd(2, 9) + nx * rnd(0.5, 3) - v.vel[0] * 0.25,
+          rnd(0.5, 4.0),
+          tz * s * rnd(2, 9) + nz * rnd(0.5, 3) - v.vel[2] * 0.25],
+        { life: rnd(0.18, 0.5), size: 0.045, grow: 0.4, tint: [2.4, 1.15, 0.30],
+          alpha: 0.95, drag: 1.6, gravity: 9.0, additive: true });
+    }
+    if (strength > 0.25) {
+      // Debris: shards in the colour of whatever came off.
+      const tint = otherPaint
+        ? [otherPaint[0] * 1.1 + 0.05, otherPaint[1] * 1.1 + 0.05, otherPaint[2] * 1.1 + 0.05]
+        : [0.42, 0.40, 0.36];
+      for (let i = 0; i < Math.round(strength * 12); i++) {
+        this.renderer.spawnParticle(
+          [x + rnd(-0.3, 0.3), y + rnd(-0.3, 0.3), z + rnd(-0.3, 0.3)],
+          [nx * rnd(1, 5) + rnd(-2.5, 2.5), rnd(1.5, 5.5), nz * rnd(1, 5) + rnd(-2.5, 2.5)],
+          { life: rnd(0.6, 1.4), size: 0.075, grow: 0.2, tint,
+            alpha: 0.9, drag: 0.9, gravity: 11.0 });
+      }
+      for (let i = 0; i < Math.round(strength * 6); i++) {
+        this.renderer.spawnParticle(
+          [x + rnd(-0.4, 0.4), y, z + rnd(-0.4, 0.4)],
+          [rnd(-1.5, 1.5), rnd(0.6, 2.0), rnd(-1.5, 1.5)],
+          { life: rnd(0.7, 1.5), size: 0.30, grow: 3.0, tint: [0.55, 0.54, 0.52],
+            alpha: 0.20, drag: 1.5, gravity: 0.4 });
+      }
+    }
+  }
+
   resolveCollisions(dt, boundaryFn) {
     const cars = this.state === 'drive'
       ? [this.player, ...this.traffic.map((t) => t.car)]
@@ -9423,18 +9664,73 @@ class Game {
             const rvz = b.vehicle.vel[2] - a.vehicle.vel[2];
             const vn = rvx * nx + rvz * nz;
             if (vn < 0) {
-              const jimp = -(1.28) * vn * 0.5;
-              a.vehicle.vel[0] -= nx * jimp; a.vehicle.vel[2] -= nz * jimp;
-              b.vehicle.vel[0] += nx * jimp; b.vehicle.vel[2] += nz * jimp;
-              a.vehicle.yawRate += (oa > 0 ? -1 : 1) * jimp * 0.05;
-              b.vehicle.yawRate += (ob > 0 ? 1 : -1) * jimp * 0.05;
+              // Mass-weighted, so a GT car shunting a hatchback moves the
+              // hatchback. Restitution is low: cars crumple, they do not bounce.
+              const ma = a.vehicle.mass, mb2 = b.vehicle.mass;
+              const inv = 1 / ma + 1 / mb2;
+              const jimp = -(1.24) * vn / inv;
+              a.vehicle.vel[0] -= nx * jimp / ma; a.vehicle.vel[2] -= nz * jimp / ma;
+              b.vehicle.vel[0] += nx * jimp / mb2; b.vehicle.vel[2] += nz * jimp / mb2;
+              // Tangential friction, which is what makes a side swipe drag the
+              // two cars into line instead of letting them slide past.
+              const tx = -nz, tz = nx;
+              const vt = rvx * tx + rvz * tz;
+              const jt = clamp(-vt / inv, -jimp * 0.5, jimp * 0.5);
+              a.vehicle.vel[0] -= tx * jt / ma; a.vehicle.vel[2] -= tz * jt / ma;
+              b.vehicle.vel[0] += tx * jt / mb2; b.vehicle.vel[2] += tz * jt / mb2;
+              // Yaw from the real lever arm: a corner hit spins you, a square
+              // hit in the middle does not. `jimp` is an impulse in newton
+              // seconds, so the torque is r x J and the change in yaw rate is
+              // that over the yaw inertia - no fudge factor, and none wanted:
+              // treating an impulse like a velocity here span the car at 25
+              // rad/s and drove the whole simulation to NaN.
+              const rax = af[0] * oa, raz = af[2] * oa;
+              const rbx = bf[0] * ob, rbz = bf[2] * ob;
+              const Jx = nx * jimp + tx * jt, Jz = nz * jimp + tz * jt;
+              a.vehicle.yawRate += clamp((rax * Jz - raz * Jx) / a.vehicle.inertiaYaw, -3, 3);
+              b.vehicle.yawRate += clamp((rbz * Jx - rbx * Jz) / b.vehicle.inertiaYaw, -3, 3);
               const strength = clamp(-vn / 16, 0, 1);
-              if (strength > 0.08 && (a === this.player || b === this.player)) {
-                this.audio.impact(strength);
-                this.camera.shake = Math.max(this.camera.shake, strength * 0.6);
-                this.player.damage = Math.min(1, this.player.damage + strength * 0.05);
+              const other = a === this.player ? b : a;
+              if (strength > 0.05 && (a === this.player || b === this.player)) {
+                this.impact((ax + bx) / 2, (az + bz) / 2, nx, nz, strength, other.livery.paint);
                 if (this.driveState) this.registerPenalty('Contact', strength * 12);
               }
+            }
+          }
+        }
+      }
+    }
+
+    // Solid scenery: tree trunks, poles, gate piers, walls, hedges.
+    const world = this.scene.world;
+    if (world.solids.length) {
+      const hits = this._solidHits || (this._solidHits = []);
+      for (const car of cars) {
+        const v = car.vehicle;
+        const f = car.forward();
+        for (const o of [-1.05, 1.05]) {
+          const cx = car.pos[0] + f[0] * o, cz = car.pos[2] + f[2] * o;
+          world.querySolids(cx, cz, CAR_SHELL, hits);
+          for (const s of hits) {
+            let nx = cx - s.x, nz = cz - s.z;
+            const d = Math.hypot(nx, nz);
+            const minD = s.r + CAR_SHELL;
+            if (d >= minD) continue;
+            if (d < 1e-4) { nx = f[0]; nz = f[2]; } else { nx /= d; nz /= d; }
+            v.pos[0] += nx * (minD - d);
+            v.pos[2] += nz * (minD - d);
+            const vn = v.vel[0] * nx + v.vel[2] * nz;
+            if (vn >= 0) continue;
+            // `hard` decides how much of the car's momentum the obstacle takes:
+            // a lamp post stops you, a hedge drags at you and lets you through.
+            const j = -(1.0 + 0.25 * s.hard) * vn * s.hard;
+            v.vel[0] += nx * j; v.vel[2] += nz * j;
+            v.vel[0] *= 1 - 0.35 * s.hard; v.vel[2] *= 1 - 0.35 * s.hard;
+            v.yawRate += clamp(o * vn * s.hard * 0.045, -2, 2);
+            const strength = clamp(-vn / 18, 0, 1) * s.hard;
+            if (car === this.player && strength > 0.05) {
+              this.impact(cx, cz, nx, nz, strength, null);
+              if (this.driveState) this.registerPenalty('Hit something', strength * 16);
             }
           }
         }
@@ -9463,14 +9759,13 @@ class Game {
         car.vehicle.yawRate *= 0.55;
         const strength = clamp(-vn / 18, 0, 1);
         if (car === this.player && strength > 0.06) {
-          this.audio.impact(strength);
-          this.camera.shake = Math.max(this.camera.shake, strength * 0.8);
-          this.renderer.flash = Math.min(0.25, strength * 0.2);
-          this.player.damage = Math.min(1, this.player.damage + strength * 0.06);
+          this.impact(car.pos[0], car.pos[2], nx, nz, strength, null);
           if (this.driveState) this.registerPenalty('Off the road', strength * 14);
         }
       }
     }
+
+    for (const car of cars) car.vehicle.sanitise();
   }
 
   // --- race -----------------------------------------------------------------
@@ -9604,10 +9899,25 @@ class Game {
     const legRoute = this.state === 'drive' && this.legs ? this.leg().route : null;
     const sp = legRoute ? legRoute.spline
       : (scene.track ? scene.track.spline : scene.route.spline);
-    const i = nearestIndex(sp, car.pos[0], car.pos[2], car.hint || 0, 40);
+    // Start from wherever the game already thinks we are. Searching a narrow
+    // window from index 0 finds the beginning of the road no matter how far
+    // along it you are, so recovery on the drive home used to dump the car a
+    // kilometre back down the route - or, wedged against a wall, nowhere at all.
+    const hint = legRoute && this.driveState ? this.driveState.hint
+      : (car.hint || 0);
+    let i = nearestIndex(sp, car.pos[0], car.pos[2], hint, 40);
+    const near = sp.points[i];
+    if (Math.hypot(car.pos[0] - near[0], car.pos[2] - near[2]) > 60) {
+      i = nearestIndex(sp, car.pos[0], car.pos[2], hint, sp.count >> 1);
+    }
     const p = sp.points[i], t = sp.tangents[i];
     const yaw = Math.atan2(t[0], t[2]);
-    car.setPose(p[0], p[2], yaw, scene.world);
+    // On a public road, put the car back on its own side rather than astride
+    // the white line.
+    const lane = legRoute ? legRoute.spline.normals[i] : null;
+    const off = lane ? Math.min(2.1, legRoute.halfWidth * 0.5) : 0;
+    car.setPose(p[0] + (lane ? lane[0] * off : 0), p[2] + (lane ? lane[2] * off : 0),
+      yaw, scene.world);
     car.vehicle.gear = GEAR_FIRST;
     this.hud.message('Back on track', 1.5);
     if (this.driveState) this.registerPenalty('Recovered', 5);
@@ -9756,8 +10066,39 @@ class Game {
       }
     }
 
+    // The shop. Optional, unscored, and the only reason to stop on the way
+    // home that is not a red light.
+    const shop = leg.last ? scene.shopStop : null;
+    ds.shopNear = false;
+    if (shop && !ds.shopped) {
+      const d = Math.hypot(car.pos[0] - shop.x, car.pos[2] - shop.z);
+      if (d < shop.radius) {
+        ds.shopNear = true;
+        if (v.speed < 1.0) {
+          ds.shopTimer += dt;
+          if (ds.shopTimer > 1.6) {
+            ds.shopped = true;
+            this.audio.chime();
+            this.hud.message('STOPPED AT THE SHOP', 2.6, 'big');
+          }
+        } else ds.shopTimer = 0;
+      } else {
+        ds.shopTimer = 0;
+      }
+    }
+
     // Satnav instruction from the shape of the road ahead.
     const nav = this.computeNavigation(sp, prog, remaining, leg, onRoute);
+    if (shop && !ds.shopped) {
+      const ahead = shop.along - prog.along;
+      if (ahead > -12 && ahead < 220) {
+        const hand = shop.side < 0 ? 'left' : 'right';
+        nav.instruction = ahead < 30 ? `Shop on the ${hand} — pull in to stop`
+          : `Village shop on the ${hand}`;
+        nav.distance = Math.max(0, ahead);
+        nav.angle = 0;
+      }
+    }
 
     // Arrival. Only the last leg has a driveway at the end of it.
     if (dest && !ds.arrived && distHome < dest.radius && v.speed < 1.2) {
@@ -9777,6 +10118,7 @@ class Game {
           time: ds.elapsed,
           distance: v.odometer,
           crashes: ds.crashes,
+          shopped: ds.shopped,
         });
       }
     }
@@ -10042,6 +10384,7 @@ class Game {
         distanceRemaining: ds.remaining,
         instruction: ds.nav.instruction,
         turnDistance: ds.nav.distance,
+        shopPrompt: ds.shopNear && !ds.shopped ? 'Stop here to visit the shop' : null,
         turnAngle: ds.nav.angle,
         rating: ds.rating,
         penaltyText: ds.penaltyText,

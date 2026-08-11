@@ -149,6 +149,15 @@ check('12 s flat out on grass', run('grassSpeed'), 40, 165, ' km/h');
 // --- AI lap ---------------------------------------------------------------------
 run(`
   function aiRace(seconds) {
+    // The AI makes deliberate random mistakes. Unseeded, one run to the next
+    // varies by ten seconds a lap and several percent off track, which is far
+    // more than most changes to the driver are worth - so tuning against it
+    // measures noise. Seed it and the numbers mean something.
+    var seed = 987654321;
+    Math.random = function () {
+      seed = (seed * 1664525 + 1013904223) >>> 0;
+      return seed / 4294967296;
+    };
     var cars = [];
     var drivers = [];
     for (var i = 0; i < 4; i++) {

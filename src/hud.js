@@ -463,6 +463,13 @@ class Hud {
     // Navigation arrow.
     this.drawNavArrow(W / 2, 92, state.turnAngle, state.turnDistance, state.instruction);
 
+    // Somewhere to stop, if you fancy it.
+    if (state.shopPrompt) {
+      const bw = 300, bx = (W - bw) / 2;
+      this.panel(bx, H - 132, bw, 44, 0.55);
+      this.text(state.shopPrompt, W / 2, H - 104, 15, '#ffd166', 'center', 700);
+    }
+
     // Minimap with the route and the destination.
     this.drawMinimap(W - 214, 24, 190, state.routeSpline, state.cars, state.player, {
       destination: state.destination,

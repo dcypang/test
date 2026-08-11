@@ -7,6 +7,10 @@ const CAMERA_MODES = ['chase', 'chase-far', 'bonnet', 'cockpit', 'bumper'];
 // Where the player sits on the grid, and how many cars take part.
 const FIELD_SIZE = 8;
 
+// Radius of each of the two circles a car is approximated by, for hitting
+// scenery. Half the car's width plus a little, so the shell is a touch generous.
+const CAR_SHELL = 0.98;
+
 // --- input ------------------------------------------------------------------
 
 class Input {
@@ -269,7 +273,7 @@ class Game {
     this.paused = false;
     this.settings = {
       laps: 3,
-      difficulty: 0.55,
+      difficulty: 0.64,
       assists: true,
       quality: this.isTouch ? 'fast' : 'high',
       playerLivery: 0,
@@ -447,7 +451,7 @@ class Game {
         livery,
         assists: isPlayer ? this.settings.assists : true,
         name: isPlayer ? 'YOU' : livery.name.toUpperCase(),
-        grip: isPlayer ? 1.0 : lerp(0.90, 1.02, this.settings.difficulty) + (i % 3) * 0.008,
+        grip: isPlayer ? 1.0 : lerp(0.94, 1.07, this.settings.difficulty) + (i % 3) * 0.008,
       });
       const g = this.scene.grid[i];
       car.setPose(g.x, g.z, g.yaw, this.scene.world);
@@ -455,7 +459,7 @@ class Game {
       this.cars.push(car);
       if (isPlayer) this.player = car;
       else {
-        const skill = clamp(this.settings.difficulty + (Math.random() - 0.5) * 0.10, 0.55, 1.0);
+        const skill = clamp(this.settings.difficulty + (Math.random() - 0.5) * 0.08, 0.62, 1.0);
         this.drivers.push(new RacingDriver(car, this.scene.racingLine, skill));
       }
     }
@@ -615,6 +619,9 @@ class Game {
       lastInstruction: '',
       crashes: 0,
       wrongSideTimer: 0,
+      shopped: false,
+      shopTimer: 0,
+      shopNear: false,
     };
     this.camera.mode = this.startCameraMode();
     this.state = 'drive';
@@ -836,6 +843,55 @@ class Game {
 
   // --- collisions -----------------------------------------------------------
 
+  // One place for everything a hit throws off: sparks along the contact,
+  // debris in the paint colour of whatever you hit, a puff of dust on a heavy
+  // one, plus the shake, the flash, the noise and the damage.
+  impact(x, z, nx, nz, strength, otherPaint) {
+    const car = this.player;
+    const y = car.pos[1] + 0.55;
+    this.audio.impact(strength);
+    this.camera.shake = Math.max(this.camera.shake, strength * 0.75);
+    this.renderer.flash = Math.min(0.30, strength * 0.22);
+    car.damage = Math.min(1, car.damage + strength * 0.09);
+
+    if (!this.renderer.settings.particles) return;
+    // Sparks fly along the surface, not out of it, so they are thrown along
+    // the tangent and dragged by the car's own motion.
+    const tx = -nz, tz = nx;
+    const v = car.vehicle;
+    const n = Math.round(4 + strength * 26);
+    for (let i = 0; i < n; i++) {
+      const s = rnd(-1, 1);
+      this.renderer.spawnParticle(
+        [x + rnd(-0.2, 0.2), y + rnd(-0.25, 0.25), z + rnd(-0.2, 0.2)],
+        [tx * s * rnd(2, 9) + nx * rnd(0.5, 3) - v.vel[0] * 0.25,
+          rnd(0.5, 4.0),
+          tz * s * rnd(2, 9) + nz * rnd(0.5, 3) - v.vel[2] * 0.25],
+        { life: rnd(0.18, 0.5), size: 0.045, grow: 0.4, tint: [2.4, 1.15, 0.30],
+          alpha: 0.95, drag: 1.6, gravity: 9.0, additive: true });
+    }
+    if (strength > 0.25) {
+      // Debris: shards in the colour of whatever came off.
+      const tint = otherPaint
+        ? [otherPaint[0] * 1.1 + 0.05, otherPaint[1] * 1.1 + 0.05, otherPaint[2] * 1.1 + 0.05]
+        : [0.42, 0.40, 0.36];
+      for (let i = 0; i < Math.round(strength * 12); i++) {
+        this.renderer.spawnParticle(
+          [x + rnd(-0.3, 0.3), y + rnd(-0.3, 0.3), z + rnd(-0.3, 0.3)],
+          [nx * rnd(1, 5) + rnd(-2.5, 2.5), rnd(1.5, 5.5), nz * rnd(1, 5) + rnd(-2.5, 2.5)],
+          { life: rnd(0.6, 1.4), size: 0.075, grow: 0.2, tint,
+            alpha: 0.9, drag: 0.9, gravity: 11.0 });
+      }
+      for (let i = 0; i < Math.round(strength * 6); i++) {
+        this.renderer.spawnParticle(
+          [x + rnd(-0.4, 0.4), y, z + rnd(-0.4, 0.4)],
+          [rnd(-1.5, 1.5), rnd(0.6, 2.0), rnd(-1.5, 1.5)],
+          { life: rnd(0.7, 1.5), size: 0.30, grow: 3.0, tint: [0.55, 0.54, 0.52],
+            alpha: 0.20, drag: 1.5, gravity: 0.4 });
+      }
+    }
+  }
+
   resolveCollisions(dt, boundaryFn) {
     const cars = this.state === 'drive'
       ? [this.player, ...this.traffic.map((t) => t.car)]
@@ -864,18 +920,73 @@ class Game {
             const rvz = b.vehicle.vel[2] - a.vehicle.vel[2];
             const vn = rvx * nx + rvz * nz;
             if (vn < 0) {
-              const jimp = -(1.28) * vn * 0.5;
-              a.vehicle.vel[0] -= nx * jimp; a.vehicle.vel[2] -= nz * jimp;
-              b.vehicle.vel[0] += nx * jimp; b.vehicle.vel[2] += nz * jimp;
-              a.vehicle.yawRate += (oa > 0 ? -1 : 1) * jimp * 0.05;
-              b.vehicle.yawRate += (ob > 0 ? 1 : -1) * jimp * 0.05;
+              // Mass-weighted, so a GT car shunting a hatchback moves the
+              // hatchback. Restitution is low: cars crumple, they do not bounce.
+              const ma = a.vehicle.mass, mb2 = b.vehicle.mass;
+              const inv = 1 / ma + 1 / mb2;
+              const jimp = -(1.24) * vn / inv;
+              a.vehicle.vel[0] -= nx * jimp / ma; a.vehicle.vel[2] -= nz * jimp / ma;
+              b.vehicle.vel[0] += nx * jimp / mb2; b.vehicle.vel[2] += nz * jimp / mb2;
+              // Tangential friction, which is what makes a side swipe drag the
+              // two cars into line instead of letting them slide past.
+              const tx = -nz, tz = nx;
+              const vt = rvx * tx + rvz * tz;
+              const jt = clamp(-vt / inv, -jimp * 0.5, jimp * 0.5);
+              a.vehicle.vel[0] -= tx * jt / ma; a.vehicle.vel[2] -= tz * jt / ma;
+              b.vehicle.vel[0] += tx * jt / mb2; b.vehicle.vel[2] += tz * jt / mb2;
+              // Yaw from the real lever arm: a corner hit spins you, a square
+              // hit in the middle does not. `jimp` is an impulse in newton
+              // seconds, so the torque is r x J and the change in yaw rate is
+              // that over the yaw inertia - no fudge factor, and none wanted:
+              // treating an impulse like a velocity here span the car at 25
+              // rad/s and drove the whole simulation to NaN.
+              const rax = af[0] * oa, raz = af[2] * oa;
+              const rbx = bf[0] * ob, rbz = bf[2] * ob;
+              const Jx = nx * jimp + tx * jt, Jz = nz * jimp + tz * jt;
+              a.vehicle.yawRate += clamp((rax * Jz - raz * Jx) / a.vehicle.inertiaYaw, -3, 3);
+              b.vehicle.yawRate += clamp((rbz * Jx - rbx * Jz) / b.vehicle.inertiaYaw, -3, 3);
               const strength = clamp(-vn / 16, 0, 1);
-              if (strength > 0.08 && (a === this.player || b === this.player)) {
-                this.audio.impact(strength);
-                this.camera.shake = Math.max(this.camera.shake, strength * 0.6);
-                this.player.damage = Math.min(1, this.player.damage + strength * 0.05);
+              const other = a === this.player ? b : a;
+              if (strength > 0.05 && (a === this.player || b === this.player)) {
+                this.impact((ax + bx) / 2, (az + bz) / 2, nx, nz, strength, other.livery.paint);
                 if (this.driveState) this.registerPenalty('Contact', strength * 12);
               }
+            }
+          }
+        }
+      }
+    }
+
+    // Solid scenery: tree trunks, poles, gate piers, walls, hedges.
+    const world = this.scene.world;
+    if (world.solids.length) {
+      const hits = this._solidHits || (this._solidHits = []);
+      for (const car of cars) {
+        const v = car.vehicle;
+        const f = car.forward();
+        for (const o of [-1.05, 1.05]) {
+          const cx = car.pos[0] + f[0] * o, cz = car.pos[2] + f[2] * o;
+          world.querySolids(cx, cz, CAR_SHELL, hits);
+          for (const s of hits) {
+            let nx = cx - s.x, nz = cz - s.z;
+            const d = Math.hypot(nx, nz);
+            const minD = s.r + CAR_SHELL;
+            if (d >= minD) continue;
+            if (d < 1e-4) { nx = f[0]; nz = f[2]; } else { nx /= d; nz /= d; }
+            v.pos[0] += nx * (minD - d);
+            v.pos[2] += nz * (minD - d);
+            const vn = v.vel[0] * nx + v.vel[2] * nz;
+            if (vn >= 0) continue;
+            // `hard` decides how much of the car's momentum the obstacle takes:
+            // a lamp post stops you, a hedge drags at you and lets you through.
+            const j = -(1.0 + 0.25 * s.hard) * vn * s.hard;
+            v.vel[0] += nx * j; v.vel[2] += nz * j;
+            v.vel[0] *= 1 - 0.35 * s.hard; v.vel[2] *= 1 - 0.35 * s.hard;
+            v.yawRate += clamp(o * vn * s.hard * 0.045, -2, 2);
+            const strength = clamp(-vn / 18, 0, 1) * s.hard;
+            if (car === this.player && strength > 0.05) {
+              this.impact(cx, cz, nx, nz, strength, null);
+              if (this.driveState) this.registerPenalty('Hit something', strength * 16);
             }
           }
         }
@@ -904,14 +1015,13 @@ class Game {
         car.vehicle.yawRate *= 0.55;
         const strength = clamp(-vn / 18, 0, 1);
         if (car === this.player && strength > 0.06) {
-          this.audio.impact(strength);
-          this.camera.shake = Math.max(this.camera.shake, strength * 0.8);
-          this.renderer.flash = Math.min(0.25, strength * 0.2);
-          this.player.damage = Math.min(1, this.player.damage + strength * 0.06);
+          this.impact(car.pos[0], car.pos[2], nx, nz, strength, null);
           if (this.driveState) this.registerPenalty('Off the road', strength * 14);
         }
       }
     }
+
+    for (const car of cars) car.vehicle.sanitise();
   }
 
   // --- race -----------------------------------------------------------------
@@ -1045,10 +1155,25 @@ class Game {
     const legRoute = this.state === 'drive' && this.legs ? this.leg().route : null;
     const sp = legRoute ? legRoute.spline
       : (scene.track ? scene.track.spline : scene.route.spline);
-    const i = nearestIndex(sp, car.pos[0], car.pos[2], car.hint || 0, 40);
+    // Start from wherever the game already thinks we are. Searching a narrow
+    // window from index 0 finds the beginning of the road no matter how far
+    // along it you are, so recovery on the drive home used to dump the car a
+    // kilometre back down the route - or, wedged against a wall, nowhere at all.
+    const hint = legRoute && this.driveState ? this.driveState.hint
+      : (car.hint || 0);
+    let i = nearestIndex(sp, car.pos[0], car.pos[2], hint, 40);
+    const near = sp.points[i];
+    if (Math.hypot(car.pos[0] - near[0], car.pos[2] - near[2]) > 60) {
+      i = nearestIndex(sp, car.pos[0], car.pos[2], hint, sp.count >> 1);
+    }
     const p = sp.points[i], t = sp.tangents[i];
     const yaw = Math.atan2(t[0], t[2]);
-    car.setPose(p[0], p[2], yaw, scene.world);
+    // On a public road, put the car back on its own side rather than astride
+    // the white line.
+    const lane = legRoute ? legRoute.spline.normals[i] : null;
+    const off = lane ? Math.min(2.1, legRoute.halfWidth * 0.5) : 0;
+    car.setPose(p[0] + (lane ? lane[0] * off : 0), p[2] + (lane ? lane[2] * off : 0),
+      yaw, scene.world);
     car.vehicle.gear = GEAR_FIRST;
     this.hud.message('Back on track', 1.5);
     if (this.driveState) this.registerPenalty('Recovered', 5);
@@ -1197,8 +1322,39 @@ class Game {
       }
     }
 
+    // The shop. Optional, unscored, and the only reason to stop on the way
+    // home that is not a red light.
+    const shop = leg.last ? scene.shopStop : null;
+    ds.shopNear = false;
+    if (shop && !ds.shopped) {
+      const d = Math.hypot(car.pos[0] - shop.x, car.pos[2] - shop.z);
+      if (d < shop.radius) {
+        ds.shopNear = true;
+        if (v.speed < 1.0) {
+          ds.shopTimer += dt;
+          if (ds.shopTimer > 1.6) {
+            ds.shopped = true;
+            this.audio.chime();
+            this.hud.message('STOPPED AT THE SHOP', 2.6, 'big');
+          }
+        } else ds.shopTimer = 0;
+      } else {
+        ds.shopTimer = 0;
+      }
+    }
+
     // Satnav instruction from the shape of the road ahead.
     const nav = this.computeNavigation(sp, prog, remaining, leg, onRoute);
+    if (shop && !ds.shopped) {
+      const ahead = shop.along - prog.along;
+      if (ahead > -12 && ahead < 220) {
+        const hand = shop.side < 0 ? 'left' : 'right';
+        nav.instruction = ahead < 30 ? `Shop on the ${hand} — pull in to stop`
+          : `Village shop on the ${hand}`;
+        nav.distance = Math.max(0, ahead);
+        nav.angle = 0;
+      }
+    }
 
     // Arrival. Only the last leg has a driveway at the end of it.
     if (dest && !ds.arrived && distHome < dest.radius && v.speed < 1.2) {
@@ -1218,6 +1374,7 @@ class Game {
           time: ds.elapsed,
           distance: v.odometer,
           crashes: ds.crashes,
+          shopped: ds.shopped,
         });
       }
     }
@@ -1483,6 +1640,7 @@ class Game {
         distanceRemaining: ds.remaining,
         instruction: ds.nav.instruction,
         turnDistance: ds.nav.distance,
+        shopPrompt: ds.shopNear && !ds.shopped ? 'Stop here to visit the shop' : null,
         turnAngle: ds.nav.angle,
         rating: ds.rating,
         penaltyText: ds.penaltyText,

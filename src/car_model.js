@@ -114,8 +114,8 @@ function fenderFlare(z) {
   return f;
 }
 
-const TOP_POINTS = 15;   // across the deck, right to left
-const SIDE_POINTS = 4;   // down each flank
+const TOP_POINTS = 17;   // across the deck, right to left
+const SIDE_POINTS = 5;   // down each flank
 
 // Build one closed body section. Returns { points, kinds } where kind 0 = deck,
 // 1 = flank, 2 = underside, so the loft can switch material.
@@ -189,7 +189,7 @@ function sampleStations(count) {
 }
 
 function buildBodyShell(mb) {
-  const stations = sampleStations(42);
+  const stations = sampleStations(50);
   const rings = [], kinds = [];
   for (const [z, w, fy, dy] of stations) {
     const s = bodySection(z, w, fy, dy);
@@ -220,7 +220,7 @@ const CABIN_STATIONS = [
   [-1.80, 0.644, 0.810, 0.802],
 ];
 
-const CABIN_ARC = 21;
+const CABIN_ARC = 25;
 
 // Cross section of the cabin as an open arc: u = 0 at the right waist,
 // u = 0.5 over the roof, u = 1 at the left waist.
@@ -259,7 +259,7 @@ function cabinIsGlass(z, u) {
 // bodywork is a single-sided shell, so without a headliner the cockpit camera
 // looks straight out through the roof and the pillars.
 function buildCabin(bodyMB, glassMB, innerMB) {
-  const rows = 34;
+  const rows = 40;
   const rings = [];
   for (let i = 0; i < rows; i++) {
     const t = i / (rows - 1);
@@ -487,7 +487,7 @@ function buildTire(mb, radius, width, rimRadius) {
     [hw * 1.02, rimRadius + (radius - rimRadius) * 0.45],
     [hw, rimRadius],
   ];
-  const segments = 30;
+  const segments = 36;
   const rings = profile.map(([x, r]) => {
     const ring = [];
     for (let i = 0; i < segments; i++) {
@@ -532,7 +532,7 @@ function buildRim(mb, rimRadius, width) {
   // Outer lip.
   mb.push(); mb.translate(hw * 0.96, 0, 0); mb.rotateZ(Math.PI / 2); mb.cylinder(rimRadius, rimRadius * 0.94, 0.05, 26, false, false); mb.pop();
   // Hub.
-  mb.push(); mb.translate(faceX - 0.02, 0, 0); mb.rotateZ(Math.PI / 2); mb.cylinder(0.085, 0.085, 0.09, 16); mb.pop();
+  mb.push(); mb.translate(faceX - 0.02, 0, 0); mb.rotateZ(Math.PI / 2); mb.cylinder(0.085, 0.085, 0.09, 20); mb.pop();
   // Ten twisted spokes.
   const spokes = 10;
   for (let i = 0; i < spokes; i++) {
@@ -551,7 +551,7 @@ function buildRim(mb, rimRadius, width) {
   useMat(mb, MAT.disc);
   mb.push(); mb.rotateZ(Math.PI / 2); mb.cylinder(rimRadius * 0.78, rimRadius * 0.78, 0.030, 24); mb.pop();
   useMat(mb, MAT.steel);
-  mb.push(); mb.rotateZ(Math.PI / 2); mb.cylinder(rimRadius * 0.40, rimRadius * 0.40, 0.048, 16); mb.pop();
+  mb.push(); mb.rotateZ(Math.PI / 2); mb.cylinder(rimRadius * 0.40, rimRadius * 0.40, 0.048, 20); mb.pop();
 }
 
 // The caliper is fixed to the upright, so it lives in its own mesh that steers

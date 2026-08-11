@@ -97,6 +97,49 @@ class World {
     this.decorMeshes = [];
     this.bounds = { minX: -900, maxX: 900, minZ: -900, maxZ: 900 };
     this.skid = null;
+    // Things you cannot drive through: tree trunks, poles, gate piers, walls.
+    // Stored as upright circles, which is a fair fit for everything here and
+    // cheap enough to test thousands of them every frame.
+    this.solids = [];
+    this.solidGrid = new Map();
+    this.solidCell = 16;
+  }
+
+  // `hard` is how much of the impact the car keeps: a lamp post stops you, a
+  // hedge mostly just slows you down.
+  addSolid(x, z, r, hard = 1) { this.solids.push({ x, z, r, hard }); }
+
+  indexSolids() {
+    this.solidGrid.clear();
+    const cs = this.solidCell;
+    for (let i = 0; i < this.solids.length; i++) {
+      const s = this.solids[i];
+      const reach = Math.ceil((s.r + 3) / cs);
+      const cx = Math.floor(s.x / cs), cz = Math.floor(s.z / cs);
+      for (let dx = -reach; dx <= reach; dx++) {
+        for (let dz = -reach; dz <= reach; dz++) {
+          const k = this.key(cx + dx, cz + dz);
+          let list = this.solidGrid.get(k);
+          if (!list) { list = []; this.solidGrid.set(k, list); }
+          list.push(i);
+        }
+      }
+    }
+  }
+
+  // Every solid whose circle could touch a disc of `radius` at (x, z).
+  querySolids(x, z, radius, out) {
+    out.length = 0;
+    const list = this.solidGrid.get(this.key(
+      Math.floor(x / this.solidCell), Math.floor(z / this.solidCell)));
+    if (!list) return out;
+    for (const i of list) {
+      const s = this.solids[i];
+      const dx = x - s.x, dz = z - s.z;
+      const reach = s.r + radius;
+      if (dx * dx + dz * dz < reach * reach) out.push(s);
+    }
+    return out;
   }
 
   terrain(x, z) { return this.terrainHeightRaw(x, z) * this.terrainScale; }

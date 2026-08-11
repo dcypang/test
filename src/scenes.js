@@ -26,10 +26,38 @@ function offsetSamples(path, side, distance, step = 4, from = 0, to = null) {
   return out;
 }
 
-function placeProp(target, world, builder, x, z, yaw = 0, yOffset = 0, scale = 1) {
+// Never leave a collider on a surface someone is meant to drive on. Scenery is
+// laid out relative to one road at a time, so a fence beside the main route or
+// a wall behind a house happily crosses a side street - and a wall across a
+// side street is a wall across a road.
+function addSolidClearOfRoads(world, x, z, r, hard, margin = 0.5) {
+  const hit = world.query(x, z);
+  if (hit && Math.abs(hit.lateral) < hit.path.halfWidth + r + margin) return false;
+  world.addSolid(x, z, r, hard);
+  return true;
+}
+
+// `solid`, when given, is the radius of the collider left behind at this spot -
+// a tree trunk, a pole, a wall - so the world has something to hit.
+function placeProp(target, world, builder, x, z, yaw = 0, yOffset = 0, scale = 1, solid = 0, hard = 1) {
   const y = world.groundHeight(x, z) + yOffset;
   const m = m4.compose(m4.create(), [x, y, z], yaw, 0, 0, scale, scale, scale);
   target.append(builder, m);
+  // Street furniture is deliberately placed close to the kerb, so it gets a
+  // much tighter margin - hitting a lamp post is the point. The check still
+  // catches the handful that would otherwise stand in a side street.
+  if (solid > 0) addSolidClearOfRoads(world, x, z, solid * scale, hard, 0.15);
+}
+
+// A line of colliders, for things that are long rather than round: hedges,
+// fences, the side of a building.
+function placeSolidRun(world, x, z, yaw, length, r, hard = 1) {
+  const steps = Math.max(1, Math.round(length / (r * 1.4)));
+  const dx = Math.sin(yaw), dz = Math.cos(yaw);
+  for (let i = 0; i <= steps; i++) {
+    const t = (i / steps - 0.5) * length;
+    addSolidClearOfRoads(world, x + dx * t, z + dz * t, r, hard);
+  }
 }
 
 // Build a small library of prop meshes once, then stamp them around the world.
@@ -204,7 +232,7 @@ function buildCircuit(gl) {
 
   // --- geometry -------------------------------------------------------------
   const terrainMB = buildTerrainMesh(world, {
-    minX: -640, maxX: 1000, minZ: -720, maxZ: 760, cell: 14,
+    minX: -640, maxX: 1000, minZ: -720, maxZ: 760, cell: 12.8,
   });
   const roadMB = new MeshBuilder();
   buildPathMesh(world, track, roadMB);
@@ -353,7 +381,7 @@ function buildCircuit(gl) {
       const distFactor = hit ? clamp((Math.abs(hit.lateral) - 20) / 120, 0, 1) : 1;
       if (rng() > 0.28 + distFactor * 0.55) continue;
       const tree = lib.trees[Math.floor(rng() * lib.trees.length)];
-      placeProp(propMB, world, tree, x, z, rng() * TAU, 0, rnd2(rng, 0.8, 1.35));
+      placeProp(propMB, world, tree, x, z, rng() * TAU, 0, rnd2(rng, 0.8, 1.35), 0.34);
     }
   }
 
@@ -366,6 +394,9 @@ function buildCircuit(gl) {
     const gateMB = new MeshBuilder();
     buildCircuitGate(gateMB);
     placeProp(propMB, world, gateMB, gp[0], gp[2], gateYaw);
+    for (const side of [-1, 1]) {
+      world.addSolid(gp[0] + gn[0] * 5.5 * side, gp[2] + gn[2] * 5.5 * side, 0.75);
+    }
 
     // An avenue of trees for the last stretch up to the gate. This is what
     // closes the view in: you cannot see the landscape change if there is no
@@ -376,7 +407,7 @@ function buildCircuit(gl) {
       for (const side of [-1, 1]) {
         const d = exitRoute.halfWidth + 3.2;
         placeProp(propMB, world, lib.trees[k % lib.trees.length],
-          p[0] + n[0] * d * side, p[2] + n[2] * d * side, rng() * TAU, 0, 1.25);
+          p[0] + n[0] * d * side, p[2] + n[2] * d * side, rng() * TAU, 0, 1.25, 0.34);
       }
     }
     // Fences running up to the piers so the gate reads as the boundary.
@@ -408,6 +439,9 @@ function buildCircuit(gl) {
       });
     }
   }
+
+  // Everything solid has been placed by now, so it can be bucketed for lookup.
+  world.indexSolids();
 
   const meshes = {
     terrain: meshFromBuilder(gl, terrainMB),
@@ -521,7 +555,7 @@ function buildHomeRoute(gl) {
   world.conformPathsToTerrain(40);
 
   const terrainMB = buildTerrainMesh(world, {
-    minX: -320, maxX: 1180, minZ: -220, maxZ: 1120, cell: 14,
+    minX: -320, maxX: 1180, minZ: -220, maxZ: 1120, cell: 12.8,
   });
   const roadMB = new MeshBuilder();
   for (const p of world.paths) buildPathMesh(world, p, roadMB);
@@ -584,7 +618,7 @@ function buildHomeRoute(gl) {
       const side = Math.round(s / lightGap) % 2 === 0 ? -1 : 1;
       const d = route.halfWidth + 2.0;
       placeProp(propMB, world, side < 0 ? lib.streetLightR : lib.streetLightL,
-        p[0] + n[0] * d * side, p[2] + n[2] * d * side, yaw);
+        p[0] + n[0] * d * side, p[2] + n[2] * d * side, yaw, 0, 1, 0.20);
     }
 
     if (zone.label === 'Ashcombe village' && s - lastBuildingS > 17) {
@@ -594,7 +628,9 @@ function buildHomeRoute(gl) {
         const d = route.halfWidth + 3.2 + rnd2(rng, 5.5, 7.5);
         const bx = p[0] + n[0] * d * side, bz = p[2] + n[2] * d * side;
         const shop = lib.shops[Math.floor(rng() * lib.shops.length)];
-        placeProp(propMB, world, shop, bx, bz, Math.atan2(-side * n[0], -side * n[2]));
+        const facing = Math.atan2(-side * n[0], -side * n[2]);
+        placeProp(propMB, world, shop, bx, bz, facing);
+        placeSolidRun(world, bx, bz, facing + Math.PI / 2, 9.0, 1.5);
       }
     } else if (zone.label === 'Millbrook Rise' && s - lastBuildingS > 23) {
       lastBuildingS = s;
@@ -606,6 +642,7 @@ function buildHomeRoute(gl) {
         const bx = p[0] + n[0] * d * side, bz = p[2] + n[2] * d * side;
         const facing = Math.atan2(-side * n[0], -side * n[2]);
         placeProp(propMB, world, lib.houses[Math.floor(rng() * lib.houses.length)], bx, bz, facing);
+        placeSolidRun(world, bx, bz, facing + Math.PI / 2, 9.0, 1.5);
         // Driveway apron and a hedge along the boundary.
         const dx = p[0] + n[0] * (route.halfWidth + 3) * side;
         const dz = p[2] + n[2] * (route.halfWidth + 3) * side;
@@ -618,6 +655,9 @@ function buildHomeRoute(gl) {
         placeProp(propMB, world, lib.hedge,
           p[0] + n[0] * (route.halfWidth + 4.2) * side + t[0] * 6,
           p[2] + n[2] * (route.halfWidth + 4.2) * side + t[2] * 6, yaw);
+        placeSolidRun(world,
+          p[0] + n[0] * (route.halfWidth + 4.2) * side + t[0] * 6,
+          p[2] + n[2] * (route.halfWidth + 4.2) * side + t[2] * 6, yaw, 8, 0.55, 0.35);
         if (rng() < 0.5) {
           placeProp(propMB, world, lib.mailbox,
             p[0] + n[0] * (route.halfWidth + 1.6) * side,
@@ -637,9 +677,61 @@ function buildHomeRoute(gl) {
         const d = route.halfWidth + 5.5;
         placeProp(propMB, world, lib.fence,
           p[0] + n[0] * d * side, p[2] + n[2] * d * side, yaw);
+        placeSolidRun(world, p[0] + n[0] * d * side, p[2] + n[2] * d * side, yaw, 8, 0.45, 0.30);
       }
     }
   }
+
+  // --- the village shop -----------------------------------------------------
+  // Somewhere to stop on the way home. A layby, a shopfront and a lit sign,
+  // halfway through the village on the near side of the road so you can pull
+  // straight in. Stopping is optional and costs you nothing but time.
+  const shopStop = (() => {
+    // Middle of the village zone, which is where the buildings already are.
+    const i = clamp(Math.round(count * 0.57), 6, count - 8);
+    const p = sp.points[i], n = sp.normals[i], t = sp.tangents[i];
+    const yaw = Math.atan2(t[0], t[2]);
+    const side = 1;                       // the side you are already driving on
+    const bayD = route.halfWidth + 3.1;
+    const bx = p[0] + n[0] * bayD * side, bz = p[2] + n[2] * bayD * side;
+
+    // The layby itself: an apron of tarmac let into the verge.
+    roadMB.mat([0.20, 0.20, 0.22], 0.80, 0, 0, FLAG_DEFAULT);
+    roadMB.push();
+    roadMB.translate(bx, world.groundHeight(bx, bz) + 0.025, bz);
+    roadMB.rotateY(yaw);
+    roadMB.box(6.4, 0.02, 22);
+    roadMB.pop();
+    // Bay markings.
+    roadMB.mat([0.86, 0.86, 0.82], 0.55, 0, 0, FLAG_DEFAULT);
+    for (const off of [-5.5, 0, 5.5]) {
+      roadMB.push();
+      roadMB.translate(bx + t[0] * off, world.groundHeight(bx, bz) + 0.032, bz + t[2] * off);
+      roadMB.rotateY(yaw);
+      roadMB.box(6.0, 0.02, 0.14);
+      roadMB.pop();
+    }
+
+    const shopMB = new MeshBuilder();
+    buildTownBuilding(shopMB, makeRng(4771), { width: 14, depth: 10, floors: 2 });
+    const sx = p[0] + n[0] * (bayD + 8.4) * side, sz = p[2] + n[2] * (bayD + 8.4) * side;
+    const facing = Math.atan2(-side * n[0], -side * n[2]);
+    placeProp(propMB, world, shopMB, sx, sz, facing);
+    placeSolidRun(world, sx, sz, facing + Math.PI / 2, 13.0, 1.5);
+
+    // A lit sign over the door, so it reads as somewhere open at dusk.
+    const signMB = new MeshBuilder();
+    signMB.mat([0.10, 0.10, 0.12], 0.7, 0.1, 0, FLAG_DEFAULT);
+    signMB.push(); signMB.translate(0, 4.3, -5.3); signMB.box(5.2, 0.9, 0.22); signMB.pop();
+    signMB.mat([1.0, 0.80, 0.35], 0.3, 0.0, 0.85, FLAG_UNLIT);
+    signMB.push(); signMB.translate(0, 4.3, -5.45); signMB.box(4.4, 0.44, 0.05); signMB.pop();
+    placeProp(propMB, world, signMB, sx, sz, facing);
+
+    return {
+      x: bx, z: bz, radius: 7.0, index: i, side,
+      along: sp.cumulative[i], name: 'Ashcombe village stores',
+    };
+  })();
 
   // --- the gate in ----------------------------------------------------------
   // The other face of the circuit gate. Driving out of the paddock hands over
@@ -651,13 +743,16 @@ function buildHomeRoute(gl) {
     const gateMB = new MeshBuilder();
     buildCircuitGate(gateMB);
     placeProp(propMB, world, gateMB, gp[0], gp[2], gateYaw);
+    for (const side of [-1, 1]) {
+      world.addSolid(gp[0] + gn[0] * 5.5 * side, gp[2] + gn[2] * 5.5 * side, 0.75);
+    }
     for (let k = 0; k <= 9; k++) {
       const i = clamp(k * 2, 0, count - 1);
       const p = sp.points[i], n = sp.normals[i];
       for (const side of [-1, 1]) {
         const d = route.halfWidth + 3.2;
         placeProp(propMB, world, lib.trees[k % lib.trees.length],
-          p[0] + n[0] * d * side, p[2] + n[2] * d * side, rng() * TAU, 0, 1.25);
+          p[0] + n[0] * d * side, p[2] + n[2] * d * side, rng() * TAU, 0, 1.25, 0.34);
       }
     }
     for (const side of [-1, 1]) {
@@ -677,7 +772,7 @@ function buildHomeRoute(gl) {
     const hit = world.query(x, z);
     if (hit && Math.abs(hit.lateral) < hit.path.halfWidth + 14) continue;
     if (rng() > 0.35) continue;
-    placeProp(propMB, world, lib.trees[Math.floor(rng() * lib.trees.length)], x, z, rng() * TAU, 0, rnd2(rng, 0.75, 1.4));
+    placeProp(propMB, world, lib.trees[Math.floor(rng() * lib.trees.length)], x, z, rng() * TAU, 0, rnd2(rng, 0.75, 1.4), 0.34);
   }
 
   // --- speed limit signs at each zone change --------------------------------
@@ -695,7 +790,7 @@ function buildHomeRoute(gl) {
     const yaw = Math.atan2(t[0], t[2]);
     const sign = limit <= 30 ? lib.signs.s30 : (limit <= 50 ? lib.signs.s50 : lib.signs.s80);
     const d = route.halfWidth + 1.9;
-    placeProp(propMB, world, sign, p[0] + n[0] * d, p[2] + n[2] * d, yaw + Math.PI);
+    placeProp(propMB, world, sign, p[0] + n[0] * d, p[2] + n[2] * d, yaw + Math.PI, 0, 1, 0.14);
   }
 
   // --- traffic lights -------------------------------------------------------
@@ -717,7 +812,7 @@ function buildHomeRoute(gl) {
       [0, 1, 0]);
 
     const px = p[0] + n[0] * d, pz = p[2] + n[2] * d;
-    placeProp(propMB, world, lib.trafficLight, px, pz, yaw + Math.PI);
+    placeProp(propMB, world, lib.trafficLight, px, pz, yaw + Math.PI, 0, 1, 0.22);
     const baseY = world.groundHeight(px, pz);
     // Lamp world positions for the overhead head (arm points across the road).
     const armDir = [-n[0], 0, -n[2]];
@@ -762,16 +857,20 @@ function buildHomeRoute(gl) {
     buildHouse(houseMB, makeRng(88), { width: 12.5, depth: 10.5, wallHeight: 5.6 });
     const hx = drivewayEnd[0] - 9.5, hz = drivewayEnd[2] + 2.0;
     placeProp(propMB, world, houseMB, hx, hz, garageYaw + Math.PI);
+    placeSolidRun(world, hx, hz, garageYaw + Math.PI / 2, 11.0, 1.6);
 
     const garageMB = new MeshBuilder();
     buildGarage(garageMB, makeRng(91), { width: 6.4, depth: 7.0, height: 3.5 });
     placeProp(propMB, world, garageMB, drivewayEnd[0], drivewayEnd[2] + 3.4, garageYaw + Math.PI);
+    placeSolidRun(world, drivewayEnd[0], drivewayEnd[2] + 3.4, garageYaw + Math.PI / 2, 5.5, 1.4);
 
     // Hedges either side of the drive, a mailbox at the kerb, a bin out front.
     for (const side of [-1, 1]) {
       for (let k = 0; k < 3; k++) {
         placeProp(propMB, world, lib.hedge,
           drivewayEnd[0] + side * 5.0, drivewayEnd[2] - 4 - k * 8, garageYaw);
+        placeSolidRun(world, drivewayEnd[0] + side * 5.0, drivewayEnd[2] - 4 - k * 8,
+          garageYaw, 8, 0.55, 0.35);
       }
     }
     placeProp(propMB, world, lib.mailbox, homePoint[0] + homeNormal[0] * 6.2, homePoint[2] + homeNormal[2] * 6.2, homeYaw);
@@ -791,9 +890,12 @@ function buildHomeRoute(gl) {
       postMB.push(); postMB.translate(0, 1.30, 0); postMB.box(0.52, 0.12, 0.52); postMB.pop();
       postMB.mat([1.0, 0.86, 0.58], 0.3, 0.0, 0.9, FLAG_UNLIT);
       postMB.push(); postMB.translate(0, 1.46, 0); postMB.box(0.22, 0.20, 0.22); postMB.pop();
-      placeProp(propMB, world, postMB, gx, gz, garageYaw);
+      placeProp(propMB, world, postMB, gx, gz, garageYaw, 0, 1, 0.34);
     }
   }
+
+  // Everything solid has been placed by now, so it can be bucketed for lookup.
+  world.indexSolids();
 
   const meshes = {
     terrain: meshFromBuilder(gl, terrainMB),
@@ -815,6 +917,7 @@ function buildHomeRoute(gl) {
     // The satnav needs both of these: the drive is the last 35 m of the journey
     // but it is not part of the route spline, and which way you turn into it is
     // the one instruction the shape of the road cannot supply.
+    shopStop,
     drivewayLength: driveway.spline.length,
     drivewaySide: Math.sign(
       (drivewayEnd[0] - sp.points[count - 1][0]) * sp.normals[count - 1][0]

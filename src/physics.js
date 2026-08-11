@@ -73,6 +73,7 @@ class Vehicle {
     const spec = CAR_SPEC;
     this.mass = options.mass || spec.mass;
     this.inertiaYaw = this.mass * 1.72;
+    this.lastGoodPos = [0, 0, 0];
     this.wheelbase = spec.wheelbase;
     this.cgHeight = spec.cgHeight;
     this.trackFront = spec.trackFront;
@@ -147,6 +148,31 @@ class Vehicle {
     this.gear = GEAR_FIRST;
     this.rpm = IDLE_RPM;
     for (const w of this.wheels) { w.omega = 0; w.slipRatio = 0; w.slipAngle = 0; }
+  }
+
+  // Last line of defence after collision resolution. A single non-finite value
+  // here spreads to everything downstream within a frame or two and never
+  // clears: the car vanishes, and the audio graph throws on every update from
+  // then on. Cheap to check, and there is no sane way to recover except this.
+  sanitise() {
+    const bad = (n) => !Number.isFinite(n);
+    if (bad(this.pos[0]) || bad(this.pos[1]) || bad(this.pos[2])) {
+      this.pos[0] = this.lastGoodPos[0];
+      this.pos[1] = this.lastGoodPos[1];
+      this.pos[2] = this.lastGoodPos[2];
+      this.vel[0] = this.vel[1] = this.vel[2] = 0;
+      this.yawRate = 0;
+      this.vy = 0;
+    } else {
+      this.lastGoodPos[0] = this.pos[0];
+      this.lastGoodPos[1] = this.pos[1];
+      this.lastGoodPos[2] = this.pos[2];
+    }
+    for (let i = 0; i < 3; i++) if (bad(this.vel[i])) this.vel[i] = 0;
+    if (bad(this.yawRate)) this.yawRate = 0;
+    if (bad(this.yaw)) this.yaw = 0;
+    if (bad(this.speed)) this.speed = 0;
+    this.yawRate = clamp(this.yawRate, -8, 8);
   }
 
   // Move the car somewhere else without stopping it. The drive home crosses

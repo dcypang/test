@@ -59,9 +59,11 @@ class RacingDriver {
     // Occasional imperfection so the field is not robotic.
     this.mistakeTimer -= dt;
     if (this.mistakeTimer <= 0) {
-      this.mistakeTimer = rnd(6, 26);
-      this.mistake = (1 - this.skill) * rnd(0.2, 1.0);
-      this.mistakeHold = rnd(0.6, 1.5);
+      // A quick driver makes fewer errors and smaller ones, and leaves longer
+      // between them.
+      this.mistakeTimer = rnd(6, 26) * lerp(1.0, 2.4, this.skill);
+      this.mistake = Math.pow(1 - this.skill, 1.4) * rnd(0.2, 1.0);
+      this.mistakeHold = rnd(0.6, 1.5) * lerp(1.0, 0.55, this.skill);
     }
     if (this.mistakeHold > 0) {
       this.mistakeHold -= dt;
@@ -178,10 +180,12 @@ class RacingDriver {
     }
     // The pace fraction is well under 1 because the speed profile is a static
     // per-corner upper bound: it takes no account of having to change direction
-    // between corners, or of the car arriving slightly off line. Measured on
-    // this circuit, asking for more than about 0.70 of it makes the AI slower,
-    // not faster, because it spends the difference sliding.
-    target *= lerp(0.50, 0.70, this.skill) * (1 - this.mistake * 0.22);
+    // between corners, or of the car arriving slightly off line. Push it too
+    // far and the AI gets slower, not faster, because it spends the difference
+    // sliding. Swept on this circuit with the harness seeded: 0.79 is the last
+    // value that gains, and by 0.82 the field is 23% off track and four
+    // seconds a lap slower. 0.78 sits just inside that cliff.
+    target *= lerp(0.52, 0.78, this.skill) * (1 - this.mistake * 0.22);
     target = Math.min(target, blockedSpeed);
 
     // If the car has been thrown well off the line, rejoin calmly instead of
@@ -193,16 +197,17 @@ class RacingDriver {
     const err2 = target - speed;
     let wantThrottle = 0, wantBrake = 0;
     if (err2 > 0.6) {
-      wantThrottle = clamp(err2 * 0.35, 0, 1);
+      wantThrottle = clamp(err2 * lerp(0.35, 0.55, this.skill), 0, 1);
     } else if (err2 < -0.6) {
       wantBrake = clamp(-err2 * 0.24, 0, 1);
     } else {
-      wantThrottle = clamp(0.25 + err2 * 0.2, 0, 0.5);
+      wantThrottle = clamp(0.25 + err2 * 0.2, 0, lerp(0.5, 0.75, this.skill));
     }
     // Roll onto the pedals rather than stamping on them: an instant jump from
-    // no brake to full brake mid-corner unloads the rear and spins the car.
-    v.throttle = approach(v.throttle, wantThrottle, dt * 6.0);
-    v.brake = approach(v.brake, wantBrake, dt * 3.6);
+    // no brake to full brake mid-corner unloads the rear and spins the car. A
+    // quicker driver rolls on faster, but still rolls.
+    v.throttle = approach(v.throttle, wantThrottle, dt * lerp(6.0, 9.0, this.skill));
+    v.brake = approach(v.brake, wantBrake, dt * lerp(3.6, 5.2, this.skill));
 
     // Braking hard while the wheel is turned is how you spin a rear-drive car.
     // Trade one against the other the way a real driver does.

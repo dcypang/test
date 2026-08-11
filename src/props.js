@@ -38,7 +38,7 @@ function buildTree(mb, rng, style = 0) {
   pm(mb, PROP_MAT.bark, [0.20 + rng() * 0.08, 0.15 + rng() * 0.06, 0.10 + rng() * 0.05]);
   mb.push();
   mb.translate(0, h * 0.28, 0);
-  mb.cylinder(trunkR * 0.7, trunkR, h * 0.56, 7);
+  mb.cylinder(trunkR * 0.7, trunkR, h * 0.56, 8);
   mb.pop();
 
   const leafTint = [0.09 + rng() * 0.09, 0.22 + rng() * 0.16, 0.07 + rng() * 0.07];
@@ -50,7 +50,7 @@ function buildTree(mb, rng, style = 0) {
       const r = h * rnd2(rng, 0.20, 0.30);
       mb.push();
       mb.translate(rnd2(rng, -0.5, 0.5) * h * 0.22, h * rnd2(rng, 0.58, 0.86), rnd2(rng, -0.5, 0.5) * h * 0.22);
-      mb.sphere(r, 9, 6, rnd2(rng, 0.7, 0.95));
+      mb.sphere(r, 10, 7, rnd2(rng, 0.7, 0.95));
       mb.pop();
     }
   } else if (style === 1) {
@@ -60,14 +60,14 @@ function buildTree(mb, rng, style = 0) {
       const t = i / tiers;
       mb.push();
       mb.translate(0, h * (0.34 + t * 0.52), 0);
-      mb.cylinder(h * 0.02, h * (0.26 - t * 0.16), h * 0.26, 9, false, true);
+      mb.cylinder(h * 0.02, h * (0.26 - t * 0.16), h * 0.26, 11, false, true);
       mb.pop();
     }
   } else {
     // Poplar: tall and narrow.
     mb.push();
     mb.translate(0, h * 0.66, 0);
-    mb.sphere(h * 0.17, 8, 8, 2.6);
+    mb.sphere(h * 0.17, 10, 9, 2.6);
     mb.pop();
   }
 }

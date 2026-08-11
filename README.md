@@ -25,8 +25,11 @@ working traffic lights and oncoming traffic, a suburban street, and finally the
 turn into your own driveway.
 
 The same car, now dusty from the race. There is a satnav, there are speed
-limits, and there is a rating out of 100 that notices if you ignore either. It
-ends when the car is stopped in front of the garage with the light on.
+limits, and there is a rating out of 100 that notices if you ignore either.
+Halfway through the village there is a layby outside the shop — pull in, come
+to a stop, and the shopping is on the passenger seat when you get home. It costs
+nothing but time. The drive ends when the car is stopped in front of the garage
+with the light on.
 
 Two ways to get there: take the chequered flag and press **Drive home** on the
 results screen, or **Skip to the drive home** on the title screen.
@@ -76,6 +79,25 @@ on the title screen flips it.
 
 Touch devices also get a lighter render preset automatically — no shadows, no
 particles, capped resolution.
+
+## Hitting things
+
+The world is solid. Tree trunks, lamp posts, sign posts, traffic light poles,
+gate piers, hedges and the walls of every building carry a collider — about
+1,950 of them per scene, bucketed into a grid so testing them all every frame
+costs nothing. Hedges and fences are soft and mostly just drag at you; a lamp
+post is not.
+
+Car-to-car contact is mass weighted with a tangential friction term, and the
+yaw it imparts comes from the real lever arm, so a corner hit spins you and a
+square one does not. Every impact throws sparks along the contact, debris in
+the colour of whatever you hit, a puff of dust if it was a big one, and adds
+to the car's damage.
+
+No collider is ever left on a drivable surface. Scenery is laid out relative to
+one road at a time, so a fence beside the main route or a wall behind a house
+will happily cross a side street — and a wall across a side street is a wall
+across a road.
 
 ## Controls
 
@@ -148,9 +170,15 @@ out. `scripts/simtest.mjs` asserts all of that.
     node scripts/smoke.mjs      # drive it in headless Chromium, capture shots
     node scripts/mobile.mjs     # emulate a phone and exercise the touch controls
     node scripts/drivehome.mjs  # race to the flag, then drive the whole way home
+    node scripts/polycount.mjs  # triangle budget, scene by scene
 
 `simtest.mjs` runs the simulation in plain Node with a stubbed WebGL object, so
-handling and AI regressions get caught in seconds without a GPU.
+handling and AI regressions get caught in seconds without a GPU. It seeds
+`Math.random` first: the AI makes deliberate mistakes, and unseeded, one run to
+the next varies by ten seconds a lap — far more than most changes to the driver
+are worth, so tuning against it measures noise. Seeded, the corner-speed ceiling
+could be swept properly: 0.79 of the theoretical limit is the last value that
+gains, and by 0.82 the field is 23% off track and four seconds a lap slower.
 
 `drivehome.mjs` is the end-to-end one: it puts an AI driver in the player's seat,
 takes the race to the chequered flag, clicks through the results screen, then

@@ -110,7 +110,8 @@ const home = await page.evaluate(() => {
   const offset = ((g.player.pos[0] - first.points[1][0]) * lane[0]
     + (g.player.pos[2] - first.points[1][2]) * lane[2]);
   const { TrafficDriver } = window.__drivers;
-  let auto = new TrafficDriver(g.player, g.legs[0].route, 1, offset, 999);
+  const limitNow = () => (g.driveState && g.driveState.zone ? g.driveState.zone.limit : 60);
+  let auto = new TrafficDriver(g.player, g.legs[0].route, 1, offset, limitNow());
   let onDrive = false;
   let legSeen = 0;
   const handover = [];
@@ -121,7 +122,8 @@ const home = await page.evaluate(() => {
     if (g.legIndex !== legSeen) {
       legSeen = g.legIndex;
       handover.push({ leg: g.legIndex, scene: g.scene.kind, kmh: Math.round(v.speedKmh) });
-      auto = new TrafficDriver(g.player, g.legs[g.legIndex].route, 1, 0, 999);
+      auto = new TrafficDriver(g.player, g.legs[g.legIndex].route, 1,
+        g.legs[g.legIndex].home ? 2.1 : 0, limitNow());
       auto.index = 0;
       auto.done = false;
     }
@@ -132,9 +134,10 @@ const home = await page.evaluate(() => {
     }
     if (auto.done && !onDrive && g.legIndex === g.legs.length - 1) {
       onDrive = true;
-      auto = new TrafficDriver(g.player, g.scene.driveway, 1, 0, 999);
+      auto = new TrafficDriver(g.player, g.scene.driveway, 1, 0, 20);
       auto.index = 0;
     }
+    if (!auto.done) auto.speedLimit = limitNow();
     if (auto.done) {
       const d = onDrive ? g.scene.destination : null;
       if (d) {
@@ -160,16 +163,25 @@ const home = await page.evaluate(() => {
   };
   let minDist = Infinity, offRoad = 0, frames = 0;
   const navSeen = new Set();
+  const offTrace = [];
   let stalled = 0;
   for (let i = 0; i < 60 * 900 && g.state === 'drive'; i++) {
     g.update(1 / 60);
     frames++;
     // The R key, in test form: never let one wedged car hang the whole run.
     stalled = (v.speed < 0.6 && !g.driveState.arrived) ? stalled + 1 / 60 : 0;
-    if (stalled > 25) { g.resetPlayerToTrack(); stalled = 0; }
+    if (stalled > 6) { g.resetPlayerToTrack(); stalled = 0; }
     minDist = Math.min(minDist, g.driveState.distHome === undefined ? Infinity : g.driveState.distHome);
     if (g.driveState.nav) navSeen.add(g.driveState.nav.instruction);
-    if (!g.scene.world.sampleSurface(g.player.pos[0], g.player.pos[2]).onRoad) offRoad++;
+    if (!g.scene.world.sampleSurface(g.player.pos[0], g.player.pos[2]).onRoad) {
+      offRoad++;
+      if (offTrace.length < 6 && offRoad % 120 === 1) {
+        const hit = g.scene.world.query(g.player.pos[0], g.player.pos[2]);
+        offTrace.push({ leg: g.legIndex, remaining: Math.round(g.driveState.remaining),
+          lat: hit ? +hit.lateral.toFixed(1) : null, kmh: Math.round(v.speedKmh),
+          zone: g.driveState.zone && g.driveState.zone.label });
+      }
+    }
     if (g.driveState.arrived && g.state !== 'drive') break;
   }
   return {
@@ -183,7 +195,7 @@ const home = await page.evaluate(() => {
     offRoadPct: +(100 * offRoad / frames).toFixed(1),
     minutes: +(g.driveState.elapsed / 60).toFixed(1),
     nav: Array.from(navSeen),
-    handover,
+    handover, offTrace,
   };
 });
 console.log('   ', JSON.stringify(home));
@@ -205,6 +217,85 @@ check('the car keeps its momentum through the gate',
   home.handover.length === 2 && home.handover[1].kmh > 25,
   `${home.handover.length === 2 ? home.handover[1].kmh : '?'} km/h crossing into the town`);
 await page.screenshot({ path: join(shots, 'h3-arrived.png') });
+
+// --- the shop, and hitting things -------------------------------------------
+// Both are checked on a fresh drive: the run above parks the car for good.
+const extras = await page.evaluate(() => {
+  const g = window.__game;
+  g.startDriveHome();
+  while (g.legIndex < g.legs.length - 1) g.advanceLeg();
+  g.update(1 / 60);
+  const out = {};
+
+  // Park in the shop layby and wait.
+  const shop = g.scene.shopStop;
+  const v = g.player.vehicle;
+  g.input.driving = () => ({ throttle: 0, brake: 1, steer: 0, handbrake: 1, shiftUp: false, shiftDown: false });
+  g.player.setPose(shop.x, shop.z, 0, g.scene.world);
+  for (let i = 0; i < 60 * 4; i++) g.update(1 / 60);
+  out.shopped = g.driveState.shopped;
+  out.shopPromptSeen = !!g.driveState.shopNear || g.driveState.shopped;
+
+  // Drive at something solid and see whether the world pushes back. It has to
+  // be a roadside object: the road containment will not let the car wander far
+  // enough off to reach a tree in a field.
+  const sp = g.scene.route.spline;
+  const world = g.scene.world;
+  let target = null, at = 0;
+  for (let i = 40; i < sp.count - 40 && !target; i++) {
+    const p = sp.points[i], n = sp.normals[i];
+    for (const s2 of world.solids) {
+      const dx = s2.x - p[0], dz = s2.z - p[2];
+      const lat = dx * n[0] + dz * n[2];
+      const along = Math.hypot(dx, dz);
+      if (s2.hard === 1 && along < 9 && Math.abs(lat) > 4.8 && Math.abs(lat) < 8.5) {
+        target = s2; at = i; break;
+      }
+    }
+  }
+  if (!target) return Object.assign(out, { hitTested: false });
+
+  const t0 = sp.tangents[at];
+  // Point straight at it from 13 m out, already rolling, and see what happens.
+  const dirX = target.x - (target.x - t0[0]), dirZ = target.z - (target.z - t0[2]);
+  const len = Math.hypot(dirX, dirZ) || 1;
+  const ux = dirX / len, uz = dirZ / len;
+  g.player.setPose(target.x - ux * 13, target.z - uz * 13, Math.atan2(ux, uz), world);
+  const v2 = g.player.vehicle;
+  v2.vel[0] = ux * 17; v2.vel[2] = uz * 17;      // about 60 km/h
+  v2.gear = 3;
+  g.renderer.settings.particles = true;
+  g.renderer.particles.length = 0;
+  const before = { damage: g.player.damage };
+  let peak = 0;
+  g.input.driving = () => ({ throttle: 1, brake: 0, steer: 0, handbrake: 0, shiftUp: false, shiftDown: false });
+  let minGap = Infinity;
+  for (let i = 0; i < 60 * 3; i++) {
+    g.update(1 / 60);
+    peak = Math.max(peak, g.renderer.particles.length);
+    minGap = Math.min(minGap, Math.hypot(g.player.pos[0] - target.x, g.player.pos[2] - target.z));
+  }
+  return Object.assign(out, {
+    hitTested: true,
+    obstacleRadius: +target.r.toFixed(2),
+    minGap: +minGap.toFixed(2),
+    blockedAt: +(target.r + 0.98).toFixed(2),
+    damageGained: +(g.player.damage - before.damage).toFixed(3),
+    peakParticles: peak,
+    solidCount: world.solids.length,
+  });
+});
+console.log('   ', JSON.stringify(extras));
+check('stopping in the layby counts as visiting the shop', extras.shopped);
+// The shell never overlaps the collider: the car is stopped at exactly the sum
+// of the two radii, which is what "solid" means here.
+check('scenery is solid', extras.hitTested && extras.minGap >= extras.blockedAt - 0.15,
+  `held off at ${extras.minGap} m, shell + obstacle = ${extras.blockedAt} m, `
+  + `${extras.solidCount} colliders`);
+check('hitting something does damage', extras.damageGained > 0.02,
+  `+${extras.damageGained}`);
+check('hitting something throws sparks and debris', extras.peakParticles > 5,
+  `${extras.peakParticles} particles`);
 
 console.log('\n--- console errors ---');
 console.log(errors.length ? errors.slice(0, 5).join('\n') : '(none)');
