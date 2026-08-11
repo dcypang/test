@@ -24,6 +24,58 @@ const IDLE_RPM = 950;
 const REDLINE_RPM = 7900;
 const LIMITER_RPM = 8100;
 
+// --- steering feel -----------------------------------------------------------
+//
+// Everything that decides how the car answers the stick, in one place, because
+// it has to be tuned as a set: scripts/steerloop.mjs hill-climbs these against
+// the measurements in scripts/steerfeel.mjs.
+//
+// The targets are an arcade mobile racer's, not a simulator's. On a phone you
+// have one thumb, no force feedback, and no way to feel the rear going before
+// it has gone, so the car has to turn in promptly, answer in proportion to how
+// far you push, hold on rather than snap, and straighten itself when you let
+// go. These numbers are what that costs.
+const STEER_FEEL = {
+  // Full lock, as a multiple of the steering angle that would just reach the
+  // grip limit at the current speed. 1.0 means the stick exactly spans what
+  // the tyres can use; above that you can provoke a slide on purpose.
+  //
+  // This is the whole ball game. With a fixed lock the usable range collapses
+  // as speed rises - at 120 km/h the car had nine times more lock than the
+  // front tyres could take, so a quarter of a stick was already at the limit
+  // and the remaining three quarters did nothing but scrub.
+  lockMargin: 0.975,
+  lockPark: 0.6374,          // rad of lock at a standstill, for parking
+  lockMin: 0.03,          // never so little that the car will not answer
+  // Understeer gradient, rad of extra lock per m/s2 of cornering. The
+  // kinematic angle assumes the tyres point exactly where they go; they do
+  // not, and the gap is what makes a car pull less g at 60 than at 180 for
+  // the same stick.
+  understeerK: 0,
+
+  // How quickly the rack follows the stick, at low and high speed.
+  rackLow: 4.875,
+  rackHigh: 2,
+
+  // Stick shaping: |x|^gamma. Above 1 gives finer control near centre, which
+  // is where a thumb spends its time.
+  inputGamma: 1.2,
+
+  // Damping on yaw rate beyond what the steering is asking for. Takes the
+  // dart out of turn-in without slowing the response down.
+  yawDamp: 1.625,
+
+  // The arcade term: rotate the velocity vector toward where the car is
+  // pointing, a fraction of the difference per second. This is what makes a
+  // mobile racer feel like it goes where you point instead of washing wide.
+  gripAssist: 2.25,
+
+  // Stability control.
+  escYaw: 2.8,
+  escBeta: 2.2,
+  betaThreshold: 0.16,
+};
+
 function engineTorque(rpm) {
   const r = clamp(rpm, 600, LIMITER_RPM);
   const x = r / 1000;
@@ -122,6 +174,13 @@ class Vehicle {
     // Tyre model.
     this.tyreGrip = options.grip || 1.0;
     this.assists = options.assists !== undefined ? options.assists : true;
+    // Driver aids are a different thing from the car's stability control.
+    // Yaw damping and grip assist exist because a player holding a phone
+    // cannot feel the rear going until it has gone. An AI reads the whole
+    // state vector every frame and has never needed telling - and handing it
+    // aids tuned for a thumb actively fights its own controller, which is
+    // what put the field 19% off track when these were first switched on.
+    this.driverAids = options.driverAids !== undefined ? options.driverAids : true;
     this.absEnabled = true;
     this.tractionControl = true;
 
@@ -188,10 +247,25 @@ class Vehicle {
     this.yaw = yaw;
   }
 
-  // Steering lock falls off with speed, both because it is what real racks do
-  // and because full lock at 250 km/h would be undriveable.
+  // Lateral acceleration the tyres can actually deliver at this speed, taking
+  // downforce into account. Used to size the steering lock.
+  gripLimitLateral() {
+    const q = 0.5 * AIR_DENSITY * this.speed * this.speed;
+    const down = q * this.downforceArea;
+    return 1.52 * this.tyreGrip * (GRAVITY + down / this.mass);
+  }
+
+  // Full lock, sized so the stick spans what the front tyres can use rather
+  // than a fixed angle. Past the grip limit more lock only scrubs, so a fixed
+  // rack throws most of the stick's travel away as speed rises - which is
+  // exactly what made the steering feel like an on/off switch.
   maxSteerAngle() {
-    return lerp(0.60, 0.16, clamp(this.speed / 62, 0, 1));
+    const v = Math.max(this.speed, 0.5);
+    const aLat = this.gripLimitLateral();
+    const kinematic = Math.atan(aLat * this.wheelbase / (v * v));
+    const slip = STEER_FEEL.understeerK * aLat;
+    return clamp((kinematic + slip) * STEER_FEEL.lockMargin,
+      STEER_FEEL.lockMin, STEER_FEEL.lockPark);
   }
 
   // Convert a world vector into car-local (x = right, z = forward).
@@ -230,8 +304,12 @@ class Vehicle {
     this.speed = speed;
     // Speed sensitive lock: full lock when parking, much less at racing speed.
     const maxSteer = this.maxSteerAngle();
-    const target = this.steerInput * maxSteer;
-    const rate = lerp(5.0, 2.4, clamp(speed / 55, 0, 1));
+    // Shape the stick before it becomes an angle, so the fine control sits
+    // where a thumb actually lives - near the middle.
+    const shaped = sign(this.steerInput)
+      * Math.pow(Math.min(Math.abs(this.steerInput), 1), STEER_FEEL.inputGamma);
+    const target = shaped * maxSteer;
+    const rate = lerp(STEER_FEEL.rackLow, STEER_FEEL.rackHigh, clamp(speed / 55, 0, 1));
     this.steerAngle = approach(this.steerAngle, target, rate * dt * (1 + Math.abs(target - this.steerAngle) * 2));
 
     // Ackermann: the inside wheel turns more than the outside.
@@ -482,12 +560,34 @@ class Vehicle {
 
       const over = Math.abs(this.yawRate) - Math.abs(allowed) - 0.05;
       if (over > 0) {
-        this.yawRate -= sign(this.yawRate) * Math.min(over, 2.0) * clamp(dt * 2.8, 0, 1);
+        this.yawRate -= sign(this.yawRate) * Math.min(over, 2.0)
+          * clamp(dt * STEER_FEEL.escYaw, 0, 1);
       }
-      const betaExcess = Math.max(0, Math.abs(beta) - 0.14) * sign(beta);
+      const betaExcess = Math.max(0, Math.abs(beta) - STEER_FEEL.betaThreshold) * sign(beta);
       if (betaExcess !== 0) {
-        this.yawRate += betaExcess * 2.2 * clamp(dt * 3.0, 0, 1);
+        this.yawRate += betaExcess * STEER_FEEL.escBeta * clamp(dt * 3.0, 0, 1);
       }
+    }
+
+    // Damp any yaw the steering did not ask for. Turn-in stays as quick as the
+    // rack allows, but the car stops darting past the line and coming back.
+    if (this.driverAids && STEER_FEEL.yawDamp > 0 && !airborne && speed > 3) {
+      const asked = speed * Math.tan(this.steerAngle) / this.wheelbase;
+      this.yawRate -= (this.yawRate - asked) * clamp(dt * STEER_FEEL.yawDamp, 0, 1);
+    }
+
+    // Grip assist: bend the direction of travel back toward where the car is
+    // pointing. Real cars do this through the tyres; on a phone the player
+    // cannot feel the rear leaving, so a hand on the scale here is the
+    // difference between "it goes where I point" and "it washed wide again".
+    if (this.driverAids && STEER_FEEL.gripAssist > 0 && !airborne && speed > 4) {
+      const travel = Math.atan2(this.vel[0], this.vel[2]);
+      const drift = wrapAngle(this.yaw - travel);
+      const turn = drift * clamp(dt * STEER_FEEL.gripAssist, 0, 1);
+      const c = Math.cos(turn), sn = Math.sin(turn);
+      const vx = this.vel[0], vz = this.vel[2];
+      this.vel[0] = vx * c + vz * sn;
+      this.vel[2] = -vx * sn + vz * c;
     }
 
     this.yaw += this.yawRate * dt;

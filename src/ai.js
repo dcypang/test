@@ -122,7 +122,12 @@ class RacingDriver {
     // `kUnderSteer` is this car's measured understeer gradient: the extra lock
     // it needs per unit of lateral acceleration on top of the kinematic angle.
     // Leave it out and the car runs wide through every fast corner.
-    const kUnderSteer = 0.0026;
+    //
+    // It is a property of the car, so it has to be re-measured whenever the car
+    // changes. Resizing the steering rack moved it from 0.0026 to 0.0065, and
+    // until it was re-fitted the field spent a fifth of the lap in the gravel
+    // while every steering-feel number looked fine.
+    const kUnderSteer = 0.0065;
     const ffLead = Math.max(1, Math.round(lookDist * 0.5 / spacing));
     const ffIdx = ((this.index + ffLead) % n + n) % n;
     // splineCurvature is positive turning left; positive steering is right.
@@ -159,7 +164,15 @@ class RacingDriver {
     // maximum is only about a degree.
     const aeroFactor = 1 + 0.5 * AIR_DENSITY * 2.55 * speed * speed / (CAR_SPEC.mass * GRAVITY);
     const aMax = GRAVITY * 1.5 * aeroFactor;
-    const maxUseful = Math.atan(v.wheelbase * aMax / Math.max(speed * speed, 25));
+    // ...and never more than the rack can actually give. The steering lock is
+    // sized against the grip available at the current speed, so asking beyond
+    // it does not just waste the request: the division below saturates, every
+    // feedback term in this controller loses its authority at once, and the
+    // car tracks the line with an on/off switch. That is not a hypothetical -
+    // it put the field 19% off track the first time the rack was resized.
+    const maxUseful = Math.min(
+      Math.atan(v.wheelbase * aMax / Math.max(speed * speed, 25)),
+      v.maxSteerAngle());
 
     // Imperfection is scaled against the lock that is actually usable, so a
     // slower driver wanders a little rather than being thrown off the road.

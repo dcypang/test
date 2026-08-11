@@ -450,6 +450,9 @@ class Game {
         isPlayer,
         livery,
         assists: isPlayer ? this.settings.assists : true,
+        // Yaw damping and grip assist are for a thumb on glass. The AI reads
+        // the whole state vector and they only fight its controller.
+        driverAids: isPlayer,
         name: isPlayer ? 'YOU' : livery.name.toUpperCase(),
         grip: isPlayer ? 1.0 : lerp(0.94, 1.07, this.settings.difficulty) + (i % 3) * 0.008,
       });
@@ -654,6 +657,7 @@ class Game {
             name: 'traffic',
           },
           assists: true,
+          driverAids: false,
         });
         car.isTraffic = true;
         const lane = dir > 0 ? 2.1 : -2.1;

@@ -99,6 +99,38 @@ one road at a time, so a fence beside the main route or a wall behind a house
 will happily cross a side street — and a wall across a side street is a wall
 across a road.
 
+## How the steering feels
+
+The steering is tuned as an arcade mobile racer's, not a simulator's, and the
+targets that define that are written down in `scripts/steerlib.mjs` rather than
+carried around in someone's head. On a phone you have one thumb, no force
+feedback, and no way to feel the rear stepping out until it has gone — so the
+car turns in promptly, answers in proportion to how far you push, holds on
+rather than snaps, and straightens itself when you let go.
+
+The single change that mattered most: **full lock is sized against the grip
+available at the current speed** rather than being a fixed angle that tapers.
+Past the grip limit more steering only scrubs, so a fixed rack throws away most
+of the stick's travel as speed rises. At 120 km/h the car had nine times more
+lock than the front tyres could use, which meant a quarter of a stick was
+already at the limit and the rest did nothing:
+
+| stick | old car | now |
+|---|---|---|
+| 25% | 84% of full turn | 25% |
+| 50% | 98% | 54% |
+| 75% | 104% | 79% |
+| 100% | 100% | 100% |
+
+Two aids sit on top, and they are for the player only — the AI reads the whole
+state vector every frame and they just fight its controller. Yaw damping takes
+the dart out of turn-in; grip assist bends the direction of travel back toward
+where the car is pointing, which is what makes a mobile racer feel like it goes
+where you point instead of washing wide.
+
+    node scripts/steerfeel.mjs    the scorecard for the current car
+    node scripts/steerloop.mjs    ten iterations of tuning against it
+
 ## Controls
 
 | | |
@@ -171,6 +203,8 @@ out. `scripts/simtest.mjs` asserts all of that.
     node scripts/mobile.mjs     # emulate a phone and exercise the touch controls
     node scripts/drivehome.mjs  # race to the flag, then drive the whole way home
     node scripts/polycount.mjs  # triangle budget, scene by scene
+    node scripts/steerfeel.mjs  # steering feel scorecard
+    node scripts/steerloop.mjs  # tune the steering against it
 
 `simtest.mjs` runs the simulation in plain Node with a stubbed WebGL object, so
 handling and AI regressions get caught in seconds without a GPU. It seeds

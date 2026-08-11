@@ -162,7 +162,7 @@ run(`
     var drivers = [];
     for (var i = 0; i < 4; i++) {
       var car = {
-        vehicle: new Vehicle({ assists: true }),
+        vehicle: new Vehicle({ assists: true, driverAids: false }),
         pos: null, yaw: 0, finished: false,
         forward: function () { return [Math.sin(this.vehicle.yaw), 0, Math.cos(this.vehicle.yaw)]; },
       };
