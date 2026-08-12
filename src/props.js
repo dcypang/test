@@ -408,6 +408,49 @@ function buildHouse(mb, rng, opts = {}) {
   }
 }
 
+// A petrol station: canopy on four columns, a pump island under it, and a
+// kiosk behind. Built as one prop so the whole thing can be stamped anywhere.
+function buildPetrolStation(mb, rng) {
+  const w = 15, d = 11, colH = 5.0;
+  // Forecourt.
+  mb.mat([0.30, 0.30, 0.32], 0.85, 0, 0, FLAG_DEFAULT);
+  mb.push(); mb.translate(0, 0.04, 0); mb.box(w + 6, 0.08, d + 8); mb.pop();
+  // Canopy.
+  mb.mat([0.90, 0.90, 0.92], 0.55, 0.05, 0, FLAG_DEFAULT);
+  mb.push(); mb.translate(0, colH, 0); mb.chamferBox(w, 0.75, d, 0.18); mb.pop();
+  mb.mat([0.06, 0.42, 0.24], 0.5, 0.0, 0.35, FLAG_UNLIT);
+  mb.push(); mb.translate(0, colH - 0.05, -d / 2 - 0.06); mb.box(w - 1.5, 0.42, 0.10); mb.pop();
+  mb.push(); mb.translate(0, colH - 0.05, d / 2 + 0.06); mb.box(w - 1.5, 0.42, 0.10); mb.pop();
+  mb.mat([0.78, 0.78, 0.80], 0.45, 0.35, 0, FLAG_DEFAULT);
+  for (const sx of [-1, 1]) {
+    for (const sz of [-1, 1]) {
+      mb.push(); mb.translate(sx * (w / 2 - 1.2), colH / 2, sz * (d / 2 - 1.2));
+      mb.box(0.44, colH, 0.44); mb.pop();
+    }
+  }
+  // Two pump islands.
+  for (const sz of [-1, 1]) {
+    mb.mat([0.55, 0.55, 0.57], 0.8, 0, 0, FLAG_DEFAULT);
+    mb.push(); mb.translate(0, 0.18, sz * 3.0); mb.box(5.0, 0.3, 1.4); mb.pop();
+    for (const sx of [-1.4, 1.4]) {
+      mb.mat([0.86, 0.20, 0.10], 0.45, 0.1, 0, FLAG_DEFAULT);
+      mb.push(); mb.translate(sx, 0.95, sz * 3.0); mb.chamferBox(0.75, 1.35, 0.62, 0.08); mb.pop();
+      mb.mat([0.05, 0.06, 0.08], 0.3, 0, 0.25, FLAG_UNLIT);
+      mb.push(); mb.translate(sx, 1.30, sz * 3.0 - 0.33); mb.box(0.5, 0.34, 0.03); mb.pop();
+    }
+  }
+  // Kiosk behind the forecourt.
+  mb.mat([0.72, 0.71, 0.68], 0.88, 0, 0, FLAG_DEFAULT);
+  mb.push(); mb.translate(0, 1.7, -d / 2 - 5.5); mb.box(10, 3.4, 6); mb.pop();
+  mb.mat([0.10, 0.16, 0.20], 0.12, 0.1, 0.05, FLAG_GLASS);
+  mb.push(); mb.translate(0, 1.85, -d / 2 - 2.46); mb.box(8.4, 2.1, 0.08); mb.pop();
+  // Price totem at the kerb.
+  mb.mat([0.90, 0.90, 0.92], 0.5, 0.1, 0, FLAG_DEFAULT);
+  mb.push(); mb.translate(-w / 2 - 2.4, 3.0, d / 2 + 2.4); mb.box(0.35, 6.0, 0.35); mb.pop();
+  mb.mat([0.06, 0.42, 0.24], 0.4, 0, 0.55, FLAG_UNLIT);
+  mb.push(); mb.translate(-w / 2 - 2.4, 5.4, d / 2 + 2.4); mb.box(2.2, 1.6, 0.16); mb.pop();
+}
+
 function buildGarage(mb, rng, opts = {}) {
   const w = opts.width || 6.2, d = opts.depth || 6.6, h = opts.height || 3.4;
   const wall = opts.wallColor || [0.68, 0.66, 0.60];

@@ -42,6 +42,13 @@
              max(10px, env(safe-area-inset-bottom)) max(10px, env(safe-area-inset-left));
   }
   .touch.hidden, .touch .hidden { display: none; }
+  /* GPS open: the driving controls would only get in the way of the map, but
+     the map button itself has to stay, or there is no way back out of it. */
+  .touch.map-open .touch-steer,
+  .touch.map-open .touch-pedals,
+  .touch.map-open .touch-aux,
+  .touch.map-open .touch-road > :not([data-tap="map"]) { display: none; }
+  .touch.map-open .touch-road { display: grid; }
   .touch * { touch-action: none; }
 
   /* A floating round stick. The base follows the thumb down, so there is no
@@ -4952,6 +4959,49 @@ function buildHouse(mb, rng, opts = {}) {
   }
 }
 
+// A petrol station: canopy on four columns, a pump island under it, and a
+// kiosk behind. Built as one prop so the whole thing can be stamped anywhere.
+function buildPetrolStation(mb, rng) {
+  const w = 15, d = 11, colH = 5.0;
+  // Forecourt.
+  mb.mat([0.30, 0.30, 0.32], 0.85, 0, 0, FLAG_DEFAULT);
+  mb.push(); mb.translate(0, 0.04, 0); mb.box(w + 6, 0.08, d + 8); mb.pop();
+  // Canopy.
+  mb.mat([0.90, 0.90, 0.92], 0.55, 0.05, 0, FLAG_DEFAULT);
+  mb.push(); mb.translate(0, colH, 0); mb.chamferBox(w, 0.75, d, 0.18); mb.pop();
+  mb.mat([0.06, 0.42, 0.24], 0.5, 0.0, 0.35, FLAG_UNLIT);
+  mb.push(); mb.translate(0, colH - 0.05, -d / 2 - 0.06); mb.box(w - 1.5, 0.42, 0.10); mb.pop();
+  mb.push(); mb.translate(0, colH - 0.05, d / 2 + 0.06); mb.box(w - 1.5, 0.42, 0.10); mb.pop();
+  mb.mat([0.78, 0.78, 0.80], 0.45, 0.35, 0, FLAG_DEFAULT);
+  for (const sx of [-1, 1]) {
+    for (const sz of [-1, 1]) {
+      mb.push(); mb.translate(sx * (w / 2 - 1.2), colH / 2, sz * (d / 2 - 1.2));
+      mb.box(0.44, colH, 0.44); mb.pop();
+    }
+  }
+  // Two pump islands.
+  for (const sz of [-1, 1]) {
+    mb.mat([0.55, 0.55, 0.57], 0.8, 0, 0, FLAG_DEFAULT);
+    mb.push(); mb.translate(0, 0.18, sz * 3.0); mb.box(5.0, 0.3, 1.4); mb.pop();
+    for (const sx of [-1.4, 1.4]) {
+      mb.mat([0.86, 0.20, 0.10], 0.45, 0.1, 0, FLAG_DEFAULT);
+      mb.push(); mb.translate(sx, 0.95, sz * 3.0); mb.chamferBox(0.75, 1.35, 0.62, 0.08); mb.pop();
+      mb.mat([0.05, 0.06, 0.08], 0.3, 0, 0.25, FLAG_UNLIT);
+      mb.push(); mb.translate(sx, 1.30, sz * 3.0 - 0.33); mb.box(0.5, 0.34, 0.03); mb.pop();
+    }
+  }
+  // Kiosk behind the forecourt.
+  mb.mat([0.72, 0.71, 0.68], 0.88, 0, 0, FLAG_DEFAULT);
+  mb.push(); mb.translate(0, 1.7, -d / 2 - 5.5); mb.box(10, 3.4, 6); mb.pop();
+  mb.mat([0.10, 0.16, 0.20], 0.12, 0.1, 0.05, FLAG_GLASS);
+  mb.push(); mb.translate(0, 1.85, -d / 2 - 2.46); mb.box(8.4, 2.1, 0.08); mb.pop();
+  // Price totem at the kerb.
+  mb.mat([0.90, 0.90, 0.92], 0.5, 0.1, 0, FLAG_DEFAULT);
+  mb.push(); mb.translate(-w / 2 - 2.4, 3.0, d / 2 + 2.4); mb.box(0.35, 6.0, 0.35); mb.pop();
+  mb.mat([0.06, 0.42, 0.24], 0.4, 0, 0.55, FLAG_UNLIT);
+  mb.push(); mb.translate(-w / 2 - 2.4, 5.4, d / 2 + 2.4); mb.box(2.2, 1.6, 0.16); mb.pop();
+}
+
 function buildGarage(mb, rng, opts = {}) {
   const w = opts.width || 6.2, d = opts.depth || 6.6, h = opts.height || 3.4;
   const wall = opts.wallColor || [0.68, 0.66, 0.60];
@@ -5331,13 +5381,40 @@ function placeProp(target, world, builder, x, z, yaw = 0, yOffset = 0, scale = 1
 }
 
 // A line of colliders, for things that are long rather than round: hedges,
-// fences, the side of a building.
+// fences, a garden wall.
 function placeSolidRun(world, x, z, yaw, length, r, hard = 1) {
   const steps = Math.max(1, Math.round(length / (r * 1.4)));
   const dx = Math.sin(yaw), dz = Math.cos(yaw);
   for (let i = 0; i <= steps; i++) {
     const t = (i / steps - 0.5) * length;
     addSolidClearOfRoads(world, x + dx * t, z + dz * t, r, hard);
+  }
+}
+
+// A building is a box, not a wall. Ringing only the frontage leaves the sides
+// and the back open, so you can drive round and straight in through the
+// kitchen - which is exactly what happened. The footprint is measured from the
+// mesh rather than passed in, so it is right for every building whatever built
+// it and whatever size it came out.
+function placeBuildingSolids(world, builder, x, z, yaw, r = 1.5) {
+  const { min, max } = builder.bounds();
+  const halfW = Math.max(1, (max[0] - min[0]) / 2);
+  const halfD = Math.max(1, (max[2] - min[2]) / 2);
+  const cs = Math.cos(yaw), sn = Math.sin(yaw);
+  // Local (lx, lz) -> world, matching m4.compose's yaw.
+  const put = (lx, lz) => addSolidClearOfRoads(
+    world, x + lx * cs + lz * sn, z - lx * sn + lz * cs, r, 1);
+  const along = (half) => Math.max(1, Math.round((half * 2) / (r * 1.5)));
+  const nw = along(halfW), nd = along(halfD);
+  for (let i = 0; i <= nw; i++) {
+    const lx = -halfW + (i / nw) * halfW * 2;
+    put(lx, -halfD);
+    put(lx, halfD);
+  }
+  for (let i = 1; i < nd; i++) {
+    const lz = -halfD + (i / nd) * halfD * 2;
+    put(-halfW, lz);
+    put(halfW, lz);
   }
 }
 
@@ -5620,6 +5697,7 @@ function buildCircuit(gl) {
     const pp = pitLane.spline.points[pIdx], pn = pitLane.spline.normals[pIdx], pt = pitLane.spline.tangents[pIdx];
     // Garages face back across the pit lane toward the track.
     placeProp(propMB, world, pitMB, pp[0] - pn[0] * 12, pp[2] - pn[2] * 12, Math.atan2(pn[0], pn[2]));
+    placeBuildingSolids(world, pitMB, pp[0] - pn[0] * 12, pp[2] - pn[2] * 12, Math.atan2(pn[0], pn[2]), 1.8);
 
     // Grandstands opposite the pits and at two corners.
     const standMB = new MeshBuilder();
@@ -5959,7 +6037,7 @@ function buildHomeRoute(gl) {
         const shop = lib.shops[Math.floor(rng() * lib.shops.length)];
         const facing = Math.atan2(-side * n[0], -side * n[2]);
         placeProp(propMB, world, shop, bx, bz, facing);
-        placeSolidRun(world, bx, bz, facing + Math.PI / 2, 9.0, 1.5);
+        placeBuildingSolids(world, shop, bx, bz, facing);
       }
     } else if (zone.label === 'Millbrook Rise' && s - lastBuildingS > 23) {
       lastBuildingS = s;
@@ -5970,8 +6048,9 @@ function buildHomeRoute(gl) {
         const d = route.halfWidth + 12 + rnd2(rng, 2, 5);
         const bx = p[0] + n[0] * d * side, bz = p[2] + n[2] * d * side;
         const facing = Math.atan2(-side * n[0], -side * n[2]);
-        placeProp(propMB, world, lib.houses[Math.floor(rng() * lib.houses.length)], bx, bz, facing);
-        placeSolidRun(world, bx, bz, facing + Math.PI / 2, 9.0, 1.5);
+        const house = lib.houses[Math.floor(rng() * lib.houses.length)];
+        placeProp(propMB, world, house, bx, bz, facing);
+        placeBuildingSolids(world, house, bx, bz, facing);
         // Driveway apron and a hedge along the boundary.
         const dx = p[0] + n[0] * (route.halfWidth + 3) * side;
         const dz = p[2] + n[2] * (route.halfWidth + 3) * side;
@@ -6046,7 +6125,7 @@ function buildHomeRoute(gl) {
     const sx = p[0] + n[0] * (bayD + 8.4) * side, sz = p[2] + n[2] * (bayD + 8.4) * side;
     const facing = Math.atan2(-side * n[0], -side * n[2]);
     placeProp(propMB, world, shopMB, sx, sz, facing);
-    placeSolidRun(world, sx, sz, facing + Math.PI / 2, 13.0, 1.5);
+    placeBuildingSolids(world, shopMB, sx, sz, facing);
 
     // A lit sign over the door, so it reads as somewhere open at dusk.
     const signMB = new MeshBuilder();
@@ -6061,6 +6140,99 @@ function buildHomeRoute(gl) {
       along: sp.cumulative[i], name: 'Ashcombe village stores',
     };
   })();
+
+  // --- places you can actually go -------------------------------------------
+  // Everything here is a real building with a real footprint, registered as a
+  // destination so the map can show it and the satnav can be pointed at it.
+  const places = [];
+  const addPlace = (kind, name, x, z, yaw, builder, radius = 9) => {
+    placeProp(propMB, world, builder, x, z, yaw);
+    placeBuildingSolids(world, builder, x, z, yaw, 1.6);
+    places.push({ kind, name, x, z, radius });
+  };
+
+  {
+    const prng = makeRng(9091);
+
+    // Destinations have to be spread out, and not by hand: two pins a street
+    // apart are one pin at map scale, and a map where half the names sit on
+    // top of each other is no better than no map. So each destination is
+    // chosen by scanning candidate frontages in a fixed order and taking the
+    // first that clears everything already placed.
+    // Home and the village shop are fixtures - they are where the route home
+    // put them - but they still go on the map, so the picker has to keep clear
+    // of them as well as of its own placements.
+    const dwEnd = driveway.spline.points[driveway.spline.count - 1];
+    const reserved = [{ x: shopStop.x, z: shopStop.z }, { x: dwEnd[0], z: dwEnd[2] }];
+    const farEnough = (x, z, minD) => {
+      for (const p of places.concat(reserved)) {
+        if (Math.hypot(p.x - x, p.z - z) < minD) return false;
+      }
+      return true;
+    };
+    // Candidate frontages: every street, sampled along its length, both sides.
+    // Walked in a strided order so consecutive picks start far apart instead of
+    // marching along one road.
+    const frontages = [];
+    for (let s = 0; s < cityStreets.length; s++) {
+      const street = cityStreets[s];
+      const sp = street.spline;
+      for (let f = 0; f < 5; f++) {
+        const i = clamp(Math.round(sp.count * (0.15 + f * 0.175)), 4, sp.count - 5);
+        for (const side of [1, -1]) {
+          frontages.push({ street, i, side });
+        }
+      }
+    }
+    const stride = 37; // coprime with the list length, so the walk covers it all
+    let cursor = 0;
+    const nextSpot = (setback, minD) => {
+      for (let n = 0; n < frontages.length; n++) {
+        const c = frontages[(cursor + n * stride) % frontages.length];
+        const sp = c.street.spline;
+        const p = sp.points[c.i], nrm = sp.normals[c.i];
+        const x = p[0] + nrm[0] * (c.street.halfWidth + setback) * c.side;
+        const z = p[2] + nrm[2] * (c.street.halfWidth + setback) * c.side;
+        if (!farEnough(x, z, minD)) continue;
+        cursor = (cursor + (n + 1) * stride) % frontages.length;
+        return { x, z, yaw: Math.atan2(-c.side * nrm[0], -c.side * nrm[2]) };
+      }
+      return null;
+    };
+
+    // Two petrol stations, well apart, so there is always one on your side of
+    // the city.
+    const station = (() => { const mb = new MeshBuilder(); buildPetrolStation(mb, prng); return mb; })();
+    for (const name of ['Ashcombe Services', 'Millbrook Fuel']) {
+      const spot = nextSpot(15, 260);
+      if (spot) addPlace('fuel', name, spot.x, spot.z, spot.yaw + Math.PI, station, 11);
+    }
+
+    // Named shops, one per district rather than five in a row.
+    const shopNames = ['Corner Stores', 'Ashcombe Bakery', 'The Hardware Shop',
+      'Riverside Cafe', 'Market Grocer'];
+    for (const name of shopNames) {
+      const spot = nextSpot(11.5, 150);
+      if (!spot) continue;
+      const mb = new MeshBuilder();
+      buildTownBuilding(mb, prng, { width: rnd2(prng, 12, 16), depth: 11, floors: 2 });
+      addPlace('shop', name, spot.x, spot.z, spot.yaw, mb, 9);
+    }
+
+    // The other house, on a quiet street away from the shops.
+    {
+      const spot = nextSpot(14, 200);
+      if (spot) {
+        const mb = new MeshBuilder();
+        buildHouse(mb, makeRng(707), { width: 13, depth: 11, wallHeight: 5.8 });
+        addPlace('house', 'The other house', spot.x, spot.z, spot.yaw, mb, 9);
+      }
+    }
+  }
+  // The village shop and home itself are places too - they already exist, so
+  // they are registered rather than rebuilt. Home goes on at the end, once the
+  // driveway has been laid out.
+  places.push({ kind: 'shop', name: shopStop.name, x: shopStop.x, z: shopStop.z, radius: 7 });
 
   // --- the gate in ----------------------------------------------------------
   // The other face of the circuit gate. Driving out of the paddock hands over
@@ -6128,8 +6300,9 @@ function buildHomeRoute(gl) {
           const hit = world.query(bx, bz);
           if (hit && Math.abs(hit.lateral) < hit.path.halfWidth + 8.0) continue;
           const facing = Math.atan2(-side * nn[0], -side * nn[2]);
-          placeProp(propMB, world, bigShops[Math.floor(rng2() * bigShops.length)], bx, bz, facing);
-          placeSolidRun(world, bx, bz, facing + Math.PI / 2, 13.0, 1.6);
+          const shop = bigShops[Math.floor(rng2() * bigShops.length)];
+          placeProp(propMB, world, shop, bx, bz, facing);
+          placeBuildingSolids(world, shop, bx, bz, facing, 1.6);
           // Pavement in front of the façade.
           roadMB.mat([0.40, 0.40, 0.41], 0.86, 0, 0, FLAG_DEFAULT);
           roadMB.push();
@@ -6244,12 +6417,12 @@ function buildHomeRoute(gl) {
     buildHouse(houseMB, makeRng(88), { width: 12.5, depth: 10.5, wallHeight: 5.6 });
     const hx = drivewayEnd[0] - 9.5, hz = drivewayEnd[2] + 2.0;
     placeProp(propMB, world, houseMB, hx, hz, garageYaw + Math.PI);
-    placeSolidRun(world, hx, hz, garageYaw + Math.PI / 2, 11.0, 1.6);
+    placeBuildingSolids(world, houseMB, hx, hz, garageYaw + Math.PI, 1.6);
 
     const garageMB = new MeshBuilder();
     buildGarage(garageMB, makeRng(91), { width: 6.4, depth: 7.0, height: 3.5 });
     placeProp(propMB, world, garageMB, drivewayEnd[0], drivewayEnd[2] + 3.4, garageYaw + Math.PI);
-    placeSolidRun(world, drivewayEnd[0], drivewayEnd[2] + 3.4, garageYaw + Math.PI / 2, 5.5, 1.4);
+    placeBuildingSolids(world, garageMB, drivewayEnd[0], drivewayEnd[2] + 3.4, garageYaw + Math.PI, 1.4);
 
     // Hedges either side of the drive, a mailbox at the kerb, a bin out front.
     for (const side of [-1, 1]) {
@@ -6281,6 +6454,8 @@ function buildHomeRoute(gl) {
     }
   }
 
+  places.push({ kind: 'home', name: 'Home', x: drivewayEnd[0], z: drivewayEnd[2] + 1.4, radius: 6 });
+
   // Everything solid has been placed by now, so it can be bucketed for lookup.
   world.indexSolids();
 
@@ -6307,6 +6482,7 @@ function buildHomeRoute(gl) {
     // but it is not part of the route spline, and which way you turn into it is
     // the one instruction the shape of the road cannot supply.
     shopStop,
+    places,
     // Every drivable spline, for the minimap: free roam is unusable if the map
     // only shows the one road you were told to take.
     roadSplines: world.paths.map((p) => p.spline),
@@ -6986,6 +7162,7 @@ class Car {
   setPose(x, z, yaw, world) {
     const y = world ? world.groundHeight(x, z) : 0;
     this.vehicle.setPose(x, z, yaw, y);
+    this.teleported();
   }
 
   // Same, but the car keeps moving. Used where the drive home hands over from
@@ -6993,7 +7170,19 @@ class Car {
   rebase(x, z, yaw, world) {
     const y = world ? world.groundHeight(x, z) : 0;
     this.vehicle.rebase(x, z, yaw, y);
+    this.teleported();
+  }
+
+  // Anything that moves the car without driving it there has to say so. The
+  // scenery sweep traces the segment from last frame's position, and after a
+  // jump that segment crosses the whole map - so the car gets rewound to the
+  // first wall between where it was and where it was put.
+  teleported() {
     this.lastSkid = [null, null, null, null];
+    if (!this.prevPos) this.prevPos = [0, 0, 0];
+    this.prevPos[0] = this.pos[0];
+    this.prevPos[1] = this.pos[1];
+    this.prevPos[2] = this.pos[2];
   }
 
   // Forward vector in world space.
@@ -8424,6 +8613,191 @@ class Hud {
 
   // --- drive home hud -------------------------------------------------------
 
+  // The GPS: the whole road network, every place you can go, where you are and
+  // which way you are pointing. Free roam without this is just getting lost.
+  //
+  // Drawn full screen rather than as a bigger minimap, because the point is to
+  // read street names and pick a destination, and neither works at the size
+  // that fits in a corner.
+  drawMap(state) {
+    const ctx = this.ctx;
+    const W = this.width, H = this.height;
+
+    ctx.save();
+    ctx.fillStyle = 'rgba(8, 10, 14, 0.93)';
+    ctx.fillRect(0, 0, W, H);
+
+    // Fit the network to the screen, leaving room for the header and legend.
+    const top = 56, bottom = H - 44, left = 24, right = W - 24;
+    let minX = Infinity, maxX = -Infinity, minZ = Infinity, maxZ = -Infinity;
+    for (const r of state.roads) {
+      for (const p of r.points) {
+        if (p[0] < minX) minX = p[0];
+        if (p[0] > maxX) maxX = p[0];
+        if (p[2] < minZ) minZ = p[2];
+        if (p[2] > maxZ) maxZ = p[2];
+      }
+    }
+    const scale = Math.min((right - left) / (maxX - minX || 1), (bottom - top) / (maxZ - minZ || 1));
+    const ox = (left + right) / 2 - ((minX + maxX) / 2) * scale;
+    const oy = (top + bottom) / 2 - ((minZ + maxZ) / 2) * scale;
+    const px = (x, z) => [ox + x * scale, oy + z * scale];
+
+    // Roads. Wide ones read as avenues.
+    for (const r of state.roads) {
+      const wide = r.width > 4.6;
+      ctx.strokeStyle = wide ? 'rgba(255,255,255,0.55)' : 'rgba(255,255,255,0.26)';
+      ctx.lineWidth = wide ? 3.4 : 2.0;
+      ctx.lineCap = 'round';
+      ctx.beginPath();
+      for (let i = 0; i < r.points.length; i++) {
+        const [sx, sy] = px(r.points[i][0], r.points[i][2]);
+        if (i === 0) ctx.moveTo(sx, sy); else ctx.lineTo(sx, sy);
+      }
+      ctx.stroke();
+    }
+
+    // The route home, on top and in colour.
+    if (state.routeSpline) {
+      ctx.strokeStyle = 'rgba(90, 200, 255, 0.85)';
+      ctx.lineWidth = 3.0;
+      ctx.setLineDash([9, 6]);
+      ctx.beginPath();
+      for (let i = 0; i < state.routeSpline.count; i++) {
+        const p = state.routeSpline.points[i];
+        const [sx, sy] = px(p[0], p[2]);
+        if (i === 0) ctx.moveTo(sx, sy); else ctx.lineTo(sx, sy);
+      }
+      ctx.stroke();
+      ctx.setLineDash([]);
+    }
+
+    const STYLE = {
+      home: ['#4ade80', 'H'],
+      house: ['#a78bfa', 'H'],
+      fuel: ['#fbbf24', 'F'],
+      shop: ['#38bdf8', 'S'],
+    };
+
+    // Pins first, then labels: a label is allowed to move, a pin is not, so
+    // the pins all have to be on screen before anything can be laid out
+    // around them.
+    const pins = [];
+    for (let i = 0; i < state.places.length; i++) {
+      const place = state.places[i];
+      const [sx, sy] = px(place.x, place.z);
+      const [col, letter] = STYLE[place.kind] || ['#94a3b8', '?'];
+      const chosen = i === state.destinationIndex;
+
+      if (chosen) {
+        ctx.beginPath();
+        ctx.arc(sx, sy, 17, 0, TAU);
+        ctx.strokeStyle = col;
+        ctx.lineWidth = 2;
+        ctx.stroke();
+      }
+      ctx.beginPath();
+      ctx.arc(sx, sy, 9, 0, TAU);
+      ctx.fillStyle = col;
+      ctx.fill();
+      ctx.strokeStyle = 'rgba(0,0,0,0.55)';
+      ctx.lineWidth = 1.5;
+      ctx.stroke();
+      this.text(letter, sx, sy + 4, 11, '#0b1016', 'center', 800);
+      place._sx = sx; place._sy = sy;
+      pins.push({ place, sx, sy, chosen });
+    }
+
+    // Labels, placed greedily against measured boxes. Fixed offsets are not
+    // enough - wherever the map puts two destinations close together, a label
+    // in its preferred spot lands on its neighbour's - so each name tries a
+    // ring of candidate positions and takes the first one that is clear of
+    // every label and pin already down. The chosen destination goes first so
+    // it always gets the spot it wants.
+    const boxes = pins.map((p) => ({ x0: p.sx - 10, y0: p.sy - 10, x1: p.sx + 10, y1: p.sy + 10 }));
+    const hits = (b) => boxes.some((o) =>
+      b.x0 < o.x1 && b.x1 > o.x0 && b.y0 < o.y1 && b.y1 > o.y0);
+    // Straight up and down first, then progressively further out to the side:
+    // vertical alone runs out of room the moment three pins share a junction.
+    const OFFSETS = [[0, -16], [0, 24], [0, -30], [0, 38],
+      [1, -16], [1, 24], [1, 4], [1.7, -16], [1.7, 24], [1.7, 4],
+      [0, -46], [0, 54], [2.5, 4]];
+
+    for (const pin of pins.slice().sort((a, b) => (b.chosen ? 1 : 0) - (a.chosen ? 1 : 0))) {
+      const size = pin.chosen ? 15 : 11;
+      ctx.font = `${pin.chosen ? 800 : 600} ${size}px ${this.font}`;
+      const half = ctx.measureText(pin.place.name).width / 2 + 3;
+      let put = null;
+      for (const [side, dy] of OFFSETS) {
+        // `side` is a multiple of the label's own width, so a long name is
+        // pushed clear of its pin instead of half covering it.
+        for (const sign of side === 0 ? [0] : [1, -1]) {
+          const lx = pin.sx + sign * side * (half + 12), ly = pin.sy + dy;
+          if (lx - half < 8 || lx + half > W - 8 || ly > H - 52 || ly < top + 8) continue;
+          const box = { x0: lx - half, y0: ly - size, x1: lx + half, y1: ly + 4 };
+          if (hits(box)) continue;
+          put = { lx, ly, box, offset: sign !== 0 };
+          break;
+        }
+        if (put) break;
+      }
+      // Nowhere clear: put it in the preferred spot anyway rather than drop the
+      // name, since an unlabelled pin is the worse failure.
+      if (!put) {
+        const lx = pin.sx, ly = pin.sy - 16;
+        put = { lx, ly, box: { x0: lx - half, y0: ly - size, x1: lx + half, y1: ly + 4 } };
+      }
+      boxes.push(put.box);
+      // A name shifted out to the side has to be tied back to its pin, or it
+      // reads as belonging to whatever it happens to be sitting next to.
+      if (put.offset) {
+        ctx.beginPath();
+        ctx.moveTo(pin.sx, pin.sy);
+        ctx.lineTo(put.lx + (put.lx < pin.sx ? half : -half), put.ly - size / 2 + 2);
+        ctx.strokeStyle = 'rgba(255,255,255,0.28)';
+        ctx.lineWidth = 1;
+        ctx.stroke();
+      }
+      this.text(pin.place.name, put.lx, put.ly, size,
+        pin.chosen ? '#fff' : 'rgba(255,255,255,0.62)', 'center', pin.chosen ? 800 : 600);
+    }
+
+    // You, and which way you are facing.
+    const [cx, cy] = px(state.player.pos[0], state.player.pos[2]);
+    ctx.save();
+    ctx.translate(cx, cy);
+    ctx.rotate(-state.player.yaw + Math.PI);
+    ctx.beginPath();
+    ctx.moveTo(0, -13); ctx.lineTo(9, 10); ctx.lineTo(0, 5); ctx.lineTo(-9, 10);
+    ctx.closePath();
+    ctx.fillStyle = '#ff3b30';
+    ctx.fill();
+    ctx.strokeStyle = '#fff';
+    ctx.lineWidth = 1.6;
+    ctx.stroke();
+    ctx.restore();
+
+    // Header and legend.
+    this.text('GPS', 28, 36, 22, '#fff', 'left', 800);
+    const chosen = state.places[state.destinationIndex];
+    this.text(chosen ? `Destination: ${chosen.name}` : 'No destination set',
+      110, 36, 15, chosen ? '#ffd166' : 'rgba(255,255,255,0.55)', 'left', 600);
+
+    const legend = [['#4ade80', 'home'], ['#a78bfa', 'other house'],
+      ['#fbbf24', 'fuel'], ['#38bdf8', 'shops']];
+    let lx = 28;
+    for (const [col, label] of legend) {
+      ctx.beginPath();
+      ctx.arc(lx, H - 24, 6, 0, TAU);
+      ctx.fillStyle = col;
+      ctx.fill();
+      this.text(label, lx + 12, H - 20, 12, 'rgba(255,255,255,0.75)', 'left', 600);
+      lx += 30 + ctx.measureText(label).width;
+    }
+    this.text(state.mapHint, W - 28, H - 20, 12, 'rgba(255,255,255,0.55)', 'right', 600);
+    ctx.restore();
+  }
+
   drawDrive(state) {
     const ctx = this.ctx;
     const W = this.width, H = this.height;
@@ -8646,6 +9020,7 @@ const TOUCH_SVG = {
   lights: '<path d="M5 7h5c4 0 7 2.2 7 5s-3 5-7 5H5z" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/><path d="M19 8.5h3M19 12h3.6M19 15.5h3" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/>',
   left: '<path d="M14 6 8 12l6 6" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>',
   right: '<path d="m10 6 6 6-6 6" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>',
+  map: '<path d="M3 6.5 9 4l6 2.5L21 4v13.5L15 20l-6-2.5L3 20z" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/><path d="M9 4v13.5M15 6.5V20" fill="none" stroke="currentColor" stroke-width="1.5"/>',
 };
 
 class TouchControls {
@@ -8701,6 +9076,7 @@ class TouchControls {
         <button class="touch-btn" data-tap="indicateRight" type="button" title="Indicate right">${icon('right')}</button>
         <button class="touch-btn" data-hold="horn" type="button" title="Horn">${icon('horn')}</button>
         <button class="touch-btn" data-tap="lights" type="button" title="Headlights">${icon('lights')}</button>
+        <button class="touch-btn" data-tap="map" type="button" title="GPS">${icon('map')}</button>
       </div>`;
 
     document.body.appendChild(root);
@@ -8886,8 +9262,21 @@ class TouchControls {
   }
 
   // Merged into the keyboard/gamepad inputs each frame.
+  // With the GPS up, everything but the map button is hidden. The pedals and
+  // stick keep whatever they were last set to, so the state is cleared here
+  // rather than left to drive the car from behind the map.
+  setMapMode(open) {
+    if (!this.root || this.mapMode === open) return;
+    this.mapMode = open;
+    this.root.classList.toggle('map-open', open);
+    if (open) {
+      this.state.throttle = this.state.brake = this.state.steer = 0;
+      this.held.clear();
+    }
+  }
+
   driving(out) {
-    if (!this.enabled) return out;
+    if (!this.enabled || this.mapMode) return out;
     out.throttle = Math.max(out.throttle, this.state.throttle);
     out.brake = Math.max(out.brake, this.state.brake);
     // state.steer already has the inversion baked in; tilt is read live.
@@ -9380,6 +9769,7 @@ class Game {
     this.input.touch = this.touch;
     this.orientationBlocked = false;
     this.watchOrientation();
+    this.bindMapPicking(hudCanvas);
 
     this.state = 'loading';
     this.time = 0;
@@ -9420,6 +9810,29 @@ class Game {
     this.driveState = null;
     this.transition = 0;
     this.hintTimer = 0;
+    this.mapOpen = false;
+    this.destinationIndex = 0;
+    this.chosenPlace = null;
+  }
+
+  // The HUD canvas ignores the pointer so it never swallows a tap meant for the
+  // driving controls underneath. While the map is up it has to catch them.
+  setMapOpen(open) {
+    this.mapOpen = open;
+    if (this.hud && this.hud.canvas) {
+      this.hud.canvas.style.pointerEvents = open ? 'auto' : 'none';
+    }
+  }
+
+  // Point the satnav at one of the places on the map. Home is a place like any
+  // other, so picking it just puts the drive home back the way it was.
+  setDestination(index) {
+    const places = this.scene.places || [];
+    const place = places[index];
+    if (!place) return;
+    this.destinationIndex = index;
+    this.chosenPlace = place.kind === 'home' ? null : place;
+    this.hud.message(place.kind === 'home' ? 'HEADING HOME' : `HEADING FOR ${place.name.toUpperCase()}`, 2.6);
   }
 
   // Which view a session opens in. `C` and the on-screen camera button still
@@ -9427,6 +9840,29 @@ class Game {
   startCameraMode() {
     const i = CAMERA_MODES.indexOf(this.settings.camera);
     return i < 0 ? 0 : i;
+  }
+
+  // On a phone there is no Enter key, so the map is picked by tapping it. The
+  // HUD records where it drew each pin, so the hit test is against exactly what
+  // the player can see.
+  bindMapPicking(canvas) {
+    if (!canvas) return;
+    canvas.addEventListener('pointerdown', (e) => {
+      if (!this.mapOpen) return;
+      const places = (this.scene && this.scene.places) || [];
+      const r = canvas.getBoundingClientRect();
+      const x = e.clientX - r.left, y = e.clientY - r.top;
+      let best = -1, bestD = 46;
+      for (let i = 0; i < places.length; i++) {
+        const p = places[i];
+        if (p._sx === undefined) continue;
+        const d = Math.hypot(p._sx - x, p._sy - y);
+        if (d < bestD) { bestD = d; best = i; }
+      }
+      if (best >= 0) this.setDestination(best);
+      this.setMapOpen(false);
+      e.preventDefault();
+    });
   }
 
   // A driving game in portrait is unreadable, so ask for landscape and stop
@@ -9682,6 +10118,11 @@ class Game {
 
     this.legIndex++;
     const next = this.legs[this.legIndex];
+    // The hint still points at the road just left, so the first frames on the
+    // new one read as miles off route until it catches up.
+    this.driveState.hint = 1;
+    this.driveState.roamHold = 0;
+    this.driveState.roaming = false;
     if (next.scene === this.scene) return;
 
     // --- into the next world --------------------------------------------------
@@ -9698,6 +10139,8 @@ class Game {
     this.spawnTraffic(car.pos);
     this.driveState.hint = 1;
     this.driveState.redLightArmed = new Map();
+    this.driveState.roamHold = 0;
+    this.driveState.roaming = false;
   }
 
   startDriveHome() {
@@ -9741,6 +10184,8 @@ class Game {
       shopped: false,
       shopTimer: 0,
       shopNear: false,
+      roaming: false,
+      roamHold: 0,
     };
     this.camera.mode = this.startCameraMode();
     this.state = 'drive';
@@ -9822,6 +10267,7 @@ class Game {
     // Keep the on-screen controls in step with what the player is doing.
     const driving = this.state === 'race' || this.state === 'drive';
     this.touch.setVisible(this.isTouch && driving && !this.paused, this.state);
+    this.touch.setMapMode(this.mapOpen);
     if (this.checkOrientation) this.checkOrientation();
     this.handleTouchTaps();
     if (this.orientationBlocked) {
@@ -9834,6 +10280,27 @@ class Game {
     }
 
     if (this.input.tapped('KeyC')) this.camera.cycle();
+    // The GPS. Only on the road - there is nowhere to drive to on a circuit.
+    if (this.input.tapped('Tab') && (this.state === 'drive' || this.state === 'arrived')) {
+      this.setMapOpen(!this.mapOpen);
+    }
+    if (this.mapOpen) {
+      const places = (this.scene.places || []);
+      if (places.length) {
+        if (this.input.tapped('BracketRight') || this.input.tapped('ArrowRight')
+          || this.input.tapped('KeyD')) {
+          this.destinationIndex = (this.destinationIndex + 1) % places.length;
+        }
+        if (this.input.tapped('BracketLeft') || this.input.tapped('ArrowLeft')
+          || this.input.tapped('KeyA')) {
+          this.destinationIndex = (this.destinationIndex + places.length - 1) % places.length;
+        }
+        if (this.input.tapped('Enter') || this.input.tapped('Space')) {
+          this.setDestination(this.destinationIndex);
+          this.setMapOpen(false);
+        }
+      }
+    }
     this.camera.lookBack = this.input.held('KeyB');
     if (this.input.tapped('KeyL')) {
       this.player.headlightsOn = !this.player.headlightsOn;
@@ -9876,6 +10343,9 @@ class Game {
             this.paused = !this.paused;
             this.ui.setPaused(this.paused);
           }
+          break;
+        case 'map':
+          if (this.state === 'drive' || this.state === 'arrived') this.setMapOpen(!this.mapOpen);
           break;
         case 'lights':
           this.player.headlightsOn = !this.player.headlightsOn;
@@ -10078,19 +10548,51 @@ class Game {
     }
 
     // Solid scenery: tree trunks, poles, gate piers, walls, hedges.
+    //
+    // Swept, not sampled at the end of the frame. Collisions resolve once per
+    // frame while the car keeps moving between them, so at 216 km/h on a phone
+    // dropping to 20 fps the car covers three metres a frame and simply
+    // appears on the far side of a wall. Tracing the segment it actually
+    // travelled costs one quadratic per candidate and cannot be tunnelled.
     const world = this.scene.world;
     if (world.solids.length) {
       const hits = this._solidHits || (this._solidHits = []);
       for (const car of cars) {
         const v = car.vehicle;
         const f = car.forward();
+        if (!car.prevPos) car.prevPos = [v.pos[0], v.pos[1], v.pos[2]];
+        let stepX = v.pos[0] - car.prevPos[0], stepZ = v.pos[2] - car.prevPos[2];
+        let travelled = Math.hypot(stepX, stepZ);
+        // Belt and braces: no car covers 25 m in a frame under its own power,
+        // so anything that big is a teleport nobody flagged.
+        if (travelled > 25) { stepX = stepZ = 0; travelled = 0; }
         for (const o of [-1.05, 1.05]) {
           const cx = car.pos[0] + f[0] * o, cz = car.pos[2] + f[2] * o;
-          world.querySolids(cx, cz, CAR_SHELL, hits);
+          // Search wide enough to cover everything the sweep passes.
+          world.querySolids(cx, cz, CAR_SHELL + travelled, hits);
           for (const s of hits) {
-            let nx = cx - s.x, nz = cz - s.z;
-            const d = Math.hypot(nx, nz);
             const minD = s.r + CAR_SHELL;
+            let nx = cx - s.x, nz = cz - s.z;
+            let d = Math.hypot(nx, nz);
+
+            // Already clear at the end of the frame, but did the segment pass
+            // through on the way? Solve for the first touch along it.
+            if (d >= minD && travelled > 0.05) {
+              const ox = cx - stepX - s.x, oz = cz - stepZ - s.z;
+              const A = stepX * stepX + stepZ * stepZ;
+              const B = 2 * (ox * stepX + oz * stepZ);
+              const C = ox * ox + oz * oz - minD * minD;
+              const disc = B * B - 4 * A * C;
+              if (C <= 0 || disc < 0) continue;         // started inside, or misses
+              const t = (-B - Math.sqrt(disc)) / (2 * A);
+              if (t < 0 || t > 1) continue;
+              // Rewind the car to the moment of contact.
+              v.pos[0] -= stepX * (1 - t);
+              v.pos[2] -= stepZ * (1 - t);
+              nx = (cx - stepX * (1 - t)) - s.x;
+              nz = (cz - stepZ * (1 - t)) - s.z;
+              d = Math.hypot(nx, nz) || minD;
+            }
             if (d >= minD) continue;
             if (d < 1e-4) { nx = f[0]; nz = f[2]; } else { nx /= d; nz /= d; }
             v.pos[0] += nx * (minD - d);
@@ -10141,7 +10643,14 @@ class Game {
       }
     }
 
-    for (const car of cars) car.vehicle.sanitise();
+    for (const car of cars) {
+      car.vehicle.sanitise();
+      // Remember where the frame ended: the sweep above traces from here.
+      if (!car.prevPos) car.prevPos = [0, 0, 0];
+      car.prevPos[0] = car.pos[0];
+      car.prevPos[1] = car.pos[1];
+      car.prevPos[2] = car.pos[2];
+    }
   }
 
   // --- race -----------------------------------------------------------------
@@ -10399,10 +10908,16 @@ class Game {
     // in, and the distance left along it is not how far you are from home. So
     // while you are away the scoring stops and the satnav switches to pointing
     // at the house.
+    // Debounced. A momentary swing wide on a broad road is not a decision to
+    // go exploring, and crossing onto a new leg leaves the progress hint
+    // pointing at the old road for a frame or two - both used to flip the
+    // satnav into free roam and straight back out again mid-journey.
     const roamNow = Math.abs(prog.lateral) > leg.route.halfWidth + 12;
-    if (roamNow !== ds.roaming) {
-      ds.roaming = roamNow;
-      if (roamNow) this.hud.message('FREE ROAM — the satnav will wait', 2.6);
+    ds.roamHold = clamp((ds.roamHold || 0) + (roamNow ? dt : -dt), 0, 1.2);
+    const roamSettled = ds.roaming ? ds.roamHold > 0.25 : ds.roamHold > 0.8;
+    if (roamSettled !== ds.roaming) {
+      ds.roaming = roamSettled;
+      if (roamSettled) this.hud.message('FREE ROAM — the satnav will wait', 2.6);
       else this.hud.message('BACK ON ROUTE', 1.8);
     }
     const frac = prog.along / leg.length;
@@ -10491,7 +11006,21 @@ class Game {
 
     // Satnav instruction from the shape of the road ahead.
     const nav = this.computeNavigation(sp, prog, remaining, leg, onRoute);
-    if (ds.roaming) {
+    if (this.chosenPlace) {
+      // A destination picked off the map. There is no turn-by-turn to give for
+      // an arbitrary corner of a street grid, so it is a bearing and a
+      // distance, which is what a compass in a car has always been.
+      const t = this.chosenPlace;
+      const d = Math.hypot(t.x - car.pos[0], t.z - car.pos[2]);
+      nav.instruction = t.name;
+      nav.distance = d;
+      nav.angle = wrapAngle(Math.atan2(t.x - car.pos[0], t.z - car.pos[2]) - v.yaw);
+      if (d < t.radius && v.speed < 1.2) {
+        this.hud.message(`ARRIVED AT ${t.name.toUpperCase()}`, 3.0, 'big');
+        if (t.kind === 'fuel') this.hud.message('Tank full', 2.0);
+        this.chosenPlace = null;
+      }
+    } else if (ds.roaming) {
       // No turn-by-turn off the route - there is no route to give turns for.
       // Point at the house and let the player find their own way back.
       const target = leg.last && dest ? dest : { x: sp.points[sp.count - 1][0], z: sp.points[sp.count - 1][2] };
@@ -10785,6 +11314,23 @@ class Game {
     } else if (this.state === 'drive' || this.state === 'arrived') {
       const ds = this.driveState;
       if (!ds || !ds.nav) return;
+      if (this.mapOpen) {
+        this.hud.drawMap({
+          player: this.player,
+          // Straight off the world rather than the scene's road list: the
+          // early legs of the drive home are still in the circuit's world,
+          // which has paths but no town road network to hand.
+          roads: this.scene.world.paths.map((p) => ({
+            points: p.spline.points, width: p.halfWidth,
+          })),
+          routeSpline: (this.legs ? this.leg().route : this.scene.route).spline,
+          places: this.scene.places || [],
+          destinationIndex: this.destinationIndex,
+          mapHint: this.isTouch ? 'tap a place to set it'
+            : 'A / D to choose  ·  Enter to set  ·  Tab to close',
+        });
+        return;
+      }
       this.hud.drawDrive({
         player: this.player,
         cars: [this.player, ...this.traffic.map((t) => t.car)],
@@ -10800,6 +11346,7 @@ class Game {
         shopPrompt: ds.shopNear && !ds.shopped ? 'Stop here to visit the shop' : null,
         roaming: ds.roaming,
         roads: this.scene.roadSplines,
+        heading: this.chosenPlace ? this.chosenPlace.name : null,
         turnAngle: ds.nav.angle,
         rating: ds.rating,
         penaltyText: ds.penaltyText,

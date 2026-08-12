@@ -156,6 +156,58 @@ check('road buttons appear for the drive home', await page.evaluate(
 await page.locator('.touch-btn[data-tap="indicateRight"]').dispatchEvent('pointerdown');
 await pump(0.1);
 check('indicator button works', await page.evaluate(() => window.__game.player.indicator === 1));
+
+// The GPS, by touch: the map button opens it, tapping a pin sets the
+// destination, and the driving controls get out of the way while it is up.
+// Run it on the town leg, which is the one with somewhere to go.
+await page.evaluate(() => {
+  const g = window.__game;
+  while (g.legIndex < g.legs.length - 1) g.advanceLeg();
+});
+await pump(0.2);
+await page.locator('.touch-btn[data-tap="map"]').dispatchEvent('pointerdown');
+await pump(0.3);
+check('map button opens the GPS', await page.evaluate(() => window.__game.mapOpen));
+check('driving controls hide behind the map, map button stays', await page.evaluate(() => {
+  const vis = (sel) => {
+    const el = document.querySelector(sel);
+    return !!el && el.getClientRects().length > 0;
+  };
+  return !vis('.touch-steer') && !vis('.touch-pedals')
+    && vis('.touch-btn[data-tap="map"]');
+}));
+check('the stick cannot drive the car from behind the map', await page.evaluate(() => {
+  const out = { throttle: 1, brake: 0, steer: 0, handbrake: 0 };
+  window.__game.touch.driving(out);
+  return out.steer === 0;
+}));
+await page.screenshot({ path: join(shots, 'm7-gps.png') });
+
+const picked = await page.evaluate(() => {
+  const g = window.__game;
+  // Tap the pin the map itself drew, using the screen position it recorded.
+  const target = (g.scene.places || []).find((p) => p.kind === 'fuel');
+  if (!target || target._sx === undefined) return null;
+  const r = g.hud.canvas.getBoundingClientRect();
+  const sx = r.left + (target._sx / g.hud.width) * r.width;
+  const sy = r.top + (target._sy / g.hud.height) * r.height;
+  g.hud.canvas.dispatchEvent(new PointerEvent('pointerdown', {
+    clientX: sx, clientY: sy, bubbles: true,
+  }));
+  return { want: target.name, got: g.chosenPlace && g.chosenPlace.name };
+});
+check('tapping a pin sets the destination',
+  picked && picked.got === picked.want, picked ? `${picked.got}` : 'no pin drawn');
+await pump(0.2);
+check('picking a destination puts you back behind the wheel', await page.evaluate(
+  () => !window.__game.mapOpen && !document.querySelector('.touch').classList.contains('map-open')));
+
+// And the button toggles it, so the map is not a one-way trip.
+await page.locator('.touch-btn[data-tap="map"]').dispatchEvent('pointerdown');
+await pump(0.2);
+await page.locator('.touch-btn[data-tap="map"]').dispatchEvent('pointerdown');
+await pump(0.2);
+check('map button closes the GPS again', await page.evaluate(() => !window.__game.mapOpen));
 await page.screenshot({ path: join(shots, 'm4-drive.png') });
 
 // --- portrait ---------------------------------------------------------------

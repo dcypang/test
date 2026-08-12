@@ -269,6 +269,7 @@ class Game {
     this.input.touch = this.touch;
     this.orientationBlocked = false;
     this.watchOrientation();
+    this.bindMapPicking(hudCanvas);
 
     this.state = 'loading';
     this.time = 0;
@@ -309,6 +310,29 @@ class Game {
     this.driveState = null;
     this.transition = 0;
     this.hintTimer = 0;
+    this.mapOpen = false;
+    this.destinationIndex = 0;
+    this.chosenPlace = null;
+  }
+
+  // The HUD canvas ignores the pointer so it never swallows a tap meant for the
+  // driving controls underneath. While the map is up it has to catch them.
+  setMapOpen(open) {
+    this.mapOpen = open;
+    if (this.hud && this.hud.canvas) {
+      this.hud.canvas.style.pointerEvents = open ? 'auto' : 'none';
+    }
+  }
+
+  // Point the satnav at one of the places on the map. Home is a place like any
+  // other, so picking it just puts the drive home back the way it was.
+  setDestination(index) {
+    const places = this.scene.places || [];
+    const place = places[index];
+    if (!place) return;
+    this.destinationIndex = index;
+    this.chosenPlace = place.kind === 'home' ? null : place;
+    this.hud.message(place.kind === 'home' ? 'HEADING HOME' : `HEADING FOR ${place.name.toUpperCase()}`, 2.6);
   }
 
   // Which view a session opens in. `C` and the on-screen camera button still
@@ -316,6 +340,29 @@ class Game {
   startCameraMode() {
     const i = CAMERA_MODES.indexOf(this.settings.camera);
     return i < 0 ? 0 : i;
+  }
+
+  // On a phone there is no Enter key, so the map is picked by tapping it. The
+  // HUD records where it drew each pin, so the hit test is against exactly what
+  // the player can see.
+  bindMapPicking(canvas) {
+    if (!canvas) return;
+    canvas.addEventListener('pointerdown', (e) => {
+      if (!this.mapOpen) return;
+      const places = (this.scene && this.scene.places) || [];
+      const r = canvas.getBoundingClientRect();
+      const x = e.clientX - r.left, y = e.clientY - r.top;
+      let best = -1, bestD = 46;
+      for (let i = 0; i < places.length; i++) {
+        const p = places[i];
+        if (p._sx === undefined) continue;
+        const d = Math.hypot(p._sx - x, p._sy - y);
+        if (d < bestD) { bestD = d; best = i; }
+      }
+      if (best >= 0) this.setDestination(best);
+      this.setMapOpen(false);
+      e.preventDefault();
+    });
   }
 
   // A driving game in portrait is unreadable, so ask for landscape and stop
@@ -571,6 +618,11 @@ class Game {
 
     this.legIndex++;
     const next = this.legs[this.legIndex];
+    // The hint still points at the road just left, so the first frames on the
+    // new one read as miles off route until it catches up.
+    this.driveState.hint = 1;
+    this.driveState.roamHold = 0;
+    this.driveState.roaming = false;
     if (next.scene === this.scene) return;
 
     // --- into the next world --------------------------------------------------
@@ -587,6 +639,8 @@ class Game {
     this.spawnTraffic(car.pos);
     this.driveState.hint = 1;
     this.driveState.redLightArmed = new Map();
+    this.driveState.roamHold = 0;
+    this.driveState.roaming = false;
   }
 
   startDriveHome() {
@@ -630,6 +684,8 @@ class Game {
       shopped: false,
       shopTimer: 0,
       shopNear: false,
+      roaming: false,
+      roamHold: 0,
     };
     this.camera.mode = this.startCameraMode();
     this.state = 'drive';
@@ -711,6 +767,7 @@ class Game {
     // Keep the on-screen controls in step with what the player is doing.
     const driving = this.state === 'race' || this.state === 'drive';
     this.touch.setVisible(this.isTouch && driving && !this.paused, this.state);
+    this.touch.setMapMode(this.mapOpen);
     if (this.checkOrientation) this.checkOrientation();
     this.handleTouchTaps();
     if (this.orientationBlocked) {
@@ -723,6 +780,27 @@ class Game {
     }
 
     if (this.input.tapped('KeyC')) this.camera.cycle();
+    // The GPS. Only on the road - there is nowhere to drive to on a circuit.
+    if (this.input.tapped('Tab') && (this.state === 'drive' || this.state === 'arrived')) {
+      this.setMapOpen(!this.mapOpen);
+    }
+    if (this.mapOpen) {
+      const places = (this.scene.places || []);
+      if (places.length) {
+        if (this.input.tapped('BracketRight') || this.input.tapped('ArrowRight')
+          || this.input.tapped('KeyD')) {
+          this.destinationIndex = (this.destinationIndex + 1) % places.length;
+        }
+        if (this.input.tapped('BracketLeft') || this.input.tapped('ArrowLeft')
+          || this.input.tapped('KeyA')) {
+          this.destinationIndex = (this.destinationIndex + places.length - 1) % places.length;
+        }
+        if (this.input.tapped('Enter') || this.input.tapped('Space')) {
+          this.setDestination(this.destinationIndex);
+          this.setMapOpen(false);
+        }
+      }
+    }
     this.camera.lookBack = this.input.held('KeyB');
     if (this.input.tapped('KeyL')) {
       this.player.headlightsOn = !this.player.headlightsOn;
@@ -765,6 +843,9 @@ class Game {
             this.paused = !this.paused;
             this.ui.setPaused(this.paused);
           }
+          break;
+        case 'map':
+          if (this.state === 'drive' || this.state === 'arrived') this.setMapOpen(!this.mapOpen);
           break;
         case 'lights':
           this.player.headlightsOn = !this.player.headlightsOn;
@@ -967,19 +1048,51 @@ class Game {
     }
 
     // Solid scenery: tree trunks, poles, gate piers, walls, hedges.
+    //
+    // Swept, not sampled at the end of the frame. Collisions resolve once per
+    // frame while the car keeps moving between them, so at 216 km/h on a phone
+    // dropping to 20 fps the car covers three metres a frame and simply
+    // appears on the far side of a wall. Tracing the segment it actually
+    // travelled costs one quadratic per candidate and cannot be tunnelled.
     const world = this.scene.world;
     if (world.solids.length) {
       const hits = this._solidHits || (this._solidHits = []);
       for (const car of cars) {
         const v = car.vehicle;
         const f = car.forward();
+        if (!car.prevPos) car.prevPos = [v.pos[0], v.pos[1], v.pos[2]];
+        let stepX = v.pos[0] - car.prevPos[0], stepZ = v.pos[2] - car.prevPos[2];
+        let travelled = Math.hypot(stepX, stepZ);
+        // Belt and braces: no car covers 25 m in a frame under its own power,
+        // so anything that big is a teleport nobody flagged.
+        if (travelled > 25) { stepX = stepZ = 0; travelled = 0; }
         for (const o of [-1.05, 1.05]) {
           const cx = car.pos[0] + f[0] * o, cz = car.pos[2] + f[2] * o;
-          world.querySolids(cx, cz, CAR_SHELL, hits);
+          // Search wide enough to cover everything the sweep passes.
+          world.querySolids(cx, cz, CAR_SHELL + travelled, hits);
           for (const s of hits) {
-            let nx = cx - s.x, nz = cz - s.z;
-            const d = Math.hypot(nx, nz);
             const minD = s.r + CAR_SHELL;
+            let nx = cx - s.x, nz = cz - s.z;
+            let d = Math.hypot(nx, nz);
+
+            // Already clear at the end of the frame, but did the segment pass
+            // through on the way? Solve for the first touch along it.
+            if (d >= minD && travelled > 0.05) {
+              const ox = cx - stepX - s.x, oz = cz - stepZ - s.z;
+              const A = stepX * stepX + stepZ * stepZ;
+              const B = 2 * (ox * stepX + oz * stepZ);
+              const C = ox * ox + oz * oz - minD * minD;
+              const disc = B * B - 4 * A * C;
+              if (C <= 0 || disc < 0) continue;         // started inside, or misses
+              const t = (-B - Math.sqrt(disc)) / (2 * A);
+              if (t < 0 || t > 1) continue;
+              // Rewind the car to the moment of contact.
+              v.pos[0] -= stepX * (1 - t);
+              v.pos[2] -= stepZ * (1 - t);
+              nx = (cx - stepX * (1 - t)) - s.x;
+              nz = (cz - stepZ * (1 - t)) - s.z;
+              d = Math.hypot(nx, nz) || minD;
+            }
             if (d >= minD) continue;
             if (d < 1e-4) { nx = f[0]; nz = f[2]; } else { nx /= d; nz /= d; }
             v.pos[0] += nx * (minD - d);
@@ -1030,7 +1143,14 @@ class Game {
       }
     }
 
-    for (const car of cars) car.vehicle.sanitise();
+    for (const car of cars) {
+      car.vehicle.sanitise();
+      // Remember where the frame ended: the sweep above traces from here.
+      if (!car.prevPos) car.prevPos = [0, 0, 0];
+      car.prevPos[0] = car.pos[0];
+      car.prevPos[1] = car.pos[1];
+      car.prevPos[2] = car.pos[2];
+    }
   }
 
   // --- race -----------------------------------------------------------------
@@ -1288,10 +1408,16 @@ class Game {
     // in, and the distance left along it is not how far you are from home. So
     // while you are away the scoring stops and the satnav switches to pointing
     // at the house.
+    // Debounced. A momentary swing wide on a broad road is not a decision to
+    // go exploring, and crossing onto a new leg leaves the progress hint
+    // pointing at the old road for a frame or two - both used to flip the
+    // satnav into free roam and straight back out again mid-journey.
     const roamNow = Math.abs(prog.lateral) > leg.route.halfWidth + 12;
-    if (roamNow !== ds.roaming) {
-      ds.roaming = roamNow;
-      if (roamNow) this.hud.message('FREE ROAM — the satnav will wait', 2.6);
+    ds.roamHold = clamp((ds.roamHold || 0) + (roamNow ? dt : -dt), 0, 1.2);
+    const roamSettled = ds.roaming ? ds.roamHold > 0.25 : ds.roamHold > 0.8;
+    if (roamSettled !== ds.roaming) {
+      ds.roaming = roamSettled;
+      if (roamSettled) this.hud.message('FREE ROAM — the satnav will wait', 2.6);
       else this.hud.message('BACK ON ROUTE', 1.8);
     }
     const frac = prog.along / leg.length;
@@ -1380,7 +1506,21 @@ class Game {
 
     // Satnav instruction from the shape of the road ahead.
     const nav = this.computeNavigation(sp, prog, remaining, leg, onRoute);
-    if (ds.roaming) {
+    if (this.chosenPlace) {
+      // A destination picked off the map. There is no turn-by-turn to give for
+      // an arbitrary corner of a street grid, so it is a bearing and a
+      // distance, which is what a compass in a car has always been.
+      const t = this.chosenPlace;
+      const d = Math.hypot(t.x - car.pos[0], t.z - car.pos[2]);
+      nav.instruction = t.name;
+      nav.distance = d;
+      nav.angle = wrapAngle(Math.atan2(t.x - car.pos[0], t.z - car.pos[2]) - v.yaw);
+      if (d < t.radius && v.speed < 1.2) {
+        this.hud.message(`ARRIVED AT ${t.name.toUpperCase()}`, 3.0, 'big');
+        if (t.kind === 'fuel') this.hud.message('Tank full', 2.0);
+        this.chosenPlace = null;
+      }
+    } else if (ds.roaming) {
       // No turn-by-turn off the route - there is no route to give turns for.
       // Point at the house and let the player find their own way back.
       const target = leg.last && dest ? dest : { x: sp.points[sp.count - 1][0], z: sp.points[sp.count - 1][2] };
@@ -1674,6 +1814,23 @@ class Game {
     } else if (this.state === 'drive' || this.state === 'arrived') {
       const ds = this.driveState;
       if (!ds || !ds.nav) return;
+      if (this.mapOpen) {
+        this.hud.drawMap({
+          player: this.player,
+          // Straight off the world rather than the scene's road list: the
+          // early legs of the drive home are still in the circuit's world,
+          // which has paths but no town road network to hand.
+          roads: this.scene.world.paths.map((p) => ({
+            points: p.spline.points, width: p.halfWidth,
+          })),
+          routeSpline: (this.legs ? this.leg().route : this.scene.route).spline,
+          places: this.scene.places || [],
+          destinationIndex: this.destinationIndex,
+          mapHint: this.isTouch ? 'tap a place to set it'
+            : 'A / D to choose  ·  Enter to set  ·  Tab to close',
+        });
+        return;
+      }
       this.hud.drawDrive({
         player: this.player,
         cars: [this.player, ...this.traffic.map((t) => t.car)],
@@ -1689,6 +1846,7 @@ class Game {
         shopPrompt: ds.shopNear && !ds.shopped ? 'Stop here to visit the shop' : null,
         roaming: ds.roaming,
         roads: this.scene.roadSplines,
+        heading: this.chosenPlace ? this.chosenPlace.name : null,
         turnAngle: ds.nav.angle,
         rating: ds.rating,
         penaltyText: ds.penaltyText,

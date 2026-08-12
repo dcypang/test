@@ -454,6 +454,191 @@ class Hud {
 
   // --- drive home hud -------------------------------------------------------
 
+  // The GPS: the whole road network, every place you can go, where you are and
+  // which way you are pointing. Free roam without this is just getting lost.
+  //
+  // Drawn full screen rather than as a bigger minimap, because the point is to
+  // read street names and pick a destination, and neither works at the size
+  // that fits in a corner.
+  drawMap(state) {
+    const ctx = this.ctx;
+    const W = this.width, H = this.height;
+
+    ctx.save();
+    ctx.fillStyle = 'rgba(8, 10, 14, 0.93)';
+    ctx.fillRect(0, 0, W, H);
+
+    // Fit the network to the screen, leaving room for the header and legend.
+    const top = 56, bottom = H - 44, left = 24, right = W - 24;
+    let minX = Infinity, maxX = -Infinity, minZ = Infinity, maxZ = -Infinity;
+    for (const r of state.roads) {
+      for (const p of r.points) {
+        if (p[0] < minX) minX = p[0];
+        if (p[0] > maxX) maxX = p[0];
+        if (p[2] < minZ) minZ = p[2];
+        if (p[2] > maxZ) maxZ = p[2];
+      }
+    }
+    const scale = Math.min((right - left) / (maxX - minX || 1), (bottom - top) / (maxZ - minZ || 1));
+    const ox = (left + right) / 2 - ((minX + maxX) / 2) * scale;
+    const oy = (top + bottom) / 2 - ((minZ + maxZ) / 2) * scale;
+    const px = (x, z) => [ox + x * scale, oy + z * scale];
+
+    // Roads. Wide ones read as avenues.
+    for (const r of state.roads) {
+      const wide = r.width > 4.6;
+      ctx.strokeStyle = wide ? 'rgba(255,255,255,0.55)' : 'rgba(255,255,255,0.26)';
+      ctx.lineWidth = wide ? 3.4 : 2.0;
+      ctx.lineCap = 'round';
+      ctx.beginPath();
+      for (let i = 0; i < r.points.length; i++) {
+        const [sx, sy] = px(r.points[i][0], r.points[i][2]);
+        if (i === 0) ctx.moveTo(sx, sy); else ctx.lineTo(sx, sy);
+      }
+      ctx.stroke();
+    }
+
+    // The route home, on top and in colour.
+    if (state.routeSpline) {
+      ctx.strokeStyle = 'rgba(90, 200, 255, 0.85)';
+      ctx.lineWidth = 3.0;
+      ctx.setLineDash([9, 6]);
+      ctx.beginPath();
+      for (let i = 0; i < state.routeSpline.count; i++) {
+        const p = state.routeSpline.points[i];
+        const [sx, sy] = px(p[0], p[2]);
+        if (i === 0) ctx.moveTo(sx, sy); else ctx.lineTo(sx, sy);
+      }
+      ctx.stroke();
+      ctx.setLineDash([]);
+    }
+
+    const STYLE = {
+      home: ['#4ade80', 'H'],
+      house: ['#a78bfa', 'H'],
+      fuel: ['#fbbf24', 'F'],
+      shop: ['#38bdf8', 'S'],
+    };
+
+    // Pins first, then labels: a label is allowed to move, a pin is not, so
+    // the pins all have to be on screen before anything can be laid out
+    // around them.
+    const pins = [];
+    for (let i = 0; i < state.places.length; i++) {
+      const place = state.places[i];
+      const [sx, sy] = px(place.x, place.z);
+      const [col, letter] = STYLE[place.kind] || ['#94a3b8', '?'];
+      const chosen = i === state.destinationIndex;
+
+      if (chosen) {
+        ctx.beginPath();
+        ctx.arc(sx, sy, 17, 0, TAU);
+        ctx.strokeStyle = col;
+        ctx.lineWidth = 2;
+        ctx.stroke();
+      }
+      ctx.beginPath();
+      ctx.arc(sx, sy, 9, 0, TAU);
+      ctx.fillStyle = col;
+      ctx.fill();
+      ctx.strokeStyle = 'rgba(0,0,0,0.55)';
+      ctx.lineWidth = 1.5;
+      ctx.stroke();
+      this.text(letter, sx, sy + 4, 11, '#0b1016', 'center', 800);
+      place._sx = sx; place._sy = sy;
+      pins.push({ place, sx, sy, chosen });
+    }
+
+    // Labels, placed greedily against measured boxes. Fixed offsets are not
+    // enough - wherever the map puts two destinations close together, a label
+    // in its preferred spot lands on its neighbour's - so each name tries a
+    // ring of candidate positions and takes the first one that is clear of
+    // every label and pin already down. The chosen destination goes first so
+    // it always gets the spot it wants.
+    const boxes = pins.map((p) => ({ x0: p.sx - 10, y0: p.sy - 10, x1: p.sx + 10, y1: p.sy + 10 }));
+    const hits = (b) => boxes.some((o) =>
+      b.x0 < o.x1 && b.x1 > o.x0 && b.y0 < o.y1 && b.y1 > o.y0);
+    // Straight up and down first, then progressively further out to the side:
+    // vertical alone runs out of room the moment three pins share a junction.
+    const OFFSETS = [[0, -16], [0, 24], [0, -30], [0, 38],
+      [1, -16], [1, 24], [1, 4], [1.7, -16], [1.7, 24], [1.7, 4],
+      [0, -46], [0, 54], [2.5, 4]];
+
+    for (const pin of pins.slice().sort((a, b) => (b.chosen ? 1 : 0) - (a.chosen ? 1 : 0))) {
+      const size = pin.chosen ? 15 : 11;
+      ctx.font = `${pin.chosen ? 800 : 600} ${size}px ${this.font}`;
+      const half = ctx.measureText(pin.place.name).width / 2 + 3;
+      let put = null;
+      for (const [side, dy] of OFFSETS) {
+        // `side` is a multiple of the label's own width, so a long name is
+        // pushed clear of its pin instead of half covering it.
+        for (const sign of side === 0 ? [0] : [1, -1]) {
+          const lx = pin.sx + sign * side * (half + 12), ly = pin.sy + dy;
+          if (lx - half < 8 || lx + half > W - 8 || ly > H - 52 || ly < top + 8) continue;
+          const box = { x0: lx - half, y0: ly - size, x1: lx + half, y1: ly + 4 };
+          if (hits(box)) continue;
+          put = { lx, ly, box, offset: sign !== 0 };
+          break;
+        }
+        if (put) break;
+      }
+      // Nowhere clear: put it in the preferred spot anyway rather than drop the
+      // name, since an unlabelled pin is the worse failure.
+      if (!put) {
+        const lx = pin.sx, ly = pin.sy - 16;
+        put = { lx, ly, box: { x0: lx - half, y0: ly - size, x1: lx + half, y1: ly + 4 } };
+      }
+      boxes.push(put.box);
+      // A name shifted out to the side has to be tied back to its pin, or it
+      // reads as belonging to whatever it happens to be sitting next to.
+      if (put.offset) {
+        ctx.beginPath();
+        ctx.moveTo(pin.sx, pin.sy);
+        ctx.lineTo(put.lx + (put.lx < pin.sx ? half : -half), put.ly - size / 2 + 2);
+        ctx.strokeStyle = 'rgba(255,255,255,0.28)';
+        ctx.lineWidth = 1;
+        ctx.stroke();
+      }
+      this.text(pin.place.name, put.lx, put.ly, size,
+        pin.chosen ? '#fff' : 'rgba(255,255,255,0.62)', 'center', pin.chosen ? 800 : 600);
+    }
+
+    // You, and which way you are facing.
+    const [cx, cy] = px(state.player.pos[0], state.player.pos[2]);
+    ctx.save();
+    ctx.translate(cx, cy);
+    ctx.rotate(-state.player.yaw + Math.PI);
+    ctx.beginPath();
+    ctx.moveTo(0, -13); ctx.lineTo(9, 10); ctx.lineTo(0, 5); ctx.lineTo(-9, 10);
+    ctx.closePath();
+    ctx.fillStyle = '#ff3b30';
+    ctx.fill();
+    ctx.strokeStyle = '#fff';
+    ctx.lineWidth = 1.6;
+    ctx.stroke();
+    ctx.restore();
+
+    // Header and legend.
+    this.text('GPS', 28, 36, 22, '#fff', 'left', 800);
+    const chosen = state.places[state.destinationIndex];
+    this.text(chosen ? `Destination: ${chosen.name}` : 'No destination set',
+      110, 36, 15, chosen ? '#ffd166' : 'rgba(255,255,255,0.55)', 'left', 600);
+
+    const legend = [['#4ade80', 'home'], ['#a78bfa', 'other house'],
+      ['#fbbf24', 'fuel'], ['#38bdf8', 'shops']];
+    let lx = 28;
+    for (const [col, label] of legend) {
+      ctx.beginPath();
+      ctx.arc(lx, H - 24, 6, 0, TAU);
+      ctx.fillStyle = col;
+      ctx.fill();
+      this.text(label, lx + 12, H - 20, 12, 'rgba(255,255,255,0.75)', 'left', 600);
+      lx += 30 + ctx.measureText(label).width;
+    }
+    this.text(state.mapHint, W - 28, H - 20, 12, 'rgba(255,255,255,0.55)', 'right', 600);
+    ctx.restore();
+  }
+
   drawDrive(state) {
     const ctx = this.ctx;
     const W = this.width, H = this.height;

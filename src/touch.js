@@ -28,6 +28,7 @@ const TOUCH_SVG = {
   lights: '<path d="M5 7h5c4 0 7 2.2 7 5s-3 5-7 5H5z" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/><path d="M19 8.5h3M19 12h3.6M19 15.5h3" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/>',
   left: '<path d="M14 6 8 12l6 6" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>',
   right: '<path d="m10 6 6 6-6 6" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>',
+  map: '<path d="M3 6.5 9 4l6 2.5L21 4v13.5L15 20l-6-2.5L3 20z" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/><path d="M9 4v13.5M15 6.5V20" fill="none" stroke="currentColor" stroke-width="1.5"/>',
 };
 
 class TouchControls {
@@ -83,6 +84,7 @@ class TouchControls {
         <button class="touch-btn" data-tap="indicateRight" type="button" title="Indicate right">${icon('right')}</button>
         <button class="touch-btn" data-hold="horn" type="button" title="Horn">${icon('horn')}</button>
         <button class="touch-btn" data-tap="lights" type="button" title="Headlights">${icon('lights')}</button>
+        <button class="touch-btn" data-tap="map" type="button" title="GPS">${icon('map')}</button>
       </div>`;
 
     document.body.appendChild(root);
@@ -268,8 +270,21 @@ class TouchControls {
   }
 
   // Merged into the keyboard/gamepad inputs each frame.
+  // With the GPS up, everything but the map button is hidden. The pedals and
+  // stick keep whatever they were last set to, so the state is cleared here
+  // rather than left to drive the car from behind the map.
+  setMapMode(open) {
+    if (!this.root || this.mapMode === open) return;
+    this.mapMode = open;
+    this.root.classList.toggle('map-open', open);
+    if (open) {
+      this.state.throttle = this.state.brake = this.state.steer = 0;
+      this.held.clear();
+    }
+  }
+
   driving(out) {
-    if (!this.enabled) return out;
+    if (!this.enabled || this.mapMode) return out;
     out.throttle = Math.max(out.throttle, this.state.throttle);
     out.brake = Math.max(out.brake, this.state.brake);
     // state.steer already has the inversion baked in; tilt is read live.

@@ -354,6 +354,67 @@ check('rejoining the route resumes the drive home',
   `${roam.rejoinedRemaining} m to go`);
 check('the minimap gets the whole network', roam.mapRoads >= 20, `${roam.mapRoads} splines`);
 
+// --- the GPS -----------------------------------------------------------------
+const gps = await page.evaluate(() => {
+  const g = window.__game;
+  g.startDriveHome();
+  while (g.legIndex < g.legs.length - 1) g.advanceLeg();
+  const places = g.scene.places || [];
+  const kinds = {};
+  for (const p of places) kinds[p.kind] = (kinds[p.kind] || 0) + 1;
+
+  // Nothing on the map may sit on top of anything else on the map, or the
+  // pins merge and the names are unreadable.
+  let closest = Infinity;
+  for (let i = 0; i < places.length; i++) {
+    for (let j = i + 1; j < places.length; j++) {
+      closest = Math.min(closest, Math.hypot(places[i].x - places[j].x, places[i].z - places[j].z));
+    }
+  }
+
+  // Open the map, pick the first fuel station, drive to it.
+  g.setMapOpen(true);
+  const opened = g.mapOpen;
+  g.update(1 / 60);           // must render the map without throwing
+  const fuelIndex = places.findIndex((p) => p.kind === 'fuel');
+  g.setDestination(fuelIndex);
+  const targeted = g.chosenPlace && g.chosenPlace.name;
+  g.setMapOpen(false);
+
+  // Park on the forecourt and stop: that is what arriving means.
+  const t = places[fuelIndex];
+  g.player.setPose(t.x - 4, t.z, 0, g.scene.world);
+  g.input.driving = () => ({ throttle: 0, brake: 1, steer: 0, handbrake: 1, shiftUp: false, shiftDown: false });
+  let arrived = false;
+  for (let k = 0; k < 60 * 3; k++) {
+    g.update(1 / 60);
+    if (!g.chosenPlace) { arrived = true; break; }
+  }
+
+  // Home is on the map too, and picking it hands back to the route home.
+  const homeIndex = places.findIndex((p) => p.kind === 'home');
+  g.setDestination(homeIndex);
+  return {
+    count: places.length, kinds, closest: Math.round(closest),
+    opened, targeted, arrived,
+    homeIsRoute: g.chosenPlace === null && homeIndex >= 0,
+    named: places.every((p) => p.name && p.radius > 0),
+  };
+});
+console.log('   ', JSON.stringify(gps));
+check('the map lists somewhere to go', gps.count >= 8, `${gps.count} destinations`);
+check('the map shows the petrol stations', (gps.kinds.fuel || 0) >= 2, `${gps.kinds.fuel} stations`);
+check('the map shows the shops', (gps.kinds.shop || 0) >= 5, `${gps.kinds.shop} shops`);
+check('the map shows home and the other house',
+  gps.kinds.home === 1 && gps.kinds.house === 1);
+check('every destination is named and has an arrival radius', gps.named);
+check('destinations are spread out, not stacked', gps.closest >= 100, `${gps.closest} m apart`);
+check('the map opens and draws', gps.opened);
+check('picking a destination points the satnav at it',
+  gps.targeted === 'Ashcombe Services', gps.targeted);
+check('driving there and stopping registers as arriving', gps.arrived);
+check('choosing home hands back to the route home', gps.homeIsRoute);
+
 console.log('\n--- console errors ---');
 console.log(errors.length ? errors.slice(0, 5).join('\n') : '(none)');
 const failed = checks.filter((c) => !c).length;

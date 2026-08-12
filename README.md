@@ -50,6 +50,26 @@ Come back to the route and the turn-by-turn picks up where it left off.
 The minimap draws the whole network, not just the route. Free roam without a map
 is just getting lost.
 
+## The GPS
+
+`Tab` — or the map button on a phone — puts the whole road network on screen,
+with every destination on it: **home**, the **other house** across town, the
+five named **shops**, the village stores, and both **petrol stations**. Pick one
+with `A` / `D` and `Enter`, or by tapping the pin, and the satnav switches from
+turn-by-turn to a bearing and a distance — there is no sensible instruction to
+give for an arbitrary corner of a street grid, and a compass is what a car has
+always had. Stop inside the arrival radius and it says so; stop on a forecourt
+and the tank is full. Choosing home puts the drive back the way it was.
+
+Destinations are not placed by hand. Each one scans candidate frontages around
+the grid and takes the first that clears everything already placed, home and the
+village shop included, so nothing lands within 150 m of anything else. The
+labels are then laid out against measured boxes: each name tries a ring of
+positions and takes the first clear of every pin and label already down, with a
+leader line back to its pin when it had to move sideways. Two pins a street
+apart are one pin at map scale, and a map where half the names sit on top of
+each other is no better than no map.
+
 Two ways to get there: take the chequered flag and press **Drive home** on the
 results screen, or **Skip to the drive home** on the title screen.
 
@@ -96,6 +116,11 @@ lift off to straighten up.
 If pushing right feels like it should turn left, **Stick direction → Inverted**
 on the title screen flips it.
 
+On the drive home the right-hand column adds indicators, horn, lights and the
+GPS. Opening the map clears the stick and pedals out of the way but keeps the
+map button on screen — a map you cannot close is a map that has taken the car
+off you — and picking a destination closes it for you.
+
 Touch devices also get a lighter render preset automatically — no shadows, no
 particles, capped resolution.
 
@@ -103,9 +128,21 @@ particles, capped resolution.
 
 The world is solid. Tree trunks, lamp posts, sign posts, traffic light poles,
 gate piers, hedges and the walls of every building carry a collider — about
-1,950 of them per scene, bucketed into a grid so testing them all every frame
+13,600 of them in the town, bucketed into a grid so testing them all every frame
 costs nothing. Hedges and fences are soft and mostly just drag at you; a lamp
 post is not.
+
+A building is not one collider at its centre. Each one is ringed with colliders
+around its actual footprint, taken from the mesh bounds and rotated with it, so
+a house is solid from every side rather than only head-on — driving at a shop
+from the side used to put you through the wall and out the back.
+
+Contact is swept, not sampled. At 270 km/h and a bad frame rate the car moves
+several metres between updates, which is enough to pass clean through a lamp
+post if you only test where it ended up; instead the step is solved for first
+contact against each collider — a quadratic in how far along the step the
+swept circle first touches — and the car is put back to that point. Tested
+clean up to 271 km/h at 10 fps.
 
 Car-to-car contact is mass weighted with a tangential friction term, and the
 yaw it imparts comes from the real lever arm, so a corner hit spins you and a
@@ -177,6 +214,7 @@ where you point instead of washing wide.
 | `L` | headlights |
 | `Z` / `X` | indicators |
 | `H` | horn |
+| `Tab` | GPS — `A` / `D` to choose a destination, `Enter` to set it |
 | `R` | recover to the road |
 | `P` / `Esc` | pause |
 | `M` | mute |

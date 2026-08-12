@@ -50,13 +50,40 @@ function placeProp(target, world, builder, x, z, yaw = 0, yOffset = 0, scale = 1
 }
 
 // A line of colliders, for things that are long rather than round: hedges,
-// fences, the side of a building.
+// fences, a garden wall.
 function placeSolidRun(world, x, z, yaw, length, r, hard = 1) {
   const steps = Math.max(1, Math.round(length / (r * 1.4)));
   const dx = Math.sin(yaw), dz = Math.cos(yaw);
   for (let i = 0; i <= steps; i++) {
     const t = (i / steps - 0.5) * length;
     addSolidClearOfRoads(world, x + dx * t, z + dz * t, r, hard);
+  }
+}
+
+// A building is a box, not a wall. Ringing only the frontage leaves the sides
+// and the back open, so you can drive round and straight in through the
+// kitchen - which is exactly what happened. The footprint is measured from the
+// mesh rather than passed in, so it is right for every building whatever built
+// it and whatever size it came out.
+function placeBuildingSolids(world, builder, x, z, yaw, r = 1.5) {
+  const { min, max } = builder.bounds();
+  const halfW = Math.max(1, (max[0] - min[0]) / 2);
+  const halfD = Math.max(1, (max[2] - min[2]) / 2);
+  const cs = Math.cos(yaw), sn = Math.sin(yaw);
+  // Local (lx, lz) -> world, matching m4.compose's yaw.
+  const put = (lx, lz) => addSolidClearOfRoads(
+    world, x + lx * cs + lz * sn, z - lx * sn + lz * cs, r, 1);
+  const along = (half) => Math.max(1, Math.round((half * 2) / (r * 1.5)));
+  const nw = along(halfW), nd = along(halfD);
+  for (let i = 0; i <= nw; i++) {
+    const lx = -halfW + (i / nw) * halfW * 2;
+    put(lx, -halfD);
+    put(lx, halfD);
+  }
+  for (let i = 1; i < nd; i++) {
+    const lz = -halfD + (i / nd) * halfD * 2;
+    put(-halfW, lz);
+    put(halfW, lz);
   }
 }
 
@@ -339,6 +366,7 @@ function buildCircuit(gl) {
     const pp = pitLane.spline.points[pIdx], pn = pitLane.spline.normals[pIdx], pt = pitLane.spline.tangents[pIdx];
     // Garages face back across the pit lane toward the track.
     placeProp(propMB, world, pitMB, pp[0] - pn[0] * 12, pp[2] - pn[2] * 12, Math.atan2(pn[0], pn[2]));
+    placeBuildingSolids(world, pitMB, pp[0] - pn[0] * 12, pp[2] - pn[2] * 12, Math.atan2(pn[0], pn[2]), 1.8);
 
     // Grandstands opposite the pits and at two corners.
     const standMB = new MeshBuilder();
@@ -678,7 +706,7 @@ function buildHomeRoute(gl) {
         const shop = lib.shops[Math.floor(rng() * lib.shops.length)];
         const facing = Math.atan2(-side * n[0], -side * n[2]);
         placeProp(propMB, world, shop, bx, bz, facing);
-        placeSolidRun(world, bx, bz, facing + Math.PI / 2, 9.0, 1.5);
+        placeBuildingSolids(world, shop, bx, bz, facing);
       }
     } else if (zone.label === 'Millbrook Rise' && s - lastBuildingS > 23) {
       lastBuildingS = s;
@@ -689,8 +717,9 @@ function buildHomeRoute(gl) {
         const d = route.halfWidth + 12 + rnd2(rng, 2, 5);
         const bx = p[0] + n[0] * d * side, bz = p[2] + n[2] * d * side;
         const facing = Math.atan2(-side * n[0], -side * n[2]);
-        placeProp(propMB, world, lib.houses[Math.floor(rng() * lib.houses.length)], bx, bz, facing);
-        placeSolidRun(world, bx, bz, facing + Math.PI / 2, 9.0, 1.5);
+        const house = lib.houses[Math.floor(rng() * lib.houses.length)];
+        placeProp(propMB, world, house, bx, bz, facing);
+        placeBuildingSolids(world, house, bx, bz, facing);
         // Driveway apron and a hedge along the boundary.
         const dx = p[0] + n[0] * (route.halfWidth + 3) * side;
         const dz = p[2] + n[2] * (route.halfWidth + 3) * side;
@@ -765,7 +794,7 @@ function buildHomeRoute(gl) {
     const sx = p[0] + n[0] * (bayD + 8.4) * side, sz = p[2] + n[2] * (bayD + 8.4) * side;
     const facing = Math.atan2(-side * n[0], -side * n[2]);
     placeProp(propMB, world, shopMB, sx, sz, facing);
-    placeSolidRun(world, sx, sz, facing + Math.PI / 2, 13.0, 1.5);
+    placeBuildingSolids(world, shopMB, sx, sz, facing);
 
     // A lit sign over the door, so it reads as somewhere open at dusk.
     const signMB = new MeshBuilder();
@@ -780,6 +809,99 @@ function buildHomeRoute(gl) {
       along: sp.cumulative[i], name: 'Ashcombe village stores',
     };
   })();
+
+  // --- places you can actually go -------------------------------------------
+  // Everything here is a real building with a real footprint, registered as a
+  // destination so the map can show it and the satnav can be pointed at it.
+  const places = [];
+  const addPlace = (kind, name, x, z, yaw, builder, radius = 9) => {
+    placeProp(propMB, world, builder, x, z, yaw);
+    placeBuildingSolids(world, builder, x, z, yaw, 1.6);
+    places.push({ kind, name, x, z, radius });
+  };
+
+  {
+    const prng = makeRng(9091);
+
+    // Destinations have to be spread out, and not by hand: two pins a street
+    // apart are one pin at map scale, and a map where half the names sit on
+    // top of each other is no better than no map. So each destination is
+    // chosen by scanning candidate frontages in a fixed order and taking the
+    // first that clears everything already placed.
+    // Home and the village shop are fixtures - they are where the route home
+    // put them - but they still go on the map, so the picker has to keep clear
+    // of them as well as of its own placements.
+    const dwEnd = driveway.spline.points[driveway.spline.count - 1];
+    const reserved = [{ x: shopStop.x, z: shopStop.z }, { x: dwEnd[0], z: dwEnd[2] }];
+    const farEnough = (x, z, minD) => {
+      for (const p of places.concat(reserved)) {
+        if (Math.hypot(p.x - x, p.z - z) < minD) return false;
+      }
+      return true;
+    };
+    // Candidate frontages: every street, sampled along its length, both sides.
+    // Walked in a strided order so consecutive picks start far apart instead of
+    // marching along one road.
+    const frontages = [];
+    for (let s = 0; s < cityStreets.length; s++) {
+      const street = cityStreets[s];
+      const sp = street.spline;
+      for (let f = 0; f < 5; f++) {
+        const i = clamp(Math.round(sp.count * (0.15 + f * 0.175)), 4, sp.count - 5);
+        for (const side of [1, -1]) {
+          frontages.push({ street, i, side });
+        }
+      }
+    }
+    const stride = 37; // coprime with the list length, so the walk covers it all
+    let cursor = 0;
+    const nextSpot = (setback, minD) => {
+      for (let n = 0; n < frontages.length; n++) {
+        const c = frontages[(cursor + n * stride) % frontages.length];
+        const sp = c.street.spline;
+        const p = sp.points[c.i], nrm = sp.normals[c.i];
+        const x = p[0] + nrm[0] * (c.street.halfWidth + setback) * c.side;
+        const z = p[2] + nrm[2] * (c.street.halfWidth + setback) * c.side;
+        if (!farEnough(x, z, minD)) continue;
+        cursor = (cursor + (n + 1) * stride) % frontages.length;
+        return { x, z, yaw: Math.atan2(-c.side * nrm[0], -c.side * nrm[2]) };
+      }
+      return null;
+    };
+
+    // Two petrol stations, well apart, so there is always one on your side of
+    // the city.
+    const station = (() => { const mb = new MeshBuilder(); buildPetrolStation(mb, prng); return mb; })();
+    for (const name of ['Ashcombe Services', 'Millbrook Fuel']) {
+      const spot = nextSpot(15, 260);
+      if (spot) addPlace('fuel', name, spot.x, spot.z, spot.yaw + Math.PI, station, 11);
+    }
+
+    // Named shops, one per district rather than five in a row.
+    const shopNames = ['Corner Stores', 'Ashcombe Bakery', 'The Hardware Shop',
+      'Riverside Cafe', 'Market Grocer'];
+    for (const name of shopNames) {
+      const spot = nextSpot(11.5, 150);
+      if (!spot) continue;
+      const mb = new MeshBuilder();
+      buildTownBuilding(mb, prng, { width: rnd2(prng, 12, 16), depth: 11, floors: 2 });
+      addPlace('shop', name, spot.x, spot.z, spot.yaw, mb, 9);
+    }
+
+    // The other house, on a quiet street away from the shops.
+    {
+      const spot = nextSpot(14, 200);
+      if (spot) {
+        const mb = new MeshBuilder();
+        buildHouse(mb, makeRng(707), { width: 13, depth: 11, wallHeight: 5.8 });
+        addPlace('house', 'The other house', spot.x, spot.z, spot.yaw, mb, 9);
+      }
+    }
+  }
+  // The village shop and home itself are places too - they already exist, so
+  // they are registered rather than rebuilt. Home goes on at the end, once the
+  // driveway has been laid out.
+  places.push({ kind: 'shop', name: shopStop.name, x: shopStop.x, z: shopStop.z, radius: 7 });
 
   // --- the gate in ----------------------------------------------------------
   // The other face of the circuit gate. Driving out of the paddock hands over
@@ -847,8 +969,9 @@ function buildHomeRoute(gl) {
           const hit = world.query(bx, bz);
           if (hit && Math.abs(hit.lateral) < hit.path.halfWidth + 8.0) continue;
           const facing = Math.atan2(-side * nn[0], -side * nn[2]);
-          placeProp(propMB, world, bigShops[Math.floor(rng2() * bigShops.length)], bx, bz, facing);
-          placeSolidRun(world, bx, bz, facing + Math.PI / 2, 13.0, 1.6);
+          const shop = bigShops[Math.floor(rng2() * bigShops.length)];
+          placeProp(propMB, world, shop, bx, bz, facing);
+          placeBuildingSolids(world, shop, bx, bz, facing, 1.6);
           // Pavement in front of the façade.
           roadMB.mat([0.40, 0.40, 0.41], 0.86, 0, 0, FLAG_DEFAULT);
           roadMB.push();
@@ -963,12 +1086,12 @@ function buildHomeRoute(gl) {
     buildHouse(houseMB, makeRng(88), { width: 12.5, depth: 10.5, wallHeight: 5.6 });
     const hx = drivewayEnd[0] - 9.5, hz = drivewayEnd[2] + 2.0;
     placeProp(propMB, world, houseMB, hx, hz, garageYaw + Math.PI);
-    placeSolidRun(world, hx, hz, garageYaw + Math.PI / 2, 11.0, 1.6);
+    placeBuildingSolids(world, houseMB, hx, hz, garageYaw + Math.PI, 1.6);
 
     const garageMB = new MeshBuilder();
     buildGarage(garageMB, makeRng(91), { width: 6.4, depth: 7.0, height: 3.5 });
     placeProp(propMB, world, garageMB, drivewayEnd[0], drivewayEnd[2] + 3.4, garageYaw + Math.PI);
-    placeSolidRun(world, drivewayEnd[0], drivewayEnd[2] + 3.4, garageYaw + Math.PI / 2, 5.5, 1.4);
+    placeBuildingSolids(world, garageMB, drivewayEnd[0], drivewayEnd[2] + 3.4, garageYaw + Math.PI, 1.4);
 
     // Hedges either side of the drive, a mailbox at the kerb, a bin out front.
     for (const side of [-1, 1]) {
@@ -1000,6 +1123,8 @@ function buildHomeRoute(gl) {
     }
   }
 
+  places.push({ kind: 'home', name: 'Home', x: drivewayEnd[0], z: drivewayEnd[2] + 1.4, radius: 6 });
+
   // Everything solid has been placed by now, so it can be bucketed for lookup.
   world.indexSolids();
 
@@ -1026,6 +1151,7 @@ function buildHomeRoute(gl) {
     // but it is not part of the route spline, and which way you turn into it is
     // the one instruction the shape of the road cannot supply.
     shopStop,
+    places,
     // Every drivable spline, for the minimap: free roam is unusable if the map
     // only shows the one road you were told to take.
     roadSplines: world.paths.map((p) => p.spline),

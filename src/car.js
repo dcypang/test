@@ -103,6 +103,7 @@ class Car {
   setPose(x, z, yaw, world) {
     const y = world ? world.groundHeight(x, z) : 0;
     this.vehicle.setPose(x, z, yaw, y);
+    this.teleported();
   }
 
   // Same, but the car keeps moving. Used where the drive home hands over from
@@ -110,7 +111,19 @@ class Car {
   rebase(x, z, yaw, world) {
     const y = world ? world.groundHeight(x, z) : 0;
     this.vehicle.rebase(x, z, yaw, y);
+    this.teleported();
+  }
+
+  // Anything that moves the car without driving it there has to say so. The
+  // scenery sweep traces the segment from last frame's position, and after a
+  // jump that segment crosses the whole map - so the car gets rewound to the
+  // first wall between where it was and where it was put.
+  teleported() {
     this.lastSkid = [null, null, null, null];
+    if (!this.prevPos) this.prevPos = [0, 0, 0];
+    this.prevPos[0] = this.pos[0];
+    this.prevPos[1] = this.pos[1];
+    this.prevPos[2] = this.pos[2];
   }
 
   // Forward vector in world space.

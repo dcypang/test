@@ -42,6 +42,13 @@
              max(10px, env(safe-area-inset-bottom)) max(10px, env(safe-area-inset-left));
   }
   .touch.hidden, .touch .hidden { display: none; }
+  /* GPS open: the driving controls would only get in the way of the map, but
+     the map button itself has to stay, or there is no way back out of it. */
+  .touch.map-open .touch-steer,
+  .touch.map-open .touch-pedals,
+  .touch.map-open .touch-aux,
+  .touch.map-open .touch-road > :not([data-tap="map"]) { display: none; }
+  .touch.map-open .touch-road { display: grid; }
   .touch * { touch-action: none; }
 
   /* A floating round stick. The base follows the thumb down, so there is no
