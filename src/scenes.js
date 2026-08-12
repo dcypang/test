@@ -443,10 +443,12 @@ function buildCircuit(gl) {
   // Everything solid has been placed by now, so it can be bucketed for lookup.
   world.indexSolids();
 
+  // Chunked so the renderer can cull: a whole world in three draw calls means
+  // every building behind you is transformed before the depth test finds out.
   const meshes = {
-    terrain: meshFromBuilder(gl, terrainMB),
-    road: meshFromBuilder(gl, roadMB),
-    props: meshFromBuilder(gl, propMB),
+    terrain: chunkedMesh(gl, terrainMB, 180),
+    road: chunkedMesh(gl, roadMB, 180),
+    props: chunkedMesh(gl, propMB, 110),
   };
 
   const startPoint = track.spline.points[startIndex];
@@ -539,11 +541,57 @@ function buildHomeRoute(gl) {
     sideStreets.push(p);
     return p;
   };
-  addSide([[470, 424], [468, 330], [472, 250]]);
-  addSide([[470, 424], [474, 510], [470, 580]]);
   addSide([[832, 640], [900, 636], [968, 640]]);
   addSide([[660, 852], [656, 920], [660, 980]]);
-  addSide([[244, 486], [238, 560], [244, 620]]);
+
+  // --- Ashcombe, the city ---------------------------------------------------
+  //
+  // A real street grid rather than a strip with a couple of stubs, so there is
+  // somewhere to go that is not the way home. The route home runs through it
+  // and every street connects, so you can leave the route anywhere, wander,
+  // and rejoin wherever you like.
+  //
+  // The grid is deliberately not square: streets bow by a few metres and the
+  // spacing varies block to block. A perfect lattice reads as a spreadsheet
+  // from inside the car, and every junction looks like the last one.
+  const CITY = {
+    x0: 130, z0: 250,           // south-west corner
+    cols: 8, rows: 7,
+    colGap: 96, rowGap: 84,
+  };
+  const cityStreets = [];
+  {
+    const jitter = makeRng(60607);
+    const colX = [], rowZ = [];
+    for (let c = 0; c <= CITY.cols; c++) colX.push(CITY.x0 + c * CITY.colGap + rnd2(jitter, -9, 9));
+    for (let r = 0; r <= CITY.rows; r++) rowZ.push(CITY.z0 + r * CITY.rowGap + rnd2(jitter, -8, 8));
+
+    // Two of the streets each way are avenues: wider, marked, and the ones
+    // traffic actually uses.
+    const avenueCol = new Set([2, 5]);
+    const avenueRow = new Set([1, 4]);
+
+    for (let c = 0; c <= CITY.cols; c++) {
+      const pts = rowZ.map((z, r) => [colX[c] + Math.sin(r * 0.9 + c) * 3.5, z]);
+      const avenue = avenueCol.has(c);
+      cityStreets.push(addSide(pts, {
+        halfWidth: avenue ? 5.4 : 3.9, markings: avenue,
+        name: avenue ? 'Avenue' : 'Street',
+      }));
+    }
+    for (let r = 0; r <= CITY.rows; r++) {
+      const pts = colX.map((x, c) => [x, rowZ[r] + Math.sin(c * 0.8 + r * 1.7) * 3.0]);
+      const avenue = avenueRow.has(r);
+      cityStreets.push(addSide(pts, {
+        halfWidth: avenue ? 5.4 : 3.9, markings: avenue,
+        name: avenue ? 'Avenue' : 'Street',
+      }));
+    }
+    // Two connectors out to the route home, so the grid is not an island.
+    addSide([[colX[2], rowZ[CITY.rows]], [colX[2] - 12, rowZ[CITY.rows] + 60], [244, 486]]);
+    addSide([[colX[5], rowZ[CITY.rows]], [colX[5] + 18, rowZ[CITY.rows] + 55], [470, 424]]);
+    addSide([[470, 424], [468, 330], [472, 250]]);
+  }
 
   // The driveway at the end of the road.
   const driveway = world.addPath(new Path(xz([[502, 858], [500, 878], [499, 892]]), {
@@ -765,6 +813,64 @@ function buildHomeRoute(gl) {
     }
   }
 
+  // --- filling the city blocks ----------------------------------------------
+  // Buildings are placed along each block's frontage rather than scattered:
+  // the thing that makes a street read as a street from inside a car is a
+  // continuous wall of façades at a consistent setback, with the gaps in the
+  // right places.
+  {
+    const rng2 = makeRng(31337);
+    const bigShops = [];
+    for (let i = 0; i < 9; i++) {
+      bigShops.push((() => {
+        const mb = new MeshBuilder();
+        buildTownBuilding(mb, rng2, {
+          width: rnd2(rng2, 11, 19),
+          depth: rnd2(rng2, 10, 15),
+          floors: 2 + Math.floor(rng2() * 4),
+        });
+        return mb;
+      })());
+    }
+
+    for (const street of cityStreets) {
+      const ssp = street.spline;
+      const setback = street.halfWidth + 11.5;
+      // Step along the frontage, leaving junctions clear.
+      for (let i = 6; i < ssp.count - 6; i += 5) {
+        const p = ssp.points[i], nn = ssp.normals[i], tt = ssp.tangents[i];
+        for (const side of [-1, 1]) {
+          if (rng2() < 0.22) continue;                 // gaps, yards, car parks
+          const bx = p[0] + nn[0] * setback * side;
+          const bz = p[2] + nn[2] * setback * side;
+          // Not on top of another road, and not on top of the route home.
+          const hit = world.query(bx, bz);
+          if (hit && Math.abs(hit.lateral) < hit.path.halfWidth + 8.0) continue;
+          const facing = Math.atan2(-side * nn[0], -side * nn[2]);
+          placeProp(propMB, world, bigShops[Math.floor(rng2() * bigShops.length)], bx, bz, facing);
+          placeSolidRun(world, bx, bz, facing + Math.PI / 2, 13.0, 1.6);
+          // Pavement in front of the façade.
+          roadMB.mat([0.40, 0.40, 0.41], 0.86, 0, 0, FLAG_DEFAULT);
+          roadMB.push();
+          const px = p[0] + nn[0] * (street.halfWidth + 1.5) * side;
+          const pz = p[2] + nn[2] * (street.halfWidth + 1.5) * side;
+          roadMB.translate(px, world.groundHeight(px, pz) + 0.055, pz);
+          roadMB.rotateY(Math.atan2(tt[0], tt[2]));
+          roadMB.box(2.6, 0.05, 25);
+          roadMB.pop();
+        }
+        // Street lights down the avenues.
+        if (street.markings && i % 15 === 6) {
+          const side = (i % 30 === 6) ? -1 : 1;
+          const d = street.halfWidth + 1.8;
+          placeProp(propMB, world, side < 0 ? lib.streetLightR : lib.streetLightL,
+            p[0] + nn[0] * d * side, p[2] + nn[2] * d * side,
+            Math.atan2(tt[0], tt[2]), 0, 1, 0.20);
+        }
+      }
+    }
+  }
+
   // Trees and hedgerows filling the open country.
   for (let i = 0; i < 2200; i++) {
     const x = rnd2(rng, -300, 1160);
@@ -897,10 +1003,12 @@ function buildHomeRoute(gl) {
   // Everything solid has been placed by now, so it can be bucketed for lookup.
   world.indexSolids();
 
+  // Chunked so the renderer can cull: a whole world in three draw calls means
+  // every building behind you is transformed before the depth test finds out.
   const meshes = {
-    terrain: meshFromBuilder(gl, terrainMB),
-    road: meshFromBuilder(gl, roadMB),
-    props: meshFromBuilder(gl, propMB),
+    terrain: chunkedMesh(gl, terrainMB, 180),
+    road: chunkedMesh(gl, roadMB, 180),
+    props: chunkedMesh(gl, propMB, 110),
   };
 
   return {
@@ -918,6 +1026,9 @@ function buildHomeRoute(gl) {
     // but it is not part of the route spline, and which way you turn into it is
     // the one instruction the shape of the road cannot supply.
     shopStop,
+    // Every drivable spline, for the minimap: free roam is unusable if the map
+    // only shows the one road you were told to take.
+    roadSplines: world.paths.map((p) => p.spline),
     drivewayLength: driveway.spline.length,
     drivewaySide: Math.sign(
       (drivewayEnd[0] - sp.points[count - 1][0]) * sp.normals[count - 1][0]

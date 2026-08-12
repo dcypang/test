@@ -312,6 +312,41 @@ class MeshBuilder {
     return this;
   }
 
+  // Split into a grid of chunks by triangle centroid, so the renderer can
+  // throw away what is off screen. One mesh for a whole city is one draw call
+  // that cannot be culled: every building behind you is still transformed,
+  // twice, before the depth test discovers it was never visible.
+  //
+  // Returns builders, not meshes, so the caller decides what to upload.
+  chunk(cellSize) {
+    const v = this.verts, idx = this.indices;
+    const buckets = new Map();
+    const key = (x, z) => Math.floor(x / cellSize) * 100003 + Math.floor(z / cellSize);
+
+    for (let t = 0; t < idx.length; t += 3) {
+      const a = idx[t] * VERTEX_FLOATS, b = idx[t + 1] * VERTEX_FLOATS, c = idx[t + 2] * VERTEX_FLOATS;
+      const cx = (v[a] + v[b] + v[c]) / 3;
+      const cz = (v[a + 2] + v[b + 2] + v[c + 2]) / 3;
+      const k = key(cx, cz);
+      let bucket = buckets.get(k);
+      if (!bucket) { bucket = { mb: new MeshBuilder(), remap: new Map() }; buckets.set(k, bucket); }
+      const out = bucket.mb;
+      const tri = [];
+      for (const src of [idx[t], idx[t + 1], idx[t + 2]]) {
+        let dst = bucket.remap.get(src);
+        if (dst === undefined) {
+          dst = out.verts.length / VERTEX_FLOATS;
+          const o = src * VERTEX_FLOATS;
+          for (let f = 0; f < VERTEX_FLOATS; f++) out.verts.push(v[o + f]);
+          bucket.remap.set(src, dst);
+        }
+        tri.push(dst);
+      }
+      out.indices.push(tri[0], tri[1], tri[2]);
+    }
+    return Array.from(buckets.values()).map((b) => b.mb);
+  }
+
   bounds() {
     const min = [Infinity, Infinity, Infinity], max = [-Infinity, -Infinity, -Infinity];
     const v = this.verts;

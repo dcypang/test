@@ -45,6 +45,8 @@ class Renderer {
       vignette: 0.42,
       motionBlur: true,
       particles: true,
+      // Chunks further than this are fog anyway. Tightened on touch devices.
+      cullFar: 900,
     };
 
     this.ambience = {
@@ -213,6 +215,25 @@ class Renderer {
     const call = opts || EMPTY_OPTS;
     if (call.transparent) this.queueGlass.push([mesh, matrix, call]);
     else this.queueOpaque.push([mesh, matrix, call]);
+  }
+
+  // Submit only the chunks of a static mesh the camera can see. The test
+  // sphere is inflated a little rather than being exact: a building just off
+  // the edge of the screen still casts a shadow into it, and the near shadow
+  // cascade only reaches about 26 m, so a modest margin covers both without
+  // needing a second visibility pass.
+  submitChunked(parts, matrix, opts, camera) {
+    if (!parts) return;
+    const planes = camera.planes;
+    const eye = camera.pos;
+    const far = this.settings.cullFar;
+    for (const part of parts) {
+      const [cx, cy, cz] = part.centre;
+      // Beyond the fog there is nothing to see, so there is nothing to draw.
+      if (Math.hypot(cx - eye[0], cz - eye[2]) - part.radius > far) continue;
+      if (!m4.sphereInFrustum(planes, cx, cy, cz, part.radius + CULL_MARGIN)) continue;
+      this.submit(part.mesh, matrix, opts);
+    }
   }
 
   setAmbience(a) { Object.assign(this.ambience, a); }
@@ -505,4 +526,7 @@ class Renderer {
 }
 
 const EMPTY_OPTS = {};
+// Metres of slack on the frustum test, so shadow casters just off screen and
+// anything straddling a chunk boundary stay in.
+const CULL_MARGIN = 34;
 const WHITE_TINT = [1, 1, 1];

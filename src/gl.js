@@ -161,6 +161,22 @@ function meshFromBuilder(gl, builder) {
   return new Mesh(gl, builder.vertexArray(), builder.indexArray());
 }
 
+// A big static mesh split into spatial chunks, each with a bounding sphere, so
+// only what is on screen gets drawn. `cell` is the chunk size in metres: too
+// small and the draw calls cost more than the culling saves, too large and
+// nothing is ever culled.
+function chunkedMesh(gl, builder, cell = 140) {
+  const parts = [];
+  for (const mb of builder.chunk(cell)) {
+    if (!mb.indices.length) continue;
+    const { min, max } = mb.bounds();
+    const centre = [(min[0] + max[0]) / 2, (min[1] + max[1]) / 2, (min[2] + max[2]) / 2];
+    const radius = Math.hypot(max[0] - centre[0], max[1] - centre[1], max[2] - centre[2]);
+    parts.push({ mesh: meshFromBuilder(gl, mb), centre, radius });
+  }
+  return parts;
+}
+
 // Depth-only render target used for the sun shadow map.
 class ShadowTarget {
   constructor(gl, size) {

@@ -691,6 +691,36 @@ const m4 = {
     return o9;
   },
 
+  // The six clip planes of a view-projection, as [nx, ny, nz, d] with the
+  // normals pointing inward. Derived from the matrix rather than from the
+  // camera's angles, so it stays correct through the mirrored clip X that
+  // undoes this engine's handedness mismatch.
+  frustumPlanes(out, m) {
+    const row = (i) => [m[i], m[4 + i], m[8 + i], m[12 + i]];
+    const x = row(0), y = row(1), z = row(2), w = row(3);
+    const combos = [
+      [w, x, 1], [w, x, -1],     // left, right
+      [w, y, 1], [w, y, -1],     // bottom, top
+      [w, z, 1], [w, z, -1],     // near, far
+    ];
+    for (let i = 0; i < 6; i++) {
+      const [a, b, s] = combos[i];
+      let px = a[0] + s * b[0], py = a[1] + s * b[1], pz = a[2] + s * b[2], pd = a[3] + s * b[3];
+      const len = Math.hypot(px, py, pz) || 1;
+      const p = out[i] || (out[i] = [0, 0, 0, 0]);
+      p[0] = px / len; p[1] = py / len; p[2] = pz / len; p[3] = pd / len;
+    }
+    return out;
+  },
+
+  sphereInFrustum(planes, cx, cy, cz, r) {
+    for (let i = 0; i < 6; i++) {
+      const p = planes[i];
+      if (p[0] * cx + p[1] * cy + p[2] * cz + p[3] < -r) return false;
+    }
+    return true;
+  },
+
   transformPoint(o, m, p) {
     const x = p[0], y = p[1], z = p[2];
     o[0] = m[0] * x + m[4] * y + m[8] * z + m[12];
@@ -969,6 +999,22 @@ class Mesh {
 
 function meshFromBuilder(gl, builder) {
   return new Mesh(gl, builder.vertexArray(), builder.indexArray());
+}
+
+// A big static mesh split into spatial chunks, each with a bounding sphere, so
+// only what is on screen gets drawn. `cell` is the chunk size in metres: too
+// small and the draw calls cost more than the culling saves, too large and
+// nothing is ever culled.
+function chunkedMesh(gl, builder, cell = 140) {
+  const parts = [];
+  for (const mb of builder.chunk(cell)) {
+    if (!mb.indices.length) continue;
+    const { min, max } = mb.bounds();
+    const centre = [(min[0] + max[0]) / 2, (min[1] + max[1]) / 2, (min[2] + max[2]) / 2];
+    const radius = Math.hypot(max[0] - centre[0], max[1] - centre[1], max[2] - centre[2]);
+    parts.push({ mesh: meshFromBuilder(gl, mb), centre, radius });
+  }
+  return parts;
 }
 
 // Depth-only render target used for the sun shadow map.
@@ -1452,6 +1498,41 @@ class MeshBuilder {
       if (v[i + 12] === FLAG_DEFAULT) v[i + 12] = FLAG_CABIN;
     }
     return this;
+  }
+
+  // Split into a grid of chunks by triangle centroid, so the renderer can
+  // throw away what is off screen. One mesh for a whole city is one draw call
+  // that cannot be culled: every building behind you is still transformed,
+  // twice, before the depth test discovers it was never visible.
+  //
+  // Returns builders, not meshes, so the caller decides what to upload.
+  chunk(cellSize) {
+    const v = this.verts, idx = this.indices;
+    const buckets = new Map();
+    const key = (x, z) => Math.floor(x / cellSize) * 100003 + Math.floor(z / cellSize);
+
+    for (let t = 0; t < idx.length; t += 3) {
+      const a = idx[t] * VERTEX_FLOATS, b = idx[t + 1] * VERTEX_FLOATS, c = idx[t + 2] * VERTEX_FLOATS;
+      const cx = (v[a] + v[b] + v[c]) / 3;
+      const cz = (v[a + 2] + v[b + 2] + v[c + 2]) / 3;
+      const k = key(cx, cz);
+      let bucket = buckets.get(k);
+      if (!bucket) { bucket = { mb: new MeshBuilder(), remap: new Map() }; buckets.set(k, bucket); }
+      const out = bucket.mb;
+      const tri = [];
+      for (const src of [idx[t], idx[t + 1], idx[t + 2]]) {
+        let dst = bucket.remap.get(src);
+        if (dst === undefined) {
+          dst = out.verts.length / VERTEX_FLOATS;
+          const o = src * VERTEX_FLOATS;
+          for (let f = 0; f < VERTEX_FLOATS; f++) out.verts.push(v[o + f]);
+          bucket.remap.set(src, dst);
+        }
+        tri.push(dst);
+      }
+      out.indices.push(tri[0], tri[1], tri[2]);
+    }
+    return Array.from(buckets.values()).map((b) => b.mb);
   }
 
   bounds() {
@@ -5643,10 +5724,12 @@ function buildCircuit(gl) {
   // Everything solid has been placed by now, so it can be bucketed for lookup.
   world.indexSolids();
 
+  // Chunked so the renderer can cull: a whole world in three draw calls means
+  // every building behind you is transformed before the depth test finds out.
   const meshes = {
-    terrain: meshFromBuilder(gl, terrainMB),
-    road: meshFromBuilder(gl, roadMB),
-    props: meshFromBuilder(gl, propMB),
+    terrain: chunkedMesh(gl, terrainMB, 180),
+    road: chunkedMesh(gl, roadMB, 180),
+    props: chunkedMesh(gl, propMB, 110),
   };
 
   const startPoint = track.spline.points[startIndex];
@@ -5739,11 +5822,57 @@ function buildHomeRoute(gl) {
     sideStreets.push(p);
     return p;
   };
-  addSide([[470, 424], [468, 330], [472, 250]]);
-  addSide([[470, 424], [474, 510], [470, 580]]);
   addSide([[832, 640], [900, 636], [968, 640]]);
   addSide([[660, 852], [656, 920], [660, 980]]);
-  addSide([[244, 486], [238, 560], [244, 620]]);
+
+  // --- Ashcombe, the city ---------------------------------------------------
+  //
+  // A real street grid rather than a strip with a couple of stubs, so there is
+  // somewhere to go that is not the way home. The route home runs through it
+  // and every street connects, so you can leave the route anywhere, wander,
+  // and rejoin wherever you like.
+  //
+  // The grid is deliberately not square: streets bow by a few metres and the
+  // spacing varies block to block. A perfect lattice reads as a spreadsheet
+  // from inside the car, and every junction looks like the last one.
+  const CITY = {
+    x0: 130, z0: 250,           // south-west corner
+    cols: 8, rows: 7,
+    colGap: 96, rowGap: 84,
+  };
+  const cityStreets = [];
+  {
+    const jitter = makeRng(60607);
+    const colX = [], rowZ = [];
+    for (let c = 0; c <= CITY.cols; c++) colX.push(CITY.x0 + c * CITY.colGap + rnd2(jitter, -9, 9));
+    for (let r = 0; r <= CITY.rows; r++) rowZ.push(CITY.z0 + r * CITY.rowGap + rnd2(jitter, -8, 8));
+
+    // Two of the streets each way are avenues: wider, marked, and the ones
+    // traffic actually uses.
+    const avenueCol = new Set([2, 5]);
+    const avenueRow = new Set([1, 4]);
+
+    for (let c = 0; c <= CITY.cols; c++) {
+      const pts = rowZ.map((z, r) => [colX[c] + Math.sin(r * 0.9 + c) * 3.5, z]);
+      const avenue = avenueCol.has(c);
+      cityStreets.push(addSide(pts, {
+        halfWidth: avenue ? 5.4 : 3.9, markings: avenue,
+        name: avenue ? 'Avenue' : 'Street',
+      }));
+    }
+    for (let r = 0; r <= CITY.rows; r++) {
+      const pts = colX.map((x, c) => [x, rowZ[r] + Math.sin(c * 0.8 + r * 1.7) * 3.0]);
+      const avenue = avenueRow.has(r);
+      cityStreets.push(addSide(pts, {
+        halfWidth: avenue ? 5.4 : 3.9, markings: avenue,
+        name: avenue ? 'Avenue' : 'Street',
+      }));
+    }
+    // Two connectors out to the route home, so the grid is not an island.
+    addSide([[colX[2], rowZ[CITY.rows]], [colX[2] - 12, rowZ[CITY.rows] + 60], [244, 486]]);
+    addSide([[colX[5], rowZ[CITY.rows]], [colX[5] + 18, rowZ[CITY.rows] + 55], [470, 424]]);
+    addSide([[470, 424], [468, 330], [472, 250]]);
+  }
 
   // The driveway at the end of the road.
   const driveway = world.addPath(new Path(xz([[502, 858], [500, 878], [499, 892]]), {
@@ -5965,6 +6094,64 @@ function buildHomeRoute(gl) {
     }
   }
 
+  // --- filling the city blocks ----------------------------------------------
+  // Buildings are placed along each block's frontage rather than scattered:
+  // the thing that makes a street read as a street from inside a car is a
+  // continuous wall of façades at a consistent setback, with the gaps in the
+  // right places.
+  {
+    const rng2 = makeRng(31337);
+    const bigShops = [];
+    for (let i = 0; i < 9; i++) {
+      bigShops.push((() => {
+        const mb = new MeshBuilder();
+        buildTownBuilding(mb, rng2, {
+          width: rnd2(rng2, 11, 19),
+          depth: rnd2(rng2, 10, 15),
+          floors: 2 + Math.floor(rng2() * 4),
+        });
+        return mb;
+      })());
+    }
+
+    for (const street of cityStreets) {
+      const ssp = street.spline;
+      const setback = street.halfWidth + 11.5;
+      // Step along the frontage, leaving junctions clear.
+      for (let i = 6; i < ssp.count - 6; i += 5) {
+        const p = ssp.points[i], nn = ssp.normals[i], tt = ssp.tangents[i];
+        for (const side of [-1, 1]) {
+          if (rng2() < 0.22) continue;                 // gaps, yards, car parks
+          const bx = p[0] + nn[0] * setback * side;
+          const bz = p[2] + nn[2] * setback * side;
+          // Not on top of another road, and not on top of the route home.
+          const hit = world.query(bx, bz);
+          if (hit && Math.abs(hit.lateral) < hit.path.halfWidth + 8.0) continue;
+          const facing = Math.atan2(-side * nn[0], -side * nn[2]);
+          placeProp(propMB, world, bigShops[Math.floor(rng2() * bigShops.length)], bx, bz, facing);
+          placeSolidRun(world, bx, bz, facing + Math.PI / 2, 13.0, 1.6);
+          // Pavement in front of the façade.
+          roadMB.mat([0.40, 0.40, 0.41], 0.86, 0, 0, FLAG_DEFAULT);
+          roadMB.push();
+          const px = p[0] + nn[0] * (street.halfWidth + 1.5) * side;
+          const pz = p[2] + nn[2] * (street.halfWidth + 1.5) * side;
+          roadMB.translate(px, world.groundHeight(px, pz) + 0.055, pz);
+          roadMB.rotateY(Math.atan2(tt[0], tt[2]));
+          roadMB.box(2.6, 0.05, 25);
+          roadMB.pop();
+        }
+        // Street lights down the avenues.
+        if (street.markings && i % 15 === 6) {
+          const side = (i % 30 === 6) ? -1 : 1;
+          const d = street.halfWidth + 1.8;
+          placeProp(propMB, world, side < 0 ? lib.streetLightR : lib.streetLightL,
+            p[0] + nn[0] * d * side, p[2] + nn[2] * d * side,
+            Math.atan2(tt[0], tt[2]), 0, 1, 0.20);
+        }
+      }
+    }
+  }
+
   // Trees and hedgerows filling the open country.
   for (let i = 0; i < 2200; i++) {
     const x = rnd2(rng, -300, 1160);
@@ -6097,10 +6284,12 @@ function buildHomeRoute(gl) {
   // Everything solid has been placed by now, so it can be bucketed for lookup.
   world.indexSolids();
 
+  // Chunked so the renderer can cull: a whole world in three draw calls means
+  // every building behind you is transformed before the depth test finds out.
   const meshes = {
-    terrain: meshFromBuilder(gl, terrainMB),
-    road: meshFromBuilder(gl, roadMB),
-    props: meshFromBuilder(gl, propMB),
+    terrain: chunkedMesh(gl, terrainMB, 180),
+    road: chunkedMesh(gl, roadMB, 180),
+    props: chunkedMesh(gl, propMB, 110),
   };
 
   return {
@@ -6118,6 +6307,9 @@ function buildHomeRoute(gl) {
     // but it is not part of the route spline, and which way you turn into it is
     // the one instruction the shape of the road cannot supply.
     shopStop,
+    // Every drivable spline, for the minimap: free roam is unusable if the map
+    // only shows the one road you were told to take.
+    roadSplines: world.paths.map((p) => p.spline),
     drivewayLength: driveway.spline.length,
     drivewaySide: Math.sign(
       (drivewayEnd[0] - sp.points[count - 1][0]) * sp.normals[count - 1][0]
@@ -6201,6 +6393,8 @@ class Renderer {
       vignette: 0.42,
       motionBlur: true,
       particles: true,
+      // Chunks further than this are fog anyway. Tightened on touch devices.
+      cullFar: 900,
     };
 
     this.ambience = {
@@ -6369,6 +6563,25 @@ class Renderer {
     const call = opts || EMPTY_OPTS;
     if (call.transparent) this.queueGlass.push([mesh, matrix, call]);
     else this.queueOpaque.push([mesh, matrix, call]);
+  }
+
+  // Submit only the chunks of a static mesh the camera can see. The test
+  // sphere is inflated a little rather than being exact: a building just off
+  // the edge of the screen still casts a shadow into it, and the near shadow
+  // cascade only reaches about 26 m, so a modest margin covers both without
+  // needing a second visibility pass.
+  submitChunked(parts, matrix, opts, camera) {
+    if (!parts) return;
+    const planes = camera.planes;
+    const eye = camera.pos;
+    const far = this.settings.cullFar;
+    for (const part of parts) {
+      const [cx, cy, cz] = part.centre;
+      // Beyond the fog there is nothing to see, so there is nothing to draw.
+      if (Math.hypot(cx - eye[0], cz - eye[2]) - part.radius > far) continue;
+      if (!m4.sphereInFrustum(planes, cx, cy, cz, part.radius + CULL_MARGIN)) continue;
+      this.submit(part.mesh, matrix, opts);
+    }
   }
 
   setAmbience(a) { Object.assign(this.ambience, a); }
@@ -6661,6 +6874,9 @@ class Renderer {
 }
 
 const EMPTY_OPTS = {};
+// Metres of slack on the frustum test, so shadow casters just off screen and
+// anything straddling a chunk boundary stay in.
+const CULL_MARGIN = 34;
 const WHITE_TINT = [1, 1, 1];
 
 
@@ -8002,13 +8218,19 @@ class Hud {
     const ctx = this.ctx;
     this.panel(x, y, size, size, 0.45);
 
+    // Fit the whole network, not just the route: a city off the edge of the
+    // map is no use to anyone trying to find their way around it.
     let minX = Infinity, maxX = -Infinity, minZ = Infinity, maxZ = -Infinity;
-    for (const p of spline.points) {
-      if (p[0] < minX) minX = p[0];
-      if (p[0] > maxX) maxX = p[0];
-      if (p[2] < minZ) minZ = p[2];
-      if (p[2] > maxZ) maxZ = p[2];
-    }
+    const fit = (pts) => {
+      for (const p of pts) {
+        if (p[0] < minX) minX = p[0];
+        if (p[0] > maxX) maxX = p[0];
+        if (p[2] < minZ) minZ = p[2];
+        if (p[2] > maxZ) maxZ = p[2];
+      }
+    };
+    fit(spline.points);
+    if (extra && extra.roads) for (const r of extra.roads) fit(r.points);
     const pad = 16;
     const spanX = maxX - minX || 1, spanZ = maxZ - minZ || 1;
     const scale = Math.min((size - pad * 2) / spanX, (size - pad * 2) / spanZ);
@@ -8017,6 +8239,23 @@ class Hud {
     const px = (p) => [ox + p[0] * scale, oy + p[2] * scale];
 
     ctx.save();
+
+    // Every other road, faintly, under the route. Without the street network
+    // on the map, "drive anywhere" means "get lost anywhere".
+    if (extra && extra.roads) {
+      ctx.strokeStyle = 'rgba(255,255,255,0.22)';
+      ctx.lineWidth = 1.6;
+      for (const road of extra.roads) {
+        if (road === spline) continue;
+        ctx.beginPath();
+        for (let i = 0; i < road.count; i += 2) {
+          const [sx, sy] = px(road.points[i]);
+          if (i === 0) ctx.moveTo(sx, sy); else ctx.lineTo(sx, sy);
+        }
+        ctx.stroke();
+      }
+    }
+
     ctx.beginPath();
     for (let i = 0; i < spline.count; i++) {
       const [sx, sy] = px(spline.points[i]);
@@ -8214,8 +8453,12 @@ class Hud {
       this.text('SLOW DOWN', lx, ly + 62, 15, '#ff6b60', 'center', 700);
     }
 
-    // Navigation arrow.
+    // Navigation arrow. Off the route it becomes a compass needle pointing at
+    // the house, because there is no turn-by-turn to give.
     this.drawNavArrow(W / 2, 92, state.turnAngle, state.turnDistance, state.instruction);
+    if (state.roaming) {
+      this.text('FREE ROAM', W / 2, 140, 12, '#ffd166', 'center', 700);
+    }
 
     // Somewhere to stop, if you fancy it.
     if (state.shopPrompt) {
@@ -8228,11 +8471,13 @@ class Hud {
     this.drawMinimap(W - 214, 24, 190, state.routeSpline, state.cars, state.player, {
       destination: state.destination,
       lights: state.lights,
+      roads: state.roads,
     });
 
-    // Driving score.
+    // Driving score. Frozen while exploring, and it says so.
     this.panel(24, H - 96, 220, 72);
-    this.text('DRIVE RATING', 40, H - 72, 11, 'rgba(255,255,255,0.5)', 'left', 600);
+    this.text(state.roaming ? 'DRIVE RATING — PAUSED' : 'DRIVE RATING',
+      40, H - 72, 11, state.roaming ? 'rgba(255,209,102,0.75)' : 'rgba(255,255,255,0.5)', 'left', 600);
     const grade = state.rating;
     this.text(`${Math.round(grade)}`, 40, H - 38, 30, grade > 80 ? '#8ef2a0' : (grade > 55 ? '#ffd166' : '#ff6b60'), 'left', 700);
     this.text('/100', 82, H - 38, 14, 'rgba(255,255,255,0.5)', 'left', 500);
@@ -8877,6 +9122,8 @@ const FIELD_SIZE = 8;
 // scenery. Half the car's width plus a little, so the shell is a touch generous.
 const CAR_SHELL = 0.98;
 
+const NO_SHADOW = { noShadow: true };
+
 // --- input ------------------------------------------------------------------
 
 class Input {
@@ -8959,6 +9206,7 @@ class Camera {
     this.proj = m4.create();
     this.viewProj = m4.create();
     this.invViewProj = m4.create();
+    this.planes = [];
     this.mode = 0;
     this.yaw = 0;
     this.shake = 0;
@@ -9085,6 +9333,7 @@ class Camera {
     m4.lookAt(this.view, this.pos, this.target, [0, 1, 0]);
     m4.multiply(this.viewProj, this.proj, this.view);
     m4.invert(this.invViewProj, this.viewProj);
+    m4.frustumPlanes(this.planes, this.viewProj);
     // Basis vectors for billboards.
     const f = v3.norm([0, 0, 0], v3.sub([0, 0, 0], this.target, this.pos));
     this.forward = f;
@@ -9154,6 +9403,7 @@ class Game {
       this.renderer.settings.shadows = false;
       this.renderer.settings.bloom = 0.3;
       this.renderer.settings.particles = false;
+      this.renderer.settings.cullFar = 620;
     }
 
     this.carMeshes = buildCarMeshes(this.renderer.gl);
@@ -10131,10 +10381,37 @@ class Game {
     // --- progress and navigation ------------------------------------------
     const leg = this.leg();
     const sp = leg.route.spline;
+    // Once you leave the route the windowed search has nothing useful to track,
+    // so re-find the nearest point on the whole road from time to time. Without
+    // it, driving three streets across and coming back rejoins the route with
+    // the game still convinced you are a kilometre away.
+    ds.reacquire = (ds.reacquire || 0) - dt;
+    if (ds.roaming && ds.reacquire <= 0) {
+      ds.reacquire = 0.5;
+      ds.hint = nearestIndex(sp, car.pos[0], car.pos[2], ds.hint, sp.count >> 1);
+    }
     const prog = progressOnSpline(sp, car.pos[0], car.pos[2], ds.hint);
     ds.hint = prog.index;
+
+    // Free roam. Every street connects, so you can leave the route wherever you
+    // like - but then none of the route's bookkeeping means anything: its zone
+    // is not the road you are on, its centreline is not the lane you should be
+    // in, and the distance left along it is not how far you are from home. So
+    // while you are away the scoring stops and the satnav switches to pointing
+    // at the house.
+    const roamNow = Math.abs(prog.lateral) > leg.route.halfWidth + 12;
+    if (roamNow !== ds.roaming) {
+      ds.roaming = roamNow;
+      if (roamNow) this.hud.message('FREE ROAM — the satnav will wait', 2.6);
+      else this.hud.message('BACK ON ROUTE', 1.8);
+    }
     const frac = prog.along / leg.length;
-    const zone = leg.zoneAt(clamp(frac, 0, 1));
+    // Off the route, the speed limit is whatever road you are actually on.
+    const here = ds.roaming ? world.query(car.pos[0], car.pos[2]) : null;
+    const zone = ds.roaming
+      ? { limit: here && here.path.halfWidth > 4.6 ? 50 : 30,
+        label: (here && here.path.name) || 'Ashcombe' }
+      : leg.zoneAt(clamp(frac, 0, 1));
 
     // The last stretch is the driveway, which is its own path and not part of
     // the route spline. Counting only the route runs the satnav down to zero
@@ -10144,9 +10421,8 @@ class Game {
     const dest = leg.destination;
     const distHome = dest ? Math.hypot(car.pos[0] - dest.x, car.pos[2] - dest.z) : Infinity;
     const onRoute = Math.max(0, leg.length - prog.along);
-    const remaining = (onRoute > 25 || !leg.last)
-      ? onRoute + leg.tail + leg.ahead
-      : distHome;
+    const remaining = ds.roaming ? distHome
+      : ((onRoute > 25 || !leg.last) ? onRoute + leg.tail + leg.ahead : distHome);
 
     // Reached the end of this road: cross onto the next one.
     if (!leg.last && onRoute < 5 && Math.abs(prog.lateral) < leg.route.halfWidth + 6) {
@@ -10157,7 +10433,7 @@ class Game {
     // Speeding.
     const kmh = Math.abs(v.speedKmh);
     const speeding = kmh > zone.limit + 8;
-    if (speeding) {
+    if (speeding && !ds.roaming) {
       ds.speedingTimer += dt;
       if (ds.speedingTimer > 1.0) {
         ds.speedingTimer = 0;
@@ -10168,7 +10444,7 @@ class Game {
     // Wrong side of the road (right-hand traffic).
     const onRoad = Math.abs(prog.lateral) < leg.route.halfWidth + 0.5;
     const forwardish = (car.forward()[0] * sp.tangents[prog.index][0] + car.forward()[2] * sp.tangents[prog.index][2]) > 0.2;
-    if (onRoad && forwardish && prog.lateral < -0.9 && kmh > 12) {
+    if (!ds.roaming && onRoad && forwardish && prog.lateral < -0.9 && kmh > 12) {
       ds.wrongSideTimer += dt;
       if (ds.wrongSideTimer > 1.6) {
         ds.wrongSideTimer = 0;
@@ -10176,8 +10452,8 @@ class Game {
       }
     } else ds.wrongSideTimer = 0;
 
-    // Red lights.
-    for (const light of leg.lights) {
+    // Red lights. Only the ones on the route are wired up.
+    for (const light of (ds.roaming ? [] : leg.lights)) {
       const key = light;
       const dist = light.along - prog.along;
       const armed = ds.redLightArmed.get(key);
@@ -10215,6 +10491,16 @@ class Game {
 
     // Satnav instruction from the shape of the road ahead.
     const nav = this.computeNavigation(sp, prog, remaining, leg, onRoute);
+    if (ds.roaming) {
+      // No turn-by-turn off the route - there is no route to give turns for.
+      // Point at the house and let the player find their own way back.
+      const target = leg.last && dest ? dest : { x: sp.points[sp.count - 1][0], z: sp.points[sp.count - 1][2] };
+      const bearing = Math.atan2(target.x - car.pos[0], target.z - car.pos[2]);
+      nav.instruction = 'Head home';
+      nav.distance = Math.hypot(target.x - car.pos[0], target.z - car.pos[2]);
+      nav.angle = wrapAngle(bearing - v.yaw);
+      nav.compass = true;
+    }
     if (shop && !ds.shopped) {
       const ahead = shop.along - prog.along;
       if (ahead > -12 && ahead < 220) {
@@ -10375,9 +10661,10 @@ class Game {
 
     // Static world.
     const identity = m4.create();
-    this.renderer.submit(scene.meshes.terrain, identity, { noShadow: true });
-    this.renderer.submit(scene.meshes.road, identity, { noShadow: true });
-    this.renderer.submit(scene.meshes.props, identity, EMPTY_OPTS);
+    const cam = this.camera;
+    this.renderer.submitChunked(scene.meshes.terrain, identity, NO_SHADOW, cam);
+    this.renderer.submitChunked(scene.meshes.road, identity, NO_SHADOW, cam);
+    this.renderer.submitChunked(scene.meshes.props, identity, EMPTY_OPTS, cam);
 
     // Cars.
     const headlight = this.player.headlightsOn ? {
@@ -10511,6 +10798,8 @@ class Game {
         instruction: ds.nav.instruction,
         turnDistance: ds.nav.distance,
         shopPrompt: ds.shopNear && !ds.shopped ? 'Stop here to visit the shop' : null,
+        roaming: ds.roaming,
+        roads: this.scene.roadSplines,
         turnAngle: ds.nav.angle,
         rating: ds.rating,
         penaltyText: ds.penaltyText,

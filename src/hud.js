@@ -248,13 +248,19 @@ class Hud {
     const ctx = this.ctx;
     this.panel(x, y, size, size, 0.45);
 
+    // Fit the whole network, not just the route: a city off the edge of the
+    // map is no use to anyone trying to find their way around it.
     let minX = Infinity, maxX = -Infinity, minZ = Infinity, maxZ = -Infinity;
-    for (const p of spline.points) {
-      if (p[0] < minX) minX = p[0];
-      if (p[0] > maxX) maxX = p[0];
-      if (p[2] < minZ) minZ = p[2];
-      if (p[2] > maxZ) maxZ = p[2];
-    }
+    const fit = (pts) => {
+      for (const p of pts) {
+        if (p[0] < minX) minX = p[0];
+        if (p[0] > maxX) maxX = p[0];
+        if (p[2] < minZ) minZ = p[2];
+        if (p[2] > maxZ) maxZ = p[2];
+      }
+    };
+    fit(spline.points);
+    if (extra && extra.roads) for (const r of extra.roads) fit(r.points);
     const pad = 16;
     const spanX = maxX - minX || 1, spanZ = maxZ - minZ || 1;
     const scale = Math.min((size - pad * 2) / spanX, (size - pad * 2) / spanZ);
@@ -263,6 +269,23 @@ class Hud {
     const px = (p) => [ox + p[0] * scale, oy + p[2] * scale];
 
     ctx.save();
+
+    // Every other road, faintly, under the route. Without the street network
+    // on the map, "drive anywhere" means "get lost anywhere".
+    if (extra && extra.roads) {
+      ctx.strokeStyle = 'rgba(255,255,255,0.22)';
+      ctx.lineWidth = 1.6;
+      for (const road of extra.roads) {
+        if (road === spline) continue;
+        ctx.beginPath();
+        for (let i = 0; i < road.count; i += 2) {
+          const [sx, sy] = px(road.points[i]);
+          if (i === 0) ctx.moveTo(sx, sy); else ctx.lineTo(sx, sy);
+        }
+        ctx.stroke();
+      }
+    }
+
     ctx.beginPath();
     for (let i = 0; i < spline.count; i++) {
       const [sx, sy] = px(spline.points[i]);
@@ -460,8 +483,12 @@ class Hud {
       this.text('SLOW DOWN', lx, ly + 62, 15, '#ff6b60', 'center', 700);
     }
 
-    // Navigation arrow.
+    // Navigation arrow. Off the route it becomes a compass needle pointing at
+    // the house, because there is no turn-by-turn to give.
     this.drawNavArrow(W / 2, 92, state.turnAngle, state.turnDistance, state.instruction);
+    if (state.roaming) {
+      this.text('FREE ROAM', W / 2, 140, 12, '#ffd166', 'center', 700);
+    }
 
     // Somewhere to stop, if you fancy it.
     if (state.shopPrompt) {
@@ -474,11 +501,13 @@ class Hud {
     this.drawMinimap(W - 214, 24, 190, state.routeSpline, state.cars, state.player, {
       destination: state.destination,
       lights: state.lights,
+      roads: state.roads,
     });
 
-    // Driving score.
+    // Driving score. Frozen while exploring, and it says so.
     this.panel(24, H - 96, 220, 72);
-    this.text('DRIVE RATING', 40, H - 72, 11, 'rgba(255,255,255,0.5)', 'left', 600);
+    this.text(state.roaming ? 'DRIVE RATING — PAUSED' : 'DRIVE RATING',
+      40, H - 72, 11, state.roaming ? 'rgba(255,209,102,0.75)' : 'rgba(255,255,255,0.5)', 'left', 600);
     const grade = state.rating;
     this.text(`${Math.round(grade)}`, 40, H - 38, 30, grade > 80 ? '#8ef2a0' : (grade > 55 ? '#ffd166' : '#ff6b60'), 'left', 700);
     this.text('/100', 82, H - 38, 14, 'rgba(255,255,255,0.5)', 'left', 500);

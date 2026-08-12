@@ -297,6 +297,63 @@ check('hitting something does damage', extras.damageGained > 0.02,
 check('hitting something throws sparks and debris', extras.peakParticles > 5,
   `${extras.peakParticles} particles`);
 
+// --- free roam ---------------------------------------------------------------
+const roam = await page.evaluate(() => {
+  const g = window.__game;
+  g.startDriveHome();
+  while (g.legIndex < g.legs.length - 1) g.advanceLeg();
+  const ds = g.driveState;
+  g.input.driving = () => ({ throttle: 0.3, brake: 0, steer: 0, handbrake: 0, shiftUp: false, shiftDown: false });
+
+  // Park on a city avenue, three streets away from the route.
+  const avenues = g.scene.world.paths.filter((p) => p.name === 'Avenue');
+  const sp = avenues[1].spline;
+  const i = Math.floor(sp.count * 0.45);
+  const t = sp.tangents[i];
+  g.player.setPose(sp.points[i][0], sp.points[i][2], Math.atan2(t[0], t[2]), g.scene.world);
+  ds.rating = 100;
+  for (let k = 0; k < 60 * 4; k++) g.update(1 / 60);
+  const away = {
+    roaming: ds.roaming,
+    onRoad: g.scene.world.sampleSurface(g.player.pos[0], g.player.pos[2]).onRoad,
+    zone: ds.zone && ds.zone.label,
+    nav: ds.nav && ds.nav.instruction,
+    rating: Math.round(ds.rating),
+  };
+
+  // Now speed, off the route: the rating must not move.
+  g.input.driving = () => ({ throttle: 1, brake: 0, steer: 0, handbrake: 0, shiftUp: false, shiftDown: false });
+  for (let k = 0; k < 60 * 5; k++) g.update(1 / 60);
+  const afterSpeeding = Math.round(ds.rating);
+
+  // Back on the route, the game should pick the thread up again.
+  const rsp = g.legs[g.legs.length - 1].route.spline;
+  const j = Math.floor(rsp.count * 0.55);
+  const rt = rsp.tangents[j], rn = rsp.normals[j];
+  g.player.setPose(rsp.points[j][0] + rn[0] * 2.1, rsp.points[j][2] + rn[2] * 2.1,
+    Math.atan2(rt[0], rt[2]), g.scene.world);
+  g.input.driving = () => ({ throttle: 0.25, brake: 0, steer: 0, handbrake: 0, shiftUp: false, shiftDown: false });
+  for (let k = 0; k < 60 * 2; k++) g.update(1 / 60);
+  return {
+    away, afterSpeeding,
+    rejoinedRoaming: ds.roaming,
+    rejoinedRemaining: Math.round(ds.remaining),
+    roads: g.scene.world.paths.length,
+    mapRoads: g.scene.roadSplines.length,
+  };
+});
+console.log('   ', JSON.stringify(roam));
+check('the city has a street network to explore', roam.roads >= 20, `${roam.roads} roads`);
+check('city streets are drivable', roam.away.onRoad, `on ${roam.away.zone}`);
+check('leaving the route enters free roam', roam.away.roaming);
+check('the satnav points home while roaming', roam.away.nav === 'Head home', roam.away.nav);
+check('the drive rating is held while roaming', roam.afterSpeeding === 100,
+  `${roam.afterSpeeding}/100 after 5 s flat out off route`);
+check('rejoining the route resumes the drive home',
+  !roam.rejoinedRoaming && roam.rejoinedRemaining > 100,
+  `${roam.rejoinedRemaining} m to go`);
+check('the minimap gets the whole network', roam.mapRoads >= 20, `${roam.mapRoads} splines`);
+
 console.log('\n--- console errors ---');
 console.log(errors.length ? errors.slice(0, 5).join('\n') : '(none)');
 const failed = checks.filter((c) => !c).length;

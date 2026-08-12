@@ -11,6 +11,8 @@ const FIELD_SIZE = 8;
 // scenery. Half the car's width plus a little, so the shell is a touch generous.
 const CAR_SHELL = 0.98;
 
+const NO_SHADOW = { noShadow: true };
+
 // --- input ------------------------------------------------------------------
 
 class Input {
@@ -93,6 +95,7 @@ class Camera {
     this.proj = m4.create();
     this.viewProj = m4.create();
     this.invViewProj = m4.create();
+    this.planes = [];
     this.mode = 0;
     this.yaw = 0;
     this.shake = 0;
@@ -219,6 +222,7 @@ class Camera {
     m4.lookAt(this.view, this.pos, this.target, [0, 1, 0]);
     m4.multiply(this.viewProj, this.proj, this.view);
     m4.invert(this.invViewProj, this.viewProj);
+    m4.frustumPlanes(this.planes, this.viewProj);
     // Basis vectors for billboards.
     const f = v3.norm([0, 0, 0], v3.sub([0, 0, 0], this.target, this.pos));
     this.forward = f;
@@ -288,6 +292,7 @@ class Game {
       this.renderer.settings.shadows = false;
       this.renderer.settings.bloom = 0.3;
       this.renderer.settings.particles = false;
+      this.renderer.settings.cullFar = 620;
     }
 
     this.carMeshes = buildCarMeshes(this.renderer.gl);
@@ -1265,10 +1270,37 @@ class Game {
     // --- progress and navigation ------------------------------------------
     const leg = this.leg();
     const sp = leg.route.spline;
+    // Once you leave the route the windowed search has nothing useful to track,
+    // so re-find the nearest point on the whole road from time to time. Without
+    // it, driving three streets across and coming back rejoins the route with
+    // the game still convinced you are a kilometre away.
+    ds.reacquire = (ds.reacquire || 0) - dt;
+    if (ds.roaming && ds.reacquire <= 0) {
+      ds.reacquire = 0.5;
+      ds.hint = nearestIndex(sp, car.pos[0], car.pos[2], ds.hint, sp.count >> 1);
+    }
     const prog = progressOnSpline(sp, car.pos[0], car.pos[2], ds.hint);
     ds.hint = prog.index;
+
+    // Free roam. Every street connects, so you can leave the route wherever you
+    // like - but then none of the route's bookkeeping means anything: its zone
+    // is not the road you are on, its centreline is not the lane you should be
+    // in, and the distance left along it is not how far you are from home. So
+    // while you are away the scoring stops and the satnav switches to pointing
+    // at the house.
+    const roamNow = Math.abs(prog.lateral) > leg.route.halfWidth + 12;
+    if (roamNow !== ds.roaming) {
+      ds.roaming = roamNow;
+      if (roamNow) this.hud.message('FREE ROAM — the satnav will wait', 2.6);
+      else this.hud.message('BACK ON ROUTE', 1.8);
+    }
     const frac = prog.along / leg.length;
-    const zone = leg.zoneAt(clamp(frac, 0, 1));
+    // Off the route, the speed limit is whatever road you are actually on.
+    const here = ds.roaming ? world.query(car.pos[0], car.pos[2]) : null;
+    const zone = ds.roaming
+      ? { limit: here && here.path.halfWidth > 4.6 ? 50 : 30,
+        label: (here && here.path.name) || 'Ashcombe' }
+      : leg.zoneAt(clamp(frac, 0, 1));
 
     // The last stretch is the driveway, which is its own path and not part of
     // the route spline. Counting only the route runs the satnav down to zero
@@ -1278,9 +1310,8 @@ class Game {
     const dest = leg.destination;
     const distHome = dest ? Math.hypot(car.pos[0] - dest.x, car.pos[2] - dest.z) : Infinity;
     const onRoute = Math.max(0, leg.length - prog.along);
-    const remaining = (onRoute > 25 || !leg.last)
-      ? onRoute + leg.tail + leg.ahead
-      : distHome;
+    const remaining = ds.roaming ? distHome
+      : ((onRoute > 25 || !leg.last) ? onRoute + leg.tail + leg.ahead : distHome);
 
     // Reached the end of this road: cross onto the next one.
     if (!leg.last && onRoute < 5 && Math.abs(prog.lateral) < leg.route.halfWidth + 6) {
@@ -1291,7 +1322,7 @@ class Game {
     // Speeding.
     const kmh = Math.abs(v.speedKmh);
     const speeding = kmh > zone.limit + 8;
-    if (speeding) {
+    if (speeding && !ds.roaming) {
       ds.speedingTimer += dt;
       if (ds.speedingTimer > 1.0) {
         ds.speedingTimer = 0;
@@ -1302,7 +1333,7 @@ class Game {
     // Wrong side of the road (right-hand traffic).
     const onRoad = Math.abs(prog.lateral) < leg.route.halfWidth + 0.5;
     const forwardish = (car.forward()[0] * sp.tangents[prog.index][0] + car.forward()[2] * sp.tangents[prog.index][2]) > 0.2;
-    if (onRoad && forwardish && prog.lateral < -0.9 && kmh > 12) {
+    if (!ds.roaming && onRoad && forwardish && prog.lateral < -0.9 && kmh > 12) {
       ds.wrongSideTimer += dt;
       if (ds.wrongSideTimer > 1.6) {
         ds.wrongSideTimer = 0;
@@ -1310,8 +1341,8 @@ class Game {
       }
     } else ds.wrongSideTimer = 0;
 
-    // Red lights.
-    for (const light of leg.lights) {
+    // Red lights. Only the ones on the route are wired up.
+    for (const light of (ds.roaming ? [] : leg.lights)) {
       const key = light;
       const dist = light.along - prog.along;
       const armed = ds.redLightArmed.get(key);
@@ -1349,6 +1380,16 @@ class Game {
 
     // Satnav instruction from the shape of the road ahead.
     const nav = this.computeNavigation(sp, prog, remaining, leg, onRoute);
+    if (ds.roaming) {
+      // No turn-by-turn off the route - there is no route to give turns for.
+      // Point at the house and let the player find their own way back.
+      const target = leg.last && dest ? dest : { x: sp.points[sp.count - 1][0], z: sp.points[sp.count - 1][2] };
+      const bearing = Math.atan2(target.x - car.pos[0], target.z - car.pos[2]);
+      nav.instruction = 'Head home';
+      nav.distance = Math.hypot(target.x - car.pos[0], target.z - car.pos[2]);
+      nav.angle = wrapAngle(bearing - v.yaw);
+      nav.compass = true;
+    }
     if (shop && !ds.shopped) {
       const ahead = shop.along - prog.along;
       if (ahead > -12 && ahead < 220) {
@@ -1509,9 +1550,10 @@ class Game {
 
     // Static world.
     const identity = m4.create();
-    this.renderer.submit(scene.meshes.terrain, identity, { noShadow: true });
-    this.renderer.submit(scene.meshes.road, identity, { noShadow: true });
-    this.renderer.submit(scene.meshes.props, identity, EMPTY_OPTS);
+    const cam = this.camera;
+    this.renderer.submitChunked(scene.meshes.terrain, identity, NO_SHADOW, cam);
+    this.renderer.submitChunked(scene.meshes.road, identity, NO_SHADOW, cam);
+    this.renderer.submitChunked(scene.meshes.props, identity, EMPTY_OPTS, cam);
 
     // Cars.
     const headlight = this.player.headlightsOn ? {
@@ -1645,6 +1687,8 @@ class Game {
         instruction: ds.nav.instruction,
         turnDistance: ds.nav.distance,
         shopPrompt: ds.shopNear && !ds.shopped ? 'Stop here to visit the shop' : null,
+        roaming: ds.roaming,
+        roads: this.scene.roadSplines,
         turnAngle: ds.nav.angle,
         rating: ds.rating,
         penaltyText: ds.penaltyText,

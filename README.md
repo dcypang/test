@@ -31,6 +31,25 @@ to a stop, and the shopping is on the passenger seat when you get home. It costs
 nothing but time. The drive ends when the car is stopped in front of the garage
 with the light on.
 
+## Ashcombe, and going wherever you like
+
+The route home runs through a city with a real street grid — eight avenues and
+seven cross streets over about 800 by 600 metres, with buildings lining every
+frontage. It is not a lattice: streets bow by a few metres and the spacing
+varies block to block, because a perfect grid reads as a spreadsheet from
+inside the car and every junction looks like the last one.
+
+**You do not have to follow the satnav.** Every street connects, so you can turn
+off the route wherever you like, drive around, and rejoin anywhere. While you
+are away the game says **FREE ROAM** and stops scoring you — off the route its
+zone is not the road you are on, its centreline is not your lane, and the
+distance left along it is not how far you are from home, so none of that
+bookkeeping means anything. The satnav becomes a compass pointing at the house.
+Come back to the route and the turn-by-turn picks up where it left off.
+
+The minimap draws the whole network, not just the route. Free roam without a map
+is just getting lost.
+
 Two ways to get there: take the chequered flag and press **Drive home** on the
 results screen, or **Skip to the drive home** on the title screen.
 
@@ -98,6 +117,18 @@ No collider is ever left on a drivable surface. Scenery is laid out relative to
 one road at a time, so a fence beside the main route or a wall behind a house
 will happily cross a side street — and a wall across a side street is a wall
 across a road.
+
+## Drawing a city
+
+The static world is split into spatial chunks with bounding spheres, and only
+what the camera can see is submitted. One mesh for a whole city is one draw call
+that cannot be culled: every building behind you is transformed, twice, before
+the depth test discovers it was never visible. Chunked, a typical frame in
+Ashcombe draws about a third of the props. There is a distance cut as well —
+beyond the fog there is nothing to see, so there is nothing to draw, and touch
+devices cut it closer still.
+
+    node scripts/polycount.mjs    triangle budget and chunk count, scene by scene
 
 ## How the steering feels
 

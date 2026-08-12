@@ -232,6 +232,36 @@ const m4 = {
     return o9;
   },
 
+  // The six clip planes of a view-projection, as [nx, ny, nz, d] with the
+  // normals pointing inward. Derived from the matrix rather than from the
+  // camera's angles, so it stays correct through the mirrored clip X that
+  // undoes this engine's handedness mismatch.
+  frustumPlanes(out, m) {
+    const row = (i) => [m[i], m[4 + i], m[8 + i], m[12 + i]];
+    const x = row(0), y = row(1), z = row(2), w = row(3);
+    const combos = [
+      [w, x, 1], [w, x, -1],     // left, right
+      [w, y, 1], [w, y, -1],     // bottom, top
+      [w, z, 1], [w, z, -1],     // near, far
+    ];
+    for (let i = 0; i < 6; i++) {
+      const [a, b, s] = combos[i];
+      let px = a[0] + s * b[0], py = a[1] + s * b[1], pz = a[2] + s * b[2], pd = a[3] + s * b[3];
+      const len = Math.hypot(px, py, pz) || 1;
+      const p = out[i] || (out[i] = [0, 0, 0, 0]);
+      p[0] = px / len; p[1] = py / len; p[2] = pz / len; p[3] = pd / len;
+    }
+    return out;
+  },
+
+  sphereInFrustum(planes, cx, cy, cz, r) {
+    for (let i = 0; i < 6; i++) {
+      const p = planes[i];
+      if (p[0] * cx + p[1] * cy + p[2] * cz + p[3] < -r) return false;
+    }
+    return true;
+  },
+
   transformPoint(o, m, p) {
     const x = p[0], y = p[1], z = p[2];
     o[0] = m[0] * x + m[4] * y + m[8] * z + m[12];
