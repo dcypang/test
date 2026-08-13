@@ -598,6 +598,145 @@ const HOME_ZONES = [
   { until: 1.01, limit: 30, label: 'Millbrook Rise' },
 ];
 
+// --- the states -------------------------------------------------------------
+//
+// Eight of them, four across and two down, each 1400 by 1300 metres, with the
+// interstate running the length of every row and linking them. They are not
+// separate places you get taken to: it is one continuous world with one road
+// network, so the state line is just a sign you drive past.
+//
+// Each state gets its own ground colour and its own town. The tints only ever
+// darken or shift hue, never brighten: pushing the ground toward white walks it
+// straight into the fog colour, and the world starts looking like it ends a few
+// hundred metres away. Ashcombe, where the
+// race and the house are, is the capital and by far the biggest; the rest run
+// from proper towns down to a few blocks at an interstate junction. That is
+// deliberate - eight identical grids would be eight of the same place.
+const STATE_W = 1400, STATE_D = 1300;
+const STATE_X0 = -1550, STATE_Z0 = -250;
+const STATE_COLS = 4, STATE_ROWS = 2;
+
+const STATES = [
+  { col: 0, row: 0, name: 'Redrock', abbr: 'RR', capital: 'Mesa Junction',
+    tint: [1.05, 0.72, 0.50], town: { cols: 4, rows: 3, gap: 104 }, trees: 0.15 },
+  { col: 1, row: 0, name: 'Ashcombe', abbr: 'AC', capital: 'Ashcombe',
+    tint: [1, 1, 1], town: null, trees: 1 },
+  { col: 2, row: 0, name: 'Greenvale', abbr: 'GV', capital: 'Fairfield',
+    tint: [0.82, 1.02, 0.72], town: { cols: 6, rows: 4, gap: 98 }, trees: 1.1 },
+  { col: 3, row: 0, name: 'Sandhill', abbr: 'SH', capital: 'Dunmore',
+    tint: [1.02, 0.90, 0.62], town: { cols: 4, rows: 3, gap: 110 }, trees: 0.3 },
+  { col: 0, row: 1, name: 'Pinecrest', abbr: 'PC', capital: 'Timber Falls',
+    tint: [0.66, 0.86, 0.68], town: { cols: 4, rows: 4, gap: 96 }, trees: 1.6 },
+  { col: 1, row: 1, name: 'Lakeshore', abbr: 'LS', capital: 'Bayview',
+    tint: [0.76, 0.92, 1.00], town: { cols: 5, rows: 4, gap: 100 }, trees: 0.9 },
+  { col: 2, row: 1, name: 'Goldfield', abbr: 'GF', capital: 'Prosper',
+    tint: [1.00, 0.92, 0.58], town: { cols: 5, rows: 3, gap: 106 }, trees: 0.5 },
+  { col: 3, row: 1, name: 'Silverpeak', abbr: 'SP', capital: 'Coldwater',
+    tint: [0.88, 0.90, 0.98], town: { cols: 4, rows: 3, gap: 100 }, trees: 0.7 },
+];
+for (const s of STATES) {
+  s.x0 = STATE_X0 + s.col * STATE_W;
+  s.z0 = STATE_Z0 + s.row * STATE_D;
+  s.x1 = s.x0 + STATE_W;
+  s.z1 = s.z0 + STATE_D;
+  s.cx = (s.x0 + s.x1) / 2;
+  s.cz = (s.z0 + s.z1) / 2;
+}
+const HOME_STATE = STATES.find((s) => s.name === 'Ashcombe');
+
+function stateAt(x, z) {
+  const col = Math.floor((x - STATE_X0) / STATE_W);
+  const row = Math.floor((z - STATE_Z0) / STATE_D);
+  if (col < 0 || col >= STATE_COLS || row < 0 || row >= STATE_ROWS) return null;
+  return STATES[row * STATE_COLS + col];
+}
+
+// A town: a grid of streets with a couple of avenues through it. Every town in
+// the country is built by this, from the capital down to a four-block stop on
+// the interstate, so they all connect and behave the same way.
+function makeTownGrid(world, opts) {
+  const { x0, z0, cols, rows, colGap, rowGap, seed, town } = opts;
+  const jitter = makeRng(seed);
+  const colX = [], rowZ = [];
+  for (let c = 0; c <= cols; c++) colX.push(x0 + c * colGap + rnd2(jitter, -9, 9));
+  for (let r = 0; r <= rows; r++) rowZ.push(z0 + r * rowGap + rnd2(jitter, -8, 8));
+
+  // Two of the streets each way are avenues: wider, marked, and the ones
+  // traffic actually uses.
+  const avenueCol = new Set([Math.max(1, Math.round(cols * 0.28)),
+    Math.max(2, Math.round(cols * 0.68))]);
+  const avenueRow = new Set([Math.max(1, Math.round(rows * 0.2)),
+    Math.max(2, Math.round(rows * 0.62))]);
+
+  const streets = [];
+  const add = (pts, o) => {
+    const p = world.addPath(new Path(xz(pts), Object.assign({
+      closed: false, halfWidth: 3.6, surface: SURFACES.asphalt, kerbs: false,
+      type: 'street', markings: false, spacing: 5.0,
+    }, o)));
+    // The town name rides alongside the road type rather than inside it, so
+    // "Avenue" keeps meaning the same thing everywhere while the map can still
+    // say which town's avenue it is.
+    p.town = town;
+    streets.push(p);
+    return p;
+  };
+  for (let c = 0; c <= cols; c++) {
+    const pts = rowZ.map((z, r) => [colX[c] + Math.sin(r * 0.9 + c) * 3.5, z]);
+    const avenue = avenueCol.has(c);
+    add(pts, { halfWidth: avenue ? 5.4 : 3.9, markings: avenue,
+      name: avenue ? 'Avenue' : 'Street' });
+  }
+  for (let r = 0; r <= rows; r++) {
+    const pts = colX.map((x, c) => [x, rowZ[r] + Math.sin(c * 0.8 + r * 1.7) * 3.0]);
+    const avenue = avenueRow.has(r);
+    add(pts, { halfWidth: avenue ? 5.4 : 3.9, markings: avenue,
+      name: avenue ? 'Avenue' : 'Street' });
+  }
+  return { streets, colX, rowZ };
+}
+
+// Line every block frontage with buildings. What makes a street read as a
+// street from inside a car is a continuous wall of facades at a consistent
+// setback, with the gaps in the right places - not buildings scattered around.
+function fillTownBlocks(world, streets, propMB, roadMB, opts) {
+  const { rng, shops, lib, gapChance = 0.22, step = 5, lights = true } = opts;
+  let placed = 0;
+  for (const street of streets) {
+    const ssp = street.spline;
+    const setback = street.halfWidth + 11.5;
+    for (let i = 6; i < ssp.count - 6; i += step) {
+      const p = ssp.points[i], nn = ssp.normals[i], tt = ssp.tangents[i];
+      for (const side of [-1, 1]) {
+        if (rng() < gapChance) continue;              // gaps, yards, car parks
+        const bx = p[0] + nn[0] * setback * side;
+        const bz = p[2] + nn[2] * setback * side;
+        const facing = Math.atan2(-side * nn[0], -side * nn[2]);
+        const shop = shops[Math.floor(rng() * shops.length)];
+        if (!tryPlaceBuilding(propMB, world, shop, bx, bz, facing)) continue;
+        placed++;
+        // Pavement in front of the facade.
+        roadMB.mat([0.40, 0.40, 0.41], 0.86, 0, 0, FLAG_DEFAULT);
+        roadMB.push();
+        const px = p[0] + nn[0] * (street.halfWidth + 1.5) * side;
+        const pz = p[2] + nn[2] * (street.halfWidth + 1.5) * side;
+        roadMB.translate(px, world.groundHeight(px, pz) + 0.055, pz);
+        roadMB.rotateY(Math.atan2(tt[0], tt[2]));
+        roadMB.box(2.6, 0.05, 25);
+        roadMB.pop();
+      }
+      if (lights && street.markings && i % 15 === 6) {
+        const side = (i % 30 === 6) ? -1 : 1;
+        const d = street.halfWidth + 1.8;
+        placeProp(propMB, world, side < 0 ? lib.streetLightR : lib.streetLightL,
+          p[0] + nn[0] * d * side, p[2] + nn[2] * d * side,
+          Math.atan2(tt[0], tt[2]), 0, 1, 0.20);
+      }
+    }
+  }
+  return placed;
+}
+
 function buildHomeRoute(gl) {
   const rng = makeRng(4242);
   const world = new World({ seed: 3313, terrainScale: 0.7 });
@@ -631,43 +770,97 @@ function buildHomeRoute(gl) {
   // The grid is deliberately not square: streets bow by a few metres and the
   // spacing varies block to block. A perfect lattice reads as a spreadsheet
   // from inside the car, and every junction looks like the last one.
+  // Ashcombe, the capital: the biggest grid in the country by a wide margin.
+  // The route home runs through it and every street connects, so you can leave
+  // the route anywhere, wander, and rejoin wherever you like.
   const CITY = {
     x0: 130, z0: 250,           // south-west corner
-    cols: 8, rows: 7,
+    cols: 12, rows: 10,
     colGap: 96, rowGap: 84,
   };
-  const cityStreets = [];
+  const grid = makeTownGrid(world, {
+    x0: CITY.x0, z0: CITY.z0, cols: CITY.cols, rows: CITY.rows,
+    colGap: CITY.colGap, rowGap: CITY.rowGap, seed: 60607, town: 'Ashcombe',
+  });
+  const cityStreets = grid.streets;
   {
-    const jitter = makeRng(60607);
-    const colX = [], rowZ = [];
-    for (let c = 0; c <= CITY.cols; c++) colX.push(CITY.x0 + c * CITY.colGap + rnd2(jitter, -9, 9));
-    for (let r = 0; r <= CITY.rows; r++) rowZ.push(CITY.z0 + r * CITY.rowGap + rnd2(jitter, -8, 8));
-
-    // Two of the streets each way are avenues: wider, marked, and the ones
-    // traffic actually uses.
-    const avenueCol = new Set([2, 5]);
-    const avenueRow = new Set([1, 4]);
-
-    for (let c = 0; c <= CITY.cols; c++) {
-      const pts = rowZ.map((z, r) => [colX[c] + Math.sin(r * 0.9 + c) * 3.5, z]);
-      const avenue = avenueCol.has(c);
-      cityStreets.push(addSide(pts, {
-        halfWidth: avenue ? 5.4 : 3.9, markings: avenue,
-        name: avenue ? 'Avenue' : 'Street',
-      }));
-    }
-    for (let r = 0; r <= CITY.rows; r++) {
-      const pts = colX.map((x, c) => [x, rowZ[r] + Math.sin(c * 0.8 + r * 1.7) * 3.0]);
-      const avenue = avenueRow.has(r);
-      cityStreets.push(addSide(pts, {
-        halfWidth: avenue ? 5.4 : 3.9, markings: avenue,
-        name: avenue ? 'Avenue' : 'Street',
-      }));
-    }
-    // Two connectors out to the route home, so the grid is not an island.
+    const { colX, rowZ } = grid;
+    // Connectors out to the route home, so the grid is not an island.
     addSide([[colX[2], rowZ[CITY.rows]], [colX[2] - 12, rowZ[CITY.rows] + 60], [244, 486]]);
     addSide([[colX[5], rowZ[CITY.rows]], [colX[5] + 18, rowZ[CITY.rows] + 55], [470, 424]]);
     addSide([[470, 424], [468, 330], [472, 250]]);
+  }
+
+  // --- the rest of the country ----------------------------------------------
+  // The interstate first, so the towns have something to hang off, then a town
+  // in each of the other seven states with a slip road onto the highway. All of
+  // it is one connected network: from the driveway you can reach every state
+  // without leaving the tarmac.
+  const interstates = [];
+  {
+    const hwy = (pts, name) => {
+      const p = world.addPath(new Path(xz(pts), {
+        closed: false, halfWidth: 7.2, surface: SURFACES.asphalt, kerbs: false,
+        type: 'road', markings: true, spacing: 6.0, name,
+      }));
+      interstates.push(p);
+      return p;
+    };
+    // One east-west interstate per row, kept off the state centres so it runs
+    // past the towns rather than through them.
+    for (let row = 0; row < STATE_ROWS; row++) {
+      const z = STATE_Z0 + row * STATE_D + STATE_D * (row === 0 ? 0.12 : 0.52);
+      const pts = [];
+      for (let c = 0; c <= STATE_COLS * 2; c++) {
+        const x = STATE_X0 + (c / (STATE_COLS * 2)) * STATE_W * STATE_COLS;
+        pts.push([x, z + Math.sin(c * 0.7) * 26]);
+      }
+      hwy(pts, row === 0 ? 'Interstate 40' : 'Interstate 70');
+    }
+    // And two north-south links so the rows are not two separate countries.
+    for (const col of [0, 2]) {
+      const x = STATE_X0 + col * STATE_W + STATE_W * 0.55;
+      const pts = [];
+      for (let r = 0; r <= 8; r++) {
+        const z = STATE_Z0 + (r / 8) * STATE_D * STATE_ROWS;
+        pts.push([x + Math.sin(r * 0.8) * 22, z]);
+      }
+      hwy(pts, col === 0 ? 'Route 12' : 'Route 33');
+    }
+  }
+
+  // Towns, one per state. Ashcombe already has its own, far larger grid.
+  const stateTowns = [];
+  for (const st of STATES) {
+    if (!st.town) { stateTowns.push(null); continue; }
+    const { cols, rows, gap } = st.town;
+    const w = cols * gap, d = rows * (gap * 0.86);
+    const g = makeTownGrid(world, {
+      x0: st.cx - w / 2, z0: st.cz - d / 2,
+      cols, rows, colGap: gap, rowGap: gap * 0.86,
+      seed: 4100 + st.col * 37 + st.row * 91, town: st.capital,
+    });
+    stateTowns.push(g);
+    // A slip road from the town out to the nearest interstate.
+    let best = null, bestD = Infinity;
+    for (const hw of interstates) {
+      const sp = hw.spline;
+      for (let i = 2; i < sp.count - 2; i++) {
+        const dd = Math.hypot(sp.points[i][0] - st.cx, sp.points[i][2] - st.cz);
+        if (dd < bestD) { bestD = dd; best = sp.points[i]; }
+      }
+    }
+    if (best) {
+      const edgeZ = st.cz - d / 2 > best[2] ? st.cz - d / 2 : st.cz + d / 2;
+      world.addPath(new Path(xz([
+        [st.cx, edgeZ],
+        [(st.cx + best[0]) / 2, (edgeZ + best[2]) / 2],
+        [best[0], best[2]],
+      ]), {
+        closed: false, halfWidth: 4.2, surface: SURFACES.asphalt, kerbs: false,
+        type: 'road', markings: true, spacing: 6.0, name: `${st.capital} Road`,
+      }));
+    }
   }
 
   // The driveway at the end of the road.
@@ -679,8 +872,19 @@ function buildHomeRoute(gl) {
   world.index();
   world.conformPathsToTerrain(40);
 
+  // The whole country, not just the home state. A coarser cell than before
+  // keeps the triangle count in hand over an area fourteen times the size; it
+  // is chunked, so only what the camera can see is ever submitted.
   const terrainMB = buildTerrainMesh(world, {
-    minX: -320, maxX: 1180, minZ: -220, maxZ: 1120, cell: 12.8,
+    minX: STATE_X0 - 120, maxX: STATE_X0 + STATE_W * STATE_COLS + 120,
+    minZ: STATE_Z0 - 120, maxZ: STATE_Z0 + STATE_D * STATE_ROWS + 120,
+    cell: 16,
+    // Each state has its own ground colour, so crossing a line looks like
+    // crossing a line even before you read the sign.
+    tintAt: (x, z) => {
+      const st = stateAt(x, z);
+      return st ? st.tint : [1, 1, 1];
+    },
   });
   const roadMB = new MeshBuilder();
   for (const p of world.paths) buildPathMesh(world, p, roadMB);
@@ -950,6 +1154,53 @@ function buildHomeRoute(gl) {
       const spot = nextSpot(14, 200, mb);
       if (spot) addPlace('house', 'The other house', spot.x, spot.z, spot.yaw, mb, 9);
     }
+
+    // And somewhere to aim for in every other state: a petrol station and a
+    // shop in each town. A map of a country that only marks one town's shops
+    // is a map that stops being useful the moment you leave that town.
+    const SHOP_NAMES = ['General Store', 'Diner', 'Trading Post', 'Feed & Grain',
+      'Coffee Stop', 'Hardware', 'Bakery'];
+    STATES.forEach((st, si) => {
+      const g = stateTowns[si];
+      if (!g) return;
+      // Frontages of this town only, walked in a strided order as above.
+      const local = [];
+      for (const street of g.streets) {
+        const sp = street.spline;
+        for (let f = 0; f < 4; f++) {
+          const i = clamp(Math.round(sp.count * (0.2 + f * 0.2)), 4, sp.count - 5);
+          for (const side of [1, -1]) local.push({ street, i, side });
+        }
+      }
+      const pick = (setback, minD, builder, startAt) => {
+        const b = builder.bounds();
+        const hw = Math.max(1, (b.max[0] - b.min[0]) / 2);
+        const hd = Math.max(1, (b.max[2] - b.min[2]) / 2);
+        for (let n = 0; n < local.length; n++) {
+          const c = local[(startAt + n * 13) % local.length];
+          const sp = c.street.spline;
+          const p = sp.points[c.i], nrm = sp.normals[c.i];
+          const x = p[0] + nrm[0] * (c.street.halfWidth + setback) * c.side;
+          const z = p[2] + nrm[2] * (c.street.halfWidth + setback) * c.side;
+          if (!farEnough(x, z, minD)) continue;
+          const yaw = Math.atan2(-c.side * nrm[0], -c.side * nrm[2]);
+          if (!footprintClearOfRoads(world, x, z, yaw, hw, hd)) continue;
+          return { x, z, yaw };
+        }
+        return null;
+      };
+      const fuel = pick(15, 90, station, si * 7);
+      if (fuel) {
+        addPlace('fuel', `${st.capital} Fuel`, fuel.x, fuel.z, fuel.yaw + Math.PI, station, 11);
+      }
+      const mb = new MeshBuilder();
+      buildTownBuilding(mb, prng, { width: rnd2(prng, 12, 16), depth: 11, floors: 2 });
+      const shop = pick(11.5, 80, mb, si * 7 + 4);
+      if (shop) {
+        addPlace('shop', `${st.capital} ${SHOP_NAMES[si % SHOP_NAMES.length]}`,
+          shop.x, shop.z, shop.yaw, mb, 9);
+      }
+    });
   }
   // The village shop and home itself are places too - they already exist, so
   // they are registered rather than rebuilt. Home goes on at the end, once the
@@ -988,71 +1239,85 @@ function buildHomeRoute(gl) {
     }
   }
 
-  // --- filling the city blocks ----------------------------------------------
-  // Buildings are placed along each block's frontage rather than scattered:
-  // the thing that makes a street read as a street from inside a car is a
-  // continuous wall of façades at a consistent setback, with the gaps in the
-  // right places.
-  {
-    const rng2 = makeRng(31337);
-    const bigShops = [];
-    for (let i = 0; i < 9; i++) {
-      bigShops.push((() => {
-        const mb = new MeshBuilder();
-        buildTownBuilding(mb, rng2, {
-          width: rnd2(rng2, 11, 19),
-          depth: rnd2(rng2, 10, 15),
-          floors: 2 + Math.floor(rng2() * 4),
-        });
-        return mb;
-      })());
+  // --- filling the blocks, here and in every other state ---------------------
+  const townShops = (() => {
+    const r = makeRng(31337);
+    const out = [];
+    for (let i = 0; i < 12; i++) {
+      const mb = new MeshBuilder();
+      buildTownBuilding(mb, r, {
+        width: rnd2(r, 11, 19), depth: rnd2(r, 10, 15),
+        floors: 2 + Math.floor(r() * 4),
+      });
+      out.push(mb);
     }
+    return out;
+  })();
+  fillTownBlocks(world, cityStreets, propMB, roadMB, {
+    rng: makeRng(31337), shops: townShops, lib,
+  });
+  // The other seven. Thinner than the capital - a town on the interstate is
+  // mostly gaps - and each seeded off its own state so no two come out alike.
+  STATES.forEach((st, i) => {
+    const g = stateTowns[i];
+    if (!g) return;
+    fillTownBlocks(world, g.streets, propMB, roadMB, {
+      rng: makeRng(9000 + i * 131), shops: townShops, lib,
+      gapChance: 0.42, step: 6,
+    });
+  });
 
-    for (const street of cityStreets) {
-      const ssp = street.spline;
-      const setback = street.halfWidth + 11.5;
-      // Step along the frontage, leaving junctions clear.
-      for (let i = 6; i < ssp.count - 6; i += 5) {
-        const p = ssp.points[i], nn = ssp.normals[i], tt = ssp.tangents[i];
-        for (const side of [-1, 1]) {
-          if (rng2() < 0.22) continue;                 // gaps, yards, car parks
-          const bx = p[0] + nn[0] * setback * side;
-          const bz = p[2] + nn[2] * setback * side;
-          // Not on top of another road, and not on top of the route home.
-          const hit = world.query(bx, bz);
-          if (hit && Math.abs(hit.lateral) < hit.path.halfWidth + 8.0) continue;
-          const facing = Math.atan2(-side * nn[0], -side * nn[2]);
-          const shop = bigShops[Math.floor(rng2() * bigShops.length)];
-          if (!tryPlaceBuilding(propMB, world, shop, bx, bz, facing)) continue;
-          // Pavement in front of the façade.
-          roadMB.mat([0.40, 0.40, 0.41], 0.86, 0, 0, FLAG_DEFAULT);
-          roadMB.push();
-          const px = p[0] + nn[0] * (street.halfWidth + 1.5) * side;
-          const pz = p[2] + nn[2] * (street.halfWidth + 1.5) * side;
-          roadMB.translate(px, world.groundHeight(px, pz) + 0.055, pz);
-          roadMB.rotateY(Math.atan2(tt[0], tt[2]));
-          roadMB.box(2.6, 0.05, 25);
-          roadMB.pop();
+  // A sign wherever a highway crosses a state line, facing the traffic that is
+  // about to cross it. Both directions get one, because a state line is a state
+  // line whichever way you are going.
+  {
+    const signs = new Map();
+    for (const hw of interstates) {
+      const sp = hw.spline;
+      let prev = stateAt(sp.points[0][0], sp.points[0][2]);
+      for (let i = 1; i < sp.count; i++) {
+        const p = sp.points[i];
+        const here = stateAt(p[0], p[2]);
+        if (here === prev) continue;
+        const n = sp.normals[i], t = sp.tangents[i];
+        // Entering `here` going forwards, entering `prev` going back.
+        for (const [st, dir] of [[here, 1], [prev, -1]]) {
+          if (!st) continue;
+          const key = `${st.abbr}:${Math.round(p[0] / 40)}:${Math.round(p[2] / 40)}:${dir}`;
+          if (signs.has(key)) continue;
+          signs.set(key, 1);
+          if (!signs.has(st.abbr + ':mesh')) {
+            const mb = new MeshBuilder();
+            buildStateSign(mb, st.tint);
+            signs.set(st.abbr + ':mesh', mb);
+          }
+          const side = dir > 0 ? 1 : -1;
+          const off = hw.halfWidth + 5.5;
+          const sx = p[0] + n[0] * off * side - t[0] * 14 * dir;
+          const sz = p[2] + n[2] * off * side - t[2] * 14 * dir;
+          placeProp(propMB, world, signs.get(st.abbr + ':mesh'), sx, sz,
+            Math.atan2(t[0] * dir, t[2] * dir) + Math.PI, 0, 1, 0.5);
         }
-        // Street lights down the avenues.
-        if (street.markings && i % 15 === 6) {
-          const side = (i % 30 === 6) ? -1 : 1;
-          const d = street.halfWidth + 1.8;
-          placeProp(propMB, world, side < 0 ? lib.streetLightR : lib.streetLightL,
-            p[0] + nn[0] * d * side, p[2] + nn[2] * d * side,
-            Math.atan2(tt[0], tt[2]), 0, 1, 0.20);
-        }
+        prev = here;
       }
     }
   }
 
-  // Trees and hedgerows filling the open country.
-  for (let i = 0; i < 2200; i++) {
-    const x = rnd2(rng, -300, 1160);
-    const z = rnd2(rng, -200, 1100);
+  // Trees and hedgerows filling the open country, state by state. The budget is
+  // the limiting factor rather than the look: trees are the single largest
+  // item in the world's triangle count, and this many keeps the whole country
+  // near two and a half million with the car and the circuit included.
+  // Pinecrest is
+  // forest, Redrock is nearly bare, and you can tell which one you are in from
+  // the driver's seat.
+  for (let i = 0; i < 12000; i++) {
+    const x = rnd2(rng, STATE_X0, STATE_X0 + STATE_W * STATE_COLS);
+    const z = rnd2(rng, STATE_Z0, STATE_Z0 + STATE_D * STATE_ROWS);
+    const st = stateAt(x, z);
+    if (!st) continue;
     const hit = world.query(x, z);
     if (hit && Math.abs(hit.lateral) < hit.path.halfWidth + 14) continue;
-    if (rng() > 0.35) continue;
+    if (rng() > 0.35 * st.trees) continue;
     placeProp(propMB, world, lib.trees[Math.floor(rng() * lib.trees.length)], x, z, rng() * TAU, 0, rnd2(rng, 0.75, 1.4), 0.34);
   }
 
@@ -1207,6 +1472,15 @@ function buildHomeRoute(gl) {
     meshes,
     zones: HOME_ZONES,
     zoneAt,
+    // The country: every state, and a lookup for which one a point is in. The
+    // HUD names the state you are in and the map draws the lines between them.
+    states: STATES,
+    stateAt,
+    stateBounds: {
+      x0: STATE_X0, z0: STATE_Z0,
+      x1: STATE_X0 + STATE_W * STATE_COLS, z1: STATE_Z0 + STATE_D * STATE_ROWS,
+      w: STATE_W, d: STATE_D, cols: STATE_COLS, rows: STATE_ROWS,
+    },
     trafficLights,
     routeLength: total,
     // The satnav needs both of these: the drive is the last 35 m of the journey

@@ -179,6 +179,7 @@ const home = await page.evaluate(() => {
   // Where the drive home hits things, clustered by location. When the run goes
   // slowly or does not finish, this is the first thing worth looking at.
   const bumps = [];
+  const stucks = [];
   const origImpact = g.impact.bind(g);
   g.impact = (x, z, nx, nz, strength, col) => {
     if (strength > 0.05) {
@@ -195,7 +196,37 @@ const home = await page.evaluate(() => {
     frames++;
     // The R key, in test form: never let one wedged car hang the whole run.
     stalled = (v.speed < 0.6 && !g.driveState.arrived) ? stalled + 1 / 60 : 0;
-    if (stalled > 6) { g.resetPlayerToTrack(); stalled = 0; }
+    if (stalled > 6) {
+      // Record why it was stuck before recovering, or a failing run only ever
+      // says "it did not get home".
+      if (stucks.length < 5) {
+        const hits = [];
+        g.scene.world.querySolids(g.player.pos[0], g.player.pos[2], 6, hits);
+        const cars = g.traffic
+          .map((t) => Math.round(Math.hypot(t.car.pos[0] - g.player.pos[0],
+            t.car.pos[2] - g.player.pos[2])))
+          .filter((d) => d < 25).sort((a, b) => a - b);
+        const q = g.scene.world.query(g.player.pos[0], g.player.pos[2]);
+        stucks.push({
+          x: Math.round(g.player.pos[0]), z: Math.round(g.player.pos[2]),
+          road: q ? q.path.name : null, lat: q ? +q.lateral.toFixed(1) : null,
+          solidsWithin6: hits.length, trafficWithin25: cars,
+          queue: g.traffic
+            .map((t) => ({ d: Math.hypot(t.car.pos[0] - g.player.pos[0],
+              t.car.pos[2] - g.player.pos[2]), t }))
+            .filter((o) => o.d < 40).sort((a, b) => a.d - b.d).slice(0, 6)
+            .map((o) => ({ d: Math.round(o.d), kmh: Math.round(o.t.car.vehicle.speedKmh),
+              road: o.t.path && o.t.path.name, done: !!o.t.done })),
+          lights: (g.lightSystem.lights || [])
+            .map((l) => ({ d: Math.round(Math.hypot(l.x - g.player.pos[0], l.z - g.player.pos[2])),
+              state: l.state }))
+            .filter((l) => l.d < 90),
+          remaining: Math.round(g.driveState.remaining),
+        });
+      }
+      g.resetPlayerToTrack();
+      stalled = 0;
+    }
     minDist = Math.min(minDist, g.driveState.distHome === undefined ? Infinity : g.driveState.distHome);
     if (g.driveState.nav) navSeen.add(g.driveState.nav.instruction);
     if (!g.scene.world.sampleSurface(g.player.pos[0], g.player.pos[2]).onRoad) {
@@ -222,6 +253,7 @@ const home = await page.evaluate(() => {
     nav: Array.from(navSeen),
     handover, offTrace,
     bumps: bumps.sort((a, b) => b.n - a.n).slice(0, 8),
+    stucks,
   };
 });
 console.log('   ', JSON.stringify(home));
@@ -450,6 +482,78 @@ check('driving at buildings from every angle never gets inside one',
     : `${ram.runs} runs, up to ${ram.topKmh} km/h, at 60/20/10 fps`);
 check('the car is actually being stopped, not missing the buildings',
   ram.contacts > ram.runs * 0.5, `${ram.contacts}/${ram.runs} runs brought to a stop`);
+
+// --- the country ---------------------------------------------------------------
+const country = await page.evaluate(() => {
+  const g = window.__game;
+  g.startDriveHome();
+  while (g.legIndex < g.legs.length - 1) g.advanceLeg();
+  const sc = g.scene;
+  const world = sc.world;
+
+  // Every state must have ground you can stand on, roads to drive, and a name.
+  const perState = sc.states.map((st) => {
+    let roads = 0, places = 0;
+    for (const p of world.paths) {
+      const m = p.spline.points[Math.floor(p.spline.count / 2)];
+      if (m[0] >= st.x0 && m[0] < st.x1 && m[2] >= st.z0 && m[2] < st.z1) roads++;
+    }
+    for (const p of sc.places) {
+      if (p.x >= st.x0 && p.x < st.x1 && p.z >= st.z0 && p.z < st.z1) places++;
+    }
+    return { name: st.name, abbr: st.abbr, roads, places };
+  });
+
+  // And you must be able to drive to them: put the car on the interstate in
+  // each state in turn and check the game agrees where it is.
+  const hwys = world.paths.filter((p) => /Interstate|Route \d/.test(p.name || ''));
+  const named = [];
+  for (const st of sc.states) {
+    let found = null;
+    for (const hw of hwys) {
+      const sp = hw.spline;
+      for (let i = 2; i < sp.count - 2 && !found; i++) {
+        const p = sp.points[i];
+        if (sc.stateAt(p[0], p[2]) === st) found = { p, t: sp.tangents[i] };
+      }
+      if (found) break;
+    }
+    if (!found) { named.push({ state: st.name, reached: null }); continue; }
+    g.player.setPose(found.p[0], found.p[2],
+      Math.atan2(found.t[0], found.t[2]), world);
+    g.input.driving = () => ({ throttle: 0.4, brake: 0, steer: 0, handbrake: 0, shiftUp: false, shiftDown: false });
+    for (let k = 0; k < 90; k++) g.update(1 / 60);
+    named.push({
+      state: st.name,
+      reached: g.driveState.state && g.driveState.state.name,
+      onRoad: world.sampleSurface(g.player.pos[0], g.player.pos[2]).onRoad,
+    });
+  }
+  return {
+    states: sc.states.length,
+    perState,
+    named,
+    solids: world.solids.length,
+    buildings: world.footprints.length,
+    span: [Math.round(sc.stateBounds.x1 - sc.stateBounds.x0),
+      Math.round(sc.stateBounds.z1 - sc.stateBounds.z0)],
+  };
+});
+console.log('   ', JSON.stringify({ states: country.states, span: country.span,
+  buildings: country.buildings, perState: country.perState }));
+check('the country has a lot of states', country.states >= 8, `${country.states} states`);
+check('every state has roads in it',
+  country.perState.every((s) => s.roads >= 3),
+  country.perState.map((s) => `${s.abbr}:${s.roads}`).join(' '));
+check('every state has somewhere to go',
+  country.perState.every((s) => s.places >= 1),
+  country.perState.map((s) => `${s.abbr}:${s.places}`).join(' '));
+check('the interstate reaches every state, and the game knows which one',
+  country.named.every((n) => n.reached === n.state && n.onRoad),
+  country.named.filter((n) => n.reached !== n.state).map((n) => `${n.state}->${n.reached}`).join(' ')
+    || `${country.named.length} states named correctly`);
+check('the country is bigger than the old single town',
+  country.span[0] >= 4000 && country.span[1] >= 2000, `${country.span[0]} x ${country.span[1]} m`);
 
 // --- the GPS -----------------------------------------------------------------
 const gps = await page.evaluate(() => {

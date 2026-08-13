@@ -329,6 +329,8 @@ function buildTerrainMesh(world, opts = {}) {
   const {
     minX = -800, maxX = 800, minZ = -800, maxZ = 800,
     cell = 12, skipRadius = VERGE_WIDTH + 3,
+    // Multiplies the ground colour. Used to give each state its own look.
+    tintAt = null,
   } = opts;
   const mb = new MeshBuilder();
   mb.mat(GRASS_A, 0.92, 0.0, 0.0, FLAG_DEFAULT);
@@ -353,7 +355,10 @@ function buildTerrainMesh(world, opts = {}) {
     const n = (Math.sin(x * 0.037) + Math.cos(z * 0.041) + Math.sin((x + z) * 0.013)) / 3;
     const dry = clamp(0.5 + n * 0.9, 0, 1);
     const c = v3.lerp([0, 0, 0], GRASS_A, GRASS_B, dry);
-    return v3.lerp(c, DRY_GRASS, clamp((y + 2) * 0.05, 0, 0.35) * dry);
+    const out = v3.lerp(c, DRY_GRASS, clamp((y + 2) * 0.05, 0, 0.35) * dry);
+    if (!tintAt) return out;
+    const t = tintAt(x, z);
+    return [clamp(out[0] * t[0], 0, 1), clamp(out[1] * t[1], 0, 1), clamp(out[2] * t[2], 0, 1)];
   };
 
   for (let j = 0; j < rows; j++) {

@@ -84,6 +84,10 @@ class Renderer {
   initParticles() {
     const gl = this.gl;
     this.particles = [];
+    // Also reset every beginFrame, but a car can emit a glow before the first
+    // frame is drawn - the game updates before it draws - and pushing to
+    // undefined takes the whole session down.
+    this.glows = [];
     this.particleData = new Float32Array(MAX_PARTICLES * 4 * 12);
     this.particleVao = gl.createVertexArray();
     gl.bindVertexArray(this.particleVao);

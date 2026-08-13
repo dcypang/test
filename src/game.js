@@ -1438,11 +1438,27 @@ class Game {
       }
       if (!t.done) alive.push(t);
       else {
-        // Recycle the car back to the far end of its path.
+        // Recycle the car back to the far end of its path, but not to the same
+        // spot every time. Sending every finisher to one index stacks them on
+        // top of each other, and because cars more than 320 m away are frozen
+        // the stack sits there growing until the player arrives and finds the
+        // road blocked by six cars parked inside one another.
         t.done = false;
         t.direction *= -1;
         t.laneOffset *= -1;
-        t.placeAt(t.direction > 0 ? 4 : t.path.spline.count - 5, world);
+        const sp = t.path.spline;
+        let idx = t.direction > 0 ? 4 : sp.count - 5;
+        for (let attempt = 0; attempt < 8; attempt++) {
+          const step = attempt * 6 + Math.floor(Math.random() * 5);
+          const i = clamp(t.direction > 0 ? 4 + step : sp.count - 5 - step,
+            2, sp.count - 3);
+          const p = sp.points[i];
+          const clear = this.traffic.every((o) => o === t
+            || Math.hypot(o.car.pos[0] - p[0], o.car.pos[2] - p[2]) > 11);
+          idx = i;
+          if (clear) break;
+        }
+        t.placeAt(idx, world);
         alive.push(t);
       }
     }
@@ -1635,6 +1651,15 @@ class Game {
 
     ds.nav = nav;
     ds.zone = zone;
+    // Which state you are in, and a word about it when you cross the line. The
+    // sign at the border is geometry; this is the part you actually read.
+    if (this.scene.stateAt) {
+      const st = this.scene.stateAt(car.pos[0], car.pos[2]);
+      if (st !== ds.state) {
+        if (st && ds.state) this.hud.message(`WELCOME TO ${st.name.toUpperCase()}`, 3.4, 'big');
+        ds.state = st;
+      }
+    }
     ds.remaining = remaining;
     ds.speeding = speeding;
     ds.distHome = distHome;
@@ -1895,6 +1920,9 @@ class Game {
           routeSpline: (this.legs ? this.leg().route : this.scene.route).spline,
           places: this.scene.places || [],
           destinationIndex: this.destinationIndex,
+          states: this.scene.states,
+          stateBounds: this.scene.stateBounds,
+          currentState: ds.state,
           mapHint: this.isTouch ? 'tap a place to set it'
             : 'A / D to choose  ·  Enter to set  ·  Tab to close',
         });
@@ -1908,6 +1936,7 @@ class Game {
         lights: (this.legs ? this.leg().lights : this.scene.trafficLights) || [],
         speedLimit: ds.zone.limit,
         roadName: ds.zone.label,
+        state: ds.state,
         speeding: ds.speeding,
         distanceRemaining: ds.remaining,
         instruction: ds.nav.instruction,

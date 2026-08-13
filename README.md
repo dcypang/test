@@ -31,13 +31,29 @@ to a stop, and the shopping is on the passenger seat when you get home. It costs
 nothing but time. The drive ends when the car is stopped in front of the garage
 with the light on.
 
-## Ashcombe, and going wherever you like
+## Eight states, and going wherever you like
 
-The route home runs through a city with a real street grid — eight avenues and
-seven cross streets over about 800 by 600 metres, with buildings lining every
-frontage. It is not a lattice: streets bow by a few metres and the spacing
-varies block to block, because a perfect grid reads as a spreadsheet from
-inside the car and every junction looks like the last one.
+The world is a country: **eight states**, four across and two down, 5,600 by
+2,600 metres of continuous ground. Redrock is dry and nearly bare, Pinecrest is
+forest, Lakeshore runs cold and blue, Goldfield is yellow stubble. Each has its
+own ground colour, its own tree density, its own town and its own petrol
+station and shop.
+
+They are not separate places you get taken to. It is one world with one road
+network, so a state line is just a sign you drive past — the ground colour
+changes, the HUD names the new state, and nothing loads. Two interstates run
+the length of the country and two routes cross it, with a slip road into every
+town, so from your own driveway you can reach any of the eight without leaving
+the tarmac.
+
+Ashcombe is the capital and much the biggest: **twelve avenues and ten cross
+streets** over about 1,150 by 840 metres, with buildings lining every frontage.
+The others run from proper towns down to a few blocks at an interstate
+junction, because eight identical grids would be eight of the same place.
+
+No grid is a lattice: streets bow by a few metres and the spacing varies block
+to block, because a perfect grid reads as a spreadsheet from inside the car and
+every junction looks like the last one.
 
 **You do not have to follow the satnav.** Every street connects, so you can turn
 off the route wherever you like, drive around, and rejoin anywhere. While you
@@ -52,18 +68,19 @@ is just getting lost.
 
 ## The GPS
 
-`Tab` — or the map button on a phone — puts the whole road network on screen,
-with every destination on it: **home**, the **other house** across town, the
-five named **shops**, the village stores, and both **petrol stations**. Pick one
-with `A` / `D` and `Enter`, or by tapping the pin, and the satnav switches from
+`Tab` — or the map button on a phone — puts the whole country on screen: every
+state as a block in its own colour with its name across it, the one you are in
+picked out, the whole road network, and all **24 destinations** — **home**, the
+**other house**, thirteen named **shops**, and **nine petrol stations**, at
+least one of each in every state. Pick one with `A` / `D` and `Enter`, or by tapping the pin, and the satnav switches from
 turn-by-turn to a bearing and a distance — there is no sensible instruction to
 give for an arbitrary corner of a street grid, and a compass is what a car has
 always had. Stop inside the arrival radius and it says so; stop on a forecourt
 and the tank is full. Choosing home puts the drive back the way it was.
 
 Destinations are not placed by hand. Each one scans candidate frontages around
-the grid and takes the first that clears everything already placed, home and the
-village shop included, so nothing lands within 150 m of anything else. The
+its own town and takes the first that clears everything already placed, home and
+the village shop included, so nothing lands on top of anything else. The
 labels are then laid out against measured boxes: each name tries a ring of
 positions and takes the first clear of every pin and label already down, with a
 leader line back to its pin when it had to move sideways. Two pins a street
@@ -73,8 +90,8 @@ each other is no better than no map.
 Two ways to get there: take the chequered flag and press **Drive home** on the
 results screen, or **Skip to the drive home** on the title screen.
 
-The circuit and the town are two separate worlds — merging them would mean a
-million triangles resident at once, and their coordinates overlap — so the
+The circuit and the country are two separate worlds — together they are over
+two and a half million triangles, and their coordinates overlap — so the
 handover happens as you pass under the gate. The car keeps its speed, gear and
 revs across it, and both sides of the gate carry the same stonework and the same
 avenue of trees, so there is nothing in shot when the world changes.
@@ -128,9 +145,17 @@ particles, capped resolution.
 
 The world is solid. Tree trunks, lamp posts, sign posts, traffic light poles,
 gate piers, hedges and the walls of every building carry a collider — about
-13,600 of them in the town, bucketed into a grid so testing them all every frame
-costs nothing. Hedges and fences are soft and mostly just drag at you; a lamp
+42,000 of them across the country, bucketed into a grid so testing them all
+every frame costs nothing. Hedges and fences are soft and mostly just drag at you; a lamp
 post is not.
+
+Two test scripts cover this from opposite ends. `scripts/solid.mjs` is
+geometric rather than behavioural: it walks the perimeter of all 1,700-odd
+buildings looking for a gap wider than the car, walks every road checking the
+lane is not pinched by scenery, checks the collider index returns what it is
+asked for, and checks home can actually be parked at. `scripts/drivehome.mjs`
+then rams 25 buildings from 8 headings each at 200 km/h and 60/20/10 fps, which
+is the part that proves the resolver uses what the audit found.
 
 A building is not one collider at its centre. Each one is ringed with colliders
 around its actual footprint, taken from the mesh bounds and rotated with it, so
@@ -271,6 +296,7 @@ out. `scripts/simtest.mjs` asserts all of that.
     node scripts/smoke.mjs      # drive it in headless Chromium, capture shots
     node scripts/mobile.mjs     # emulate a phone and exercise the touch controls
     node scripts/drivehome.mjs  # race to the flag, then drive the whole way home
+    node scripts/solid.mjs      # collider audit: nothing can be driven through
     node scripts/polycount.mjs  # triangle budget, scene by scene
     node scripts/steerfeel.mjs  # steering feel scorecard
     node scripts/steerloop.mjs  # tune the steering against it
@@ -282,6 +308,12 @@ the next varies by ten seconds a lap — far more than most changes to the drive
 are worth, so tuning against it measures noise. Seeded, the corner-speed ceiling
 could be swept properly: 0.79 of the theoretical limit is the last value that
 gains, and by 0.82 the field is 23% off track and four seconds a lap slower.
+
+Both browser suites step the game themselves and switch off its animation loop
+while they do it. Left running, that loop advances the simulation between the
+harness's evaluate blocks by however long a screenshot happened to take, and the
+same build gives a different answer every run — which it did, until the AI's
+skill spread was also seeded before the race rather than after it.
 
 `drivehome.mjs` is the end-to-end one: it puts an AI driver in the player's seat,
 takes the race to the chequered flag, clicks through the results screen, then

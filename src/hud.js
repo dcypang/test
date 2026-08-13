@@ -484,6 +484,28 @@ class Hud {
     const oy = (top + bottom) / 2 - ((minZ + maxZ) / 2) * scale;
     const px = (x, z) => [ox + x * scale, oy + z * scale];
 
+    // The states, under everything else: a block of the state's own colour, its
+    // name across the middle, and a brighter edge on the one you are in. This
+    // is the layer that turns a tangle of roads into a country.
+    if (state.states && state.stateBounds) {
+      const b = state.stateBounds;
+      const here = state.currentState;
+      for (const st of state.states) {
+        const [ax, ay] = px(st.x0, st.z0);
+        const [bx, by] = px(st.x1, st.z1);
+        const t = st.tint;
+        // The tint multiplies a mid grey, the same way it multiplies the ground.
+        ctx.fillStyle = `rgba(${Math.round(38 * t[0])}, ${Math.round(42 * t[1])}, ${Math.round(46 * t[2])}, 0.92)`;
+        ctx.fillRect(ax, ay, bx - ax, by - ay);
+        ctx.strokeStyle = st === here ? 'rgba(255, 209, 102, 0.85)' : 'rgba(255,255,255,0.16)';
+        ctx.lineWidth = st === here ? 2 : 1;
+        ctx.strokeRect(ax, ay, bx - ax, by - ay);
+        this.text(st.name.toUpperCase(), (ax + bx) / 2, ay + 20, 13,
+          st === here ? 'rgba(255, 209, 102, 0.9)' : 'rgba(255,255,255,0.30)',
+          'center', 700);
+      }
+    }
+
     // Roads. Wide ones read as avenues.
     for (const r of state.roads) {
       const wide = r.width > 4.6;
@@ -662,7 +684,14 @@ class Hud {
     ctx.stroke();
     this.text(String(state.speedLimit), lx, ly + 11, 30, '#15171c', 'center', 800);
     this.text(state.roadName, lx + 52, ly - 4, 18, '#fff', 'left', 700);
+    // Which state, on the same line as the distance. Eight of them look alike
+    // from behind the wheel unless something says which one you are in.
+    const st = state.state;
     this.text(`${(state.distanceRemaining / 1000).toFixed(2)} km to home`, lx + 52, ly + 18, 14, 'rgba(255,255,255,0.7)', 'left', 500);
+    if (st) {
+      this.text(`${st.name}  ·  ${st.abbr}`, lx + 52, ly + 36, 12,
+        'rgba(255,255,255,0.52)', 'left', 600);
+    }
 
     if (state.speeding) {
       this.text('SLOW DOWN', lx, ly + 62, 15, '#ff6b60', 'center', 700);
@@ -734,6 +763,15 @@ class Hud {
     this.text(state.roadName, lx + 32, ly - 2, 13, '#fff', 'left', 700);
     this.text(`${(state.distanceRemaining / 1000).toFixed(2)} km`, lx + 32, ly + 14, 11,
       'rgba(255,255,255,0.7)', 'left', 500);
+    if (state.state) {
+      // After the road name, measured rather than guessed - the names run from
+      // "Avenue" to "Circuit access road" and a fixed offset collides with the
+      // long ones.
+      ctx.font = `700 13px ${this.font}`;
+      const w = ctx.measureText(state.roadName).width;
+      this.text(state.state.abbr, lx + 32 + w + 9, ly - 2, 11,
+        'rgba(255,255,255,0.5)', 'left', 700);
+    }
     if (state.speeding) this.text('SLOW DOWN', lx + 32, ly + 30, 11, '#ff6b60', 'left', 700);
 
     // Turn instruction, centred but kept shallow so it clears the road ahead.

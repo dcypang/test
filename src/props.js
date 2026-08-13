@@ -775,3 +775,31 @@ function buildSimpleWheel(mb, radius, width) {
     mb.pop();
   }
 }
+
+// A state line sign: the big green board on gantry legs that tells you which
+// state you have just driven into. The name itself is drawn on the HUD and the
+// map rather than in geometry - a legible word in triangles costs more than the
+// rest of the sign put together - so the board carries the state's own colour
+// and a route shield, which is what you actually read at speed.
+function buildStateSign(mb, tint) {
+  pm(mb, PROP_MAT.steelDark, [0.34, 0.35, 0.37]);
+  for (const side of [-1, 1]) {
+    mb.push(); mb.translate(side * 1.9, 1.7, 0); mb.cylinder(0.075, 0.09, 3.4, 8); mb.pop();
+  }
+  // Board.
+  mb.mat([0.06, 0.30, 0.16], 0.62, 0.04, 0, FLAG_DEFAULT);
+  mb.push(); mb.translate(0, 3.9, 0); mb.box(4.6, 2.0, 0.10); mb.pop();
+  // White border, inset slightly so it reads as a frame rather than a slab.
+  pm(mb, PROP_MAT.white);
+  for (const [dy, h] of [[0.88, 0.09], [-0.88, 0.09]]) {
+    mb.push(); mb.translate(0, 3.9 + dy, 0.055); mb.box(4.3, h, 0.02); mb.pop();
+  }
+  for (const dx of [-2.06, 2.06]) {
+    mb.push(); mb.translate(dx, 3.9, 0.055); mb.box(0.09, 1.85, 0.02); mb.pop();
+  }
+  // A panel in the state's own colour, so the ground you are about to drive on
+  // and the sign announcing it agree.
+  mb.mat([clamp(tint[0] * 0.62, 0, 1), clamp(tint[1] * 0.62, 0, 1),
+    clamp(tint[2] * 0.62, 0, 1)], 0.7, 0.02, 0, FLAG_DEFAULT);
+  mb.push(); mb.translate(0, 3.9, 0.07); mb.box(1.5, 1.1, 0.02); mb.pop();
+}
