@@ -103,41 +103,63 @@ class World {
     this.solids = [];
     this.solidGrid = new Map();
     this.solidCell = 16;
+    // Building outlines, for the collider audit. Not used at runtime.
+    this.footprints = [];
   }
 
   // `hard` is how much of the impact the car keeps: a lamp post stops you, a
   // hedge mostly just slows you down.
   addSolid(x, z, r, hard = 1) { this.solids.push({ x, z, r, hard }); }
 
+  // Each solid goes in the cells its own circle overlaps, and no more. The
+  // query then widens by however far it needs to reach. Padding the index
+  // instead - which is what this used to do - silently caps every query at the
+  // padding distance, however large a radius it asks for, and a swept
+  // collision test that cannot see more than three metres ahead is a swept
+  // collision test that does not work.
   indexSolids() {
     this.solidGrid.clear();
     const cs = this.solidCell;
     for (let i = 0; i < this.solids.length; i++) {
       const s = this.solids[i];
-      const reach = Math.ceil((s.r + 3) / cs);
-      const cx = Math.floor(s.x / cs), cz = Math.floor(s.z / cs);
-      for (let dx = -reach; dx <= reach; dx++) {
-        for (let dz = -reach; dz <= reach; dz++) {
-          const k = this.key(cx + dx, cz + dz);
+      const x0 = Math.floor((s.x - s.r) / cs), x1 = Math.floor((s.x + s.r) / cs);
+      const z0 = Math.floor((s.z - s.r) / cs), z1 = Math.floor((s.z + s.r) / cs);
+      for (let cx = x0; cx <= x1; cx++) {
+        for (let cz = z0; cz <= z1; cz++) {
+          const k = this.key(cx, cz);
           let list = this.solidGrid.get(k);
           if (!list) { list = []; this.solidGrid.set(k, list); }
           list.push(i);
         }
       }
     }
+    this._solidStamp = new Int32Array(this.solids.length);
+    this._solidQuery = 0;
   }
 
-  // Every solid whose circle could touch a disc of `radius` at (x, z).
+  // Every solid whose circle could touch a disc of `radius` at (x, z). A solid
+  // spanning several cells appears in each of them, so results are stamped to
+  // keep them unique.
   querySolids(x, z, radius, out) {
     out.length = 0;
-    const list = this.solidGrid.get(this.key(
-      Math.floor(x / this.solidCell), Math.floor(z / this.solidCell)));
-    if (!list) return out;
-    for (const i of list) {
-      const s = this.solids[i];
-      const dx = x - s.x, dz = z - s.z;
-      const reach = s.r + radius;
-      if (dx * dx + dz * dz < reach * reach) out.push(s);
+    const cs = this.solidCell;
+    const x0 = Math.floor((x - radius) / cs), x1 = Math.floor((x + radius) / cs);
+    const z0 = Math.floor((z - radius) / cs), z1 = Math.floor((z + radius) / cs);
+    const stamp = this._solidStamp;
+    const tag = ++this._solidQuery;
+    for (let cx = x0; cx <= x1; cx++) {
+      for (let cz = z0; cz <= z1; cz++) {
+        const list = this.solidGrid.get(this.key(cx, cz));
+        if (!list) continue;
+        for (const i of list) {
+          if (stamp[i] === tag) continue;
+          stamp[i] = tag;
+          const s = this.solids[i];
+          const dx = x - s.x, dz = z - s.z;
+          const reach = s.r + radius;
+          if (dx * dx + dz * dz < reach * reach) out.push(s);
+        }
+      }
     }
     return out;
   }

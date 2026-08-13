@@ -10,6 +10,12 @@ const FIELD_SIZE = 8;
 // Radius of each of the two circles a car is approximated by, for hitting
 // scenery. Half the car's width plus a little, so the shell is a touch generous.
 const CAR_SHELL = 0.98;
+// How close counts as touching. The swept test parks the car exactly on the
+// contact point, which is not an overlap, so without a skin the impulse never
+// fires and the wall does nothing.
+const CONTACT_SKIN = 0.05;
+// Most the road boundary may move the car back in one frame.
+const BOUNDARY_EASE = 0.45;
 
 const NO_SHADOW = { noShadow: true };
 
@@ -745,6 +751,19 @@ class Game {
     dt = Math.min(dt, 0.05);
     if (this.paused) dt = 0;
 
+    // Manual step: the harness owns the clock. Headless tests advance the game
+    // by calling update() themselves, but the loop below kept running between
+    // their evaluate blocks and stepped the simulation by however long a
+    // screenshot happened to take - so the same build gave a different drive
+    // home every run, and any test written against it was measuring the
+    // machine. Drawing continues, so screenshots still work.
+    if (this.manualStep) {
+      this.draw(0);
+      this.input.endFrame();
+      requestAnimationFrame(() => this.frame());
+      return;
+    }
+
     this.time += dt;
     this.update(dt);
     this.draw(dt);
@@ -982,6 +1001,44 @@ class Game {
     }
   }
 
+  // Push a car out of any solid it overlaps, and apply the impact. Split out
+  // because it has to run twice: once after the swept test, and again after
+  // the road boundary has nudged the car sideways, so scenery always gets the
+  // last word on where the car may end up.
+  pushOutOfSolids(car, world, hits) {
+    const v = car.vehicle;
+    const f = car.forward();
+    for (const o of [-1.05, 1.05]) {
+      const cx = car.pos[0] + f[0] * o, cz = car.pos[2] + f[2] * o;
+      world.querySolids(cx, cz, CAR_SHELL + CONTACT_SKIN, hits);
+      for (const s of hits) {
+        const minD = s.r + CAR_SHELL;
+        let nx = cx - s.x, nz = cz - s.z;
+        const d = Math.hypot(nx, nz);
+        // Touching counts as hitting. Resting exactly on the surface is the
+        // normal outcome of the swept rewind, and it still has to stop the car.
+        if (d >= minD + CONTACT_SKIN) continue;
+        if (d < 1e-4) { nx = f[0]; nz = f[2]; } else { nx /= d; nz /= d; }
+        const push = Math.max(0, minD - d);
+        v.pos[0] += nx * push;
+        v.pos[2] += nz * push;
+        const vn = v.vel[0] * nx + v.vel[2] * nz;
+        if (vn >= 0) continue;
+        // `hard` decides how much of the car's momentum the obstacle takes:
+        // a lamp post stops you, a hedge drags at you and slows you down.
+        const j = -(1.0 + 0.25 * s.hard) * vn * s.hard;
+        v.vel[0] += nx * j; v.vel[2] += nz * j;
+        v.vel[0] *= 1 - 0.35 * s.hard; v.vel[2] *= 1 - 0.35 * s.hard;
+        v.yawRate += clamp(o * vn * s.hard * 0.045, -2, 2);
+        const strength = clamp(-vn / 18, 0, 1) * s.hard;
+        if (car === this.player && strength > 0.05) {
+          this.impact(cx, cz, nx, nz, strength, null);
+          if (this.driveState) this.registerPenalty('Hit something', strength * 16);
+        }
+      }
+    }
+  }
+
   resolveCollisions(dt, boundaryFn) {
     const cars = this.state === 'drive'
       ? [this.player, ...this.traffic.map((t) => t.car)]
@@ -1066,52 +1123,50 @@ class Game {
         // Belt and braces: no car covers 25 m in a frame under its own power,
         // so anything that big is a teleport nobody flagged.
         if (travelled > 25) { stepX = stepZ = 0; travelled = 0; }
-        for (const o of [-1.05, 1.05]) {
-          const cx = car.pos[0] + f[0] * o, cz = car.pos[2] + f[2] * o;
-          // Search wide enough to cover everything the sweep passes.
-          world.querySolids(cx, cz, CAR_SHELL + travelled, hits);
-          for (const s of hits) {
-            const minD = s.r + CAR_SHELL;
-            let nx = cx - s.x, nz = cz - s.z;
-            let d = Math.hypot(nx, nz);
-
-            // Already clear at the end of the frame, but did the segment pass
-            // through on the way? Solve for the first touch along it.
-            if (d >= minD && travelled > 0.05) {
+        // Pass one: how far along this frame's movement does the car get
+        // before it first touches anything? Resolving colliders one at a time
+        // in whatever order the grid returns them lets the car be rewound past
+        // one wall and into the next, so the earliest contact across every
+        // candidate is found first and the car is rewound to it exactly once.
+        if (travelled > 0.05) {
+          let earliest = 1;
+          for (const o of [-1.05, 1.05]) {
+            const cx = car.pos[0] + f[0] * o, cz = car.pos[2] + f[2] * o;
+            // A disc at the midpoint of the swept segment, wide enough to
+            // enclose both ends. Asking around the endpoint alone finds
+            // nothing to sweep against when the step is long, which is
+            // exactly when the sweep matters.
+            world.querySolids(cx - stepX * 0.5, cz - stepZ * 0.5,
+              CAR_SHELL + travelled * 0.5, hits);
+            for (const s of hits) {
+              const minD = s.r + CAR_SHELL;
               const ox = cx - stepX - s.x, oz = cz - stepZ - s.z;
               const A = stepX * stepX + stepZ * stepZ;
               const B = 2 * (ox * stepX + oz * stepZ);
               const C = ox * ox + oz * oz - minD * minD;
+              if (C <= 0) continue;                      // started inside it
               const disc = B * B - 4 * A * C;
-              if (C <= 0 || disc < 0) continue;         // started inside, or misses
+              if (disc < 0) continue;                    // never touches
               const t = (-B - Math.sqrt(disc)) / (2 * A);
-              if (t < 0 || t > 1) continue;
-              // Rewind the car to the moment of contact.
-              v.pos[0] -= stepX * (1 - t);
-              v.pos[2] -= stepZ * (1 - t);
-              nx = (cx - stepX * (1 - t)) - s.x;
-              nz = (cz - stepZ * (1 - t)) - s.z;
-              d = Math.hypot(nx, nz) || minD;
-            }
-            if (d >= minD) continue;
-            if (d < 1e-4) { nx = f[0]; nz = f[2]; } else { nx /= d; nz /= d; }
-            v.pos[0] += nx * (minD - d);
-            v.pos[2] += nz * (minD - d);
-            const vn = v.vel[0] * nx + v.vel[2] * nz;
-            if (vn >= 0) continue;
-            // `hard` decides how much of the car's momentum the obstacle takes:
-            // a lamp post stops you, a hedge drags at you and lets you through.
-            const j = -(1.0 + 0.25 * s.hard) * vn * s.hard;
-            v.vel[0] += nx * j; v.vel[2] += nz * j;
-            v.vel[0] *= 1 - 0.35 * s.hard; v.vel[2] *= 1 - 0.35 * s.hard;
-            v.yawRate += clamp(o * vn * s.hard * 0.045, -2, 2);
-            const strength = clamp(-vn / 18, 0, 1) * s.hard;
-            if (car === this.player && strength > 0.05) {
-              this.impact(cx, cz, nx, nz, strength, null);
-              if (this.driveState) this.registerPenalty('Hit something', strength * 16);
+              if (t >= 0 && t < earliest) earliest = t;
             }
           }
+          if (earliest < 1) {
+            // Back off a few centimetres past the contact point. Landing
+            // exactly on it leaves the car touching but not overlapping, so
+            // the push-out pass below finds nothing to resolve and never takes
+            // the speed off - and next frame the sweep sees a segment that
+            // starts inside the collider, skips it, and the car sails through
+            // the wall at full speed. The skin guarantees a real overlap for
+            // the impulse to work on.
+            const back = Math.min(1 - earliest + CONTACT_SKIN / Math.max(travelled, 1e-4), 1);
+            v.pos[0] -= stepX * back;
+            v.pos[2] -= stepZ * back;
+          }
         }
+
+        // Pass two: push out of anything still overlapped, and take the hit.
+        this.pushOutOfSolids(car, world, hits);
       }
     }
 
@@ -1125,7 +1180,13 @@ class Game {
       if (over <= 0) continue;
       const nrm = hit.path.normal(hit.index);
       const side = sign(lat);
-      const push = over;
+      // Ease back, never snap. This used to correct the whole overshoot in one
+      // frame, so a car twenty-five metres off the road was teleported
+      // twenty-five metres sideways in a single step - straight through
+      // whatever stood in between, which is one of the ways you end up inside
+      // a house. Capped, it walks the car back over a few frames instead, and
+      // the solid pass below still has the final say on where it can go.
+      const push = Math.min(over, BOUNDARY_EASE);
       car.vehicle.pos[0] -= nrm[0] * side * push;
       car.vehicle.pos[2] -= nrm[2] * side * push;
       const nx = -nrm[0] * side, nz = -nrm[2] * side;
@@ -1141,6 +1202,14 @@ class Game {
           if (this.driveState) this.registerPenalty('Off the road', strength * 14);
         }
       }
+    }
+
+    // The boundary has just moved cars sideways, so anything it pushed into a
+    // wall gets pushed back out. Scenery is the harder constraint of the two:
+    // being off the road is a penalty, being inside a building is a bug.
+    if (world.solids.length) {
+      const hits = this._solidHits || (this._solidHits = []);
+      for (const car of cars) this.pushOutOfSolids(car, world, hits);
     }
 
     for (const car of cars) {

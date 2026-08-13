@@ -199,6 +199,10 @@ class Vehicle {
 
   setPose(x, z, yaw, surfaceY = 0) {
     this.pos[0] = x; this.pos[2] = z; this.pos[1] = surfaceY;
+    // A teleport invalidates the recovery point. Left stale, a later NaN
+    // restores the car to wherever it was before the teleport - which can be
+    // the far side of the map, or the inside of a building.
+    this.lastGoodPos[0] = x; this.lastGoodPos[1] = surfaceY; this.lastGoodPos[2] = z;
     this.yaw = yaw;
     this.vel[0] = this.vel[1] = this.vel[2] = 0;
     this.yawRate = 0;
@@ -244,6 +248,7 @@ class Vehicle {
     this.vel[0] = vx * c + vz * s;
     this.vel[2] = -vx * s + vz * c;
     this.pos[0] = x; this.pos[2] = z; this.pos[1] = surfaceY;
+    this.lastGoodPos[0] = x; this.lastGoodPos[1] = surfaceY; this.lastGoodPos[2] = z;
     this.yaw = yaw;
   }
 

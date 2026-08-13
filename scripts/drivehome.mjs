@@ -32,8 +32,24 @@ while (Date.now() - t0 < 240000) {
   await page.waitForTimeout(300);
 }
 
+// This harness steps the game itself, so the game's own animation loop must
+// stop stepping it too - otherwise every gap between evaluate blocks (a
+// screenshot, a click) advances the simulation by an unpredictable amount and
+// the same build gives a different result each run.
+await page.evaluate(() => { window.__game.manualStep = true; });
+
 // --- the race, taken to the flag ---------------------------------------------
 await page.evaluate(() => {
+  // Seed before the race starts, not after. The AI's skill spread is drawn at
+  // startRace, and every later draw - the mistakes it makes, the traffic laid
+  // out for the drive home - comes off the same stream, so seeding a moment
+  // too late leaves the whole run at the mercy of the real random number
+  // generator and the same build finishes the drive home only sometimes.
+  let seed = 20240607;
+  Math.random = () => {
+    seed = (seed * 1664525 + 1013904223) >>> 0;
+    return seed / 4294967296;
+  };
   window.__game.settings.laps = 2;
   window.__game.renderer.settings.particles = false;
   window.__game.startRace();
@@ -42,12 +58,7 @@ await page.evaluate(() => {
 const raced = await page.evaluate(() => {
   const g = window.__game;
   // Hand the player's car to a racing driver so the race can actually finish.
-  // The AI makes deliberate random mistakes; seed them so the run repeats.
-  let seed = 20240607;
-  Math.random = () => {
-    seed = (seed * 1664525 + 1013904223) >>> 0;
-    return seed / 4294967296;
-  };
+  // Math.random is already seeded, above.
   const { RacingDriver } = window.__drivers;
   const auto = new RacingDriver(g.player, g.scene.racingLine, 0.85);
   // The driver has to run inside the input hook: applyPlayerInput overwrites
@@ -165,6 +176,20 @@ const home = await page.evaluate(() => {
   const navSeen = new Set();
   const offTrace = [];
   let stalled = 0;
+  // Where the drive home hits things, clustered by location. When the run goes
+  // slowly or does not finish, this is the first thing worth looking at.
+  const bumps = [];
+  const origImpact = g.impact.bind(g);
+  g.impact = (x, z, nx, nz, strength, col) => {
+    if (strength > 0.05) {
+      const c = bumps.find((b) => Math.hypot(b.x - x, b.z - z) < 14);
+      if (c) c.n++;
+      else bumps.push({ x: Math.round(x), z: Math.round(z), n: 1,
+        zone: g.driveState.zone && g.driveState.zone.label,
+        kmh: Math.round(v.speedKmh) });
+    }
+    return origImpact(x, z, nx, nz, strength, col);
+  };
   for (let i = 0; i < 60 * 900 && g.state === 'drive'; i++) {
     g.update(1 / 60);
     frames++;
@@ -196,6 +221,7 @@ const home = await page.evaluate(() => {
     minutes: +(g.driveState.elapsed / 60).toFixed(1),
     nav: Array.from(navSeen),
     handover, offTrace,
+    bumps: bumps.sort((a, b) => b.n - a.n).slice(0, 8),
   };
 });
 console.log('   ', JSON.stringify(home));
@@ -354,6 +380,77 @@ check('rejoining the route resumes the drive home',
   `${roam.rejoinedRemaining} m to go`);
 check('the minimap gets the whole network', roam.mapRoads >= 20, `${roam.mapRoads} splines`);
 
+// --- ramming things -----------------------------------------------------------
+// The geometric audit (scripts/solid.mjs) proves the colliders are there. This
+// proves the resolver actually uses them: drive at real buildings from every
+// angle, flat out, at frame rates bad enough to move the car several metres per
+// update, and check it never ends up inside one.
+const ram = await page.evaluate(() => {
+  const g = window.__game;
+  g.startDriveHome();
+  while (g.legIndex < g.legs.length - 1) g.advanceLeg();
+  const world = g.scene.world;
+  const fps = [1 / 60, 1 / 20, 1 / 10];
+
+  // Is a point inside a building's outline, with a little slack for the shell?
+  const inside = (fp, x, z) => {
+    const cs = Math.cos(fp.yaw), sn = Math.sin(fp.yaw);
+    const dx = x - fp.x, dz = z - fp.z;
+    const lx = dx * cs - dz * sn, lz = dx * sn + dz * cs;
+    return Math.abs(lx) < fp.halfW - 0.35 && Math.abs(lz) < fp.halfD - 0.35;
+  };
+
+  let worst = { depth: 0 };
+  let runs = 0, contacts = 0, topKmh = 0;
+  // A spread of buildings across the town, each hit from eight headings.
+  const step = Math.max(1, Math.floor(world.footprints.length / 24));
+  for (let fi = 0; fi < world.footprints.length; fi += step) {
+    const fp = world.footprints[fi];
+    for (let a = 0; a < 8; a++) {
+      const dt = fps[(runs + a) % fps.length];
+      const ang = (a / 8) * Math.PI * 2;
+      const reach = Math.max(fp.halfW, fp.halfD) + 34;
+      const sx = fp.x + Math.sin(ang) * reach, sz = fp.z + Math.cos(ang) * reach;
+      // Point at the middle of the building and floor it. Launched already at
+      // speed rather than accelerating into it: the whole point is to test the
+      // swept contact, and a standing start only ever reaches about 80 km/h in
+      // the run-up available.
+      const yaw = Math.atan2(fp.x - sx, fp.z - sz);
+      g.player.setPose(sx, sz, yaw, world);
+      const launch = 56;                              // ~200 km/h
+      g.player.vehicle.vel[0] = Math.sin(yaw) * launch;
+      g.player.vehicle.vel[2] = Math.cos(yaw) * launch;
+      g.player.vehicle.gear = 6;
+      g.input.driving = () => ({ throttle: 1, brake: 0, steer: 0, handbrake: 0, shiftUp: false, shiftDown: false });
+      runs++;
+      for (let k = 0; k < Math.round(4.5 / dt); k++) {
+        g.update(dt);
+        const p = g.player.pos;
+        topKmh = Math.max(topKmh, g.player.vehicle.speed * 3.6);
+        if (inside(fp, p[0], p[2])) {
+          const cs = Math.cos(fp.yaw), sn = Math.sin(fp.yaw);
+          const ddx = p[0] - fp.x, ddz = p[2] - fp.z;
+          const lx = Math.abs(ddx * cs - ddz * sn), lz = Math.abs(ddx * sn + ddz * cs);
+          const depth = Math.min(fp.halfW - lx, fp.halfD - lz);
+          if (depth > worst.depth) {
+            worst = { depth: Math.round(depth * 100) / 100, fps: Math.round(1 / dt), at: fi };
+          }
+          break;
+        }
+        if (g.player.vehicle.speed < 1.5 && k > 30) { contacts++; break; }
+      }
+    }
+  }
+  return { runs, contacts, topKmh: Math.round(topKmh), worst };
+});
+console.log('   ', JSON.stringify(ram));
+check('driving at buildings from every angle never gets inside one',
+  ram.worst.depth === 0,
+  ram.worst.depth ? `${ram.worst.depth} m inside at ${ram.worst.fps} fps`
+    : `${ram.runs} runs, up to ${ram.topKmh} km/h, at 60/20/10 fps`);
+check('the car is actually being stopped, not missing the buildings',
+  ram.contacts > ram.runs * 0.5, `${ram.contacts}/${ram.runs} runs brought to a stop`);
+
 // --- the GPS -----------------------------------------------------------------
 const gps = await page.evaluate(() => {
   const g = window.__game;
@@ -381,9 +478,29 @@ const gps = await page.evaluate(() => {
   const targeted = g.chosenPlace && g.chosenPlace.name;
   g.setMapOpen(false);
 
-  // Park on the forecourt and stop: that is what arriving means.
+  // Park on the forecourt and stop: that is what arriving means. The station
+  // is a solid building, so the spot has to be one the car actually fits in -
+  // dropping it on the pumps just gets it shoved back out again.
   const t = places[fuelIndex];
-  g.player.setPose(t.x - 4, t.z, 0, g.scene.world);
+  const world2 = g.scene.world;
+  const hits2 = [];
+  const fits = (x, z) => {
+    for (const o of [-1.05, 1.05]) {
+      world2.querySolids(x, z + o, 1.1, hits2);
+      for (const s of hits2) if (Math.hypot(x - s.x, z + o - s.z) < s.r + 1.1) return false;
+    }
+    return true;
+  };
+  let spot = null;
+  for (let r = 2; r <= t.radius - 1 && !spot; r += 0.5) {
+    for (let a = 0; a < 16 && !spot; a++) {
+      const x = t.x + Math.sin(a / 16 * Math.PI * 2) * r;
+      const z = t.z + Math.cos(a / 16 * Math.PI * 2) * r;
+      if (fits(x, z)) spot = [x, z];
+    }
+  }
+  if (!spot) spot = [t.x - 4, t.z];
+  g.player.setPose(spot[0], spot[1], 0, g.scene.world);
   g.input.driving = () => ({ throttle: 0, brake: 1, steer: 0, handbrake: 1, shiftUp: false, shiftDown: false });
   let arrived = false;
   for (let k = 0; k < 60 * 3; k++) {
