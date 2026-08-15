@@ -257,7 +257,8 @@
     text-transform: uppercase;
     white-space: nowrap;
   }
-  .icon-btn:hover { border-color: var(--accent); color: var(--accent); }
+  .icon-btn:hover:not(:disabled) { border-color: var(--accent); color: var(--accent); }
+  .icon-btn:disabled { opacity: 0.45; cursor: not-allowed; }
   .icon-btn[aria-pressed="true"] { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }
 
   /* ---------------------------------------------------------------
@@ -302,6 +303,7 @@
   .rows dd.big { font-size: 14px; font-weight: 500; }
 
   #chart-tools { top: 12px; right: 12px; display: flex; flex-direction: column; gap: 5px; padding: 6px; }
+  #chart-tools[hidden], #gps[hidden], #scalebar[hidden] { display: none; }
   #chart-tools .icon-btn { text-align: left; font-size: 13px; padding: 4px 8px; }
 
   #scalebar {
@@ -336,6 +338,37 @@
   .primary:disabled { background: var(--panel-2); color: var(--ink-3); border-color: var(--edge); cursor: not-allowed; }
   .note { font-size: 13px; color: var(--ink-2); }
   .note.bad { color: var(--bad); }
+
+  /* Cockpit control strip */
+  #cockpit-panel {
+    bottom: 12px; left: 50%; transform: translateX(-50%);
+    width: min(680px, calc(100% - 24px)); padding: 9px 12px 10px;
+  }
+  #cockpit-panel[hidden] { display: none; }
+  .cp-readouts {
+    display: grid; grid-template-columns: repeat(auto-fit, minmax(84px, 1fr));
+    gap: 6px 12px; margin-bottom: 9px;
+  }
+  .cp-stat span {
+    display: block; font-family: "Barlow Condensed", sans-serif; font-weight: 700;
+    font-size: 10.5px; letter-spacing: 0.11em; text-transform: uppercase; color: var(--ink-3);
+  }
+  .cp-stat b {
+    font-family: "Plex Mono", monospace; font-weight: 500; font-size: 14px;
+    font-variant-numeric: tabular-nums; white-space: nowrap;
+  }
+  .cp-stat b.warn { color: var(--warn); }
+  .cp-stat b.ok { color: var(--ok); }
+
+  .cp-controls { display: flex; align-items: center; gap: 9px; flex-wrap: wrap; }
+  .cp-throttle { flex: 1 1 190px; min-width: 150px; }
+  .cp-throttle .eyebrow { display: block; margin-bottom: 2px; }
+  .cp-throttle input { width: 100%; accent-color: var(--accent); cursor: pointer; }
+  .cp-hint {
+    margin: 8px 0 0; font-family: "Plex Mono", monospace; font-size: 11px; color: var(--ink-3);
+  }
+
+  body.in-cockpit #chart { cursor: crosshair; }
 
   /* ---------------------------------------------------------------
      Rail
@@ -513,6 +546,9 @@
 
     footer { height: auto; min-height: 30px; padding: 6px 12px; }
 
+    #cockpit-panel { padding: 7px 9px 8px; }
+    .cp-readouts { grid-template-columns: repeat(3, 1fr); gap: 4px 8px; margin-bottom: 7px; }
+    .cp-hint { display: none; }
     #gps { width: 168px; padding: 7px 9px 8px; }
     #gps .rows { gap: 2px 8px; }
     #gps .rows dd { font-size: 11.5px; }
@@ -545,6 +581,7 @@
         <button data-warp="300" aria-pressed="false">300&times;</button>
         <button data-warp="1200" aria-pressed="false">1200&times;</button>
       </div>
+      <button class="icon-btn" id="btn-view" title="Switch between the chart and the cockpit">Cockpit</button>
       <button class="icon-btn" id="btn-theme" title="Switch chart between day and night">Night</button>
     </div>
   </header>
@@ -583,6 +620,26 @@
       <div class="bar" id="scale-bar" style="width:80px"></div>
     </div>
 
+    <section class="overlay" id="cockpit-panel" hidden aria-label="Cockpit controls">
+      <div class="cp-readouts">
+        <div class="cp-stat"><span>Field</span><b id="cp-dest">&mdash;</b></div>
+        <div class="cp-stat"><span>Bearing</span><b id="cp-brg">&mdash;</b></div>
+        <div class="cp-stat"><span>Distance</span><b id="cp-dist">&mdash;</b></div>
+        <div class="cp-stat"><span>Approach</span><b id="cp-glide">&mdash;</b></div>
+        <div class="cp-stat"><span>Fuel</span><b id="cp-fuel">&mdash;</b></div>
+      </div>
+      <div class="cp-controls">
+        <label class="cp-throttle">
+          <span class="eyebrow">Thrust <b id="cp-thr" class="mono">0%</b></span>
+          <input type="range" id="throttle" min="0" max="100" step="1" value="0" aria-label="Thrust">
+        </label>
+        <button class="icon-btn" id="btn-ap">AP off</button>
+        <button class="icon-btn" id="btn-gear">Gear</button>
+        <button class="icon-btn" id="btn-dispatch">To dispatch</button>
+      </div>
+      <p class="cp-hint" id="cp-hint">Arrow keys fly &middot; W / S thrust &middot; A autopilot &middot; G gear &middot; C chart</p>
+    </section>
+
     <section class="overlay" id="plan" hidden aria-label="Flight plan">
       <div class="plan-head">
         <span class="route" id="plan-route">&mdash;</span>
@@ -598,6 +655,7 @@
       </div>
       <div class="plan-actions">
         <button class="primary" id="btn-depart">Depart</button>
+        <button class="mini-btn" id="btn-fly">Fly it yourself</button>
         <button class="mini-btn" id="btn-via" hidden>Via</button>
         <button class="mini-btn" id="btn-clear">Clear</button>
         <span class="note" id="plan-note"></span>
@@ -653,8 +711,8 @@
     <h1>You fly the whole world</h1>
     <p>
       Home field is <b>San Francisco</b>. People are waiting in terminals everywhere, each one
-      trying to reach somewhere else. Fly them there and get paid; the chart shows exactly
-      where everyone is going.
+      trying to reach somewhere else. Fly them there and get paid &mdash; hand the leg to dispatch
+      and watch it run on the chart, or climb in and fly it yourself.
     </p>
     <ul>
       <li><b>Board</b> passengers from the Terminal list, then click any field on the chart to plan the leg.</li>
@@ -663,6 +721,8 @@
       <li>Deliver before a passenger's <b>due time</b> for full fare and better standing.</li>
       <li>Speed time up with <b>60&times;</b> or <b>300&times;</b> while you're enroute.</li>
       <li>Looking for somewhere specific? Type a code or city into <b>Direct to</b>, or press <b>/</b>.</li>
+      <li>Want to fly it yourself? Hit <b>Cockpit</b> (or <b>C</b>): thrust with <b>W</b>, rotate at 145 kt,
+          steer with the <b>arrow keys</b>, and <b>A</b> engages the autopilot.</li>
     </ul>
     <div class="brief-rule"></div>
     <button class="primary" id="btn-brief-close">Start flying</button>
@@ -940,6 +1000,8 @@ function freshState() {
     pos: { lat: APT[HOME].lat, lon: APT[HOME].lon },
     fuel: FUEL_CAP,
     flight: null,
+    manual: null,
+    mode: "chart",
     onboard: [],
     queues: {},
     log: [],
@@ -952,6 +1014,8 @@ function freshState() {
 
 const ui = {
   warp: 1,
+  stick: { pitch: 0, roll: 0 },
+  touchStick: null,
   follow: true,
   showDemand: false,
   showRange: false,
@@ -1152,6 +1216,7 @@ function depart(destIata) {
 
   state.flight = {
     from: from.iata,
+    fromPos: { lat: from.lat, lon: from.lon },
     to: to.iata,
     total: plan.dist,
     travelled: 0,
@@ -1168,13 +1233,14 @@ function depart(destIata) {
   save();
 }
 
-function arrive() {
-  const f = state.flight;
-  const apt = APT[f.to];
+/* Touching down anywhere -- flown by dispatch or by hand -- runs through here. */
+function arriveAt(apt) {
   state.pos = { lat: apt.lat, lon: apt.lon };
   state.at = apt.iata;
   state.flight = null;
-  state.totals.milesFlown += f.total;
+  state.manual = null;
+  ui.stick.pitch = 0;
+  ui.stick.roll = 0;
 
   const fee = landingFee(apt);
   state.cash -= fee;
@@ -1202,6 +1268,7 @@ function arrive() {
   while (q.length < wanted) q.push(makePassenger(apt));
 
   if (ui.follow) { view.lat = apt.lat; view.lon = apt.lon; }
+  if (state.mode === "cockpit") armCockpit(apt);
   save();
 }
 
@@ -1209,11 +1276,13 @@ function stepFlight(simHours) {
   const f = state.flight;
   if (!f) return;
 
-  const from = APT[f.from], to = APT[f.to];
+  const from = f.fromPos || APT[f.from], to = APT[f.to];
   const p = profile(f.travelled, f.total);
   const gs = Math.max(150, p.tas + f.wind * (p.alt / CEILING));
 
+  const before = f.travelled;
   f.travelled = Math.min(f.total, f.travelled + gs * simHours);
+  state.totals.milesFlown += f.travelled - before;
   state.fuel = Math.max(0, state.fuel - BURN_CRUISE * simHours * (p.climbing ? BURN_CLIMB : 1) * (p.tas / CRUISE_TAS));
 
   const frac = f.total > 0 ? f.travelled / f.total : 1;
@@ -1226,13 +1295,13 @@ function stepFlight(simHours) {
   }
 
   if (ui.follow) { view.lat = state.pos.lat; view.lon = state.pos.lon; }
-  if (f.travelled >= f.total - 0.5) arrive();
+  if (f.travelled >= f.total - 0.5) arriveAt(APT[f.to]);
 }
 
 function liveFlight() {
   const f = state.flight;
   if (!f) return null;
-  const from = APT[f.from], to = APT[f.to];
+  const from = f.fromPos || APT[f.from], to = APT[f.to];
   const p = profile(f.travelled, f.total);
   const gs = Math.max(150, p.tas + f.wind * (p.alt / CEILING));
   const remaining = f.total - f.travelled;
@@ -1241,6 +1310,309 @@ function liveFlight() {
   const cruiseGs = Math.max(200, CRUISE_TAS + f.wind);
   const planGs = remaining > 200 ? Math.max(gs, cruiseGs * 0.95) : Math.max(160, gs);
   return { f, from, to, alt: p.alt, gs, remaining, hours: remaining / planGs, track: bearing(state.pos, to) };
+}
+
+/* =====================================================================
+   6b. HAND FLYING
+   The model is deliberately forgiving: positive stability, coordinated
+   turns, and a stall that mushes instead of departing. Enough to make
+   flying an approach satisfying without needing a rating.
+   ===================================================================== */
+
+const ROLL_RATE = 34;        // degrees per second at full aileron
+const PITCH_RATE = 8;        // degrees per second at full elevator
+const MAX_BANK = 67;
+const MAX_PITCH = 20;
+const MIN_PITCH = -18;
+const STALL_TAS = 132;       // knots true, below which the wing gives up
+const ROTATE_TAS = 145;      // knots true, nosewheel comes off
+const VNE = 555;             // knots true, overspeed
+const FT_PER_NM = 6076.12;
+
+const AP_MODES = ["OFF", "HOLD", "NAV"];
+
+/* A deterministic runway heading per field, so every airport lands the
+   same way twice without carrying runway data for all 88. */
+function runwayHeading(apt) {
+  let h = 0;
+  for (let i = 0; i < apt.iata.length; i++) h = (h * 31 + apt.iata.charCodeAt(i)) % 360;
+  return Math.round(h / 10) * 10;
+}
+
+const runwayLabel = (apt) => {
+  const h = runwayHeading(apt) || 360;
+  return String(Math.max(1, Math.round(h / 10))).padStart(2, "0");
+};
+
+function nearestAirport(pos) {
+  let best = null;
+  for (const apt of AIRPORTS) {
+    const d = distNm(pos, apt);
+    if (!best || d < best.d) best = { apt, d };
+  }
+  return best;
+}
+
+/* Parked on the runway, engines idling, ready to go. */
+function armCockpit(apt) {
+  state.manual = {
+    alt: 0, hdg: runwayHeading(apt), tas: 0,
+    pitch: 0, bank: 0, throttle: 0, vs: 0,
+    onGround: true, gear: true, ap: "OFF",
+    target: ui.selected || null,
+    wind: 0, warn: "",
+  };
+  ui.stick.pitch = 0;
+  ui.stick.roll = 0;
+  return state.manual;
+}
+
+function takeControls() {
+  if (state.manual) { setMode("cockpit"); return; }
+
+  if (state.flight) {
+    /* Take over from dispatch mid-leg, holding what the aircraft is doing. */
+    const live = liveFlight();
+    state.manual = {
+      alt: live.alt, hdg: live.track, tas: live.gs - live.f.wind,
+      pitch: 0, bank: 0, throttle: 0.82, vs: 0,
+      onGround: false, gear: false, ap: "NAV",
+      target: live.f.to, wind: live.f.wind, warn: "",
+    };
+    state.flight = null;
+    logLine(`Took the controls enroute to ${live.to.iata}.`);
+  } else if (state.at) {
+    const apt = APT[state.at];
+    armCockpit(apt);
+    logLine(`Lined up on runway ${runwayLabel(apt)} at ${apt.iata}.`);
+  } else {
+    return;
+  }
+  ui.warp = 1;
+  syncWarpButtons();
+  setMode("cockpit");
+  renderUI();
+  save();
+}
+
+/* Hand the leg back to dispatch, which flies the great circle as before. */
+function handToDispatch() {
+  const m = state.manual;
+  if (!m || m.onGround) return;
+  const dest = APT[m.target || ui.selected];
+  if (!dest) return;
+
+  const from = { lat: state.pos.lat, lon: state.pos.lon };
+  const plan = fuelForLeg(from, dest);
+  if (plan.burn + RESERVE > state.fuel) return;
+
+  state.flight = {
+    from: null,
+    fromPos: from,
+    to: dest.iata,
+    total: plan.dist,
+    travelled: 0,
+    started: state.time,
+    wind: windComponent(bearing(from, dest), (from.lat + dest.lat) / 2),
+  };
+  state.manual = null;
+  logLine(`Dispatch has it from here — ${nm(plan.dist)} to ${dest.iata}.`);
+  renderUI();
+  save();
+}
+
+function crash(apt) {
+  const bill = 18500;
+  state.cash -= bill;
+  state.rep = clamp(state.rep - 8, 0, 100);
+  state.totals.crashes = (state.totals.crashes || 0) + 1;
+
+  /* The people aboard still need to get where they were going. */
+  const stranded = state.onboard.slice();
+  state.onboard = [];
+  for (const pax of stranded) queueOf(apt.iata).push(Object.assign({}, pax, { from: apt.iata }));
+
+  state.manual = null;
+  state.flight = null;
+  state.pos = { lat: apt.lat, lon: apt.lon };
+  state.at = apt.iata;
+  state.trail = [];
+  logLine(`Put it into the ground short of ${apt.iata}. Recovered and repaired: ${money(bill)}.`, "warn");
+  if (state.mode === "cockpit") armCockpit(apt);
+  if (stranded.length) logLine(`${stranded.length} booking${stranded.length > 1 ? "s" : ""} rebooked from ${apt.iata}.`, "warn");
+  renderUI();
+  save();
+}
+
+/* Autopilot laws. HOLD keeps the wings level and the altitude steady;
+   NAV also steers the great-circle course to the selected field. */
+function autopilot(m, dt) {
+  if (m.ap === "OFF" || m.onGround) return;
+
+  if (m.ap === "NAV" && m.target && APT[m.target]) {
+    const want = bearing(state.pos, APT[m.target]);
+    let err = ((want - m.hdg + 540) % 360) - 180;
+    const wantBank = clamp(err * 1.6, -25, 25);
+    m.bank += clamp(wantBank - m.bank, -ROLL_RATE * dt, ROLL_RATE * dt);
+  } else {
+    m.bank += clamp(0 - m.bank, -ROLL_RATE * dt, ROLL_RATE * dt);
+  }
+
+  if (m.apAlt == null) m.apAlt = m.alt;
+  const altErr = m.apAlt - m.alt;
+  const wantVs = clamp(altErr * 2.2, -2200, 2200);
+  const wantPitch = clamp(wantVs / Math.max(120, m.tas * 1.7), -8, 10);
+  m.pitch += clamp(wantPitch - m.pitch, -PITCH_RATE * dt, PITCH_RATE * dt);
+}
+
+function stepManual(simHours) {
+  const m = state.manual;
+  if (!m) return;
+  const dt = simHours * 3600;
+  if (dt <= 0) return;
+
+  const before = { lat: state.pos.lat, lon: state.pos.lon };
+  m.warn = "";
+
+  if (m.ap !== "OFF" && !m.onGround) {
+    autopilot(m, dt);
+  } else {
+    /* Roll and pitch follow the stick, and settle back toward level when
+       it is released -- the aeroplane wants to fly straight. */
+    m.bank += ui.stick.roll * ROLL_RATE * dt;
+    if (!ui.stick.roll) {
+      const back = Math.min(Math.abs(m.bank), 11 * dt);
+      m.bank -= Math.sign(m.bank) * back;
+    }
+    /* Pitch stays where it is put, the way a trimmed aeroplane does, so a
+       descent does not need the key held all the way down. */
+    m.pitch += ui.stick.pitch * PITCH_RATE * dt;
+  }
+
+  m.bank = clamp(m.bank, -MAX_BANK, MAX_BANK);
+  m.pitch = clamp(m.pitch, MIN_PITCH, MAX_PITCH);
+
+  if (m.onGround) {
+    m.bank = 0;
+    m.pitch = clamp(m.pitch, 0, 12);
+    m.alt = 0;
+    m.vs = 0;
+    /* Thrust against rolling resistance; idle plus reverse slows the rollout. */
+    const braking = m.throttle < 0.12 && m.tas > 0 ? 6.4 : 0;
+    const accel = m.throttle * 7.2 - 0.9 - m.tas * 0.006 - braking;
+    m.tas = Math.max(0, m.tas + accel * dt);
+    m.hdg = (m.hdg + ui.stick.roll * 14 * dt * Math.min(1, m.tas / 45) + 360) % 360;
+
+    if (m.tas >= ROTATE_TAS && m.pitch > 3.5) {
+      m.onGround = false;
+      m.alt = 12;
+      m.gear = false;
+      if (state.at) {
+        const field = APT[state.at];
+        state.totals.legs++;
+        state.at = null;
+        state.trail = [{ lat: field.lat, lon: field.lon }];
+        const load = seatsUsed();
+        logLine(`Rotated off ${field.iata}${load ? ` with ${load} aboard` : ""}.`);
+        markPanels();
+      }
+    } else if (m.tas < 55 && state.at === null) {
+      /* Rolled to a stop after landing. */
+      const near = nearestAirport(state.pos);
+      if (near && near.d < 8) { arriveAt(near.apt); return; }
+    }
+  } else {
+    /* Thrust sets a target true airspeed that thins out with altitude;
+       climbing trades speed for height. */
+    const altFactor = 0.78 + 0.32 * clamp(m.alt / CEILING, 0, 1.15);
+    const gearDrag = m.gear ? 30 : 0;
+    const target = (170 + m.throttle * 330) * altFactor - Math.sin(rad(m.pitch)) * 125 - gearDrag;
+    m.tas += (target - m.tas) * (1 - Math.exp(-dt / 11));
+    m.tas = clamp(m.tas, 55, 620);
+
+    const climbFalloff = clamp(1 - m.alt / 58000, 0.22, 1);
+    m.vs = m.tas * 101.3 * Math.sin(rad(m.pitch)) * 0.55 * climbFalloff;
+
+    if (m.tas < STALL_TAS) {
+      m.vs = Math.min(m.vs, -1600 - (STALL_TAS - m.tas) * 55);
+      m.warn = "STALL";
+    } else if (m.tas > VNE) {
+      m.warn = "OVERSPEED";
+    }
+
+    m.alt += (m.vs * dt) / 60;
+
+    /* Coordinated turn: bank angle sets the rate. */
+    const rate = (1091 * Math.tan(rad(m.bank))) / Math.max(130, m.tas);
+    m.hdg = (m.hdg + rate * dt + 360) % 360;
+
+    if (m.alt <= 0) {
+      m.alt = 0;
+      const near = nearestAirport(state.pos);
+      const gentle = m.vs > -1400 && m.tas < 215 && Math.abs(m.bank) < 22;
+      if (near && near.d < 6 && gentle) {
+        m.onGround = true;
+        m.gear = true;
+        m.pitch = 0;
+        m.bank = 0;
+        m.throttle = 0;
+        el("throttle").value = "0";
+        m.ap = "OFF";
+        logLine(`Touched down at ${near.apt.iata}.`);
+      } else {
+        crash(near ? near.apt : APT[HOME]);
+        return;
+      }
+    }
+    if (m.alt > 51000) { m.alt = 51000; m.vs = Math.min(m.vs, 0); }
+  }
+
+  /* Fuel and position. */
+  const burn = BURN_CRUISE * (0.3 + 0.8 * m.throttle) * simHours;
+  state.fuel = Math.max(0, state.fuel - burn);
+  if (state.fuel <= 0 && !m.onGround) {
+    m.throttle = 0;
+    m.warn = "FUEL";
+  }
+
+  /* Under NAV, hand the aeroplane back before it overflies the field. */
+  if (m.ap === "NAV" && !m.onGround) {
+    const t = manualTarget();
+    if (t && t.dist < 15) {
+      m.ap = "HOLD";
+      m.apAlt = m.alt;
+      ui.warp = Math.min(ui.warp, 1);
+      syncWarpButtons();
+      logLine(`${t.apt.iata} is 15 miles ahead — you have the aeroplane.`);
+    }
+  }
+
+  /* The jet stream lives aloft -- it has no business on the runway. */
+  m.wind = windComponent(m.hdg, state.pos.lat) * clamp((m.alt - 1500) / 22000, 0, 1);
+  const gs = Math.max(0, m.tas + (m.onGround ? 0 : m.wind));
+  if (gs > 0) {
+    state.pos = destPoint(state.pos, m.hdg, (gs * dt) / 3600);
+    state.totals.milesFlown += distNm(before, state.pos);
+  }
+
+  if (!m.onGround) {
+    const tail = state.trail[state.trail.length - 1];
+    if (!tail || distNm(tail, state.pos) > 8) {
+      state.trail.push({ lat: state.pos.lat, lon: state.pos.lon });
+      if (state.trail.length > 400) state.trail.shift();
+    }
+  }
+
+  if (ui.follow) { view.lat = state.pos.lat; view.lon = state.pos.lon; }
+}
+
+/* Distance and bearing to whatever field the pilot is aiming at. */
+function manualTarget() {
+  const m = state.manual;
+  if (!m) return null;
+  const apt = APT[m.target || ui.selected || ""];
+  if (!apt) return null;
+  return { apt, dist: distNm(state.pos, apt), brg: bearing(state.pos, apt) };
 }
 
 /* =====================================================================
@@ -1387,14 +1759,29 @@ function drawGraticule(p) {
   ctx.restore();
 }
 
-/* Night side of the planet, from the subsolar point. */
-function drawNight(p) {
-  const d = new Date(state.time);
+/* Where the sun is standing overhead right now. */
+function solarPosition(time) {
+  const d = new Date(time);
   const dayOfYear = (Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate()) -
                      Date.UTC(d.getUTCFullYear(), 0, 1)) / 86400000;
   const decl = -23.44 * Math.cos(rad((360 / 365) * (dayOfYear + 10)));
   const utcHours = d.getUTCHours() + d.getUTCMinutes() / 60;
-  const subLon = 180 - utcHours * 15;
+  return { decl, subLon: 180 - utcHours * 15 };
+}
+
+/* How high the sun sits above the horizon at a place, in degrees. */
+function sunElevation(pos, time) {
+  const { decl, subLon } = solarPosition(time);
+  const h = rad(pos.lon - subLon);
+  return deg(Math.asin(
+    Math.sin(rad(decl)) * Math.sin(rad(pos.lat)) +
+    Math.cos(rad(decl)) * Math.cos(rad(pos.lat)) * Math.cos(h)
+  ));
+}
+
+/* Night side of the planet, from the subsolar point. */
+function drawNight(p) {
+  const { decl, subLon } = solarPosition(state.time);
   const tanDecl = Math.tan(rad(decl));
   if (Math.abs(tanDecl) < 1e-6) return;
 
@@ -1659,6 +2046,11 @@ function paintBasemap(p) {
 }
 
 function render() {
+  if (state.mode === "cockpit") {
+    if (!state.manual && state.at) armCockpit(APT[state.at]);
+    if (state.manual) { renderCockpit(); return; }
+    setMode("chart");
+  }
   const p = palette();
   paintBasemap(p);
   ctx.clearRect(0, 0, W, H);
@@ -1692,18 +2084,592 @@ function updateScalebar() {
 }
 
 /* =====================================================================
+   7b. THE VIEW OUT THE WINDSCREEN
+   The same Natural Earth geometry the chart uses, projected through a
+   camera sitting in the cockpit. Inside the horizon a flat-earth local
+   frame is accurate to well under a pixel, so the whole scene is plain
+   arithmetic.
+   ===================================================================== */
+
+const COCKPIT_FOV = 68;
+const NEAR_NM = 0.35;   // no closer than this, or projection blows up
+
+let worldBoxes = null;
+function ringBoxes() {
+  if (worldBoxes) return worldBoxes;
+  worldBoxes = WORLD.map((ring) => {
+    let minLon = 180, maxLon = -180, minLat = 90, maxLat = -90;
+    for (let i = 0; i < ring.length; i += 2) {
+      if (ring[i] < minLon) minLon = ring[i];
+      if (ring[i] > maxLon) maxLon = ring[i];
+      if (ring[i + 1] < minLat) minLat = ring[i + 1];
+      if (ring[i + 1] > maxLat) maxLat = ring[i + 1];
+    }
+    return [minLon, minLat, maxLon, maxLat];
+  });
+  return worldBoxes;
+}
+
+const EYE_HEIGHT = 22;   // feet from the wheels to the pilot's eyes
+
+function camera() {
+  const m = state.manual;
+  const alt = Math.max(0, m.alt) + EYE_HEIGHT;
+  const altNm = alt / FT_PER_NM;
+  return {
+    m,
+    altNm,
+    horizon: 1.17 * Math.sqrt(alt),
+    f: (W / 2) / Math.tan(rad(COCKPIT_FOV / 2)),
+    cosH: Math.cos(rad(m.hdg)), sinH: Math.sin(rad(m.hdg)),
+    cosP: Math.cos(rad(m.pitch)), sinP: Math.sin(rad(m.pitch)),
+    cosB: Math.cos(rad(m.bank)), sinB: Math.sin(rad(m.bank)),
+    cosLat: Math.max(0.05, Math.cos(rad(state.pos.lat))),
+    dip: deg(Math.acos(R_NM / (R_NM + altNm))),
+  };
+}
+
+/* A place on the globe, in the aircraft's own frame. Anything past the
+   horizon is pulled in to the horizon so distant coasts melt into it
+   rather than sliding under the earth. */
+function toCamera(cam, lat, lon) {
+  let dLon = lon - state.pos.lon;
+  if (dLon > 180) dLon -= 360; else if (dLon < -180) dLon += 360;
+  let east = dLon * 60 * cam.cosLat;
+  let north = (lat - state.pos.lat) * 60;
+  let d = Math.hypot(east, north);
+  if (d > cam.horizon) {
+    const k = cam.horizon / d;
+    east *= k; north *= k; d = cam.horizon;
+  }
+  const x = east * cam.cosH - north * cam.sinH;
+  const fwd = east * cam.sinH + north * cam.cosH;
+  const down = -cam.altNm - (d * d) / (2 * R_NM);
+  const y = fwd * cam.cosP + down * cam.sinP;
+  const z0 = -fwd * cam.sinP + down * cam.cosP;
+  return { x: x * cam.cosB + z0 * cam.sinB, y, z: -x * cam.sinB + z0 * cam.cosB, d };
+}
+
+const projectCam = (cam, pt) => ({ x: W / 2 + (cam.f * pt.x) / pt.y, y: H / 2 - (cam.f * pt.z) / pt.y });
+
+/* Clip a polygon against the plane just in front of the eye. */
+function clipNear(poly, near) {
+  const out = [];
+  for (let i = 0; i < poly.length; i++) {
+    const a = poly[i], b = poly[(i + 1) % poly.length];
+    const aIn = a.y >= near, bIn = b.y >= near;
+    if (aIn) out.push(a);
+    if (aIn !== bIn) {
+      const t = (near - a.y) / (b.y - a.y);
+      out.push({ x: a.x + (b.x - a.x) * t, y: near, z: a.z + (b.z - a.z) * t });
+    }
+  }
+  return out;
+}
+
+/* Screen height of a given elevation angle, with the aircraft's pitch. */
+const ladderY = (cam, angle) => H / 2 - cam.f * Math.tan(rad(clamp(angle - cam.m.pitch, -85, 85)));
+
+/* ---- colour ---- */
+function hexRgb(hex) {
+  const h = hex.replace("#", "").trim();
+  const full = h.length === 3 ? h.split("").map((c) => c + c).join("") : h;
+  return [parseInt(full.slice(0, 2), 16), parseInt(full.slice(2, 4), 16), parseInt(full.slice(4, 6), 16)];
+}
+const mixRgb = (a, b, t) => a.map((v, i) => Math.round(v + (b[i] - v) * clamp(t, 0, 1)));
+const rgbCss = (c) => `rgb(${c[0]},${c[1]},${c[2]})`;
+
+function skyPalette(cam, p) {
+  const el = sunElevation(state.pos, state.time);
+  const night = clamp((-el - 1) / 9, 0, 1);
+  const dusk = clamp(1 - Math.abs(el + 1) / 8, 0, 1) * (1 - night * 0.65);
+  const space = clamp(cam.m.alt / 52000, 0, 1);
+
+  let zenith = mixRgb([84, 138, 196], [10, 22, 58], space);
+  let horizonBand = mixRgb([186, 214, 232], [92, 138, 182], space);
+  horizonBand = mixRgb(horizonBand, [216, 132, 72], dusk);
+  zenith = mixRgb(zenith, [46, 34, 62], dusk * 0.5);
+  zenith = mixRgb(zenith, [3, 6, 16], night);
+  horizonBand = mixRgb(horizonBand, [16, 26, 50], night);
+
+  /* Chart colours are pale by design; from the air they need to sit well
+     below the sky or the horizon disappears. */
+  let ground = mixRgb(hexRgb(p.water), [34, 74, 104], 0.6);
+  let land = mixRgb(hexRgb(p.land), [122, 116, 74], 0.55);
+  ground = mixRgb(ground, [5, 11, 20], night * 0.8);
+  land = mixRgb(land, [12, 20, 22], night * 0.78);
+  return { zenith, horizonBand, ground, land, night, el };
+}
+
+/* Stars sit at fixed bearings and elevations, run through the same camera
+   as everything else so they swing properly when the aeroplane rolls. */
+function drawStars(cam, sky) {
+  if (sky.night < 0.35) return;
+  ctx.save();
+  ctx.globalAlpha = (sky.night - 0.35) / 0.65;
+  ctx.fillStyle = "#dfe8f5";
+  for (let i = 0; i < 170; i++) {
+    const seed = (i * 9301 + 49297) % 233280;
+    const az = (seed % 3600) / 10;
+    const el = 2 + ((seed >> 3) % 830) / 10;
+    const ce = Math.cos(rad(el)), up = Math.sin(rad(el));
+    const east = ce * Math.sin(rad(az)), north = ce * Math.cos(rad(az));
+    const x = east * cam.cosH - north * cam.sinH;
+    const fwd = east * cam.sinH + north * cam.cosH;
+    const y = fwd * cam.cosP + up * cam.sinP;
+    if (y <= 0.02) continue;
+    const z = -fwd * cam.sinP + up * cam.cosP;
+    const sx = W / 2 + (cam.f * (x * cam.cosB + z * cam.sinB)) / y;
+    const sy = H / 2 - (cam.f * (-x * cam.sinB + z * cam.cosB)) / y;
+    if (sx < 0 || sx > W || sy < 0 || sy > H) continue;
+    ctx.beginPath();
+    ctx.arc(sx, sy, (seed >> 7) % 4 === 0 ? 1.4 : 0.9, 0, Math.PI * 2);
+    ctx.fill();
+  }
+  ctx.restore();
+}
+
+function drawSkyAndGround(cam, sky) {
+  const horizonY = ladderY(cam, -cam.dip);
+  const span = Math.hypot(W, H);
+
+  ctx.save();
+  ctx.translate(W / 2, H / 2);
+  ctx.rotate(rad(-cam.m.bank));
+  ctx.translate(-W / 2, -H / 2);
+
+  const grad = ctx.createLinearGradient(0, horizonY - span, 0, horizonY);
+  grad.addColorStop(0, rgbCss(sky.zenith));
+  grad.addColorStop(1, rgbCss(sky.horizonBand));
+  ctx.fillStyle = grad;
+  ctx.fillRect(-span, horizonY - span, W + span * 2, span);
+
+  ctx.fillStyle = rgbCss(sky.ground);
+  ctx.fillRect(-span, horizonY, W + span * 2, span * 2);
+  ctx.restore();
+}
+
+function drawTerrain(cam, sky) {
+  const boxes = ringBoxes();
+  const dLat = cam.horizon / 60 + 0.5;
+  const dLon = dLat / cam.cosLat;
+  const lat0 = state.pos.lat, lon0 = state.pos.lon;
+
+  ctx.save();
+  ctx.fillStyle = rgbCss(sky.land);
+  ctx.strokeStyle = rgbCss(mixRgb(sky.land, [0, 0, 0], 0.25));
+  ctx.lineWidth = 1;
+
+  for (let r = 0; r < WORLD.length; r++) {
+    const box = boxes[r];
+    if (box[1] > lat0 + dLat || box[3] < lat0 - dLat) continue;
+    let near = false;
+    for (const shift of [-360, 0, 360]) {
+      if (box[0] + shift <= lon0 + dLon && box[2] + shift >= lon0 - dLon) { near = true; break; }
+    }
+    if (!near) continue;
+
+    const ring = WORLD[r];
+    const pts = [];
+    for (let i = 0; i < ring.length; i += 2) pts.push(toCamera(cam, ring[i + 1], ring[i]));
+    const clipped = clipNear(pts, NEAR_NM);
+    if (clipped.length < 3) continue;
+
+    ctx.beginPath();
+    let onScreen = false;
+    for (let i = 0; i < clipped.length; i++) {
+      const s = projectCam(cam, clipped[i]);
+      if (s.x > -W && s.x < W * 2 && s.y > -H && s.y < H * 2) onScreen = true;
+      if (i === 0) ctx.moveTo(s.x, s.y); else ctx.lineTo(s.x, s.y);
+    }
+    ctx.closePath();
+    if (!onScreen) continue;
+    ctx.fill();
+    /* A clipped ring runs along the near plane, where projection blows up;
+       outline only the coasts lying wholly in front of the aircraft. */
+    if (clipped.length === pts.length) ctx.stroke();
+  }
+  ctx.restore();
+}
+
+/* The runway you are aiming at, drawn where it actually lies. */
+function drawRunway(cam, apt, p) {
+  const hdg = runwayHeading(apt);
+  const half = 1.05, wide = 0.035;
+  const head = destPoint(apt, hdg, half);
+  const tail = destPoint(apt, (hdg + 180) % 360, half);
+  const left = (hdg + 270) % 360, right = (hdg + 90) % 360;
+  const corners = [
+    destPoint(head, left, wide), destPoint(head, right, wide),
+    destPoint(tail, right, wide), destPoint(tail, left, wide),
+  ].map((c) => toCamera(cam, c.lat, c.lon));
+
+  const clipped = clipNear(corners, NEAR_NM);
+  if (clipped.length < 3) return;
+
+  ctx.save();
+  ctx.beginPath();
+  clipped.forEach((c, i) => {
+    const s = projectCam(cam, c);
+    if (i === 0) ctx.moveTo(s.x, s.y); else ctx.lineTo(s.x, s.y);
+  });
+  ctx.closePath();
+  ctx.fillStyle = "rgba(28,28,32,0.85)";
+  ctx.fill();
+  ctx.strokeStyle = "#f2f2f2";
+  ctx.lineWidth = 1.4;
+  ctx.stroke();
+
+  const centre = clipNear([toCamera(cam, head.lat, head.lon), toCamera(cam, tail.lat, tail.lon)], NEAR_NM);
+  if (centre.length >= 2) {
+    ctx.beginPath();
+    centre.forEach((c, i) => {
+      const s = projectCam(cam, c);
+      if (i === 0) ctx.moveTo(s.x, s.y); else ctx.lineTo(s.x, s.y);
+    });
+    ctx.setLineDash([6, 8]);
+    ctx.strokeStyle = "#ffffff";
+    ctx.lineWidth = 1.1;
+    ctx.stroke();
+  }
+  ctx.restore();
+}
+
+function drawFieldMarks(cam, p) {
+  const target = manualTarget();
+  ctx.save();
+  ctx.font = '600 12px "Barlow Condensed", sans-serif';
+  ctx.textAlign = "center";
+
+  for (const apt of AIRPORTS) {
+    const d = distNm(state.pos, apt);
+    if (d > cam.horizon) continue;
+    const c = toCamera(cam, apt.lat, apt.lon);
+    if (c.y < 0.05) continue;
+    const s = projectCam(cam, c);
+    if (s.x < -60 || s.x > W + 60 || s.y < -40 || s.y > H + 40) continue;
+
+    const isTarget = target && target.apt.iata === apt.iata;
+    if (d < 26) drawRunway(cam, apt, p);
+
+    ctx.beginPath();
+    ctx.moveTo(s.x, s.y - 6); ctx.lineTo(s.x + 5, s.y); ctx.lineTo(s.x, s.y + 6); ctx.lineTo(s.x - 5, s.y);
+    ctx.closePath();
+    ctx.fillStyle = isTarget ? p.accent : "rgba(255,255,255,0.55)";
+    ctx.fill();
+
+    if ((isTarget || d < 90) && s.x > 86 && s.x < W - 116) {
+      const label = `${apt.iata} ${Math.round(d)}`;
+      ctx.lineWidth = 3;
+      ctx.strokeStyle = "rgba(0,0,0,0.45)";
+      ctx.strokeText(label, s.x, s.y - 11);
+      ctx.fillStyle = isTarget ? p.accent : "#ffffff";
+      ctx.fillText(label, s.x, s.y - 11);
+    }
+  }
+  ctx.restore();
+}
+
+/* ---- flight instruments ---- */
+
+function drawPitchLadder(cam) {
+  ctx.save();
+  ctx.translate(W / 2, H / 2);
+  ctx.rotate(rad(-cam.m.bank));
+  ctx.translate(-W / 2, -H / 2);
+
+  ctx.strokeStyle = "rgba(255,255,255,0.85)";
+  ctx.fillStyle = "rgba(255,255,255,0.85)";
+  ctx.lineWidth = 1.4;
+  ctx.font = '500 11px "Plex Mono", monospace';
+  ctx.textBaseline = "middle";
+
+  const hy = ladderY(cam, -cam.dip);
+  ctx.beginPath();
+  ctx.moveTo(-W, hy); ctx.lineTo(W * 2, hy);
+  ctx.stroke();
+
+  for (let a = -30; a <= 30; a += 10) {
+    if (a === 0) continue;
+    const y = ladderY(cam, a);
+    if (y < -40 || y > H + 40) continue;
+    const half = a > 0 ? 46 : 34;
+    ctx.beginPath();
+    if (a > 0) {
+      ctx.moveTo(W / 2 - half, y); ctx.lineTo(W / 2 - 14, y);
+      ctx.moveTo(W / 2 + 14, y); ctx.lineTo(W / 2 + half, y);
+    } else {
+      ctx.setLineDash([5, 4]);
+      ctx.moveTo(W / 2 - half, y); ctx.lineTo(W / 2 - 14, y);
+      ctx.moveTo(W / 2 + 14, y); ctx.lineTo(W / 2 + half, y);
+    }
+    ctx.stroke();
+    ctx.setLineDash([]);
+    ctx.textAlign = "right";
+    ctx.fillText(String(Math.abs(a)), W / 2 - half - 4, y);
+    ctx.textAlign = "left";
+    ctx.fillText(String(Math.abs(a)), W / 2 + half + 4, y);
+  }
+  ctx.restore();
+}
+
+function drawBankScale(cam, p) {
+  const cx = W / 2, cy = H / 2, r = Math.min(W, H) * 0.32;
+  ctx.save();
+  /* Dark backing first: thin white ticks alone vanish against a pale sky. */
+  for (const pass of [0, 1]) {
+    ctx.strokeStyle = pass ? "rgba(255,255,255,0.95)" : "rgba(10,14,20,0.45)";
+    ctx.lineWidth = pass ? 1.6 : 3.6;
+    for (const a of [-60, -45, -30, -20, -10, 0, 10, 20, 30, 45, 60]) {
+      const t = rad(a - 90);
+      const len = a % 30 === 0 ? 11 : 6;
+      ctx.beginPath();
+      ctx.moveTo(cx + Math.cos(t) * r, cy + Math.sin(t) * r);
+      ctx.lineTo(cx + Math.cos(t) * (r + len), cy + Math.sin(t) * (r + len));
+      ctx.stroke();
+    }
+  }
+  /* Pointer showing the current bank against the scale. */
+  const t = rad(-cam.m.bank - 90);
+  ctx.beginPath();
+  ctx.moveTo(cx + Math.cos(t) * (r - 2), cy + Math.sin(t) * (r - 2));
+  ctx.lineTo(cx + Math.cos(t - 0.035) * (r - 13), cy + Math.sin(t - 0.035) * (r - 13));
+  ctx.lineTo(cx + Math.cos(t + 0.035) * (r - 13), cy + Math.sin(t + 0.035) * (r - 13));
+  ctx.closePath();
+  ctx.fillStyle = Math.abs(cam.m.bank) > 45 ? p.warn : "#ffffff";
+  ctx.fill();
+  ctx.restore();
+}
+
+function drawAircraftSymbol(p) {
+  const cx = W / 2, cy = H / 2;
+  ctx.save();
+  ctx.lineWidth = 3;
+  ctx.strokeStyle = "rgba(0,0,0,0.5)";
+  for (let pass = 0; pass < 2; pass++) {
+    ctx.beginPath();
+    ctx.moveTo(cx - 46, cy); ctx.lineTo(cx - 16, cy); ctx.lineTo(cx - 8, cy + 8);
+    ctx.moveTo(cx + 46, cy); ctx.lineTo(cx + 16, cy); ctx.lineTo(cx + 8, cy + 8);
+    ctx.stroke();
+    ctx.lineWidth = 1.6;
+    ctx.strokeStyle = p.warn;
+  }
+  ctx.restore();
+}
+
+function tape(x, w, align) {
+  ctx.fillStyle = "rgba(12,16,20,0.42)";
+  ctx.fillRect(x, H * 0.16, w, H * 0.62);
+  ctx.strokeStyle = "rgba(255,255,255,0.25)";
+  ctx.lineWidth = 1;
+  ctx.strokeRect(x + 0.5, H * 0.16 + 0.5, w - 1, H * 0.62 - 1);
+}
+
+function readoutBox(x, y, w, h, text, p, accent) {
+  ctx.fillStyle = "rgba(8,12,16,0.9)";
+  ctx.fillRect(x, y, w, h);
+  ctx.strokeStyle = accent || "#ffffff";
+  ctx.lineWidth = 1.3;
+  ctx.strokeRect(x + 0.5, y + 0.5, w - 1, h - 1);
+  ctx.fillStyle = accent || "#ffffff";
+  ctx.font = '500 15px "Plex Mono", monospace';
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
+  ctx.fillText(text, x + w / 2, y + h / 2 + 0.5);
+}
+
+function drawSpeedTape(cam, p) {
+  const m = cam.m, x = 10, w = 58, cy = H / 2, pxPerKt = 2.4;
+  tape(x, w);
+  ctx.save();
+  ctx.beginPath();
+  ctx.rect(x, H * 0.16, w, H * 0.62);
+  ctx.clip();
+  ctx.font = '400 11px "Plex Mono", monospace';
+  ctx.textBaseline = "middle";
+  const start = Math.floor((m.tas - 130) / 10) * 10;
+  for (let v = start; v <= m.tas + 130; v += 10) {
+    if (v < 0) continue;
+    const y = cy + (m.tas - v) * pxPerKt;
+    const major = v % 50 === 0;
+    ctx.strokeStyle = "rgba(255,255,255,0.7)";
+    ctx.beginPath();
+    ctx.moveTo(x + w - (major ? 13 : 7), y); ctx.lineTo(x + w, y);
+    ctx.stroke();
+    if (major) {
+      ctx.fillStyle = "#ffffff";
+      ctx.textAlign = "left";
+      ctx.fillText(String(v), x + 5, y);
+    }
+  }
+  /* Stall and overspeed bands. */
+  ctx.fillStyle = "rgba(224,90,60,0.75)";
+  ctx.fillRect(x + w - 5, cy + (m.tas - STALL_TAS) * pxPerKt, 5, H);
+  ctx.fillRect(x + w - 5, cy + (m.tas - VNE) * pxPerKt - H, 5, H);
+  ctx.restore();
+  readoutBox(x, cy - 14, w + 6, 28, String(Math.round(m.tas)), p,
+             m.tas < STALL_TAS + 8 || m.tas > VNE ? p.warn : "#ffffff");
+  ctx.font = '700 10px "Barlow Condensed", sans-serif';
+  ctx.textAlign = "center";
+  ctx.fillStyle = "rgba(255,255,255,0.8)";
+  ctx.fillText("KT TAS", x + w / 2, H * 0.16 - 6);
+}
+
+function drawAltTape(cam, p) {
+  const m = cam.m, w = 66, x = W - w - 34, cy = H / 2, pxPerFt = 0.045;
+  tape(x, w);
+  ctx.save();
+  ctx.beginPath();
+  ctx.rect(x, H * 0.16, w, H * 0.62);
+  ctx.clip();
+  ctx.font = '400 11px "Plex Mono", monospace';
+  ctx.textBaseline = "middle";
+  const step = 500;
+  const start = Math.floor((m.alt - 6000) / step) * step;
+  for (let v = start; v <= m.alt + 6000; v += step) {
+    if (v < 0) continue;
+    const y = cy + (m.alt - v) * pxPerFt;
+    const major = v % 1000 === 0;
+    ctx.strokeStyle = "rgba(255,255,255,0.7)";
+    ctx.beginPath();
+    ctx.moveTo(x, y); ctx.lineTo(x + (major ? 13 : 7), y);
+    ctx.stroke();
+    if (major) {
+      ctx.fillStyle = "#ffffff";
+      ctx.textAlign = "right";
+      ctx.fillText(String(v / 100).padStart(3, "0"), x + w - 4, y);
+    }
+  }
+  ctx.restore();
+  readoutBox(x - 6, cy - 14, w + 6, 28, String(Math.round(m.alt / 10) * 10), p);
+  ctx.font = '700 10px "Barlow Condensed", sans-serif';
+  ctx.textAlign = "center";
+  ctx.fillStyle = "rgba(255,255,255,0.8)";
+  ctx.fillText("FEET", x + w / 2, H * 0.16 - 6);
+
+  /* Vertical speed, as a bar hanging off the altitude tape. */
+  const vx = W - 28, top = H * 0.22, bottom = H * 0.72, mid = (top + bottom) / 2;
+  ctx.fillStyle = "rgba(12,16,20,0.42)";
+  ctx.fillRect(vx, top, 18, bottom - top);
+  ctx.strokeStyle = "rgba(255,255,255,0.3)";
+  ctx.beginPath();
+  ctx.moveTo(vx, mid); ctx.lineTo(vx + 18, mid);
+  ctx.stroke();
+  const vs = clamp(m.vs, -4000, 4000);
+  const vy = mid - (vs / 4000) * ((bottom - top) / 2);
+  ctx.fillStyle = Math.abs(m.vs) > 3000 ? p.warn : "#ffffff";
+  ctx.fillRect(vx + 3, Math.min(mid, vy), 12, Math.max(2, Math.abs(vy - mid)));
+  ctx.font = '400 9px "Plex Mono", monospace';
+  ctx.textAlign = "center";
+  ctx.fillStyle = "rgba(255,255,255,0.8)";
+  ctx.fillText(Math.round(m.vs / 100) * 100 + "", vx + 9, top - 5);
+}
+
+function drawHeadingTape(cam, p) {
+  const m = cam.m, y = H - 46, h = 24, pxPerDeg = 4.2;
+  const x0 = W * 0.18, x1 = W * 0.82, cx = (x0 + x1) / 2;
+  ctx.save();
+  ctx.fillStyle = "rgba(12,16,20,0.42)";
+  ctx.fillRect(x0, y, x1 - x0, h);
+  ctx.beginPath();
+  ctx.rect(x0, y, x1 - x0, h);
+  ctx.clip();
+  ctx.font = '400 11px "Plex Mono", monospace';
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
+
+  const span = (x1 - x0) / 2 / pxPerDeg;
+  for (let d = Math.floor(m.hdg - span); d <= m.hdg + span; d++) {
+    if ((d + 720) % 5 !== 0) continue;
+    const norm = (d + 720) % 360;
+    const x = cx + (d - m.hdg) * pxPerDeg;
+    const major = norm % 10 === 0;
+    ctx.strokeStyle = "rgba(255,255,255,0.7)";
+    ctx.beginPath();
+    ctx.moveTo(x, y + h); ctx.lineTo(x, y + h - (major ? 9 : 5));
+    ctx.stroke();
+    if (major) {
+      const card = { 0: "N", 90: "E", 180: "S", 270: "W" }[norm];
+      ctx.fillStyle = card ? p.info : "#ffffff";
+      ctx.fillText(card || String(norm / 10), x, y + 8);
+    }
+  }
+
+  /* Where the destination lies, as a bug on the tape. */
+  const target = manualTarget();
+  if (target) {
+    let rel = ((target.brg - m.hdg + 540) % 360) - 180;
+    const bx = cx + rel * pxPerDeg;
+    ctx.fillStyle = p.accent;
+    ctx.beginPath();
+    ctx.moveTo(bx, y + 3); ctx.lineTo(bx + 6, y - 5); ctx.lineTo(bx - 6, y - 5);
+    ctx.closePath();
+    ctx.fill();
+  }
+  ctx.restore();
+
+  readoutBox(cx - 27, y - 25, 54, 22, pad(m.hdg, 3) + "°", p);
+}
+
+function drawWarnings(cam, p) {
+  const m = cam.m;
+  const notes = [];
+  if (m.warn === "STALL") notes.push(["STALL", p.bad]);
+  if (m.warn === "OVERSPEED") notes.push(["OVERSPEED", p.warn]);
+  if (m.warn === "FUEL" || state.fuel <= 0) notes.push(["FUEL EXHAUSTED", p.bad]);
+  else if (state.fuel < RESERVE) notes.push(["FUEL RESERVE", p.warn]);
+  if (!m.onGround && m.alt < 2500 && m.vs < -2000) notes.push(["SINK RATE", p.bad]);
+
+  ctx.save();
+  ctx.font = '700 15px "Barlow Condensed", sans-serif';
+  ctx.textAlign = "center";
+  notes.slice(0, 3).forEach(([text, colour], i) => {
+    const y = H * 0.2 + i * 24;
+    ctx.fillStyle = "rgba(8,10,14,0.8)";
+    ctx.fillRect(W / 2 - 74, y - 13, 148, 21);
+    ctx.strokeStyle = colour;
+    ctx.lineWidth = 1.4;
+    ctx.strokeRect(W / 2 - 73.5, y - 12.5, 147, 20);
+    ctx.fillStyle = colour;
+    ctx.fillText(text, W / 2, y + 2);
+  });
+  ctx.restore();
+}
+
+function renderCockpit() {
+  const p = palette();
+  const cam = camera();
+  const sky = skyPalette(cam, p);
+
+  ctx.clearRect(0, 0, W, H);
+  drawSkyAndGround(cam, sky);
+  drawStars(cam, sky);
+  drawTerrain(cam, sky);
+  drawFieldMarks(cam, p);
+  drawPitchLadder(cam);
+  drawBankScale(cam, p);
+  drawAircraftSymbol(p);
+  drawSpeedTape(cam, p);
+  drawAltTape(cam, p);
+  drawHeadingTape(cam, p);
+  drawWarnings(cam, p);
+}
+
+/* =====================================================================
    8. MAP INTERACTION
    ===================================================================== */
 
 let drag = null;
 
 canvas.addEventListener("pointerdown", (e) => {
+  if (state.mode === "cockpit") return;
   canvas.setPointerCapture(e.pointerId);
   drag = { x: e.clientX, y: e.clientY, moved: 0 };
   canvas.classList.add("dragging");
 });
 
 canvas.addEventListener("pointermove", (e) => {
+  if (state.mode === "cockpit") return;
   const rect = canvas.getBoundingClientRect();
   const lon = wrapLon(unprojLon(e.clientX - rect.left));
   const lat = clamp(unprojLat(e.clientY - rect.top), -90, 90);
@@ -1722,7 +2688,7 @@ canvas.addEventListener("pointermove", (e) => {
 });
 
 function endDrag(e) {
-  if (!drag) return;
+  if (!drag || state.mode === "cockpit") return;
   const wasClick = drag.moved < 6;
   drag = null;
   canvas.classList.remove("dragging");
@@ -1740,6 +2706,7 @@ canvas.addEventListener("pointerleave", () => {
 });
 
 canvas.addEventListener("wheel", (e) => {
+  if (state.mode === "cockpit") return;
   e.preventDefault();
   const rect = canvas.getBoundingClientRect();
   const mx = e.clientX - rect.left, my = e.clientY - rect.top;
@@ -1945,7 +2912,7 @@ function renderPlan() {
   const plan = el("plan");
   const dest = ui.selected ? APT[ui.selected] : null;
 
-  if (!dest || !state.at) { plan.hidden = true; return; }
+  if (!dest || !state.at || state.mode === "cockpit") { plan.hidden = true; return; }
   plan.hidden = false;
 
   const from = APT[state.at];
@@ -2030,11 +2997,25 @@ function renderGround() {
 
 function renderGps() {
   const live = liveFlight();
+  const m = state.manual;
   el("gps-lat").textContent = dms(state.pos.lat, true);
   el("gps-lon").textContent = dms(wrapLon(state.pos.lon), false);
 
   const stateEl = el("gps-state");
-  if (live) {
+  if (m) {
+    const target = manualTarget();
+    stateEl.textContent = m.onGround ? (m.tas > 5 ? "Rolling" : "Ready") : "Hand flown";
+    stateEl.dataset.state = m.onGround ? "parked" : "flying";
+    el("gps-trk").textContent = `${pad(m.hdg, 3)}°`;
+    el("gps-gs").textContent = `${Math.round(Math.max(0, m.tas + (m.onGround ? 0 : m.wind)))} kt`;
+    el("gps-alt").textContent = m.onGround
+      ? "Ground"
+      : m.alt > 18000 ? `FL${pad(Math.round(m.alt / 100), 3)}` : `${Math.round(m.alt / 100) * 100} ft`;
+    el("gps-wind").textContent = `${m.wind >= 0 ? "+" : "−"}${Math.abs(Math.round(m.wind))} kt`;
+    el("gps-dtg").textContent = target ? nm(target.dist) : "—";
+    const gs = Math.max(40, m.tas + m.wind);
+    el("gps-ete").textContent = target && !m.onGround ? hoursToHm(target.dist / gs) : "—";
+  } else if (live) {
     stateEl.textContent = live.alt < CEILING - 500 && live.remaining > live.f.total / 2 ? "Climb" :
                           live.remaining < 170 ? "Descent" : "Cruise";
     stateEl.dataset.state = "flying";
@@ -2083,6 +3064,7 @@ function renderUI() {
   renderGps();
   renderGround();
   renderPlan();
+  renderCockpitPanel();
 
   if (panelsDirty) {
     panelsDirty = false;
@@ -2276,10 +3258,8 @@ for (const t of ["terminal", "cabin", "demand", "log"]) {
 
 for (const b of document.querySelectorAll(".warp button")) {
   b.addEventListener("click", () => {
-    ui.warp = Number(b.dataset.warp);
-    for (const other of document.querySelectorAll(".warp button")) {
-      other.setAttribute("aria-pressed", String(other === b));
-    }
+    ui.warp = Math.min(Number(b.dataset.warp), maxWarp());
+    syncWarpButtons();
   });
 }
 
@@ -2340,7 +3320,9 @@ el("btn-brief-close").addEventListener("click", () => {
 
 document.addEventListener("keydown", (e) => {
   if (e.target.tagName === "INPUT" || !el("briefing").hidden) return;
+  if (state.mode === "cockpit" && cockpitKey(e)) return;
   const key = e.key.toLowerCase();
+  if (key === "c") { setMode("cockpit"); return; }
   if (key === "/") { e.preventDefault(); searchInput.focus(); }
   else if (key === "f") setFollow(!ui.follow);
   else if (key === "w") fitWorld();
@@ -2351,6 +3333,191 @@ document.addEventListener("keydown", (e) => {
     buttons[Number(key) - 1]?.click();
   }
 });
+
+/* =====================================================================
+   10b. COCKPIT CONTROLS
+   ===================================================================== */
+
+function setMode(mode) {
+  state.mode = mode;
+  const cockpit = mode === "cockpit";
+  document.body.classList.toggle("in-cockpit", cockpit);
+  el("cockpit-panel").hidden = !cockpit;
+  for (const id of ["gps", "chart-tools", "scalebar"]) el(id).hidden = cockpit;
+  el("btn-view").textContent = cockpit ? "Chart" : "Cockpit";
+  el("btn-view").setAttribute("aria-pressed", String(cockpit));
+  if (cockpit && !state.manual && state.at) armCockpit(APT[state.at]);
+  basemapKey = "";
+  syncWarpButtons();
+  renderUI();
+}
+
+/* Hand-flying and 300x time do not mix; with the autopilot in they do. */
+function maxWarp() {
+  const m = state.manual;
+  if (!m) return Infinity;
+  return !m.onGround && m.ap !== "OFF" ? 60 : 1;
+}
+
+function syncWarpButtons() {
+  const cap = maxWarp();
+  for (const b of document.querySelectorAll(".warp button")) {
+    const v = Number(b.dataset.warp);
+    b.setAttribute("aria-pressed", String(v === ui.warp));
+    b.disabled = v > cap;
+    b.title = b.disabled
+      ? (state.manual && state.manual.ap === "OFF" ? "Engage the autopilot to speed time up" : "Not while you are flying by hand")
+      : "";
+  }
+}
+
+function setThrottle(value) {
+  if (!state.manual) return;
+  state.manual.throttle = clamp(value, 0, 1);
+  el("throttle").value = String(Math.round(state.manual.throttle * 100));
+}
+
+function cycleAutopilot() {
+  const m = state.manual;
+  if (!m || m.onGround) return;
+  let next = AP_MODES[(AP_MODES.indexOf(m.ap) + 1) % AP_MODES.length];
+  if (next === "NAV" && !(m.target && APT[m.target])) next = "OFF";
+  m.ap = next;
+  /* NAV is for getting somewhere, so it climbs to a cruising level unless
+     the field is already close enough to be starting down. */
+  const leg = manualTarget();
+  m.apAlt = next === "NAV" && leg && leg.dist > 200 ? Math.max(m.alt, 37000) : m.alt;
+  if (next !== "OFF") { ui.stick.pitch = 0; ui.stick.roll = 0; }
+  ui.warp = Math.min(ui.warp, maxWarp());
+  syncWarpButtons();
+  renderUI();
+}
+
+function renderCockpitPanel() {
+  const m = state.manual;
+  if (!m || state.mode !== "cockpit") return;
+  const target = manualTarget();
+
+  el("cp-dest").textContent = target ? `${target.apt.iata} ${runwayLabel(target.apt)}` : "—";
+  el("cp-brg").textContent = target ? `${pad(target.brg, 3)}°` : "—";
+  el("cp-dist").textContent = target ? nm(target.dist) : "—";
+
+  /* A three degree slope is about 318 ft for every mile still to run. */
+  const glide = el("cp-glide");
+  if (target && !m.onGround && target.dist < 90) {
+    const ideal = target.dist * 318;
+    const delta = m.alt - ideal;
+    glide.textContent = Math.abs(delta) < 700 ? "On slope" : delta > 0 ? `High ${Math.round(delta / 100) * 100} ft` : `Low ${Math.round(-delta / 100) * 100} ft`;
+    glide.className = Math.abs(delta) < 700 ? "ok" : "warn";
+  } else {
+    glide.textContent = m.onGround ? "On the ground" : "—";
+    glide.className = "";
+  }
+
+  const fuel = el("cp-fuel");
+  fuel.textContent = `${Math.round(state.fuel).toLocaleString("en-US")} lb`;
+  fuel.className = state.fuel < RESERVE ? "warn" : "";
+
+  el("cp-thr").textContent = `${Math.round(m.throttle * 100)}%`;
+  if (document.activeElement !== el("throttle")) el("throttle").value = String(Math.round(m.throttle * 100));
+  el("btn-ap").textContent = m.ap === "OFF" ? "AP off" : m.ap === "HOLD" ? "AP hold" : "AP nav";
+  el("btn-ap").setAttribute("aria-pressed", String(m.ap !== "OFF"));
+  el("btn-gear").textContent = m.gear ? "Gear down" : "Gear up";
+  el("btn-gear").setAttribute("aria-pressed", String(m.gear));
+  el("btn-dispatch").disabled = m.onGround || !(m.target || ui.selected);
+
+  const hint = el("cp-hint");
+  if (m.onGround && m.tas < 5) hint.textContent = `Runway ${runwayLabel(APT[state.at] || APT[HOME])} — thrust up (W) and pull back at ${ROTATE_TAS} kt`;
+  else if (m.onGround) hint.textContent = `${Math.round(m.tas)} kt — rotate at ${ROTATE_TAS} kt`;
+  else hint.textContent = "Arrow keys fly · W / S thrust · A autopilot · G gear · C chart";
+}
+
+/* ---- keyboard ---- */
+const held = new Set();
+
+function cockpitKey(e) {
+  const key = e.key.toLowerCase();
+  const m = state.manual;
+  if (key === "c" || key === "m") { setMode("chart"); return true; }
+  if (!m) return false;
+  if (key === "a") { cycleAutopilot(); return true; }
+  if (key === "g") { m.gear = !m.gear; renderUI(); return true; }
+  if (["arrowup", "arrowdown", "arrowleft", "arrowright", "w", "s"].includes(key)) {
+    e.preventDefault();
+    held.add(key);
+    if (m.ap !== "OFF" && ["arrowup", "arrowdown", "arrowleft", "arrowright"].includes(key)) {
+      m.ap = "OFF";
+      ui.warp = Math.min(ui.warp, maxWarp());
+      syncWarpButtons();
+    }
+    return true;
+  }
+  return false;
+}
+
+document.addEventListener("keyup", (e) => held.delete(e.key.toLowerCase()));
+window.addEventListener("blur", () => held.clear());
+
+/* Read the stick each frame so the controls feel continuous. */
+function applyControls(dtReal) {
+  const m = state.manual;
+  if (!m) return;
+  if (ui.touchStick) {
+    ui.stick.pitch = ui.touchStick.pitch;
+    ui.stick.roll = ui.touchStick.roll;
+  } else {
+    ui.stick.pitch = (held.has("arrowup") ? 1 : 0) - (held.has("arrowdown") ? 1 : 0);
+    ui.stick.roll = (held.has("arrowright") ? 1 : 0) - (held.has("arrowleft") ? 1 : 0);
+  }
+  if (held.has("w")) setThrottle(m.throttle + dtReal * 0.5);
+  if (held.has("s")) setThrottle(m.throttle - dtReal * 0.5);
+}
+
+/* ---- pointer as a stick, for touch and mouse alike ---- */
+canvas.addEventListener("pointerdown", (e) => {
+  if (state.mode !== "cockpit" || !state.manual) return;
+  canvas.setPointerCapture(e.pointerId);
+  const rect = canvas.getBoundingClientRect();
+  ui.touchStick = { x0: e.clientX - rect.left, y0: e.clientY - rect.top, pitch: 0, roll: 0 };
+});
+
+canvas.addEventListener("pointermove", (e) => {
+  if (!ui.touchStick) return;
+  const rect = canvas.getBoundingClientRect();
+  const dx = e.clientX - rect.left - ui.touchStick.x0;
+  const dy = e.clientY - rect.top - ui.touchStick.y0;
+  const span = Math.max(70, Math.min(rect.width, rect.height) * 0.28);
+  ui.touchStick.roll = clamp(dx / span, -1, 1);
+  ui.touchStick.pitch = clamp(-dy / span, -1, 1);
+  if (state.manual && state.manual.ap !== "OFF") {
+    state.manual.ap = "OFF";
+    ui.warp = Math.min(ui.warp, maxWarp());
+    syncWarpButtons();
+  }
+});
+
+for (const ev of ["pointerup", "pointercancel", "pointerleave"]) {
+  canvas.addEventListener(ev, () => {
+    if (!ui.touchStick) return;
+    ui.touchStick = null;
+    ui.stick.pitch = 0;
+    ui.stick.roll = 0;
+  });
+}
+
+el("btn-view").addEventListener("click", () => setMode(state.mode === "cockpit" ? "chart" : "cockpit"));
+el("btn-fly").addEventListener("click", takeControls);
+el("btn-ap").addEventListener("click", cycleAutopilot);
+el("btn-gear").addEventListener("click", () => {
+  if (!state.manual) return;
+  state.manual.gear = !state.manual.gear;
+  renderUI();
+});
+el("btn-dispatch").addEventListener("click", handToDispatch);
+el("throttle").addEventListener("input", (e) => setThrottle(Number(e.target.value) / 100));
+/* Dragging the lever must not leave the keyboard trapped in the slider --
+   the arrow keys belong to the aeroplane the moment the lever is released. */
+el("throttle").addEventListener("pointerup", () => el("throttle").blur());
 
 /* =====================================================================
    11. LOOP
@@ -2365,10 +3532,14 @@ function frame(now) {
   const dtReal = Math.min(120, now - lastFrame) / 1000;
   lastFrame = now;
 
+  applyControls(dtReal);
+  const cap = maxWarp();
+  if (ui.warp > cap) { ui.warp = cap; syncWarpButtons(); }
+
   if (ui.warp > 0) {
     const simHours = (dtReal * ui.warp) / 3600;
     state.time += simHours * HOUR;
-    stepFlight(simHours);
+    if (state.manual) stepManual(simHours); else stepFlight(simHours);
 
     spawnAccum += simHours;
     if (spawnAccum > 0.25) {
@@ -2416,6 +3587,7 @@ function boot() {
 
   resize();
   setTab("terminal");
+  setMode(state.mode === "cockpit" ? "cockpit" : "chart");
   renderUI();
   requestAnimationFrame(frame);
 }
