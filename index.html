@@ -352,6 +352,45 @@
   .rail-head .where .city { color: var(--ink-2); font-size: 14px; }
   .rail-head .seats { margin-top: 3px; font-family: "Plex Mono", monospace; font-size: 12px; color: var(--ink-2); }
 
+  .ground { display: flex; align-items: center; gap: 8px; margin-top: 7px; }
+  .fuel-meter {
+    flex: 1; height: 7px; min-width: 40px;
+    background: var(--edge-soft); border-radius: 1px; overflow: hidden;
+  }
+  .fuel-meter i { display: block; height: 100%; background: var(--ok); }
+  .fuel-meter i.low { background: var(--warn); }
+  .fuel-meter i.empty { background: var(--bad); }
+  .ground .mono { font-size: 11.5px; color: var(--ink-2); white-space: nowrap; }
+  .ground .mini-btn[hidden] { display: none; }
+
+  .direct { position: relative; margin-top: 8px; }
+  .direct input {
+    width: 100%; padding: 5px 9px;
+    background: var(--panel-2); border: 1px solid var(--edge); border-radius: 2px;
+    font-family: "Plex Mono", monospace; font-size: 12.5px;
+  }
+  .direct input::placeholder { color: var(--ink-3); }
+  .direct input:focus { border-color: var(--accent); outline: none; }
+
+  #search-results {
+    position: absolute; z-index: 6; top: calc(100% + 3px); left: 0; right: 0;
+    margin: 0; padding: 3px; list-style: none;
+    background: var(--panel); border: 1px solid var(--edge); border-radius: 2px;
+    box-shadow: var(--shadow); max-height: 268px; overflow-y: auto;
+  }
+  #search-results[hidden] { display: none; }
+  #search-results li {
+    display: grid; grid-template-columns: 42px 1fr auto; gap: 8px; align-items: baseline;
+    padding: 4px 6px; cursor: pointer; border-radius: 2px;
+  }
+  #search-results li[aria-selected="true"], #search-results li:hover { background: var(--panel-2); }
+  #search-results li[aria-selected="true"] { box-shadow: inset 2px 0 0 var(--accent); }
+  #search-results .code { font-family: "Plex Mono", monospace; font-weight: 500; font-size: 12.5px; color: var(--accent); }
+  #search-results .place { font-size: 13.5px; line-height: 1.25; }
+  #search-results .place small { display: block; color: var(--ink-3); font-size: 11.5px; }
+  #search-results .far { font-family: "Plex Mono", monospace; font-size: 11.5px; color: var(--ink-2); }
+  #search-results .none { display: block; padding: 6px; color: var(--ink-3); font-size: 13px; text-align: center; }
+
   .tabs { display: flex; border-bottom: 1px solid var(--edge); }
   .tabs button {
     flex: 1; background: var(--panel-2); border: 0; border-right: 1px solid var(--edge-soft);
@@ -559,7 +598,7 @@
       </div>
       <div class="plan-actions">
         <button class="primary" id="btn-depart">Depart</button>
-        <button class="mini-btn" id="btn-refuel">Refuel</button>
+        <button class="mini-btn" id="btn-via" hidden>Via</button>
         <button class="mini-btn" id="btn-clear">Clear</button>
         <span class="note" id="plan-note"></span>
       </div>
@@ -573,6 +612,17 @@
         <span class="city" id="at-city">San Francisco</span>
       </div>
       <div class="seats" id="at-seats">&mdash;</div>
+      <div class="ground">
+        <span class="fuel-meter" aria-hidden="true"><i id="fuel-fill"></i></span>
+        <span class="mono" id="at-fuel">&mdash;</span>
+        <button class="mini-btn" id="btn-refuel">Refuel</button>
+      </div>
+      <div class="direct">
+        <input id="search" type="search" autocomplete="off" spellcheck="false"
+               placeholder="Direct to &mdash; code, city or country" aria-label="Find an airport"
+               role="combobox" aria-expanded="false" aria-controls="search-results">
+        <ul id="search-results" role="listbox" aria-label="Matching fields" hidden></ul>
+      </div>
     </div>
 
     <div class="tabs" role="tablist">
@@ -612,6 +662,7 @@
       <li>Watch <b>fuel</b>: roughly <b>7,500 nm</b> on full tanks. The longest hauls need a stop.</li>
       <li>Deliver before a passenger's <b>due time</b> for full fare and better standing.</li>
       <li>Speed time up with <b>60&times;</b> or <b>300&times;</b> while you're enroute.</li>
+      <li>Looking for somewhere specific? Type a code or city into <b>Direct to</b>, or press <b>/</b>.</li>
     </ul>
     <div class="brief-rule"></div>
     <button class="primary" id="btn-brief-close">Start flying</button>
@@ -1071,6 +1122,24 @@ function fuelPriceAt(apt) {
 
 function landingFee(apt) {
   return 220 + apt.hub * 190;
+}
+
+/* When the target is past the tanks, find the field that gets you closest
+   while still being reachable on the fuel aboard right now. */
+function suggestStop(from, to) {
+  const direct = distNm(from, to);
+  let best = null;
+  for (const apt of AIRPORTS) {
+    if (apt.iata === from.iata || apt.iata === to.iata) continue;
+    if (fuelForLeg(from, apt).burn + RESERVE > state.fuel) continue;
+    const left = distNm(apt, to);
+    if (left >= direct) continue;
+    /* Prefer a stop you can actually leave again on one more tank. */
+    const onward = fuelForLeg(apt, to).burn + RESERVE <= FUEL_CAP;
+    const score = left + (onward ? 0 : 5000);
+    if (!best || score < best.score) best = { apt, left, score, onward };
+  }
+  return best;
 }
 
 function depart(destIata) {
@@ -1885,6 +1954,7 @@ function renderPlan() {
   const aboard = state.onboard.filter((p) => p.to === dest.iata).reduce((n, p) => n + p.party, 0);
   const waiting = (state.queues[dest.iata] || []).reduce((n, p) => n + p.party, 0);
   const shortFuel = leg.burn + RESERVE > state.fuel;
+  const stop = shortFuel ? suggestStop(from, dest) : null;
 
   el("plan-route").textContent = `${from.iata} \u2192 ${dest.iata}`;
   el("plan-sub").textContent = `${dest.name}, ${dest.city} \u2014 ${dest.country}`;
@@ -1900,10 +1970,22 @@ function renderPlan() {
   el("plan-wait").textContent = waiting ? `${waiting} pax` : "\u2014";
 
   const note = el("plan-note");
+  const via = el("btn-via");
   el("btn-depart").disabled = shortFuel;
+  via.hidden = !stop;
+
   if (shortFuel) {
     note.className = "note bad";
-    note.textContent = `Short by ${Math.round(leg.burn + RESERVE - state.fuel).toLocaleString("en-US")} lb. Refuel or pick a closer field.`;
+    const short = Math.round(leg.burn + RESERVE - state.fuel).toLocaleString("en-US");
+    if (stop) {
+      via.textContent = `Stop at ${stop.apt.iata}`;
+      via.dataset.iata = stop.apt.iata;
+      note.textContent = `Short by ${short} lb. ${stop.apt.city} is in range and leaves ${nm(stop.left)} to run.`;
+    } else if (FUEL_CAP - state.fuel < 100) {
+      note.textContent = `Beyond the aircraft's range on full tanks. Fly a shorter leg first.`;
+    } else {
+      note.textContent = `Short by ${short} lb. Refuel, or pick a closer field.`;
+    }
   } else {
     note.className = "note";
     note.textContent = aboard
@@ -1911,11 +1993,39 @@ function renderPlan() {
       : waiting ? `${waiting} waiting there to pick up.` : "";
   }
 
-  const missing = FUEL_CAP - state.fuel;
-  const cost = Math.round(missing * fuelPriceAt(from));
-  const refuel = el("btn-refuel");
-  refuel.textContent = missing < 100 ? "Tanks full" : `Refuel ${money(cost)}`;
-  refuel.disabled = missing < 100 || cost > state.cash;
+}
+
+/* Fuel state belongs with where the aircraft is, not with a planned leg --
+   you still need to refuel when you have not chosen a destination yet. */
+function renderGround() {
+  const pct = clamp((state.fuel / FUEL_CAP) * 100, 0, 100);
+  const fill = el("fuel-fill");
+  fill.style.width = `${pct}%`;
+  fill.className = pct < 15 ? "empty" : pct < 35 ? "low" : "";
+
+  el("at-fuel").textContent = `${Math.round(state.fuel).toLocaleString("en-US")} lb`;
+
+  const btn = el("btn-refuel");
+  const apt = state.at ? APT[state.at] : null;
+  btn.hidden = !apt;
+  if (!apt) return;
+
+  const buy = uplift(apt);
+  if (buy.missing < 100) {
+    btn.textContent = "Tanks full";
+    btn.disabled = true;
+    btn.title = "";
+    return;
+  }
+  btn.disabled = buy.pounds < 100;
+  btn.textContent = buy.pounds < 100
+    ? "No fuel money"
+    : buy.partial ? `Part fuel ${money(buy.cost)}` : `Refuel ${money(buy.cost)}`;
+  btn.title = buy.pounds < 100
+    ? "No cash for fuel"
+    : buy.partial
+      ? `Buys ${Math.round(buy.pounds).toLocaleString("en-US")} lb of the ${Math.round(buy.missing).toLocaleString("en-US")} lb the tanks will take`
+      : "";
 }
 
 function renderGps() {
@@ -1971,6 +2081,7 @@ function renderHeader() {
 function renderUI() {
   renderHeader();
   renderGps();
+  renderGround();
   renderPlan();
 
   if (panelsDirty) {
@@ -2021,17 +2132,121 @@ function offload(id) {
   save();
 }
 
+/* How much fuel this field will sell you for the cash on hand. Buying a
+   partial load matters -- a broke pilot with dry tanks has to get moving. */
+function uplift(apt) {
+  const price = fuelPriceAt(apt);
+  const missing = FUEL_CAP - state.fuel;
+  const affordable = Math.min(missing, Math.max(0, state.cash) / price);
+  return { price, missing, pounds: affordable, cost: Math.round(affordable * price), partial: affordable < missing - 1 };
+}
+
 function refuel() {
   if (!state.at) return;
-  const missing = FUEL_CAP - state.fuel;
-  const cost = Math.round(missing * fuelPriceAt(APT[state.at]));
-  if (missing < 100 || cost > state.cash) return;
-  state.cash -= cost;
-  state.fuel = FUEL_CAP;
-  logLine(`Uplifted ${Math.round(missing).toLocaleString("en-US")} lb at ${state.at} for ${money(cost)}.`);
+  const apt = APT[state.at];
+  const buy = uplift(apt);
+  if (buy.missing < 100 || buy.pounds < 100) return;
+  state.cash -= buy.cost;
+  state.fuel += buy.pounds;
+  logLine(`Uplifted ${Math.round(buy.pounds).toLocaleString("en-US")} lb at ${apt.iata} for ${money(buy.cost)}${buy.partial ? " (all the cash would cover)" : ""}.`);
   renderUI();
   save();
 }
+
+/* ---- Direct to: reach any of the 88 fields without hunting the chart ---- */
+const searchInput = el("search");
+const searchList = el("search-results");
+let searchHits = [];
+let searchCursor = -1;
+
+function matchScore(apt, q) {
+  const iata = apt.iata.toLowerCase();
+  const city = apt.city.toLowerCase();
+  const country = apt.country.toLowerCase();
+  const name = apt.name.toLowerCase();
+  if (iata === q) return 0;
+  if (iata.startsWith(q)) return 1;
+  if (city.startsWith(q)) return 2;
+  if (country.startsWith(q)) return 3;
+  if (city.includes(q)) return 4;
+  if (name.includes(q)) return 5;
+  if (country.includes(q)) return 6;
+  return Infinity;
+}
+
+function closeSearch() {
+  searchList.hidden = true;
+  searchInput.setAttribute("aria-expanded", "false");
+  searchHits = [];
+  searchCursor = -1;
+}
+
+function drawSearch() {
+  searchList.textContent = "";
+  if (!searchHits.length) {
+    searchList.innerHTML = '<li class="none" role="presentation">No field by that name</li>';
+  } else {
+    searchHits.forEach((apt, i) => {
+      const li = document.createElement("li");
+      li.setAttribute("role", "option");
+      li.setAttribute("aria-selected", String(i === searchCursor));
+      li.innerHTML = `
+        <span class="code">${apt.iata}</span>
+        <span class="place">${apt.city}<small>${apt.name} \u00b7 ${apt.country}</small></span>
+        <span class="far">${nm(distNm(state.pos, apt))}</span>`;
+      li.addEventListener("click", () => selectField(apt));
+      searchList.appendChild(li);
+    });
+  }
+  searchList.hidden = false;
+  searchInput.setAttribute("aria-expanded", "true");
+}
+
+function runSearch(raw) {
+  const q = raw.trim().toLowerCase();
+  if (!q) { closeSearch(); return; }
+  searchHits = AIRPORTS
+    .map((apt) => ({ apt, score: matchScore(apt, q) }))
+    .filter((m) => m.score < Infinity)
+    .sort((a, b) => a.score - b.score || distNm(state.pos, a.apt) - distNm(state.pos, b.apt))
+    .slice(0, 7)
+    .map((m) => m.apt);
+  searchCursor = searchHits.length ? 0 : -1;
+  drawSearch();
+}
+
+function selectField(apt) {
+  view.lat = apt.lat;
+  view.lon = apt.lon;
+  if (view.scale < 2.4) view.scale = 2.4;
+  setFollow(false);
+  if (state.at && apt.iata !== state.at) ui.selected = apt.iata;
+  searchInput.value = "";
+  closeSearch();
+  searchInput.blur();
+  renderUI();
+}
+
+searchInput.addEventListener("input", () => runSearch(searchInput.value));
+searchInput.addEventListener("focus", () => { if (searchInput.value.trim()) runSearch(searchInput.value); });
+
+searchInput.addEventListener("keydown", (e) => {
+  if (e.key === "Escape") { searchInput.value = ""; closeSearch(); searchInput.blur(); return; }
+  if (!searchHits.length) return;
+  if (e.key === "ArrowDown" || e.key === "ArrowUp") {
+    e.preventDefault();
+    const step = e.key === "ArrowDown" ? 1 : -1;
+    searchCursor = (searchCursor + step + searchHits.length) % searchHits.length;
+    drawSearch();
+  } else if (e.key === "Enter") {
+    e.preventDefault();
+    selectField(searchHits[Math.max(0, searchCursor)]);
+  }
+});
+
+document.addEventListener("click", (e) => {
+  if (!e.target.closest(".direct")) closeSearch();
+});
 
 document.addEventListener("click", (e) => {
   const btn = e.target.closest("button[data-act]");
@@ -2073,6 +2288,10 @@ el("btn-depart").addEventListener("click", () => {
   renderUI();
 });
 el("btn-clear").addEventListener("click", () => { ui.selected = null; renderUI(); });
+el("btn-via").addEventListener("click", () => {
+  const iata = el("btn-via").dataset.iata;
+  if (iata) { ui.selected = iata; renderUI(); }
+});
 el("btn-refuel").addEventListener("click", refuel);
 
 el("btn-follow").addEventListener("click", () => setFollow(!ui.follow));
@@ -2122,7 +2341,8 @@ el("btn-brief-close").addEventListener("click", () => {
 document.addEventListener("keydown", (e) => {
   if (e.target.tagName === "INPUT" || !el("briefing").hidden) return;
   const key = e.key.toLowerCase();
-  if (key === "f") setFollow(!ui.follow);
+  if (key === "/") { e.preventDefault(); searchInput.focus(); }
+  else if (key === "f") setFollow(!ui.follow);
   else if (key === "w") fitWorld();
   else if (key === "d") el("btn-demand").click();
   else if (key === "r") el("btn-range").click();

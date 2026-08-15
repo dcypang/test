@@ -23,17 +23,23 @@ Open `index.html` — that is the whole game.
   fuel, refuelling costs that rise at remote fields, and landing fees.
 - **A day/night terminator** computed from the simulated date and time, so you can watch
   yourself fly into the dark.
+- **Direct to**, an FMS-style search: type a code, city or country to find any field and
+  chart a leg to it without hunting across the map.
+- **Stop planning.** Pick somewhere past the tanks and the plan names the best field that
+  is in range and makes the most progress, one click away.
 
 Fourteen seats, roughly 7,500 nm on full tanks. Consolidating a cabin full of people going
 the same direction is what makes money; a near-empty long haul loses it. The longest pairs
-(San Francisco to Johannesburg, say) need a fuel stop, exactly as they would in reality.
+need a fuel stop, exactly as they would in reality — San Francisco to Johannesburg is 9,167
+nm, and the plan will offer you Addis Ababa on the way. If cash runs short you can buy a
+partial load of fuel, so a bad run never strands you for good.
 
 ## Controls
 
 | Action | How |
 | --- | --- |
 | Pan / zoom the chart | Drag, scroll |
-| Plan a leg | Click any airport |
+| Plan a leg | Click any airport, or search in Direct to (`/`) |
 | Board a passenger | Terminal tab → Board |
 | See a passenger's route | Hover their card, or press Chart |
 | Follow the aircraft / fit the world | `F` / `W` |
