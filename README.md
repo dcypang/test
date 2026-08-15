@@ -77,7 +77,7 @@ assets/fonts/           Barlow, Barlow Condensed, IBM Plex Mono (subset woff2)
 tools/build.py          inlines data and fonts into index.html
 tools/extract_world.py  TopoJSON -> compact lon/lat rings
 vendor/                 upstream countries-110m.json, unmodified
-index.html              generated, self-contained, ~338 KB
+index.html              generated, self-contained, ~346 KB
 ```
 
 ## Design notes
