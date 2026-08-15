@@ -1,0 +1,2120 @@
+<meta charset="utf-8">
+<title>Pacific Charter</title>
+
+<style>
+  /* ---------------------------------------------------------------
+     Type. Faces are inlined as data URIs by tools/build.py so the
+     page never reaches for a font CDN.
+     --------------------------------------------------------------- */
+  @font-face {
+    font-family: "Barlow Condensed";
+    font-style: normal;
+    font-weight: 600;
+    font-display: block;
+    src: url(__FONT_BC600__) format("woff2");
+  }
+  @font-face {
+    font-family: "Barlow Condensed";
+    font-style: normal;
+    font-weight: 700;
+    font-display: block;
+    src: url(__FONT_BC700__) format("woff2");
+  }
+  @font-face {
+    font-family: "Barlow";
+    font-style: normal;
+    font-weight: 400;
+    font-display: block;
+    src: url(__FONT_B400__) format("woff2");
+  }
+  @font-face {
+    font-family: "Plex Mono";
+    font-style: normal;
+    font-weight: 400;
+    font-display: block;
+    src: url(__FONT_M400__) format("woff2");
+  }
+  @font-face {
+    font-family: "Plex Mono";
+    font-style: normal;
+    font-weight: 500;
+    font-display: block;
+    src: url(__FONT_M500__) format("woff2");
+  }
+
+  /* ---------------------------------------------------------------
+     Palette. Day is a paper sectional chart; night is the same chart
+     under an electronic flight bag's night mode.
+     --------------------------------------------------------------- */
+  :root {
+    color-scheme: light;
+
+    --paper: #e7dfcc;
+    --panel: #f4eee0;
+    --panel-2: #ece4d2;
+    --edge: #c3b99e;
+    --edge-soft: #d6cdb5;
+
+    --ink: #2b2620;
+    --ink-2: #5d5647;
+    --ink-3: #8a8171;
+
+    --water: #c2d6e2;
+    --land: #e6ddc4;
+    --coast: #a49a80;
+    --grid: #8fa9bb;
+
+    --accent: #b01e69;
+    --accent-2: #e0a8c6;
+    --accent-ink: #fdf6fa;
+    --info: #1d5c88;
+    --warn: #a56410;
+    --ok: #4a7a30;
+    --bad: #b03a1e;
+
+    --night-veil: rgba(24, 34, 58, 0.22);
+    --shadow: 0 1px 0 rgba(255, 255, 255, 0.5), 0 6px 22px rgba(52, 44, 30, 0.16);
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      color-scheme: dark;
+
+      --paper: #0e1519;
+      --panel: #162027;
+      --panel-2: #101a20;
+      --edge: #2c3f49;
+      --edge-soft: #22323a;
+
+      --ink: #dbe7e6;
+      --ink-2: #93a8ad;
+      --ink-3: #6b8087;
+
+      --water: #0a161d;
+      --land: #1a2a2b;
+      --coast: #3d5a58;
+      --grid: #274550;
+
+      --accent: #ff5ca6;
+      --accent-2: #7a2f56;
+      --accent-ink: #1a0710;
+      --info: #57c8dd;
+      --warn: #e0a33c;
+      --ok: #63bd7c;
+      --bad: #e4694a;
+
+      --night-veil: rgba(0, 0, 0, 0.35);
+      --shadow: 0 1px 0 rgba(255, 255, 255, 0.04), 0 10px 26px rgba(0, 0, 0, 0.5);
+    }
+  }
+
+  :root[data-theme="dark"] {
+    color-scheme: dark;
+
+    --paper: #0e1519;
+    --panel: #162027;
+    --panel-2: #101a20;
+    --edge: #2c3f49;
+    --edge-soft: #22323a;
+
+    --ink: #dbe7e6;
+    --ink-2: #93a8ad;
+    --ink-3: #6b8087;
+
+    --water: #0a161d;
+    --land: #1a2a2b;
+    --coast: #3d5a58;
+    --grid: #274550;
+
+    --accent: #ff5ca6;
+    --accent-2: #7a2f56;
+    --accent-ink: #1a0710;
+    --info: #57c8dd;
+    --warn: #e0a33c;
+    --ok: #63bd7c;
+    --bad: #e4694a;
+
+    --night-veil: rgba(0, 0, 0, 0.35);
+    --shadow: 0 1px 0 rgba(255, 255, 255, 0.04), 0 10px 26px rgba(0, 0, 0, 0.5);
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    margin: 0;
+    background: var(--paper);
+    color: var(--ink);
+    font-family: "Barlow", system-ui, sans-serif;
+    font-size: 15px;
+    line-height: 1.45;
+    -webkit-font-smoothing: antialiased;
+    overflow: hidden;
+  }
+
+  button, input, select { font: inherit; color: inherit; }
+
+  :focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+  }
+
+  .mono {
+    font-family: "Plex Mono", ui-monospace, monospace;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .cond {
+    font-family: "Barlow Condensed", "Barlow", sans-serif;
+    font-weight: 600;
+  }
+
+  .eyebrow {
+    font-family: "Barlow Condensed", sans-serif;
+    font-weight: 700;
+    font-size: 12px;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--ink-3);
+  }
+
+  /* ---------------------------------------------------------------
+     Shell
+     --------------------------------------------------------------- */
+  #app {
+    display: grid;
+    grid-template-rows: auto minmax(0, 1fr) auto;
+    grid-template-columns: minmax(0, 1fr) 356px;
+    grid-template-areas:
+      "head head"
+      "chart rail"
+      "foot rail";
+    height: 100dvh;
+    width: 100vw;
+  }
+
+  header {
+    grid-area: head;
+    display: flex;
+    align-items: center;
+    gap: 18px;
+    padding: 0 14px;
+    height: 54px;
+    background: var(--panel);
+    border-bottom: 1px solid var(--edge);
+  }
+
+  .brand { display: flex; align-items: baseline; gap: 10px; min-width: 0; }
+
+  .brand b {
+    font-family: "Barlow Condensed", sans-serif;
+    font-weight: 700;
+    font-size: 23px;
+    letter-spacing: 0.03em;
+    text-transform: uppercase;
+    white-space: nowrap;
+  }
+
+  .tail {
+    font-family: "Plex Mono", monospace;
+    font-size: 12px;
+    color: var(--accent);
+    border: 1px solid var(--accent);
+    border-radius: 2px;
+    padding: 1px 6px;
+    white-space: nowrap;
+  }
+
+  .gauges { display: flex; gap: 16px; margin-left: auto; align-items: center; }
+
+  .gauge { display: flex; flex-direction: column; align-items: flex-end; line-height: 1.1; }
+  .gauge span { font-size: 10.5px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--ink-3);
+                font-family: "Barlow Condensed", sans-serif; font-weight: 700; }
+  .gauge b { font-family: "Plex Mono", monospace; font-weight: 500; font-size: 15px; font-variant-numeric: tabular-nums; }
+
+  .warp { display: flex; border: 1px solid var(--edge); border-radius: 3px; overflow: hidden; }
+  .warp button {
+    background: var(--panel-2);
+    border: 0;
+    border-right: 1px solid var(--edge);
+    padding: 5px 9px;
+    font-family: "Plex Mono", monospace;
+    font-size: 12px;
+    cursor: pointer;
+  }
+  .warp button:last-child { border-right: 0; }
+  .warp button[aria-pressed="true"] { background: var(--accent); color: var(--accent-ink); }
+
+  .icon-btn {
+    background: var(--panel-2);
+    border: 1px solid var(--edge);
+    border-radius: 3px;
+    padding: 5px 10px;
+    cursor: pointer;
+    font-family: "Barlow Condensed", sans-serif;
+    font-weight: 600;
+    font-size: 14px;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    white-space: nowrap;
+  }
+  .icon-btn:hover { border-color: var(--accent); color: var(--accent); }
+  .icon-btn[aria-pressed="true"] { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }
+
+  /* ---------------------------------------------------------------
+     Chart
+     --------------------------------------------------------------- */
+  .chart-wrap { grid-area: chart; position: relative; min-height: 0; background: var(--water); }
+  #chart { display: block; width: 100%; height: 100%; cursor: grab; touch-action: none; }
+  #chart.dragging { cursor: grabbing; }
+
+  .overlay {
+    position: absolute;
+    background: color-mix(in srgb, var(--panel) 92%, transparent);
+    border: 1px solid var(--edge);
+    border-radius: 3px;
+    box-shadow: var(--shadow);
+    backdrop-filter: blur(3px);
+  }
+
+  #gps { top: 12px; left: 12px; width: 236px; padding: 9px 11px 10px; }
+
+  #gps .gps-head {
+    display: flex; justify-content: space-between; align-items: center;
+    border-bottom: 1px solid var(--edge-soft); padding-bottom: 5px; margin-bottom: 7px;
+  }
+
+  .status-pill {
+    font-family: "Barlow Condensed", sans-serif; font-weight: 700; font-size: 11.5px;
+    letter-spacing: 0.12em; text-transform: uppercase;
+    padding: 1px 7px; border-radius: 2px; background: var(--accent); color: var(--accent-ink);
+  }
+  .status-pill[data-state="parked"] { background: var(--info); color: var(--panel); }
+
+  .rows { display: grid; grid-template-columns: auto 1fr; gap: 3px 10px; }
+  .rows dt {
+    font-family: "Barlow Condensed", sans-serif; font-weight: 700; font-size: 11px;
+    letter-spacing: 0.1em; text-transform: uppercase; color: var(--ink-3); align-self: center;
+  }
+  .rows dd {
+    margin: 0; text-align: right;
+    font-family: "Plex Mono", monospace; font-size: 12.5px; font-variant-numeric: tabular-nums;
+  }
+  .rows dd.big { font-size: 14px; font-weight: 500; }
+
+  #chart-tools { top: 12px; right: 12px; display: flex; flex-direction: column; gap: 5px; padding: 6px; }
+  #chart-tools .icon-btn { text-align: left; font-size: 13px; padding: 4px 8px; }
+
+  #scalebar {
+    bottom: 12px; left: 12px; padding: 5px 9px 6px;
+    font-family: "Plex Mono", monospace; font-size: 11px;
+  }
+  #scalebar .bar { height: 4px; border: 1px solid var(--ink-2); border-top: 0; margin-top: 3px; }
+
+  /* Flight plan card */
+  #plan {
+    position: absolute; bottom: 12px; left: 50%; transform: translateX(-50%);
+    width: min(560px, calc(100% - 24px)); padding: 11px 13px 13px;
+  }
+  #plan[hidden] { display: none; }
+  .plan-head { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; margin-bottom: 9px; }
+  .plan-head .route { font-family: "Barlow Condensed", sans-serif; font-weight: 700; font-size: 21px; letter-spacing: 0.04em; }
+  .plan-head .sub { color: var(--ink-2); font-size: 13.5px; }
+  .plan-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(94px, 1fr)); gap: 8px 12px; margin-bottom: 11px; }
+  .stat span { display: block; font-family: "Barlow Condensed", sans-serif; font-weight: 700; font-size: 10.5px;
+               letter-spacing: 0.11em; text-transform: uppercase; color: var(--ink-3); }
+  .stat b { font-family: "Plex Mono", monospace; font-weight: 500; font-size: 15px; font-variant-numeric: tabular-nums; white-space: nowrap; }
+  .stat b.warn { color: var(--warn); }
+  .stat b.bad { color: var(--bad); }
+  .plan-actions { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+
+  .primary {
+    background: var(--accent); color: var(--accent-ink); border: 1px solid var(--accent);
+    border-radius: 3px; padding: 7px 16px; cursor: pointer;
+    font-family: "Barlow Condensed", sans-serif; font-weight: 700; font-size: 15px;
+    letter-spacing: 0.1em; text-transform: uppercase;
+  }
+  .primary:disabled { background: var(--panel-2); color: var(--ink-3); border-color: var(--edge); cursor: not-allowed; }
+  .note { font-size: 13px; color: var(--ink-2); }
+  .note.bad { color: var(--bad); }
+
+  /* ---------------------------------------------------------------
+     Rail
+     --------------------------------------------------------------- */
+  .rail {
+    grid-area: rail;
+    display: grid; grid-template-rows: auto auto minmax(0, 1fr);
+    background: var(--panel); border-left: 1px solid var(--edge); min-height: 0;
+  }
+
+  .rail-head { padding: 10px 13px 8px; border-bottom: 1px solid var(--edge-soft); }
+  .rail-head .where { display: flex; align-items: baseline; gap: 8px; }
+  .rail-head .where b { font-family: "Barlow Condensed", sans-serif; font-weight: 700; font-size: 20px; letter-spacing: 0.04em; }
+  .rail-head .where .city { color: var(--ink-2); font-size: 14px; }
+  .rail-head .seats { margin-top: 3px; font-family: "Plex Mono", monospace; font-size: 12px; color: var(--ink-2); }
+
+  .tabs { display: flex; border-bottom: 1px solid var(--edge); }
+  .tabs button {
+    flex: 1; background: var(--panel-2); border: 0; border-right: 1px solid var(--edge-soft);
+    padding: 7px 4px; cursor: pointer;
+    font-family: "Barlow Condensed", sans-serif; font-weight: 700; font-size: 12.5px;
+    letter-spacing: 0.09em; text-transform: uppercase; color: var(--ink-2);
+  }
+  .tabs button:last-child { border-right: 0; }
+  .tabs button[aria-selected="true"] { background: var(--panel); color: var(--accent); box-shadow: inset 0 -2px 0 var(--accent); }
+  .tabs .count {
+    font-family: "Plex Mono", monospace; font-size: 10.5px; color: var(--ink-3);
+    margin-left: 3px; letter-spacing: 0;
+  }
+
+  .panel { overflow-y: auto; padding: 10px 11px 24px; display: flex; flex-direction: column; gap: 8px; }
+  .panel[hidden] { display: none; }
+
+  .card {
+    border: 1px solid var(--edge-soft); border-left: 3px solid var(--accent-2);
+    border-radius: 2px; background: var(--panel-2); padding: 8px 10px 9px;
+  }
+  .card.onboard { border-left-color: var(--info); }
+  .card:hover { border-color: var(--edge); border-left-color: var(--accent); }
+
+  .card-top { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
+  .card-top .who { font-family: "Barlow Condensed", sans-serif; font-weight: 600; font-size: 16px; }
+  .card-top .fare { font-family: "Plex Mono", monospace; font-weight: 500; font-size: 13.5px; color: var(--ok); }
+
+  .going {
+    display: flex; align-items: baseline; gap: 6px; margin: 4px 0 2px;
+    font-family: "Plex Mono", monospace; font-size: 12.5px;
+  }
+  .going .arrow { color: var(--ink-3); }
+  .going .to { color: var(--accent); font-weight: 500; }
+
+  .why { font-size: 13px; color: var(--ink-2); }
+
+  .card-foot { display: flex; align-items: center; gap: 8px; margin-top: 7px; }
+  .chip {
+    font-family: "Barlow Condensed", sans-serif; font-weight: 700; font-size: 10.5px;
+    letter-spacing: 0.1em; text-transform: uppercase; padding: 1px 6px; border-radius: 2px;
+    border: 1px solid currentColor;
+  }
+  .chip.ok { color: var(--ok); }
+  .chip.tight { color: var(--warn); }
+  .chip.late { color: var(--bad); }
+  .card-foot .spacer { margin-left: auto; }
+
+  .mini-btn {
+    background: transparent; border: 1px solid var(--edge); border-radius: 2px;
+    padding: 3px 10px; cursor: pointer;
+    font-family: "Barlow Condensed", sans-serif; font-weight: 700; font-size: 12px;
+    letter-spacing: 0.09em; text-transform: uppercase;
+  }
+  .mini-btn:hover:not(:disabled) { border-color: var(--accent); color: var(--accent); }
+  .mini-btn:disabled { color: var(--ink-3); cursor: not-allowed; }
+  .mini-btn.go { border-color: var(--accent); color: var(--accent); }
+
+  .empty { color: var(--ink-3); font-size: 13.5px; padding: 14px 2px; text-align: center; }
+
+  /* Demand list */
+  .demand-row { display: grid; grid-template-columns: 46px 1fr auto; gap: 8px; align-items: center; }
+  .demand-row .code { font-family: "Plex Mono", monospace; font-weight: 500; font-size: 13px; }
+  .demand-row .meter { height: 7px; background: var(--edge-soft); border-radius: 1px; overflow: hidden; }
+  .demand-row .meter i { display: block; height: 100%; background: var(--accent); }
+  .demand-row .n { font-family: "Plex Mono", monospace; font-size: 12px; color: var(--ink-2); }
+
+  /* Log */
+  .log-line {
+    display: grid; grid-template-columns: 52px 1fr; gap: 8px;
+    font-size: 13.5px; padding-bottom: 6px; border-bottom: 1px dotted var(--edge-soft);
+  }
+  .log-line time { font-family: "Plex Mono", monospace; font-size: 11.5px; color: var(--ink-3); padding-top: 2px; }
+  .log-line.pay strong { color: var(--ok); }
+  .log-line.warn strong { color: var(--warn); }
+
+  footer {
+    grid-area: foot;
+    display: flex; align-items: center; gap: 14px; flex-wrap: wrap;
+    padding: 0 13px; height: 30px;
+    background: var(--panel); border-top: 1px solid var(--edge);
+    font-family: "Plex Mono", monospace; font-size: 11.5px; color: var(--ink-2);
+  }
+  footer .sep { color: var(--ink-3); }
+
+  /* Briefing */
+  #briefing {
+    position: fixed; inset: 0; z-index: 20;
+    display: grid; place-items: center; padding: 18px;
+    background: color-mix(in srgb, var(--paper) 78%, transparent);
+  }
+  #briefing[hidden] { display: none; }
+  .brief-card {
+    width: min(520px, 100%); background: var(--panel); border: 1px solid var(--edge);
+    border-radius: 3px; box-shadow: var(--shadow); padding: 22px 24px 20px;
+  }
+  .brief-card h1 {
+    font-family: "Barlow Condensed", sans-serif; font-weight: 700; font-size: 30px;
+    letter-spacing: 0.03em; text-transform: uppercase; margin: 6px 0 4px; text-wrap: balance;
+  }
+  .brief-card p { margin: 0 0 12px; max-width: 62ch; color: var(--ink-2); }
+  .brief-card ul { margin: 0 0 16px; padding-left: 18px; color: var(--ink-2); }
+  .brief-card li { margin-bottom: 5px; }
+  .brief-card b { color: var(--ink); }
+  .brief-rule { height: 1px; background: var(--edge-soft); margin: 14px 0; }
+
+  @media (max-width: 900px) {
+    #app {
+      grid-template-columns: minmax(0, 1fr);
+      grid-template-rows: auto minmax(210px, 40dvh) auto minmax(0, 1fr);
+      grid-template-areas: "head" "chart" "foot" "rail";
+    }
+    .rail { border-left: 0; border-top: 1px solid var(--edge); }
+    #scalebar { display: none; }
+    .foot-extra { display: none; }
+
+    header { height: auto; padding: 8px 12px; flex-wrap: wrap; row-gap: 8px; }
+    .gauges { width: 100%; margin-left: 0; gap: 12px; flex-wrap: wrap; row-gap: 8px; justify-content: space-between; }
+    .warp button { padding: 4px 7px; font-size: 11px; }
+
+    footer { height: auto; min-height: 30px; padding: 6px 12px; }
+
+    #gps { width: 168px; padding: 7px 9px 8px; }
+    #gps .rows { gap: 2px 8px; }
+    #gps .rows dd { font-size: 11.5px; }
+    #gps .rows dd.big { font-size: 12.5px; }
+    #gps .rows dt { font-size: 10px; }
+    #chart-tools { padding: 4px; }
+    #chart-tools .icon-btn { font-size: 12px; padding: 3px 7px; }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    * { transition: none !important; }
+  }
+</style>
+
+<div id="app">
+  <header>
+    <div class="brand">
+      <b>Pacific Charter</b>
+      <span class="tail mono">N1SFO</span>
+    </div>
+
+    <div class="gauges">
+      <div class="gauge"><span>Cash</span><b id="g-cash">$0</b></div>
+      <div class="gauge"><span>Standing</span><b id="g-rep">0</b></div>
+      <div class="gauge"><span>Zulu</span><b id="g-clock">0000Z</b></div>
+      <div class="warp" role="group" aria-label="Time acceleration">
+        <button data-warp="0" aria-pressed="false">HOLD</button>
+        <button data-warp="1" aria-pressed="true">1&times;</button>
+        <button data-warp="60" aria-pressed="false">60&times;</button>
+        <button data-warp="300" aria-pressed="false">300&times;</button>
+        <button data-warp="1200" aria-pressed="false">1200&times;</button>
+      </div>
+      <button class="icon-btn" id="btn-theme" title="Switch chart between day and night">Night</button>
+    </div>
+  </header>
+
+  <div class="chart-wrap">
+    <canvas id="chart"></canvas>
+
+    <section class="overlay" id="gps" aria-label="GPS">
+      <div class="gps-head">
+        <span class="eyebrow">GPS &mdash; WGS 84</span>
+        <span class="status-pill" id="gps-state" data-state="parked">Parked</span>
+      </div>
+      <dl class="rows">
+        <dt>Lat</dt><dd class="big" id="gps-lat">&mdash;</dd>
+        <dt>Lon</dt><dd class="big" id="gps-lon">&mdash;</dd>
+        <dt>Trk</dt><dd id="gps-trk">&mdash;</dd>
+        <dt>GS</dt><dd id="gps-gs">&mdash;</dd>
+        <dt>Alt</dt><dd id="gps-alt">&mdash;</dd>
+        <dt>Wind</dt><dd id="gps-wind">&mdash;</dd>
+        <dt>Dtg</dt><dd id="gps-dtg">&mdash;</dd>
+        <dt>Ete</dt><dd id="gps-ete">&mdash;</dd>
+        <dt>Fuel</dt><dd id="gps-fuel">&mdash;</dd>
+      </dl>
+    </section>
+
+    <div class="overlay" id="chart-tools">
+      <button class="icon-btn" id="btn-follow" aria-pressed="true">Follow</button>
+      <button class="icon-btn" id="btn-world">World</button>
+      <button class="icon-btn" id="btn-demand" aria-pressed="false">Demand</button>
+      <button class="icon-btn" id="btn-range" aria-pressed="false">Range</button>
+      <button class="icon-btn" id="btn-night" aria-pressed="true">Daylight</button>
+    </div>
+
+    <div class="overlay" id="scalebar">
+      <span id="scale-label">0 nm</span>
+      <div class="bar" id="scale-bar" style="width:80px"></div>
+    </div>
+
+    <section class="overlay" id="plan" hidden aria-label="Flight plan">
+      <div class="plan-head">
+        <span class="route" id="plan-route">&mdash;</span>
+        <span class="sub" id="plan-sub">&mdash;</span>
+      </div>
+      <div class="plan-grid">
+        <div class="stat"><span>Distance</span><b id="plan-dist">&mdash;</b></div>
+        <div class="stat"><span>Course</span><b id="plan-crs">&mdash;</b></div>
+        <div class="stat"><span>Enroute</span><b id="plan-ete">&mdash;</b></div>
+        <div class="stat"><span>Burn</span><b id="plan-burn">&mdash;</b></div>
+        <div class="stat"><span>Aboard for</span><b id="plan-pax">&mdash;</b></div>
+        <div class="stat"><span>Waiting</span><b id="plan-wait">&mdash;</b></div>
+      </div>
+      <div class="plan-actions">
+        <button class="primary" id="btn-depart">Depart</button>
+        <button class="mini-btn" id="btn-refuel">Refuel</button>
+        <button class="mini-btn" id="btn-clear">Clear</button>
+        <span class="note" id="plan-note"></span>
+      </div>
+    </section>
+  </div>
+
+  <aside class="rail">
+    <div class="rail-head">
+      <div class="where">
+        <b id="at-code">SFO</b>
+        <span class="city" id="at-city">San Francisco</span>
+      </div>
+      <div class="seats" id="at-seats">&mdash;</div>
+    </div>
+
+    <div class="tabs" role="tablist">
+      <button role="tab" id="tab-terminal" aria-selected="true" aria-controls="panel-terminal">Terminal <span class="count" id="c-terminal"></span></button>
+      <button role="tab" id="tab-cabin" aria-selected="false" aria-controls="panel-cabin">Cabin <span class="count" id="c-cabin"></span></button>
+      <button role="tab" id="tab-demand" aria-selected="false" aria-controls="panel-demand">Demand</button>
+      <button role="tab" id="tab-log" aria-selected="false" aria-controls="panel-log">Log</button>
+    </div>
+
+    <div class="panel" id="panel-terminal" role="tabpanel" aria-labelledby="tab-terminal"></div>
+    <div class="panel" id="panel-cabin" role="tabpanel" aria-labelledby="tab-cabin" hidden></div>
+    <div class="panel" id="panel-demand" role="tabpanel" aria-labelledby="tab-demand" hidden></div>
+    <div class="panel" id="panel-log" role="tabpanel" aria-labelledby="tab-log" hidden></div>
+  </aside>
+
+  <footer>
+    <span id="f-cursor">CURSOR &mdash;</span>
+    <span class="foot-extra"><span class="sep">|</span> Drag to pan &middot; scroll to zoom &middot; click a field to plan a leg</span>
+    <span class="foot-extra"><span class="sep">|</span> <span id="f-fleet">&mdash;</span></span>
+    <span class="sep">|</span>
+    <button class="icon-btn" id="btn-reset" style="padding:1px 8px;font-size:12px">Reset</button>
+  </footer>
+</div>
+
+<div id="briefing" hidden>
+  <div class="brief-card">
+    <span class="eyebrow">Preflight briefing &mdash; N1SFO</span>
+    <h1>You fly the whole world</h1>
+    <p>
+      Home field is <b>San Francisco</b>. People are waiting in terminals everywhere, each one
+      trying to reach somewhere else. Fly them there and get paid; the chart shows exactly
+      where everyone is going.
+    </p>
+    <ul>
+      <li><b>Board</b> passengers from the Terminal list, then click any field on the chart to plan the leg.</li>
+      <li>You can carry <b>14 seats</b> and stop anywhere &mdash; pick up more people along the way.</li>
+      <li>Watch <b>fuel</b>: roughly <b>7,500 nm</b> on full tanks. The longest hauls need a stop.</li>
+      <li>Deliver before a passenger's <b>due time</b> for full fare and better standing.</li>
+      <li>Speed time up with <b>60&times;</b> or <b>300&times;</b> while you're enroute.</li>
+    </ul>
+    <div class="brief-rule"></div>
+    <button class="primary" id="btn-brief-close">Start flying</button>
+  </div>
+</div>
+
+<script>
+"use strict";
+
+/* =====================================================================
+   1. DATA
+   ===================================================================== */
+
+const WORLD = __WORLD__;
+const AIRPORTS = __AIRPORTS__;
+
+const APT = Object.create(null);
+for (const a of AIRPORTS) APT[a.iata] = a;
+
+const HOME = "SFO";
+
+const FIRST_NAMES = [
+  "Amara", "Ines", "Tomas", "Wei", "Nadia", "Oskar", "Priya", "Diego", "Lena", "Kofi",
+  "Yuki", "Hana", "Mateo", "Freya", "Rafael", "Zara", "Elias", "Mira", "Sunil", "Camila",
+  "Idris", "Noor", "Jonas", "Aroha", "Beatriz", "Kenji", "Aisha", "Marcus", "Sofia", "Tariq",
+  "Ingrid", "Paulo", "Leilani", "Anders", "Rania", "Viktor", "Chidi", "Emiko", "Dara", "Luca",
+];
+
+const LAST_NAMES = [
+  "Okonkwo", "Ferreira", "Lindqvist", "Nakamura", "Haddad", "Novak", "Iyer", "Moreau", "Costa", "Ahmadi",
+  "Bergman", "Tanaka", "Silva", "Kowalski", "Mensah", "Rossi", "Delgado", "Petrov", "Ngata", "Fontaine",
+  "Reyes", "Osei", "Kaur", "Andersen", "Vargas", "Chen", "Bakker", "Moreno", "Salim", "Whitcombe",
+];
+
+const PURPOSES = [
+  "Making a connection home",
+  "Board meeting in the morning",
+  "Family wedding",
+  "Research posting",
+  "Signing a contract",
+  "Grandchild being born",
+  "Surgical team on call",
+  "Film shoot wrapping",
+  "Season opener",
+  "Moving for a new job",
+  "Funeral for a friend",
+  "Finally taking the holiday",
+  "Trade delegation",
+  "Relief crew rotation",
+  "Chasing an eclipse",
+  "Bringing a violin home",
+];
+
+/* Aircraft */
+const SEATS = 14;
+const CRUISE_TAS = 488;      // knots true airspeed
+const CEILING = 43000;       // feet
+const FUEL_CAP = 52000;      // pounds
+const BURN_CRUISE = 2600;    // pounds per hour
+const BURN_CLIMB = 1.4;      // multiplier while climbing
+const RESERVE = 3600;        // pounds held back for reserve
+const FUEL_PRICE = 0.92;     // dollars per pound at a major field
+
+/* =====================================================================
+   2. GEOMETRY
+   ===================================================================== */
+
+const R_NM = 3440.065;
+const rad = (d) => (d * Math.PI) / 180;
+const deg = (r) => (r * 180) / Math.PI;
+const clamp = (v, lo, hi) => (v < lo ? lo : v > hi ? hi : v);
+
+function wrapLon(lon) {
+  let x = ((lon + 180) % 360 + 360) % 360 - 180;
+  if (x === -180) x = 180;
+  return x;
+}
+
+function centralAngle(a, b) {
+  const p1 = rad(a.lat), p2 = rad(b.lat), dl = rad(b.lon - a.lon);
+  const h = Math.sin((p2 - p1) / 2) ** 2 +
+            Math.cos(p1) * Math.cos(p2) * Math.sin(dl / 2) ** 2;
+  return 2 * Math.asin(Math.min(1, Math.sqrt(h)));
+}
+
+const distNm = (a, b) => centralAngle(a, b) * R_NM;
+
+function bearing(a, b) {
+  const p1 = rad(a.lat), p2 = rad(b.lat), dl = rad(b.lon - a.lon);
+  const y = Math.sin(dl) * Math.cos(p2);
+  const x = Math.cos(p1) * Math.sin(p2) - Math.sin(p1) * Math.cos(p2) * Math.cos(dl);
+  return (deg(Math.atan2(y, x)) + 360) % 360;
+}
+
+/* Point a fraction f along the great circle from a to b. */
+function gcPoint(a, b, f) {
+  const d = centralAngle(a, b);
+  if (d < 1e-9) return { lat: a.lat, lon: a.lon };
+  const p1 = rad(a.lat), l1 = rad(a.lon), p2 = rad(b.lat), l2 = rad(b.lon);
+  const A = Math.sin((1 - f) * d) / Math.sin(d);
+  const B = Math.sin(f * d) / Math.sin(d);
+  const x = A * Math.cos(p1) * Math.cos(l1) + B * Math.cos(p2) * Math.cos(l2);
+  const y = A * Math.cos(p1) * Math.sin(l1) + B * Math.cos(p2) * Math.sin(l2);
+  const z = A * Math.sin(p1) + B * Math.sin(p2);
+  return { lat: deg(Math.atan2(z, Math.hypot(x, y))), lon: deg(Math.atan2(y, x)) };
+}
+
+/* Point at a bearing and distance from an origin. */
+function destPoint(origin, brgDeg, nm) {
+  const d = nm / R_NM, p1 = rad(origin.lat), l1 = rad(origin.lon), t = rad(brgDeg);
+  const p2 = Math.asin(Math.sin(p1) * Math.cos(d) + Math.cos(p1) * Math.sin(d) * Math.cos(t));
+  const l2 = l1 + Math.atan2(Math.sin(t) * Math.sin(d) * Math.cos(p1),
+                             Math.cos(d) - Math.sin(p1) * Math.sin(p2));
+  return { lat: deg(p2), lon: wrapLon(deg(l2)) };
+}
+
+/* Great-circle polyline with longitudes unwrapped so it draws continuously. */
+function gcPath(a, b, steps) {
+  const n = Math.max(8, steps || Math.ceil(distNm(a, b) / 90) + 8);
+  const pts = [];
+  let prevLon = null;
+  for (let i = 0; i <= n; i++) {
+    const p = gcPoint(a, b, i / n);
+    let lon = p.lon;
+    if (prevLon !== null) {
+      while (lon - prevLon > 180) lon -= 360;
+      while (prevLon - lon > 180) lon += 360;
+    }
+    prevLon = lon;
+    pts.push({ lat: p.lat, lon });
+  }
+  return pts;
+}
+
+/* =====================================================================
+   3. FORMATTING
+   ===================================================================== */
+
+const pad = (n, w) => String(Math.floor(n)).padStart(w, "0");
+
+/* Degrees and decimal minutes, the way a GPS shows them. Tenths are worked
+   out in integers so 37.62 does not read as 37 deg 37.1' via float error. */
+function dms(value, isLat) {
+  const hemi = isLat ? (value >= 0 ? "N" : "S") : (value >= 0 ? "E" : "W");
+  const abs = Math.abs(value);
+  let d = Math.floor(abs);
+  let tenths = Math.round((abs - d) * 600);
+  if (tenths >= 600) { tenths -= 600; d += 1; }
+  return `${hemi} ${pad(d, isLat ? 2 : 3)}\u00b0 ${pad(tenths / 10, 2)}.${tenths % 10}'`;
+}
+
+const money = (n) => (n < 0 ? "-$" : "$") + Math.abs(Math.round(n)).toLocaleString("en-US");
+const nm = (n) => Math.round(n).toLocaleString("en-US") + " nm";
+
+function hoursToHm(h) {
+  if (!isFinite(h) || h < 0) return "--:--";
+  const total = Math.round(h * 60);
+  return `${pad(total / 60, 2)}+${pad(total % 60, 2)}`;
+}
+
+const zulu = (ms) => {
+  const d = new Date(ms);
+  return `${pad(d.getUTCHours(), 2)}${pad(d.getUTCMinutes(), 2)}Z`;
+};
+
+const dayStamp = (ms) => {
+  const d = new Date(ms);
+  return `${d.getUTCDate()} ${["JAN","FEB","MAR","APR","MAY","JUN","JUL","AUG","SEP","OCT","NOV","DEC"][d.getUTCMonth()]}`;
+};
+
+/* =====================================================================
+   4. STATE
+   ===================================================================== */
+
+const SAVE_KEY = "pacific-charter-v1";
+const HOUR = 3600000;
+
+let state;
+
+function freshState() {
+  return {
+    version: 1,
+    time: Date.UTC(2026, 7, 15, 15, 30),
+    cash: 28000,
+    rep: 78,
+    at: HOME,
+    pos: { lat: APT[HOME].lat, lon: APT[HOME].lon },
+    fuel: FUEL_CAP,
+    flight: null,
+    onboard: [],
+    queues: {},
+    log: [],
+    trail: [],
+    nextId: 1,
+    seenBriefing: false,
+    totals: { legs: 0, delivered: 0, milesFlown: 0 },
+  };
+}
+
+const ui = {
+  warp: 1,
+  follow: true,
+  showDemand: false,
+  showRange: false,
+  showNight: true,
+  tab: "terminal",
+  selected: null,
+  hoverPax: null,
+  cursor: null,
+};
+
+const view = { lon: APT[HOME].lon, lat: APT[HOME].lat, scale: 3.2 };
+
+function save() {
+  try {
+    localStorage.setItem(SAVE_KEY, JSON.stringify(state));
+  } catch (err) { /* private mode or sandbox; play on without saving */ }
+}
+
+function load() {
+  try {
+    const raw = localStorage.getItem(SAVE_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw);
+    if (!parsed || parsed.version !== 1 || !parsed.pos) return null;
+    return parsed;
+  } catch (err) {
+    return null;
+  }
+}
+
+function logLine(text, kind) {
+  state.log.unshift({ t: state.time, text, kind: kind || "" });
+  markPanels();
+  if (state.log.length > 120) state.log.length = 120;
+}
+
+/* =====================================================================
+   5. PASSENGERS
+   ===================================================================== */
+
+const pick = (arr) => arr[Math.floor(Math.random() * arr.length)];
+
+function queueOf(iata) {
+  if (!state.queues[iata]) state.queues[iata] = [];
+  return state.queues[iata];
+}
+
+function queueCap(apt) {
+  return 2 + apt.hub;
+}
+
+/* Destinations follow a gravity model: big fields pull harder, distance
+   damps the pull, and a small share of trips are deliberately long-haul. */
+function chooseDestination(from) {
+  const longHaul = Math.random() < 0.18;
+  let total = 0;
+  const weights = [];
+  for (const apt of AIRPORTS) {
+    if (apt.iata === from.iata) { weights.push(0); continue; }
+    const d = distNm(from, apt);
+    const decay = longHaul ? Math.exp(-Math.max(0, 3000 - d) / 3000)
+                           : Math.exp(-d / 2600);
+    const w = Math.pow(apt.hub, 1.6) * decay + 0.02;
+    weights.push(w);
+    total += w;
+  }
+  let r = Math.random() * total;
+  for (let i = 0; i < AIRPORTS.length; i++) {
+    r -= weights[i];
+    if (r <= 0) return AIRPORTS[i];
+  }
+  return AIRPORTS[AIRPORTS.length - 1];
+}
+
+function makePassenger(from) {
+  const to = chooseDestination(from);
+  const d = distNm(from, to);
+  const party = 1 + (Math.random() < 0.45 ? 0 : Math.floor(Math.random() * 4));
+  const flightHours = d / CRUISE_TAS;
+  const slack = 14 + Math.random() * 30 + flightHours * 1.6;
+  return {
+    id: state.nextId++,
+    name: `${pick(FIRST_NAMES)} ${pick(LAST_NAMES)}`,
+    from: from.iata,
+    to: to.iata,
+    party,
+    why: pick(PURPOSES),
+    fare: Math.round((600 + 4.2 * d) * party * (0.9 + Math.random() * 0.35)),
+    created: state.time,
+    due: state.time + slack * HOUR,
+  };
+}
+
+/* Fill terminals everywhere so the world always has somewhere to be. */
+function spawnPassengers(simHours) {
+  let live = state.onboard.length;
+  for (const key in state.queues) live += state.queues[key].length;
+  if (live > 420) return;
+
+  for (const apt of AIRPORTS) {
+    const q = queueOf(apt.iata);
+    if (q.length >= queueCap(apt)) continue;
+    const homeBoost = apt.iata === HOME ? 1.8 : 1;
+    const chance = 0.035 * apt.hub * homeBoost * simHours;
+    if (Math.random() < chance) q.push(makePassenger(apt));
+  }
+}
+
+/* Passengers who run out of patience while waiting give up and go home. */
+function expireWaiting() {
+  for (const key in state.queues) {
+    const q = state.queues[key];
+    for (let i = q.length - 1; i >= 0; i--) {
+      if (state.time > q[i].due + 6 * HOUR) q.splice(i, 1);
+    }
+  }
+}
+
+/* What the passenger actually pays on arrival. Standing lifts every fare,
+   so the number on the card is the number that lands in the account. */
+function payout(p) {
+  return Math.round(p.fare * (0.85 + state.rep / 260));
+}
+
+const seatsUsed = () => state.onboard.reduce((n, p) => n + p.party, 0);
+const seatsFree = () => SEATS - seatsUsed();
+
+function seedWorld() {
+  for (let i = 0; i < 60; i++) spawnPassengers(1.2);
+  const q = queueOf(HOME);
+  while (q.length < 4) q.push(makePassenger(APT[HOME]));
+}
+
+/* =====================================================================
+   6. FLIGHT
+   ===================================================================== */
+
+/* Rough jet-stream model: eastbound legs ride a tailwind, westbound
+   legs fight it, strongest in the mid latitudes. */
+function windComponent(track, lat) {
+  const strength = 26 + 44 * Math.exp(-((Math.abs(lat) - 38) ** 2) / 380);
+  return strength * Math.sin(rad(track));
+}
+
+function profile(travelled, total) {
+  const climb = Math.min(140, total * 0.32);
+  const descent = Math.min(170, total * 0.36);
+  const remaining = total - travelled;
+  let alt;
+  if (travelled < climb) alt = CEILING * (travelled / climb);
+  else if (remaining < descent) alt = CEILING * (remaining / descent);
+  else alt = CEILING;
+  const tas = 265 + (CRUISE_TAS - 265) * (alt / CEILING);
+  return { alt, tas, climbing: travelled < climb };
+}
+
+function fuelForLeg(from, to) {
+  const d = distNm(from, to);
+  const track = bearing(from, to);
+  const wind = windComponent(track, (from.lat + to.lat) / 2);
+  const gs = Math.max(200, CRUISE_TAS + wind);
+  return { dist: d, hours: d / gs, burn: (d / gs) * BURN_CRUISE * 1.12 + 900 };
+}
+
+function fuelPriceAt(apt) {
+  return FUEL_PRICE * (apt.hub <= 1 ? 1.4 : apt.hub === 2 ? 1.15 : 1);
+}
+
+function landingFee(apt) {
+  return 220 + apt.hub * 190;
+}
+
+function depart(destIata) {
+  const from = APT[state.at];
+  const to = APT[destIata];
+  if (!from || !to || from === to) return;
+
+  const plan = fuelForLeg(from, to);
+  if (plan.burn + RESERVE > state.fuel) return;
+
+  state.flight = {
+    from: from.iata,
+    to: to.iata,
+    total: plan.dist,
+    travelled: 0,
+    started: state.time,
+    wind: windComponent(bearing(from, to), (from.lat + to.lat) / 2) + (Math.random() * 16 - 8),
+  };
+  state.trail = [{ lat: from.lat, lon: from.lon }];
+  state.at = null;
+  state.totals.legs++;
+  ui.selected = null;
+
+  const pax = state.onboard.filter((p) => p.to === to.iata).reduce((n, p) => n + p.party, 0);
+  logLine(`Departed ${from.iata} for ${to.iata} \u2014 ${nm(plan.dist)}${pax ? `, ${pax} aboard for this field` : ""}.`);
+  save();
+}
+
+function arrive() {
+  const f = state.flight;
+  const apt = APT[f.to];
+  state.pos = { lat: apt.lat, lon: apt.lon };
+  state.at = apt.iata;
+  state.flight = null;
+  state.totals.milesFlown += f.total;
+
+  const fee = landingFee(apt);
+  state.cash -= fee;
+  logLine(`Landed ${apt.iata} \u2014 ${apt.city}. Landing fee ${money(fee)}.`);
+
+  /* Everyone bound for this field gets out and settles up. */
+  const arriving = state.onboard.filter((p) => p.to === apt.iata);
+  state.onboard = state.onboard.filter((p) => p.to !== apt.iata);
+
+  for (const p of arriving) {
+    const late = state.time > p.due;
+    const paid = Math.round(payout(p) * (late ? 0.62 : 1));
+    state.cash += paid;
+    state.totals.delivered += p.party;
+    state.rep = clamp(state.rep + (late ? -3 : 1.5), 0, 100);
+    logLine(
+      `${p.name}${p.party > 1 ? ` +${p.party - 1}` : ""} delivered to ${apt.city}${late ? " (late)" : ""}. ${money(paid)}`,
+      late ? "warn" : "pay"
+    );
+  }
+
+  /* Fresh faces meet the aircraft. */
+  const q = queueOf(apt.iata);
+  const wanted = Math.min(queueCap(apt), q.length + 1 + Math.floor(Math.random() * 2));
+  while (q.length < wanted) q.push(makePassenger(apt));
+
+  if (ui.follow) { view.lat = apt.lat; view.lon = apt.lon; }
+  save();
+}
+
+function stepFlight(simHours) {
+  const f = state.flight;
+  if (!f) return;
+
+  const from = APT[f.from], to = APT[f.to];
+  const p = profile(f.travelled, f.total);
+  const gs = Math.max(150, p.tas + f.wind * (p.alt / CEILING));
+
+  f.travelled = Math.min(f.total, f.travelled + gs * simHours);
+  state.fuel = Math.max(0, state.fuel - BURN_CRUISE * simHours * (p.climbing ? BURN_CLIMB : 1) * (p.tas / CRUISE_TAS));
+
+  const frac = f.total > 0 ? f.travelled / f.total : 1;
+  state.pos = gcPoint(from, to, frac);
+
+  const tail = state.trail[state.trail.length - 1];
+  if (!tail || distNm(tail, state.pos) > 25) {
+    state.trail.push({ lat: state.pos.lat, lon: state.pos.lon });
+    if (state.trail.length > 400) state.trail.shift();
+  }
+
+  if (ui.follow) { view.lat = state.pos.lat; view.lon = state.pos.lon; }
+  if (f.travelled >= f.total - 0.5) arrive();
+}
+
+function liveFlight() {
+  const f = state.flight;
+  if (!f) return null;
+  const from = APT[f.from], to = APT[f.to];
+  const p = profile(f.travelled, f.total);
+  const gs = Math.max(150, p.tas + f.wind * (p.alt / CEILING));
+  const remaining = f.total - f.travelled;
+  /* Time remaining assumes the aircraft gets back to cruise rather than
+     holding the speed it happens to have during a climb. */
+  const cruiseGs = Math.max(200, CRUISE_TAS + f.wind);
+  const planGs = remaining > 200 ? Math.max(gs, cruiseGs * 0.95) : Math.max(160, gs);
+  return { f, from, to, alt: p.alt, gs, remaining, hours: remaining / planGs, track: bearing(state.pos, to) };
+}
+
+/* =====================================================================
+   7. CHART
+   ===================================================================== */
+
+const canvas = document.getElementById("chart");
+let ctx = canvas.getContext("2d");
+let W = 0, H = 0;
+
+/* Coastlines, graticule and the terminator only change when the view or the
+   clock does, so they are painted once into an offscreen chart and blitted. */
+const basemap = document.createElement("canvas");
+const basemapCtx = basemap.getContext("2d");
+let basemapKey = "";
+
+let paletteCache = null;
+let paletteKey = "";
+
+function invalidatePalette() {
+  paletteCache = null;
+  basemapKey = "";
+}
+
+function palette() {
+  const key = document.documentElement.getAttribute("data-theme") || "auto";
+  if (paletteCache && paletteKey === key) return paletteCache;
+  const cs = getComputedStyle(document.documentElement);
+  const get = (name) => cs.getPropertyValue(name).trim();
+  paletteCache = {
+    water: get("--water"), land: get("--land"), coast: get("--coast"), grid: get("--grid"),
+    ink: get("--ink"), ink2: get("--ink-2"), ink3: get("--ink-3"),
+    accent: get("--accent"), accent2: get("--accent-2"), info: get("--info"),
+    warn: get("--warn"), ok: get("--ok"), panel: get("--panel"), veil: get("--night-veil"),
+  };
+  paletteKey = key;
+  return paletteCache;
+}
+
+function resize() {
+  const dpr = Math.min(window.devicePixelRatio || 1, 2);
+  const rect = canvas.getBoundingClientRect();
+  W = Math.max(1, Math.round(rect.width));
+  H = Math.max(1, Math.round(rect.height));
+  canvas.width = Math.round(W * dpr);
+  canvas.height = Math.round(H * dpr);
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  basemap.width = canvas.width;
+  basemap.height = canvas.height;
+  basemapKey = "";
+}
+
+const projX = (lon) => (lon - view.lon) * view.scale + W / 2;
+const projY = (lat) => (view.lat - lat) * view.scale + H / 2;
+const unprojLon = (x) => (x - W / 2) / view.scale + view.lon;
+const unprojLat = (y) => view.lat - (y - H / 2) / view.scale;
+
+/* Longitude offsets that put a copy of the world on screen. */
+function worldOffsets() {
+  const spanDeg = W / view.scale / 2 + 2;
+  const offsets = [];
+  for (let k = -2; k <= 2; k++) {
+    const shift = k * 360;
+    if (Math.abs(view.lon - shift) - 180 < spanDeg) offsets.push(shift);
+  }
+  return offsets.length ? offsets : [0];
+}
+
+function drawLand(p) {
+  const offsets = worldOffsets();
+  ctx.lineJoin = "round";
+  for (const shift of offsets) {
+    ctx.beginPath();
+    for (const ring of WORLD) {
+      let started = false;
+      for (let i = 0; i < ring.length; i += 2) {
+        const x = projX(ring[i] + shift);
+        const y = projY(ring[i + 1]);
+        if (!started) { ctx.moveTo(x, y); started = true; } else { ctx.lineTo(x, y); }
+      }
+      ctx.closePath();
+    }
+    ctx.fillStyle = p.land;
+    ctx.fill("evenodd");
+    ctx.strokeStyle = p.coast;
+    ctx.lineWidth = 0.9;
+    ctx.stroke();
+  }
+}
+
+function graticuleStep() {
+  const s = view.scale;
+  if (s > 24) return 1;
+  if (s > 12) return 2;
+  if (s > 6) return 5;
+  if (s > 3) return 10;
+  if (s > 1.6) return 15;
+  return 30;
+}
+
+function drawGraticule(p) {
+  const step = graticuleStep();
+  ctx.save();
+  ctx.strokeStyle = p.grid;
+  ctx.globalAlpha = 0.34;
+  ctx.lineWidth = 0.7;
+  ctx.beginPath();
+
+  const lat0 = Math.ceil(unprojLat(H) / step) * step;
+  for (let lat = lat0; lat <= unprojLat(0) + step; lat += step) {
+    if (lat < -90 || lat > 90) continue;
+    const y = projY(lat);
+    ctx.moveTo(0, y); ctx.lineTo(W, y);
+  }
+  const lon0 = Math.ceil(unprojLon(0) / step) * step;
+  for (let lon = lon0; lon <= unprojLon(W) + step; lon += step) {
+    const x = projX(lon);
+    ctx.moveTo(x, 0); ctx.lineTo(x, H);
+  }
+  ctx.stroke();
+
+  /* Equator and prime meridian read heavier, as on a real chart. */
+  ctx.globalAlpha = 0.6;
+  ctx.lineWidth = 1.1;
+  ctx.beginPath();
+  const eq = projY(0);
+  ctx.moveTo(0, eq); ctx.lineTo(W, eq);
+  for (const shift of worldOffsets()) {
+    const x = projX(shift);
+    ctx.moveTo(x, 0); ctx.lineTo(x, H);
+  }
+  ctx.stroke();
+
+  if (view.scale > 2) {
+    ctx.globalAlpha = 0.75;
+    ctx.fillStyle = p.grid;
+    ctx.font = '400 10px "Plex Mono", monospace';
+    ctx.textAlign = "left";
+    for (let lat = lat0; lat <= unprojLat(0) + step; lat += step) {
+      if (lat < -90 || lat > 90) continue;
+      ctx.fillText(`${Math.abs(lat)}\u00b0${lat >= 0 ? "N" : "S"}`, 4, projY(lat) - 3);
+    }
+  }
+  ctx.restore();
+}
+
+/* Night side of the planet, from the subsolar point. */
+function drawNight(p) {
+  const d = new Date(state.time);
+  const dayOfYear = (Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate()) -
+                     Date.UTC(d.getUTCFullYear(), 0, 1)) / 86400000;
+  const decl = -23.44 * Math.cos(rad((360 / 365) * (dayOfYear + 10)));
+  const utcHours = d.getUTCHours() + d.getUTCMinutes() / 60;
+  const subLon = 180 - utcHours * 15;
+  const tanDecl = Math.tan(rad(decl));
+  if (Math.abs(tanDecl) < 1e-6) return;
+
+  ctx.save();
+  ctx.fillStyle = p.veil;
+  for (const shift of worldOffsets()) {
+    ctx.beginPath();
+    const pts = [];
+    for (let lon = -180; lon <= 180; lon += 2) {
+      const hourAngle = rad(lon - subLon);
+      const lat = deg(Math.atan(-Math.cos(hourAngle) / tanDecl));
+      pts.push([projX(lon + shift), projY(lat)]);
+    }
+    pts.forEach(([x, y], i) => (i ? ctx.lineTo(x, y) : ctx.moveTo(x, y)));
+    /* Close toward whichever pole is in darkness. */
+    const nightPole = decl > 0 ? -90 : 90;
+    ctx.lineTo(projX(180 + shift), projY(nightPole));
+    ctx.lineTo(projX(-180 + shift), projY(nightPole));
+    ctx.closePath();
+    ctx.fill();
+  }
+  ctx.restore();
+}
+
+function drawPolyline(pts, shift) {
+  ctx.beginPath();
+  for (let i = 0; i < pts.length; i++) {
+    const x = projX(pts[i].lon + shift);
+    const y = projY(pts[i].lat);
+    if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+  }
+  ctx.stroke();
+}
+
+function drawRoute(from, to, p) {
+  const path = gcPath(from, to);
+  ctx.save();
+  ctx.lineWidth = 1.6;
+  ctx.strokeStyle = p.accent;
+  ctx.setLineDash([7, 5]);
+  for (const shift of worldOffsets()) drawPolyline(path, shift);
+  ctx.restore();
+}
+
+function drawTrail(p) {
+  if (state.trail.length < 2) return;
+  const pts = [];
+  let prev = null;
+  for (const pt of state.trail) {
+    let lon = pt.lon;
+    if (prev !== null) {
+      while (lon - prev > 180) lon -= 360;
+      while (prev - lon > 180) lon += 360;
+    }
+    prev = lon;
+    pts.push({ lat: pt.lat, lon });
+  }
+  ctx.save();
+  ctx.lineWidth = 2.2;
+  ctx.strokeStyle = p.info;
+  ctx.globalAlpha = 0.85;
+  for (const shift of worldOffsets()) drawPolyline(pts, shift);
+  ctx.restore();
+}
+
+/* Every waiting party as a thread from where they are to where they want
+   to be. Hovering one passenger isolates their thread instead. */
+function drawDemandArcs(p, hoverOnly) {
+  const arcs = [];
+  if (ui.hoverPax) {
+    arcs.push({ from: APT[ui.hoverPax.from], to: APT[ui.hoverPax.to], weight: 3 });
+  } else if (!hoverOnly && ui.showDemand) {
+    for (const key in state.queues) {
+      for (const pax of state.queues[key]) arcs.push({ from: APT[pax.from], to: APT[pax.to], weight: 1 });
+    }
+    for (const pax of state.onboard) arcs.push({ from: APT[state.at || pax.from], to: APT[pax.to], weight: 2 });
+  }
+  if (!arcs.length) return;
+
+  ctx.save();
+  for (const arc of arcs) {
+    if (!arc.from || !arc.to) continue;
+    ctx.globalAlpha = arc.weight > 2 ? 0.9 : 0.16;
+    ctx.lineWidth = arc.weight > 2 ? 2 : 1;
+    ctx.strokeStyle = arc.weight === 2 ? p.info : p.accent;
+    for (const shift of worldOffsets()) drawPolyline(gcPath(arc.from, arc.to, 40), shift);
+  }
+  ctx.restore();
+}
+
+function drawRangeRing(p) {
+  const usable = Math.max(0, state.fuel - RESERVE);
+  const radius = (usable / BURN_CRUISE) * CRUISE_TAS * 0.94;
+  if (radius < 50) return;
+  const origin = state.pos;
+  const pts = [];
+  let prev = null;
+  for (let b = 0; b <= 360; b += 4) {
+    const pt = destPoint(origin, b, radius);
+    let lon = pt.lon;
+    if (prev !== null) {
+      while (lon - prev > 180) lon -= 360;
+      while (prev - lon > 180) lon += 360;
+    }
+    prev = lon;
+    pts.push({ lat: pt.lat, lon });
+  }
+  ctx.save();
+  ctx.strokeStyle = p.warn;
+  ctx.globalAlpha = 0.65;
+  ctx.lineWidth = 1.2;
+  ctx.setLineDash([3, 4]);
+  for (const shift of worldOffsets()) drawPolyline(pts, shift);
+  ctx.restore();
+}
+
+/* Nearest on-chart x for a longitude, given the wrapped world. */
+function chartX(lon) {
+  let best = projX(lon), bestDist = Math.abs(best - W / 2);
+  for (const shift of [-720, -360, 360, 720]) {
+    const x = projX(lon + shift);
+    const d = Math.abs(x - W / 2);
+    if (d < bestDist) { best = x; bestDist = d; }
+  }
+  return best;
+}
+
+function drawAirports(p) {
+  /* Zoomed out, only the largest fields get named -- otherwise the labels
+     pile into an unreadable mass over Europe and the eastern seaboard. */
+  const labelAll = view.scale > 6;
+  ctx.save();
+  ctx.textAlign = "left";
+  ctx.textBaseline = "middle";
+
+  for (const apt of AIRPORTS) {
+    const x = chartX(apt.lon);
+    const y = projY(apt.lat);
+    if (x < -60 || x > W + 60 || y < -30 || y > H + 30) continue;
+
+    const isHere = state.at === apt.iata;
+    const isSel = ui.selected === apt.iata;
+    const isHome = apt.iata === HOME;
+    const waiting = (state.queues[apt.iata] || []).length;
+    const r = 2.6 + apt.hub * 0.6;
+
+    ctx.beginPath();
+    ctx.arc(x, y, r, 0, Math.PI * 2);
+    ctx.fillStyle = waiting ? p.accent : p.panel;
+    ctx.globalAlpha = waiting ? 0.9 : 0.75;
+    ctx.fill();
+    ctx.globalAlpha = 1;
+    ctx.lineWidth = 1.3;
+    ctx.strokeStyle = p.accent;
+    ctx.stroke();
+
+    if (isHome) {
+      ctx.beginPath();
+      ctx.arc(x, y, r + 4.5, 0, Math.PI * 2);
+      ctx.setLineDash([2, 3]);
+      ctx.strokeStyle = p.info;
+      ctx.stroke();
+      ctx.setLineDash([]);
+    }
+    if (isHere || isSel) {
+      ctx.beginPath();
+      ctx.arc(x, y, r + 7, 0, Math.PI * 2);
+      ctx.lineWidth = 1.6;
+      ctx.strokeStyle = isHere ? p.info : p.accent;
+      ctx.stroke();
+    }
+
+    if (labelAll || apt.hub >= 5 || isHere || isSel || isHome) {
+      const label = apt.iata + (waiting ? ` \u00b7${waiting}` : "");
+      ctx.font = '600 12px "Barlow Condensed", sans-serif';
+      ctx.lineWidth = 3;
+      ctx.strokeStyle = p.panel;
+      ctx.globalAlpha = 0.85;
+      ctx.strokeText(label, x + r + 4, y);
+      ctx.globalAlpha = 1;
+      ctx.fillStyle = isHere ? p.info : p.ink;
+      ctx.fillText(label, x + r + 4, y);
+    }
+  }
+  ctx.restore();
+}
+
+function drawAircraft(p) {
+  const live = liveFlight();
+  const x = chartX(state.pos.lon);
+  const y = projY(state.pos.lat);
+  const track = live ? live.track : 0;
+
+  ctx.save();
+  ctx.translate(x, y);
+  ctx.rotate(rad(track));
+
+  if (live) {
+    ctx.beginPath();
+    ctx.arc(0, 0, 13, 0, Math.PI * 2);
+    ctx.fillStyle = p.accent;
+    ctx.globalAlpha = 0.14;
+    ctx.fill();
+    ctx.globalAlpha = 1;
+  }
+
+  ctx.beginPath();
+  ctx.moveTo(0, -10);
+  ctx.lineTo(3, -2);
+  ctx.lineTo(10, 3.5);
+  ctx.lineTo(10, 5.5);
+  ctx.lineTo(2.4, 3.4);
+  ctx.lineTo(2.4, 7.5);
+  ctx.lineTo(5, 10);
+  ctx.lineTo(5, 11.4);
+  ctx.lineTo(0, 9.6);
+  ctx.lineTo(-5, 11.4);
+  ctx.lineTo(-5, 10);
+  ctx.lineTo(-2.4, 7.5);
+  ctx.lineTo(-2.4, 3.4);
+  ctx.lineTo(-10, 5.5);
+  ctx.lineTo(-10, 3.5);
+  ctx.lineTo(-3, -2);
+  ctx.closePath();
+  ctx.fillStyle = live ? p.accent : p.info;
+  ctx.fill();
+  ctx.lineWidth = 1;
+  ctx.strokeStyle = p.panel;
+  ctx.stroke();
+  ctx.restore();
+}
+
+/* The terminator only needs repainting every few sim-minutes. */
+function basemapSignature() {
+  const night = ui.showNight ? Math.floor(state.time / 600000) : "off";
+  const demand = ui.showDemand ? demandRev : "off";
+  return `${view.lon.toFixed(3)}|${view.lat.toFixed(3)}|${view.scale.toFixed(4)}|${W}x${H}|${night}|${demand}`;
+}
+
+function paintBasemap(p) {
+  const key = basemapSignature();
+  if (key === basemapKey) return;
+  basemapKey = key;
+
+  const dpr = Math.min(window.devicePixelRatio || 1, 2);
+  basemapCtx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  basemapCtx.clearRect(0, 0, W, H);
+  basemapCtx.fillStyle = p.water;
+  basemapCtx.fillRect(0, 0, W, H);
+
+  /* The draw helpers all paint through `ctx`; point it at the cache. */
+  const onscreen = ctx;
+  ctx = basemapCtx;
+  try {
+    drawLand(p);
+    if (ui.showNight) drawNight(p);
+    drawGraticule(p);
+    if (ui.showDemand && !ui.hoverPax) drawDemandArcs(p, false);
+  } finally {
+    ctx = onscreen;
+  }
+}
+
+function render() {
+  const p = palette();
+  paintBasemap(p);
+  ctx.clearRect(0, 0, W, H);
+  ctx.drawImage(basemap, 0, 0, W, H);
+
+  drawDemandArcs(p, true);
+
+  if (state.flight) {
+    drawRoute(APT[state.flight.from], APT[state.flight.to], p);
+    drawTrail(p);
+  } else if (ui.selected && state.at) {
+    drawRoute(APT[state.at], APT[ui.selected], p);
+  }
+  if (ui.showRange) drawRangeRing(p);
+
+  drawAirports(p);
+  drawAircraft(p);
+  updateScalebar();
+}
+
+function updateScalebar() {
+  const targets = [100, 250, 500, 1000, 2000, 4000];
+  const degPerNm = 1 / 60;
+  let best = targets[0];
+  for (const t of targets) {
+    if (t * degPerNm * view.scale < 190) best = t;
+  }
+  const px = Math.round(best * degPerNm * view.scale);
+  document.getElementById("scale-bar").style.width = `${Math.max(24, px)}px`;
+  document.getElementById("scale-label").textContent = `${best.toLocaleString("en-US")} nm`;
+}
+
+/* =====================================================================
+   8. MAP INTERACTION
+   ===================================================================== */
+
+let drag = null;
+
+canvas.addEventListener("pointerdown", (e) => {
+  canvas.setPointerCapture(e.pointerId);
+  drag = { x: e.clientX, y: e.clientY, moved: 0 };
+  canvas.classList.add("dragging");
+});
+
+canvas.addEventListener("pointermove", (e) => {
+  const rect = canvas.getBoundingClientRect();
+  const lon = wrapLon(unprojLon(e.clientX - rect.left));
+  const lat = clamp(unprojLat(e.clientY - rect.top), -90, 90);
+  ui.cursor = { lat, lon };
+  document.getElementById("f-cursor").textContent = `CURSOR ${dms(lat, true)}  ${dms(lon, false)}`;
+
+  if (!drag) return;
+  const dx = e.clientX - drag.x;
+  const dy = e.clientY - drag.y;
+  drag.moved += Math.abs(dx) + Math.abs(dy);
+  view.lon = wrapLon(view.lon - dx / view.scale);
+  view.lat = clamp(view.lat + dy / view.scale, -85, 85);
+  drag.x = e.clientX;
+  drag.y = e.clientY;
+  if (drag.moved > 6) setFollow(false);
+});
+
+function endDrag(e) {
+  if (!drag) return;
+  const wasClick = drag.moved < 6;
+  drag = null;
+  canvas.classList.remove("dragging");
+  if (wasClick) {
+    const rect = canvas.getBoundingClientRect();
+    pickAirport(e.clientX - rect.left, e.clientY - rect.top);
+  }
+}
+
+canvas.addEventListener("pointerup", endDrag);
+canvas.addEventListener("pointercancel", () => { drag = null; canvas.classList.remove("dragging"); });
+canvas.addEventListener("pointerleave", () => {
+  ui.cursor = null;
+  document.getElementById("f-cursor").textContent = "CURSOR \u2014";
+});
+
+canvas.addEventListener("wheel", (e) => {
+  e.preventDefault();
+  const rect = canvas.getBoundingClientRect();
+  const mx = e.clientX - rect.left, my = e.clientY - rect.top;
+  const lonBefore = unprojLon(mx), latBefore = unprojLat(my);
+  const factor = Math.exp(-e.deltaY * 0.0016);
+  view.scale = clamp(view.scale * factor, 0.55, 90);
+  view.lon = wrapLon(view.lon + (lonBefore - unprojLon(mx)));
+  view.lat = clamp(view.lat + (latBefore - unprojLat(my)), -85, 85);
+  setFollow(false);
+}, { passive: false });
+
+function pickAirport(x, y) {
+  let best = null, bestDist = 20;
+  for (const apt of AIRPORTS) {
+    const d = Math.hypot(chartX(apt.lon) - x, projY(apt.lat) - y);
+    if (d < bestDist) { bestDist = d; best = apt; }
+  }
+  if (!best) return;
+  if (state.flight || best.iata === state.at) {
+    view.lat = best.lat; view.lon = best.lon;
+    setFollow(false);
+    return;
+  }
+  ui.selected = best.iata;
+  renderUI();
+}
+
+function setFollow(on) {
+  ui.follow = on;
+  document.getElementById("btn-follow").setAttribute("aria-pressed", String(on));
+}
+
+function fitWorld() {
+  view.scale = Math.max(0.55, Math.min(W / 360, H / 180));
+  view.lon = 0;
+  view.lat = 12;
+  setFollow(false);
+}
+
+/* =====================================================================
+   9. PANELS
+   ===================================================================== */
+
+const el = (id) => document.getElementById(id);
+
+/* Cards are rebuilt only when the data behind them changes; a panel that
+   redrew on every frame would yank buttons out from under the cursor. */
+let panelsDirty = true;
+let demandRev = 0;
+const markPanels = () => { panelsDirty = true; demandRev++; };
+
+function dueInfo(p) {
+  const hoursLeft = (p.due - state.time) / HOUR;
+  if (hoursLeft < 0) return { cls: "chip late", label: "Overdue" };
+  if (hoursLeft < 10) return { cls: "chip tight", label: `Due ${hoursToHm(hoursLeft)}` };
+  return { cls: "chip ok", label: `Due ${hoursToHm(hoursLeft)}` };
+}
+
+/* Keep the countdowns honest without touching the rest of the card. */
+function refreshChips() {
+  if (ui.tab !== "terminal" && ui.tab !== "cabin") return;
+  const pool = ui.tab === "terminal" ? (state.at ? queueOf(state.at) : []) : state.onboard;
+  const byId = new Map(pool.map((p) => [p.id, p]));
+  for (const card of el(`panel-${ui.tab}`).querySelectorAll(".card")) {
+    const p = byId.get(Number(card.dataset.paxId));
+    const chip = card.querySelector(".chip");
+    if (!p || !chip) continue;
+    const info = dueInfo(p);
+    chip.className = info.cls;
+    chip.textContent = info.label;
+  }
+}
+
+function paxCard(p, mode) {
+  const to = APT[p.to];
+  const origin = mode === "onboard" ? (state.at ? APT[state.at] : state.pos) : APT[p.from];
+  const d = distNm(origin, to);
+  const card = document.createElement("div");
+  card.className = "card" + (mode === "onboard" ? " onboard" : "");
+  card.dataset.paxId = p.id;
+
+  card.innerHTML = `
+    <div class="card-top">
+      <span class="who">${p.name}${p.party > 1 ? ` <span class="mono" style="font-size:12px;color:var(--ink-3)">+${p.party - 1}</span>` : ""}</span>
+      <span class="fare">${money(payout(p))}</span>
+    </div>
+    <div class="going">
+      <span class="arrow">&rarr;</span>
+      <span class="to">${to.iata}</span>
+      <span>${to.city}</span>
+      <span class="arrow">&middot;</span>
+      <span>${nm(d)}</span>
+    </div>
+    <div class="why">${p.why}</div>
+    <div class="card-foot">
+      <span class="${dueInfo(p).cls}">${dueInfo(p).label}</span>
+      <span class="spacer"></span>
+      ${mode === "onboard"
+        ? `<button class="mini-btn" data-act="offload" data-id="${p.id}" ${state.at ? "" : "disabled"}>Offload</button>`
+        : `<button class="mini-btn go" data-act="board" data-id="${p.id}" ${p.party > seatsFree() ? "disabled" : ""}>Board</button>
+           <button class="mini-btn" data-act="plan" data-id="${p.id}">Chart</button>`}
+    </div>`;
+
+  card.addEventListener("pointerenter", () => { ui.hoverPax = p; });
+  card.addEventListener("pointerleave", () => { if (ui.hoverPax === p) ui.hoverPax = null; });
+  return card;
+}
+
+function renderTerminal() {
+  const panel = el("panel-terminal");
+  panel.textContent = "";
+  if (!state.at) {
+    panel.innerHTML = '<p class="empty">Airborne. Terminal lists come back on the ground.</p>';
+    return;
+  }
+  const q = queueOf(state.at).slice().sort((a, b) => a.due - b.due);
+  el("c-terminal").textContent = q.length ? String(q.length) : "";
+  if (!q.length) {
+    panel.innerHTML = '<p class="empty">Nobody waiting here right now. Let time run, or fly somewhere busier.</p>';
+    return;
+  }
+  for (const p of q) panel.appendChild(paxCard(p, "waiting"));
+}
+
+function renderCabin() {
+  const panel = el("panel-cabin");
+  panel.textContent = "";
+  el("c-cabin").textContent = state.onboard.length ? String(seatsUsed()) : "";
+  if (!state.onboard.length) {
+    panel.innerHTML = '<p class="empty">Cabin empty. Board someone from the Terminal tab.</p>';
+    return;
+  }
+  const live = liveFlight();
+  for (const p of state.onboard.slice().sort((a, b) => a.due - b.due)) {
+    const card = paxCard(p, "onboard");
+    if (live && live.f.to === p.to) {
+      const eta = state.time + live.hours * HOUR;
+      const note = document.createElement("div");
+      note.className = "why mono";
+      note.style.color = "var(--info)";
+      note.style.marginTop = "4px";
+      note.textContent = `Arriving this leg \u2014 ETA ${zulu(eta)}`;
+      card.appendChild(note);
+    }
+    panel.appendChild(card);
+  }
+}
+
+function renderDemand() {
+  const panel = el("panel-demand");
+  panel.textContent = "";
+
+  const tally = new Map();
+  for (const key in state.queues) {
+    for (const p of state.queues[key]) tally.set(p.to, (tally.get(p.to) || 0) + p.party);
+  }
+  const rows = [...tally.entries()].sort((a, b) => b[1] - a[1]).slice(0, 14);
+  const max = rows.length ? rows[0][1] : 1;
+
+  const head = document.createElement("p");
+  head.className = "why";
+  head.style.margin = "0 0 4px";
+  const waitingTotal = [...tally.values()].reduce((a, b) => a + b, 0);
+  head.innerHTML = `<b>${waitingTotal}</b> people are waiting at ${Object.keys(state.queues).filter((k) => state.queues[k].length).length} fields worldwide. Here is where they are trying to get to.`;
+  panel.appendChild(head);
+
+  for (const [iata, count] of rows) {
+    const apt = APT[iata];
+    const row = document.createElement("div");
+    row.className = "card demand-row";
+    row.innerHTML = `
+      <span class="code">${iata}</span>
+      <span>
+        <span class="why" style="display:block;color:var(--ink)">${apt.city}</span>
+        <span class="meter"><i style="width:${Math.round((count / max) * 100)}%"></i></span>
+      </span>
+      <span class="n">${count}</span>`;
+    row.addEventListener("click", () => {
+      view.lat = apt.lat; view.lon = apt.lon;
+      view.scale = Math.max(view.scale, 3);
+      setFollow(false);
+    });
+    panel.appendChild(row);
+  }
+}
+
+function renderLog() {
+  const panel = el("panel-log");
+  panel.textContent = "";
+  if (!state.log.length) {
+    panel.innerHTML = '<p class="empty">No entries yet.</p>';
+    return;
+  }
+  for (const entry of state.log) {
+    const line = document.createElement("div");
+    line.className = `log-line ${entry.kind}`;
+    line.innerHTML = `<time>${zulu(entry.t)}</time><strong>${entry.text}</strong>`;
+    panel.appendChild(line);
+  }
+}
+
+function renderPlan() {
+  const plan = el("plan");
+  const dest = ui.selected ? APT[ui.selected] : null;
+
+  if (!dest || !state.at) { plan.hidden = true; return; }
+  plan.hidden = false;
+
+  const from = APT[state.at];
+  const leg = fuelForLeg(from, dest);
+  const crs = bearing(from, dest);
+  const aboard = state.onboard.filter((p) => p.to === dest.iata).reduce((n, p) => n + p.party, 0);
+  const waiting = (state.queues[dest.iata] || []).reduce((n, p) => n + p.party, 0);
+  const shortFuel = leg.burn + RESERVE > state.fuel;
+
+  el("plan-route").textContent = `${from.iata} \u2192 ${dest.iata}`;
+  el("plan-sub").textContent = `${dest.name}, ${dest.city} \u2014 ${dest.country}`;
+  el("plan-dist").textContent = nm(leg.dist);
+  el("plan-crs").textContent = `${pad(crs, 3)}\u00b0`;
+  el("plan-ete").textContent = hoursToHm(leg.hours);
+
+  const burnEl = el("plan-burn");
+  burnEl.textContent = `${Math.round(leg.burn).toLocaleString("en-US")} lb`;
+  burnEl.className = shortFuel ? "bad" : leg.burn + RESERVE > state.fuel * 0.85 ? "warn" : "";
+
+  el("plan-pax").textContent = aboard ? `${aboard} pax` : "\u2014";
+  el("plan-wait").textContent = waiting ? `${waiting} pax` : "\u2014";
+
+  const note = el("plan-note");
+  el("btn-depart").disabled = shortFuel;
+  if (shortFuel) {
+    note.className = "note bad";
+    note.textContent = `Short by ${Math.round(leg.burn + RESERVE - state.fuel).toLocaleString("en-US")} lb. Refuel or pick a closer field.`;
+  } else {
+    note.className = "note";
+    note.textContent = aboard
+      ? `${aboard} aboard get where they are going.`
+      : waiting ? `${waiting} waiting there to pick up.` : "";
+  }
+
+  const missing = FUEL_CAP - state.fuel;
+  const cost = Math.round(missing * fuelPriceAt(from));
+  const refuel = el("btn-refuel");
+  refuel.textContent = missing < 100 ? "Tanks full" : `Refuel ${money(cost)}`;
+  refuel.disabled = missing < 100 || cost > state.cash;
+}
+
+function renderGps() {
+  const live = liveFlight();
+  el("gps-lat").textContent = dms(state.pos.lat, true);
+  el("gps-lon").textContent = dms(wrapLon(state.pos.lon), false);
+
+  const stateEl = el("gps-state");
+  if (live) {
+    stateEl.textContent = live.alt < CEILING - 500 && live.remaining > live.f.total / 2 ? "Climb" :
+                          live.remaining < 170 ? "Descent" : "Cruise";
+    stateEl.dataset.state = "flying";
+    el("gps-trk").textContent = `${pad(live.track, 3)}\u00b0`;
+    el("gps-gs").textContent = `${Math.round(live.gs)} kt`;
+    el("gps-alt").textContent = live.alt > 18000
+      ? `FL${pad(Math.round(live.alt / 100), 3)}`
+      : `${Math.round(live.alt / 100) * 100} ft`;
+    const w = live.f.wind;
+    el("gps-wind").textContent = `${w >= 0 ? "+" : "\u2212"}${Math.abs(Math.round(w))} kt`;
+    el("gps-dtg").textContent = nm(live.remaining);
+    el("gps-ete").textContent = `${hoursToHm(live.hours)}  ${zulu(state.time + live.hours * HOUR)}`;
+  } else {
+    stateEl.textContent = "Parked";
+    stateEl.dataset.state = "parked";
+    el("gps-trk").textContent = "\u2014";
+    el("gps-gs").textContent = "0 kt";
+    el("gps-alt").textContent = "Ground";
+    el("gps-wind").textContent = "\u2014";
+    el("gps-dtg").textContent = "\u2014";
+    el("gps-ete").textContent = "\u2014";
+  }
+
+  const endurance = (state.fuel - RESERVE) / BURN_CRUISE;
+  el("gps-fuel").textContent = `${Math.round(state.fuel).toLocaleString("en-US")} lb  ${hoursToHm(Math.max(0, endurance))}`;
+}
+
+function renderHeader() {
+  el("g-cash").textContent = money(state.cash);
+  el("g-rep").textContent = Math.round(state.rep);
+  el("g-clock").textContent = `${zulu(state.time)} ${dayStamp(state.time)}`;
+
+  const apt = state.at ? APT[state.at] : null;
+  el("at-code").textContent = apt ? apt.iata : "\u2014";
+  el("at-city").textContent = apt
+    ? `${apt.city}${apt.iata === HOME ? " \u00b7 home base" : ""}`
+    : state.flight ? `Enroute ${state.flight.from} \u2192 ${state.flight.to}` : "";
+  el("at-seats").textContent = `${seatsUsed()}/${SEATS} seats used \u00b7 ${seatsFree()} free`;
+
+  el("f-fleet").textContent =
+    `${state.totals.legs} legs \u00b7 ${state.totals.delivered} delivered \u00b7 ${Math.round(state.totals.milesFlown).toLocaleString("en-US")} nm flown`;
+}
+
+function renderUI() {
+  renderHeader();
+  renderGps();
+  renderPlan();
+
+  if (panelsDirty) {
+    panelsDirty = false;
+    if (ui.tab === "terminal") renderTerminal();
+    else if (ui.tab === "cabin") renderCabin();
+    else if (ui.tab === "demand") renderDemand();
+    else renderLog();
+  } else {
+    refreshChips();
+  }
+
+  /* Counts stay live even when their tab is hidden. */
+  const waiting = state.at ? queueOf(state.at).length : 0;
+  el("c-terminal").textContent = waiting ? String(waiting) : "";
+  el("c-cabin").textContent = state.onboard.length ? String(seatsUsed()) : "";
+}
+
+/* =====================================================================
+   10. ACTIONS
+   ===================================================================== */
+
+function board(id) {
+  if (!state.at) return;
+  const q = queueOf(state.at);
+  const idx = q.findIndex((p) => p.id === id);
+  if (idx < 0) return;
+  const p = q[idx];
+  if (p.party > seatsFree()) return;
+  q.splice(idx, 1);
+  state.onboard.push(p);
+  logLine(`${p.name}${p.party > 1 ? ` +${p.party - 1}` : ""} boarded for ${APT[p.to].city}.`);
+  if (!ui.selected) ui.selected = p.to;
+  markPanels();
+  renderUI();
+  save();
+}
+
+function offload(id) {
+  const idx = state.onboard.findIndex((p) => p.id === id);
+  if (idx < 0 || !state.at) return;
+  const p = state.onboard[idx];
+  state.onboard.splice(idx, 1);
+  queueOf(state.at).push(Object.assign({}, p, { from: state.at }));
+  state.rep = clamp(state.rep - 2, 0, 100);
+  logLine(`${p.name} put off at ${state.at}, still needs ${p.to}.`, "warn");
+  renderUI();
+  save();
+}
+
+function refuel() {
+  if (!state.at) return;
+  const missing = FUEL_CAP - state.fuel;
+  const cost = Math.round(missing * fuelPriceAt(APT[state.at]));
+  if (missing < 100 || cost > state.cash) return;
+  state.cash -= cost;
+  state.fuel = FUEL_CAP;
+  logLine(`Uplifted ${Math.round(missing).toLocaleString("en-US")} lb at ${state.at} for ${money(cost)}.`);
+  renderUI();
+  save();
+}
+
+document.addEventListener("click", (e) => {
+  const btn = e.target.closest("button[data-act]");
+  if (!btn) return;
+  const id = Number(btn.dataset.id);
+  if (btn.dataset.act === "board") board(id);
+  else if (btn.dataset.act === "offload") offload(id);
+  else if (btn.dataset.act === "plan") {
+    const p = queueOf(state.at).find((x) => x.id === id);
+    if (p) { ui.selected = p.to; renderUI(); }
+  }
+});
+
+function setTab(name) {
+  ui.tab = name;
+  markPanels();
+  for (const t of ["terminal", "cabin", "demand", "log"]) {
+    el(`tab-${t}`).setAttribute("aria-selected", String(t === name));
+    el(`panel-${t}`).hidden = t !== name;
+  }
+  renderUI();
+}
+
+for (const t of ["terminal", "cabin", "demand", "log"]) {
+  el(`tab-${t}`).addEventListener("click", () => setTab(t));
+}
+
+for (const b of document.querySelectorAll(".warp button")) {
+  b.addEventListener("click", () => {
+    ui.warp = Number(b.dataset.warp);
+    for (const other of document.querySelectorAll(".warp button")) {
+      other.setAttribute("aria-pressed", String(other === b));
+    }
+  });
+}
+
+el("btn-depart").addEventListener("click", () => {
+  if (ui.selected) depart(ui.selected);
+  renderUI();
+});
+el("btn-clear").addEventListener("click", () => { ui.selected = null; renderUI(); });
+el("btn-refuel").addEventListener("click", refuel);
+
+el("btn-follow").addEventListener("click", () => setFollow(!ui.follow));
+el("btn-world").addEventListener("click", fitWorld);
+
+function toggle(id, key, onLabel, offLabel) {
+  el(id).addEventListener("click", () => {
+    ui[key] = !ui[key];
+    el(id).setAttribute("aria-pressed", String(ui[key]));
+    if (onLabel) el(id).textContent = ui[key] ? onLabel : offLabel;
+  });
+}
+toggle("btn-demand", "showDemand");
+el("btn-demand").addEventListener("click", () => { basemapKey = ""; });
+toggle("btn-range", "showRange");
+toggle("btn-night", "showNight", "Daylight", "Daylight");
+el("btn-night").addEventListener("click", () => { basemapKey = ""; });
+
+el("btn-theme").addEventListener("click", () => {
+  const root = document.documentElement;
+  const dark = root.getAttribute("data-theme") === "dark" ||
+    (!root.getAttribute("data-theme") && matchMedia("(prefers-color-scheme: dark)").matches);
+  root.setAttribute("data-theme", dark ? "light" : "dark");
+  el("btn-theme").textContent = dark ? "Night" : "Day";
+  invalidatePalette();
+});
+
+el("btn-reset").addEventListener("click", () => {
+  if (!confirm("Start a new career? Your aircraft, cash and log will be reset.")) return;
+  try { localStorage.removeItem(SAVE_KEY); } catch (err) { /* ignore */ }
+  state = freshState();
+  seedWorld();
+  logLine(`N1SFO on the ramp at ${HOME}. Tanks full, ready when you are.`);
+  ui.selected = null;
+  view.lat = APT[HOME].lat; view.lon = APT[HOME].lon; view.scale = 3.2;
+  setFollow(true);
+  renderUI();
+  save();
+});
+
+el("btn-brief-close").addEventListener("click", () => {
+  el("briefing").hidden = true;
+  state.seenBriefing = true;
+  save();
+});
+
+document.addEventListener("keydown", (e) => {
+  if (e.target.tagName === "INPUT" || !el("briefing").hidden) return;
+  const key = e.key.toLowerCase();
+  if (key === "f") setFollow(!ui.follow);
+  else if (key === "w") fitWorld();
+  else if (key === "d") el("btn-demand").click();
+  else if (key === "r") el("btn-range").click();
+  else if (key >= "1" && key <= "5") {
+    const buttons = document.querySelectorAll(".warp button");
+    buttons[Number(key) - 1]?.click();
+  }
+});
+
+/* =====================================================================
+   11. LOOP
+   ===================================================================== */
+
+let lastFrame = performance.now();
+let spawnAccum = 0;
+let saveAccum = 0;
+let uiAccum = 0;
+
+function frame(now) {
+  const dtReal = Math.min(120, now - lastFrame) / 1000;
+  lastFrame = now;
+
+  if (ui.warp > 0) {
+    const simHours = (dtReal * ui.warp) / 3600;
+    state.time += simHours * HOUR;
+    stepFlight(simHours);
+
+    spawnAccum += simHours;
+    if (spawnAccum > 0.25) {
+      const before = state.at ? queueOf(state.at).length : 0;
+      spawnPassengers(spawnAccum);
+      expireWaiting();
+      spawnAccum = 0;
+      demandRev++;
+      const after = state.at ? queueOf(state.at).length : 0;
+      if (after !== before || ui.tab === "demand") markPanels();
+    }
+
+    saveAccum += dtReal;
+    if (saveAccum > 20) { save(); saveAccum = 0; }
+  }
+
+  uiAccum += dtReal;
+  if (uiAccum > 0.2) { renderUI(); uiAccum = 0; }
+
+  render();
+  requestAnimationFrame(frame);
+}
+
+/* =====================================================================
+   12. BOOT
+   ===================================================================== */
+
+function boot() {
+  const restored = load();
+  state = restored || freshState();
+  if (!restored) {
+    seedWorld();
+    logLine(`N1SFO on the ramp at ${HOME}. Tanks full, ready when you are.`);
+  }
+  view.lat = state.pos.lat;
+  view.lon = state.pos.lon;
+
+  el("briefing").hidden = Boolean(state.seenBriefing);
+
+  const root = document.documentElement;
+  el("btn-theme").textContent =
+    (root.getAttribute("data-theme") === "dark" ||
+     (!root.getAttribute("data-theme") && matchMedia("(prefers-color-scheme: dark)").matches))
+      ? "Day" : "Night";
+
+  resize();
+  setTab("terminal");
+  renderUI();
+  requestAnimationFrame(frame);
+}
+
+new ResizeObserver(() => { resize(); }).observe(canvas.parentElement);
+matchMedia("(prefers-color-scheme: dark)").addEventListener("change", invalidatePalette);
+
+if (document.fonts && document.fonts.ready) document.fonts.ready.then(invalidatePalette);
+boot();
+</script>
