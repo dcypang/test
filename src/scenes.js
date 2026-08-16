@@ -600,8 +600,10 @@ const HOME_ZONES = [
 
 // --- the states -------------------------------------------------------------
 //
-// Eight of them, four across and two down, each 1400 by 1300 metres, with the
-// interstate running the length of every row and linking them. They are not
+// Eight real ones, laid out the way they actually sit: Washington, Idaho,
+// Montana and North Dakota across the north, with Oregon, Nevada, Wyoming and
+// South Dakota below them. Each is 1400 by 1300 metres, with the interstate
+// running the length of every row and linking them. They are not
 // separate places you get taken to: it is one continuous world with one road
 // network, so the state line is just a sign you drive past.
 //
@@ -617,22 +619,22 @@ const STATE_X0 = -1550, STATE_Z0 = -250;
 const STATE_COLS = 4, STATE_ROWS = 2;
 
 const STATES = [
-  { col: 0, row: 0, name: 'Redrock', abbr: 'RR', capital: 'Mesa Junction',
-    tint: [1.05, 0.72, 0.50], town: { cols: 4, rows: 3, gap: 104 }, trees: 0.15 },
-  { col: 1, row: 0, name: 'Ashcombe', abbr: 'AC', capital: 'Ashcombe',
+  { col: 0, row: 0, name: 'Washington', abbr: 'WA', capital: 'Spokane',
+    tint: [0.66, 0.86, 0.68], town: { cols: 5, rows: 4, gap: 96 }, trees: 1.6 },
+  { col: 1, row: 0, name: 'Idaho', abbr: 'ID', capital: 'Ashcombe',
     tint: [1, 1, 1], town: null, trees: 1 },
-  { col: 2, row: 0, name: 'Greenvale', abbr: 'GV', capital: 'Fairfield',
-    tint: [0.82, 1.02, 0.72], town: { cols: 6, rows: 4, gap: 98 }, trees: 1.1 },
-  { col: 3, row: 0, name: 'Sandhill', abbr: 'SH', capital: 'Dunmore',
-    tint: [1.02, 0.90, 0.62], town: { cols: 4, rows: 3, gap: 110 }, trees: 0.3 },
-  { col: 0, row: 1, name: 'Pinecrest', abbr: 'PC', capital: 'Timber Falls',
-    tint: [0.66, 0.86, 0.68], town: { cols: 4, rows: 4, gap: 96 }, trees: 1.6 },
-  { col: 1, row: 1, name: 'Lakeshore', abbr: 'LS', capital: 'Bayview',
-    tint: [0.76, 0.92, 1.00], town: { cols: 5, rows: 4, gap: 100 }, trees: 0.9 },
-  { col: 2, row: 1, name: 'Goldfield', abbr: 'GF', capital: 'Prosper',
-    tint: [1.00, 0.92, 0.58], town: { cols: 5, rows: 3, gap: 106 }, trees: 0.5 },
-  { col: 3, row: 1, name: 'Silverpeak', abbr: 'SP', capital: 'Coldwater',
-    tint: [0.88, 0.90, 0.98], town: { cols: 4, rows: 3, gap: 100 }, trees: 0.7 },
+  { col: 2, row: 0, name: 'Montana', abbr: 'MT', capital: 'Bozeman',
+    tint: [1.00, 0.92, 0.58], town: { cols: 6, rows: 4, gap: 98 }, trees: 0.5 },
+  { col: 3, row: 0, name: 'North Dakota', abbr: 'ND', capital: 'Minot',
+    tint: [0.88, 0.94, 0.72], town: { cols: 4, rows: 3, gap: 110 }, trees: 0.35 },
+  { col: 0, row: 1, name: 'Oregon', abbr: 'OR', capital: 'Bend',
+    tint: [0.74, 0.96, 0.78], town: { cols: 4, rows: 4, gap: 96 }, trees: 1.3 },
+  { col: 1, row: 1, name: 'Nevada', abbr: 'NV', capital: 'Elko',
+    tint: [1.05, 0.72, 0.50], town: { cols: 5, rows: 4, gap: 100 }, trees: 0.15 },
+  { col: 2, row: 1, name: 'Wyoming', abbr: 'WY', capital: 'Cody',
+    tint: [0.88, 0.90, 0.98], town: { cols: 5, rows: 3, gap: 106 }, trees: 0.6 },
+  { col: 3, row: 1, name: 'South Dakota', abbr: 'SD', capital: 'Pierre',
+    tint: [1.02, 0.90, 0.62], town: { cols: 4, rows: 3, gap: 100 }, trees: 0.45 },
 ];
 for (const s of STATES) {
   s.x0 = STATE_X0 + s.col * STATE_W;
@@ -642,7 +644,6 @@ for (const s of STATES) {
   s.cx = (s.x0 + s.x1) / 2;
   s.cz = (s.z0 + s.z1) / 2;
 }
-const HOME_STATE = STATES.find((s) => s.name === 'Ashcombe');
 
 function stateAt(x, z) {
   const col = Math.floor((x - STATE_X0) / STATE_W);

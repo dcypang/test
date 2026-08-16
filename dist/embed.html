@@ -3960,6 +3960,147 @@ function buildCarMeshes(gl) {
   };
 }
 
+// --- number plates ----------------------------------------------------------
+//
+// Every car carries one front and one rear, and no two cars carry the same
+// number, so the plate has to be geometry built per car rather than part of the
+// shared body mesh. It is cheap: a panel, a border, and one box per run of lit
+// pixels in a 3x5 bar font, which comes to a few hundred triangles a car.
+//
+// The font is 3 wide and 5 tall because that is the smallest grid that still
+// tells O from D and 8 from B at the distance you actually read a plate from -
+// which, in a rear-view mirror, is about two car lengths.
+const PLATE_FONT = {
+  '0': ['###', '# #', '# #', '# #', '###'],
+  '1': [' # ', '## ', ' # ', ' # ', '###'],
+  '2': ['###', '  #', '###', '#  ', '###'],
+  '3': ['###', '  #', '###', '  #', '###'],
+  '4': ['# #', '# #', '###', '  #', '  #'],
+  '5': ['###', '#  ', '###', '  #', '###'],
+  '6': ['###', '#  ', '###', '# #', '###'],
+  '7': ['###', '  #', '  #', '  #', '  #'],
+  '8': ['###', '# #', '###', '# #', '###'],
+  '9': ['###', '# #', '###', '  #', '###'],
+  A: ['###', '# #', '###', '# #', '# #'],
+  B: ['## ', '# #', '## ', '# #', '## '],
+  C: ['###', '#  ', '#  ', '#  ', '###'],
+  D: ['## ', '# #', '# #', '# #', '## '],
+  E: ['###', '#  ', '###', '#  ', '###'],
+  F: ['###', '#  ', '###', '#  ', '#  '],
+  G: ['###', '#  ', '# #', '# #', '###'],
+  H: ['# #', '# #', '###', '# #', '# #'],
+  I: ['###', ' # ', ' # ', ' # ', '###'],
+  J: ['  #', '  #', '  #', '# #', '###'],
+  K: ['# #', '# #', '## ', '# #', '# #'],
+  L: ['#  ', '#  ', '#  ', '#  ', '###'],
+  M: ['# #', '###', '###', '# #', '# #'],
+  N: ['# #', '## ', '###', ' ##', '# #'],
+  O: ['###', '# #', '# #', '# #', '###'],
+  P: ['###', '# #', '###', '#  ', '#  '],
+  Q: ['###', '# #', '# #', '###', '  #'],
+  R: ['###', '# #', '###', '## ', '# #'],
+  S: ['###', '#  ', '###', '  #', '###'],
+  T: ['###', ' # ', ' # ', ' # ', ' # '],
+  U: ['# #', '# #', '# #', '# #', '###'],
+  V: ['# #', '# #', '# #', '# #', ' # '],
+  W: ['# #', '# #', '###', '###', '# #'],
+  X: ['# #', '# #', ' # ', '# #', '# #'],
+  Y: ['# #', '# #', ' # ', ' # ', ' # '],
+  Z: ['###', '  #', ' # ', '#  ', '###'],
+  ' ': ['   ', '   ', '   ', '   ', '   '],
+  '-': ['   ', '   ', '###', '   ', '   '],
+};
+
+// A US plate is 12 by 6 inches. These are those, in metres.
+const PLATE_W = 0.305, PLATE_H = 0.152, PLATE_T = 0.008;
+
+// One plate. `dir` is +1 for a face read from in front of the car and -1 for
+// one read from behind.
+//
+// The two cannot be the same mesh turned round. Rotating a face 180 degrees
+// about Y reverses the order its characters appear in - which is exactly what
+// the rear plate did, and it read backwards - so each face lays its text out
+// in the direction its own viewer will read it, mirroring the glyphs as well
+// as their order.
+function buildPlateFace(mb, text, tint, dir) {
+  const chars = String(text).toUpperCase().split('').slice(0, 7);
+  const face = dir * PLATE_T * 0.6;
+  // Panel.
+  mb.mat([0.90, 0.90, 0.88], 0.42, 0.05, 0, FLAG_DEFAULT);
+  mb.push(); mb.box(PLATE_W, PLATE_H, PLATE_T); mb.pop();
+  // A band across the top in the state's own colour, the way a state plate
+  // carries its name. Too small to letter, but the colour reads.
+  mb.mat([clamp(tint[0] * 0.42, 0, 1), clamp(tint[1] * 0.46, 0, 1),
+    clamp(tint[2] * 0.52, 0, 1)], 0.5, 0.05, 0, FLAG_DEFAULT);
+  mb.push(); mb.translate(0, PLATE_H * 0.36, face);
+  mb.box(PLATE_W * 0.92, PLATE_H * 0.16, PLATE_T * 0.3); mb.pop();
+
+  // Characters, sized to fill the width whatever the number is.
+  const n = Math.max(1, chars.length);
+  const usable = PLATE_W - 0.026;
+  const pxW = usable / (n * 3 + (n - 1));
+  const pxH = 0.070 / 5;
+  const x0 = -usable / 2 + pxW / 2;
+  const yTop = -PLATE_H * 0.10 + (pxH * 5) / 2 - pxH / 2;
+
+  mb.mat([0.07, 0.10, 0.28], 0.55, 0.03, 0, FLAG_DEFAULT);
+  chars.forEach((ch, ci) => {
+    const glyph = PLATE_FONT[ch] || PLATE_FONT[' '];
+    for (let row = 0; row < 5; row++) {
+      const bits = glyph[row];
+      let run = 0;
+      // Merge neighbouring pixels into one box: a solid bar costs a twelfth of
+      // what three separate cubes cost and looks the same.
+      for (let col = 0; col <= 3; col++) {
+        const on = col < 3 && bits[col] === '#';
+        if (on) { run++; continue; }
+        if (run > 0) {
+          const startCol = col - run;
+          const cx = x0 + (ci * 4 + startCol) * pxW + (run - 1) * pxW / 2;
+          const cy = yTop - row * pxH;
+          mb.push();
+          mb.translate(-dir * cx, cy, face);
+          mb.box(pxW * run * 0.92, pxH * 0.92, PLATE_T * 0.5);
+          mb.pop();
+          run = 0;
+        }
+      }
+    }
+  });
+}
+
+// Both plates of one car, in body-local space: front on the nose, rear on the
+// tail, each sitting just proud of the panel behind it so they never z-fight.
+// Where the plates hang, per body. Just outside the bodywork, not just inside
+// it: the race car's shell runs to z = 2.42 at the nose and -2.34 at the tail,
+// and sitting a plate a centimetre short of either buries it. The road car is a
+// different shape entirely - 2.16 to -2.22 - so mounting both at the race car's
+// numbers left the traffic's plates hanging in the air in front of them.
+const PLATE_MOUNT_GT = { fz: 2.432, fy: 0.385, rz: -2.352, ry: 0.520 };
+const PLATE_MOUNT_ROAD = { fz: 2.172, fy: 0.520, rz: -2.232, ry: 0.575 };
+
+function buildPlates(mb, text, tint, mount) {
+  const m = mount || PLATE_MOUNT_GT;
+  mb.push();
+  mb.translate(0, m.fy, m.fz);
+  buildPlateFace(mb, text, tint, 1);
+  mb.pop();
+
+  mb.push();
+  mb.translate(0, m.ry, m.rz);
+  buildPlateFace(mb, text, tint, -1);
+  mb.pop();
+}
+
+// A plate number in the American shape: three letters, three digits, prefixed
+// with the two-letter code of wherever the car is registered.
+function makePlateNumber(rng, stateAbbr) {
+  const L = 'ABCDEFGHJKLMNPRSTUVWXYZ';        // no I, O or Q next to 1 and 0
+  const pick = (s) => s[Math.floor(rng() * s.length)];
+  return `${stateAbbr || 'ID'}${pick(L)}${pick(L)}${Math.floor(rng() * 10)}`
+    + `${Math.floor(rng() * 10)}${Math.floor(rng() * 10)}`;
+}
+
 
 // ===== world.js ======================================================
 // ---------------------------------------------------------------------------
@@ -5982,8 +6123,10 @@ const HOME_ZONES = [
 
 // --- the states -------------------------------------------------------------
 //
-// Eight of them, four across and two down, each 1400 by 1300 metres, with the
-// interstate running the length of every row and linking them. They are not
+// Eight real ones, laid out the way they actually sit: Washington, Idaho,
+// Montana and North Dakota across the north, with Oregon, Nevada, Wyoming and
+// South Dakota below them. Each is 1400 by 1300 metres, with the interstate
+// running the length of every row and linking them. They are not
 // separate places you get taken to: it is one continuous world with one road
 // network, so the state line is just a sign you drive past.
 //
@@ -5999,22 +6142,22 @@ const STATE_X0 = -1550, STATE_Z0 = -250;
 const STATE_COLS = 4, STATE_ROWS = 2;
 
 const STATES = [
-  { col: 0, row: 0, name: 'Redrock', abbr: 'RR', capital: 'Mesa Junction',
-    tint: [1.05, 0.72, 0.50], town: { cols: 4, rows: 3, gap: 104 }, trees: 0.15 },
-  { col: 1, row: 0, name: 'Ashcombe', abbr: 'AC', capital: 'Ashcombe',
+  { col: 0, row: 0, name: 'Washington', abbr: 'WA', capital: 'Spokane',
+    tint: [0.66, 0.86, 0.68], town: { cols: 5, rows: 4, gap: 96 }, trees: 1.6 },
+  { col: 1, row: 0, name: 'Idaho', abbr: 'ID', capital: 'Ashcombe',
     tint: [1, 1, 1], town: null, trees: 1 },
-  { col: 2, row: 0, name: 'Greenvale', abbr: 'GV', capital: 'Fairfield',
-    tint: [0.82, 1.02, 0.72], town: { cols: 6, rows: 4, gap: 98 }, trees: 1.1 },
-  { col: 3, row: 0, name: 'Sandhill', abbr: 'SH', capital: 'Dunmore',
-    tint: [1.02, 0.90, 0.62], town: { cols: 4, rows: 3, gap: 110 }, trees: 0.3 },
-  { col: 0, row: 1, name: 'Pinecrest', abbr: 'PC', capital: 'Timber Falls',
-    tint: [0.66, 0.86, 0.68], town: { cols: 4, rows: 4, gap: 96 }, trees: 1.6 },
-  { col: 1, row: 1, name: 'Lakeshore', abbr: 'LS', capital: 'Bayview',
-    tint: [0.76, 0.92, 1.00], town: { cols: 5, rows: 4, gap: 100 }, trees: 0.9 },
-  { col: 2, row: 1, name: 'Goldfield', abbr: 'GF', capital: 'Prosper',
-    tint: [1.00, 0.92, 0.58], town: { cols: 5, rows: 3, gap: 106 }, trees: 0.5 },
-  { col: 3, row: 1, name: 'Silverpeak', abbr: 'SP', capital: 'Coldwater',
-    tint: [0.88, 0.90, 0.98], town: { cols: 4, rows: 3, gap: 100 }, trees: 0.7 },
+  { col: 2, row: 0, name: 'Montana', abbr: 'MT', capital: 'Bozeman',
+    tint: [1.00, 0.92, 0.58], town: { cols: 6, rows: 4, gap: 98 }, trees: 0.5 },
+  { col: 3, row: 0, name: 'North Dakota', abbr: 'ND', capital: 'Minot',
+    tint: [0.88, 0.94, 0.72], town: { cols: 4, rows: 3, gap: 110 }, trees: 0.35 },
+  { col: 0, row: 1, name: 'Oregon', abbr: 'OR', capital: 'Bend',
+    tint: [0.74, 0.96, 0.78], town: { cols: 4, rows: 4, gap: 96 }, trees: 1.3 },
+  { col: 1, row: 1, name: 'Nevada', abbr: 'NV', capital: 'Elko',
+    tint: [1.05, 0.72, 0.50], town: { cols: 5, rows: 4, gap: 100 }, trees: 0.15 },
+  { col: 2, row: 1, name: 'Wyoming', abbr: 'WY', capital: 'Cody',
+    tint: [0.88, 0.90, 0.98], town: { cols: 5, rows: 3, gap: 106 }, trees: 0.6 },
+  { col: 3, row: 1, name: 'South Dakota', abbr: 'SD', capital: 'Pierre',
+    tint: [1.02, 0.90, 0.62], town: { cols: 4, rows: 3, gap: 100 }, trees: 0.45 },
 ];
 for (const s of STATES) {
   s.x0 = STATE_X0 + s.col * STATE_W;
@@ -6024,7 +6167,6 @@ for (const s of STATES) {
   s.cx = (s.x0 + s.x1) / 2;
   s.cz = (s.z0 + s.z1) / 2;
 }
-const HOME_STATE = STATES.find((s) => s.name === 'Ashcombe');
 
 function stateAt(x, z) {
   const col = Math.floor((x - STATE_X0) / STATE_W);
@@ -7519,6 +7661,11 @@ class Car {
     this.number = options.number !== undefined ? options.number : 7;
     this.name = options.name || this.livery.name;
     this.isPlayer = !!options.isPlayer;
+    // Its own plate, built as its own mesh: the body mesh is shared by every
+    // car on the road, so a number that differs from car to car cannot live in
+    // it. One extra draw call each, a few hundred triangles.
+    this.plate = options.plate || null;
+    this.plateMesh = options.plateMesh || null;
     this.dirt = 0;
     this.damage = 0;
     this.headlightsOn = false;
@@ -7744,6 +7891,10 @@ class Car {
 
     m4.compose(this.bodyMatrix, [v.pos[0], v.pos[1] - drop, v.pos[2]], v.yaw, v.pitch, v.roll);
     renderer.submit(this.meshes.body, this.bodyMatrix, paintOpts);
+    // Plates ride with the body, and take the same dirt the body does.
+    if (this.plateMesh) {
+      renderer.submit(this.plateMesh, this.bodyMatrix, { dirt: this.dirt });
+    }
 
     if (!options.hideInterior) {
       renderer.submit(this.meshes.interior, this.bodyMatrix, EMPTY_OPTS);
@@ -9943,6 +10094,8 @@ const CAR_SHELL = 0.98;
 // contact point, which is not an overlap, so without a skin the impulse never
 // fires and the wall does nothing.
 const CONTACT_SKIN = 0.05;
+// The player's car keeps one number wherever it goes, registered at home.
+const PLAYER_PLATE = 'IDAPEX1';
 // Most the road boundary may move the car back in one frame.
 const BOUNDARY_EASE = 0.45;
 
@@ -10369,6 +10522,7 @@ class Game {
       livery: LIVERY_PRESETS[this.settings.playerLivery],
       assists: this.settings.assists,
     });
+    this.fitPlate(car, null, null, PLAYER_PLATE);
     const g = this.scene.grid[0];
     car.setPose(g.x, g.z, g.yaw, this.scene.world);
     this.cars.push(car);
@@ -10430,6 +10584,9 @@ class Game {
 
     // Player starts mid-pack so there is a race to be had in both directions.
     const playerGrid = Math.min(4, FIELD_SIZE - 1);
+    // Plates for the field come off their own seeded stream, so the same race
+    // always has the same cars in it.
+    const fieldRng = makeRng(8812);
     for (let i = 0; i < FIELD_SIZE; i++) {
       const isPlayer = i === playerGrid;
       const livery = isPlayer ? playerLivery : liveries[i % liveries.length];
@@ -10443,6 +10600,9 @@ class Game {
         name: isPlayer ? 'YOU' : livery.name.toUpperCase(),
         grip: isPlayer ? 1.0 : lerp(0.94, 1.07, this.settings.difficulty) + (i % 3) * 0.008,
       });
+      const states = this.states();
+      this.fitPlate(car, isPlayer ? null : (states[i % (states.length || 1)] || null),
+        fieldRng, isPlayer ? PLAYER_PLATE : null);
       const g = this.scene.grid[i];
       car.setPose(g.x, g.z, g.yaw, this.scene.world);
       car.vehicle.gear = GEAR_FIRST;
@@ -10493,6 +10653,43 @@ class Game {
   // the middle the ground has to be swapped underneath a moving car. Each leg
   // presents the same handful of fields and updateDrive never has to know which
   // one it is on.
+  // --- number plates --------------------------------------------------------
+  //
+  // One per car, so they cannot live in the shared body mesh. Cached by number
+  // so a car that respawns does not rebuild the same one.
+  plateMesh(text, tint, mount) {
+    if (!this._plateCache) this._plateCache = new Map();
+    const key = `${text}|${mount === PLATE_MOUNT_ROAD ? 'road' : 'gt'}`;
+    let m = this._plateCache.get(key);
+    if (!m) {
+      const mb = new MeshBuilder();
+      buildPlates(mb, text, tint || [1, 1, 1], mount);
+      m = meshFromBuilder(this.renderer.gl, mb);
+      this._plateCache.set(key, m);
+    }
+    return m;
+  }
+
+  // Every car is registered somewhere. The player's is registered at home.
+  states() { return (this.homeScene && this.homeScene.states) || []; }
+
+  homePlateState() {
+    return this.states().find((s) => s.capital === 'Ashcombe') || null;
+  }
+
+  // Hang a plate on a car: an explicit number, or one drawn for the given
+  // state.
+  fitPlate(car, state, rng, text) {
+    const st = state || this.homePlateState();
+    const number = text || makePlateNumber(rng || Math.random, st ? st.abbr : 'ID');
+    // Traffic is a different shaped car, and hangs its plates in different
+    // places.
+    const mount = car.meshes === this.trafficMeshes ? PLATE_MOUNT_ROAD : PLATE_MOUNT_GT;
+    car.plate = number;
+    car.plateMesh = this.plateMesh(number, st ? st.tint : [1, 1, 1], mount);
+    return car;
+  }
+
   buildDriveLegs() {
     const c = this.circuitScene, h = this.homeScene;
     const legs = [
@@ -10591,6 +10788,7 @@ class Game {
       assists: this.settings.assists,
       name: 'YOU',
     });
+    this.fitPlate(car, null, null, PLAYER_PLATE);
     car.dirt = this.player ? Math.max(0.25, this.player.dirt) : 0.25;
     car.headlightsOn = this.scene.ambience.night > 0.2;
     // Parked in the pit lane, facing the way out.
@@ -10656,6 +10854,9 @@ class Game {
           driverAids: false,
         });
         car.isTraffic = true;
+        // Registered where it is driving: local plates on local traffic.
+        const mid = path.spline.points[Math.floor(path.spline.count / 2)];
+        this.fitPlate(car, scene.stateAt ? scene.stateAt(mid[0], mid[2]) : null, rng);
         const lane = dir > 0 ? 2.1 : -2.1;
         const driver = new TrafficDriver(car, path, dir, lane, limit);
         const idx = Math.floor(rnd2(rng, 6, path.spline.count - 6));
@@ -11784,6 +11985,13 @@ class Game {
       noShadow: distance > 130,
     });
     this.renderer.submit(this.trafficMeshes.glass, car.bodyMatrix, { transparent: true, alpha: 0.9 });
+    // Traffic is drawn here rather than through Car.render, so its plates have
+    // to be submitted here too - they were being built and assigned and then
+    // silently never drawn. Close range only: at a hundred metres a number
+    // plate is three pixels.
+    if (car.plateMesh && distance < 120) {
+      this.renderer.submit(car.plateMesh, car.bodyMatrix, { dirt: 0.25, noShadow: true });
+    }
     if (distance < 170) {
       for (let i = 0; i < 4; i++) {
         const w = v.wheels[i];

@@ -555,6 +555,70 @@ check('the interstate reaches every state, and the game knows which one',
 check('the country is bigger than the old single town',
   country.span[0] >= 4000 && country.span[1] >= 2000, `${country.span[0]} x ${country.span[1]} m`);
 
+// --- number plates -------------------------------------------------------------
+const plates = await page.evaluate(() => {
+  const g = window.__game;
+  // The race field first: every car on the grid, including the player's.
+  g.startRace();
+  g.update(1 / 60);
+  const race = g.cars.map((c) => ({ name: c.name, plate: c.plate, mesh: !!c.plateMesh }));
+
+  // Then the traffic on the road home, which is a different shaped car drawn
+  // down a different path.
+  g.startDriveHome();
+  while (g.legIndex < g.legs.length - 1) g.advanceLeg();
+  g.update(1 / 60);
+  const traffic = g.traffic.map((t) => ({ plate: t.car.plate, mesh: !!t.car.plateMesh }));
+
+  // A plate has to actually be drawn, not merely assigned. Traffic is rendered
+  // by its own routine rather than through Car.render, and its plates were
+  // built, assigned, and then never submitted.
+  const drawn = { player: 0, traffic: 0 };
+  const orig = g.renderer.submit.bind(g.renderer);
+  const meshes = new Set([g.player.plateMesh, ...g.traffic.map((t) => t.car.plateMesh)]);
+  g.renderer.submit = (mesh, m, o) => {
+    if (mesh === g.player.plateMesh) drawn.player++;
+    else if (meshes.has(mesh)) drawn.traffic++;
+    return orig(mesh, m, o);
+  };
+  // Stand next to a traffic car so it is inside the range plates draw at.
+  const t0 = g.traffic[0].car;
+  const f = t0.forward();
+  g.player.setPose(t0.pos[0] + f[0] * 9, t0.pos[2] + f[2] * 9,
+    Math.atan2(-f[0], -f[2]), g.scene.world);
+  g.update(1 / 60);
+  g.draw(1 / 60);
+  g.renderer.submit = orig;
+
+  const all = race.concat(traffic);
+  return {
+    race, traffic: traffic.length, drawn,
+    playerPlate: g.player.plate,
+    unique: new Set(all.map((c) => c.plate)).size,
+    total: all.length,
+    allHaveMesh: all.every((c) => c.mesh),
+    wellFormed: all.every((c) => /^[A-Z]{2}[A-Z]{2}[0-9]{3}$/.test(c.plate)
+      || c.plate === 'IDAPEX1'),
+    states: Array.from(new Set(race.map((c) => c.plate.slice(0, 2)))).sort(),
+  };
+});
+console.log('   ', JSON.stringify({ player: plates.playerPlate, unique: plates.unique,
+  total: plates.total, drawn: plates.drawn, states: plates.states }));
+check('every car on the grid has a plate', plates.race.every((c) => c.plate && c.mesh),
+  plates.race.map((c) => c.plate).join(' '));
+check('every traffic car has one too', plates.traffic > 0 && plates.allHaveMesh,
+  `${plates.traffic} traffic cars`);
+check('no two cars share a number', plates.unique === plates.total,
+  `${plates.unique} of ${plates.total}`);
+check('the plates are well formed', plates.wellFormed);
+check('the player keeps its own number', plates.playerPlate === 'IDAPEX1',
+  plates.playerPlate);
+check('the field is registered across several states', plates.states.length >= 4,
+  plates.states.join(' '));
+check('plates are actually drawn, not just assigned',
+  plates.drawn.player > 0 && plates.drawn.traffic > 0,
+  `player ${plates.drawn.player}, traffic ${plates.drawn.traffic}`);
+
 // --- the GPS -----------------------------------------------------------------
 const gps = await page.evaluate(() => {
   const g = window.__game;

@@ -14,6 +14,8 @@ const CAR_SHELL = 0.98;
 // contact point, which is not an overlap, so without a skin the impulse never
 // fires and the wall does nothing.
 const CONTACT_SKIN = 0.05;
+// The player's car keeps one number wherever it goes, registered at home.
+const PLAYER_PLATE = 'IDAPEX1';
 // Most the road boundary may move the car back in one frame.
 const BOUNDARY_EASE = 0.45;
 
@@ -440,6 +442,7 @@ class Game {
       livery: LIVERY_PRESETS[this.settings.playerLivery],
       assists: this.settings.assists,
     });
+    this.fitPlate(car, null, null, PLAYER_PLATE);
     const g = this.scene.grid[0];
     car.setPose(g.x, g.z, g.yaw, this.scene.world);
     this.cars.push(car);
@@ -501,6 +504,9 @@ class Game {
 
     // Player starts mid-pack so there is a race to be had in both directions.
     const playerGrid = Math.min(4, FIELD_SIZE - 1);
+    // Plates for the field come off their own seeded stream, so the same race
+    // always has the same cars in it.
+    const fieldRng = makeRng(8812);
     for (let i = 0; i < FIELD_SIZE; i++) {
       const isPlayer = i === playerGrid;
       const livery = isPlayer ? playerLivery : liveries[i % liveries.length];
@@ -514,6 +520,9 @@ class Game {
         name: isPlayer ? 'YOU' : livery.name.toUpperCase(),
         grip: isPlayer ? 1.0 : lerp(0.94, 1.07, this.settings.difficulty) + (i % 3) * 0.008,
       });
+      const states = this.states();
+      this.fitPlate(car, isPlayer ? null : (states[i % (states.length || 1)] || null),
+        fieldRng, isPlayer ? PLAYER_PLATE : null);
       const g = this.scene.grid[i];
       car.setPose(g.x, g.z, g.yaw, this.scene.world);
       car.vehicle.gear = GEAR_FIRST;
@@ -564,6 +573,43 @@ class Game {
   // the middle the ground has to be swapped underneath a moving car. Each leg
   // presents the same handful of fields and updateDrive never has to know which
   // one it is on.
+  // --- number plates --------------------------------------------------------
+  //
+  // One per car, so they cannot live in the shared body mesh. Cached by number
+  // so a car that respawns does not rebuild the same one.
+  plateMesh(text, tint, mount) {
+    if (!this._plateCache) this._plateCache = new Map();
+    const key = `${text}|${mount === PLATE_MOUNT_ROAD ? 'road' : 'gt'}`;
+    let m = this._plateCache.get(key);
+    if (!m) {
+      const mb = new MeshBuilder();
+      buildPlates(mb, text, tint || [1, 1, 1], mount);
+      m = meshFromBuilder(this.renderer.gl, mb);
+      this._plateCache.set(key, m);
+    }
+    return m;
+  }
+
+  // Every car is registered somewhere. The player's is registered at home.
+  states() { return (this.homeScene && this.homeScene.states) || []; }
+
+  homePlateState() {
+    return this.states().find((s) => s.capital === 'Ashcombe') || null;
+  }
+
+  // Hang a plate on a car: an explicit number, or one drawn for the given
+  // state.
+  fitPlate(car, state, rng, text) {
+    const st = state || this.homePlateState();
+    const number = text || makePlateNumber(rng || Math.random, st ? st.abbr : 'ID');
+    // Traffic is a different shaped car, and hangs its plates in different
+    // places.
+    const mount = car.meshes === this.trafficMeshes ? PLATE_MOUNT_ROAD : PLATE_MOUNT_GT;
+    car.plate = number;
+    car.plateMesh = this.plateMesh(number, st ? st.tint : [1, 1, 1], mount);
+    return car;
+  }
+
   buildDriveLegs() {
     const c = this.circuitScene, h = this.homeScene;
     const legs = [
@@ -662,6 +708,7 @@ class Game {
       assists: this.settings.assists,
       name: 'YOU',
     });
+    this.fitPlate(car, null, null, PLAYER_PLATE);
     car.dirt = this.player ? Math.max(0.25, this.player.dirt) : 0.25;
     car.headlightsOn = this.scene.ambience.night > 0.2;
     // Parked in the pit lane, facing the way out.
@@ -727,6 +774,9 @@ class Game {
           driverAids: false,
         });
         car.isTraffic = true;
+        // Registered where it is driving: local plates on local traffic.
+        const mid = path.spline.points[Math.floor(path.spline.count / 2)];
+        this.fitPlate(car, scene.stateAt ? scene.stateAt(mid[0], mid[2]) : null, rng);
         const lane = dir > 0 ? 2.1 : -2.1;
         const driver = new TrafficDriver(car, path, dir, lane, limit);
         const idx = Math.floor(rnd2(rng, 6, path.spline.count - 6));
@@ -1855,6 +1905,13 @@ class Game {
       noShadow: distance > 130,
     });
     this.renderer.submit(this.trafficMeshes.glass, car.bodyMatrix, { transparent: true, alpha: 0.9 });
+    // Traffic is drawn here rather than through Car.render, so its plates have
+    // to be submitted here too - they were being built and assigned and then
+    // silently never drawn. Close range only: at a hundred metres a number
+    // plate is three pixels.
+    if (car.plateMesh && distance < 120) {
+      this.renderer.submit(car.plateMesh, car.bodyMatrix, { dirt: 0.25, noShadow: true });
+    }
     if (distance < 170) {
       for (let i = 0; i < 4; i++) {
         const w = v.wheels[i];

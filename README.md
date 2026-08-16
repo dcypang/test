@@ -33,9 +33,11 @@ with the light on.
 
 ## Eight states, and going wherever you like
 
-The world is a country: **eight states**, four across and two down, 5,600 by
-2,600 metres of continuous ground. Redrock is dry and nearly bare, Pinecrest is
-forest, Lakeshore runs cold and blue, Goldfield is yellow stubble. Each has its
+The world is a country: **eight states**, laid out the way they actually sit —
+**Washington, Idaho, Montana and North Dakota** across the north, with
+**Oregon, Nevada, Wyoming and South Dakota** below them. 5,600 by 2,600 metres
+of continuous ground. Nevada is desert and nearly bare, Washington is
+evergreen, Wyoming runs cold and blue, Montana is gold stubble. Each has its
 own ground colour, its own tree density, its own town and its own petrol
 station and shop.
 
@@ -46,7 +48,7 @@ the length of the country and two routes cross it, with a slip road into every
 town, so from your own driveway you can reach any of the eight without leaving
 the tarmac.
 
-Ashcombe is the capital and much the biggest: **twelve avenues and ten cross
+Ashcombe, in Idaho, is much the biggest town: **twelve avenues and ten cross
 streets** over about 1,150 by 840 metres, with buildings lining every frontage.
 The others run from proper towns down to a few blocks at an interstate
 junction, because eight identical grids would be eight of the same place.
@@ -95,6 +97,27 @@ two and a half million triangles, and their coordinates overlap — so the
 handover happens as you pass under the gate. The car keeps its speed, gear and
 revs across it, and both sides of the gate carry the same stonework and the same
 avenue of trees, so there is nothing in shot when the world changes.
+
+## Number plates
+
+Every car carries one on the nose and one on the tail — the eight on the grid,
+the traffic on the road home, and yours. No two are the same, and each is
+registered in a real state: `WAHM361` out of Washington, `MTTV648` out of
+Montana. Yours is `IDAPEX1` and follows you from the circuit to the driveway.
+
+They cannot be part of the car mesh, because every car on the road shares one,
+so each plate is its own small mesh — a panel, a band in the state's colour,
+and one box per run of lit pixels in a 3×5 bar font. That comes to about 1,100
+triangles a car and one extra draw call, and it is cached by number so a
+recycled car does not rebuild one.
+
+The two faces are not the same mesh turned round. Rotating a face 180° reverses
+the order its characters appear in, which is exactly what the rear plate did
+until it was caught reading backwards, so each face lays its text out in the
+direction its own viewer will read it, mirroring the glyphs as well as their
+order. The two body shapes hang them in different places: the race car's shell
+runs to 2.42 m at the nose, the road car's to 2.16 m, and mounting both at the
+same numbers left the traffic's plates hanging in mid-air.
 
 ## From the driver's seat
 

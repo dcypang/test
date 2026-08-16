@@ -69,6 +69,11 @@ class Car {
     this.number = options.number !== undefined ? options.number : 7;
     this.name = options.name || this.livery.name;
     this.isPlayer = !!options.isPlayer;
+    // Its own plate, built as its own mesh: the body mesh is shared by every
+    // car on the road, so a number that differs from car to car cannot live in
+    // it. One extra draw call each, a few hundred triangles.
+    this.plate = options.plate || null;
+    this.plateMesh = options.plateMesh || null;
     this.dirt = 0;
     this.damage = 0;
     this.headlightsOn = false;
@@ -294,6 +299,10 @@ class Car {
 
     m4.compose(this.bodyMatrix, [v.pos[0], v.pos[1] - drop, v.pos[2]], v.yaw, v.pitch, v.roll);
     renderer.submit(this.meshes.body, this.bodyMatrix, paintOpts);
+    // Plates ride with the body, and take the same dirt the body does.
+    if (this.plateMesh) {
+      renderer.submit(this.plateMesh, this.bodyMatrix, { dirt: this.dirt });
+    }
 
     if (!options.hideInterior) {
       renderer.submit(this.meshes.interior, this.bodyMatrix, EMPTY_OPTS);

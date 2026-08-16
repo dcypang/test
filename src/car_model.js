@@ -1028,3 +1028,144 @@ function buildCarMeshes(gl) {
     caliperRear: meshFromBuilder(gl, caliperRear),
   };
 }
+
+// --- number plates ----------------------------------------------------------
+//
+// Every car carries one front and one rear, and no two cars carry the same
+// number, so the plate has to be geometry built per car rather than part of the
+// shared body mesh. It is cheap: a panel, a border, and one box per run of lit
+// pixels in a 3x5 bar font, which comes to a few hundred triangles a car.
+//
+// The font is 3 wide and 5 tall because that is the smallest grid that still
+// tells O from D and 8 from B at the distance you actually read a plate from -
+// which, in a rear-view mirror, is about two car lengths.
+const PLATE_FONT = {
+  '0': ['###', '# #', '# #', '# #', '###'],
+  '1': [' # ', '## ', ' # ', ' # ', '###'],
+  '2': ['###', '  #', '###', '#  ', '###'],
+  '3': ['###', '  #', '###', '  #', '###'],
+  '4': ['# #', '# #', '###', '  #', '  #'],
+  '5': ['###', '#  ', '###', '  #', '###'],
+  '6': ['###', '#  ', '###', '# #', '###'],
+  '7': ['###', '  #', '  #', '  #', '  #'],
+  '8': ['###', '# #', '###', '# #', '###'],
+  '9': ['###', '# #', '###', '  #', '###'],
+  A: ['###', '# #', '###', '# #', '# #'],
+  B: ['## ', '# #', '## ', '# #', '## '],
+  C: ['###', '#  ', '#  ', '#  ', '###'],
+  D: ['## ', '# #', '# #', '# #', '## '],
+  E: ['###', '#  ', '###', '#  ', '###'],
+  F: ['###', '#  ', '###', '#  ', '#  '],
+  G: ['###', '#  ', '# #', '# #', '###'],
+  H: ['# #', '# #', '###', '# #', '# #'],
+  I: ['###', ' # ', ' # ', ' # ', '###'],
+  J: ['  #', '  #', '  #', '# #', '###'],
+  K: ['# #', '# #', '## ', '# #', '# #'],
+  L: ['#  ', '#  ', '#  ', '#  ', '###'],
+  M: ['# #', '###', '###', '# #', '# #'],
+  N: ['# #', '## ', '###', ' ##', '# #'],
+  O: ['###', '# #', '# #', '# #', '###'],
+  P: ['###', '# #', '###', '#  ', '#  '],
+  Q: ['###', '# #', '# #', '###', '  #'],
+  R: ['###', '# #', '###', '## ', '# #'],
+  S: ['###', '#  ', '###', '  #', '###'],
+  T: ['###', ' # ', ' # ', ' # ', ' # '],
+  U: ['# #', '# #', '# #', '# #', '###'],
+  V: ['# #', '# #', '# #', '# #', ' # '],
+  W: ['# #', '# #', '###', '###', '# #'],
+  X: ['# #', '# #', ' # ', '# #', '# #'],
+  Y: ['# #', '# #', ' # ', ' # ', ' # '],
+  Z: ['###', '  #', ' # ', '#  ', '###'],
+  ' ': ['   ', '   ', '   ', '   ', '   '],
+  '-': ['   ', '   ', '###', '   ', '   '],
+};
+
+// A US plate is 12 by 6 inches. These are those, in metres.
+const PLATE_W = 0.305, PLATE_H = 0.152, PLATE_T = 0.008;
+
+// One plate. `dir` is +1 for a face read from in front of the car and -1 for
+// one read from behind.
+//
+// The two cannot be the same mesh turned round. Rotating a face 180 degrees
+// about Y reverses the order its characters appear in - which is exactly what
+// the rear plate did, and it read backwards - so each face lays its text out
+// in the direction its own viewer will read it, mirroring the glyphs as well
+// as their order.
+function buildPlateFace(mb, text, tint, dir) {
+  const chars = String(text).toUpperCase().split('').slice(0, 7);
+  const face = dir * PLATE_T * 0.6;
+  // Panel.
+  mb.mat([0.90, 0.90, 0.88], 0.42, 0.05, 0, FLAG_DEFAULT);
+  mb.push(); mb.box(PLATE_W, PLATE_H, PLATE_T); mb.pop();
+  // A band across the top in the state's own colour, the way a state plate
+  // carries its name. Too small to letter, but the colour reads.
+  mb.mat([clamp(tint[0] * 0.42, 0, 1), clamp(tint[1] * 0.46, 0, 1),
+    clamp(tint[2] * 0.52, 0, 1)], 0.5, 0.05, 0, FLAG_DEFAULT);
+  mb.push(); mb.translate(0, PLATE_H * 0.36, face);
+  mb.box(PLATE_W * 0.92, PLATE_H * 0.16, PLATE_T * 0.3); mb.pop();
+
+  // Characters, sized to fill the width whatever the number is.
+  const n = Math.max(1, chars.length);
+  const usable = PLATE_W - 0.026;
+  const pxW = usable / (n * 3 + (n - 1));
+  const pxH = 0.070 / 5;
+  const x0 = -usable / 2 + pxW / 2;
+  const yTop = -PLATE_H * 0.10 + (pxH * 5) / 2 - pxH / 2;
+
+  mb.mat([0.07, 0.10, 0.28], 0.55, 0.03, 0, FLAG_DEFAULT);
+  chars.forEach((ch, ci) => {
+    const glyph = PLATE_FONT[ch] || PLATE_FONT[' '];
+    for (let row = 0; row < 5; row++) {
+      const bits = glyph[row];
+      let run = 0;
+      // Merge neighbouring pixels into one box: a solid bar costs a twelfth of
+      // what three separate cubes cost and looks the same.
+      for (let col = 0; col <= 3; col++) {
+        const on = col < 3 && bits[col] === '#';
+        if (on) { run++; continue; }
+        if (run > 0) {
+          const startCol = col - run;
+          const cx = x0 + (ci * 4 + startCol) * pxW + (run - 1) * pxW / 2;
+          const cy = yTop - row * pxH;
+          mb.push();
+          mb.translate(-dir * cx, cy, face);
+          mb.box(pxW * run * 0.92, pxH * 0.92, PLATE_T * 0.5);
+          mb.pop();
+          run = 0;
+        }
+      }
+    }
+  });
+}
+
+// Both plates of one car, in body-local space: front on the nose, rear on the
+// tail, each sitting just proud of the panel behind it so they never z-fight.
+// Where the plates hang, per body. Just outside the bodywork, not just inside
+// it: the race car's shell runs to z = 2.42 at the nose and -2.34 at the tail,
+// and sitting a plate a centimetre short of either buries it. The road car is a
+// different shape entirely - 2.16 to -2.22 - so mounting both at the race car's
+// numbers left the traffic's plates hanging in the air in front of them.
+const PLATE_MOUNT_GT = { fz: 2.432, fy: 0.385, rz: -2.352, ry: 0.520 };
+const PLATE_MOUNT_ROAD = { fz: 2.172, fy: 0.520, rz: -2.232, ry: 0.575 };
+
+function buildPlates(mb, text, tint, mount) {
+  const m = mount || PLATE_MOUNT_GT;
+  mb.push();
+  mb.translate(0, m.fy, m.fz);
+  buildPlateFace(mb, text, tint, 1);
+  mb.pop();
+
+  mb.push();
+  mb.translate(0, m.ry, m.rz);
+  buildPlateFace(mb, text, tint, -1);
+  mb.pop();
+}
+
+// A plate number in the American shape: three letters, three digits, prefixed
+// with the two-letter code of wherever the car is registered.
+function makePlateNumber(rng, stateAbbr) {
+  const L = 'ABCDEFGHJKLMNPRSTUVWXYZ';        // no I, O or Q next to 1 and 0
+  const pick = (s) => s[Math.floor(rng() * s.length)];
+  return `${stateAbbr || 'ID'}${pick(L)}${pick(L)}${Math.floor(rng() * 10)}`
+    + `${Math.floor(rng() * 10)}${Math.floor(rng() * 10)}`;
+}
