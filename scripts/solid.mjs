@@ -225,6 +225,79 @@ const dupes = JSON.parse(run(`(function () {
   }
   return JSON.stringify({ dup: dup, total: w.solids.length });
 })()`));
+// Can you actually get there? A country of twelve states is only a country if
+// its roads join up - otherwise it is twelve islands and a lot of grass. This
+// unions every pair of roads whose tarmac overlaps, then floods out from the
+// driveway and checks nothing is left behind.
+console.log('\n--- one connected country ---');
+const network = JSON.parse(run(`(function () {
+  var w = home.world, P = w.paths;
+  var parent = P.map(function (_, i) { return i; });
+  var find = function (a) { while (parent[a] !== a) { parent[a] = parent[parent[a]]; a = parent[a]; } return a; };
+  var union = function (a, b) { a = find(a); b = find(b); if (a !== b) parent[b] = a; };
+
+  // Bucket every sample point so pairs are only tested where they could touch.
+  var CELL = 24, grid = new Map();
+  for (var i = 0; i < P.length; i++) {
+    var sp = P[i].spline;
+    for (var k = 0; k < sp.count; k++) {
+      var p = sp.points[k];
+      var key = Math.floor(p[0] / CELL) * 100003 + Math.floor(p[2] / CELL);
+      var list = grid.get(key);
+      if (!list) { list = []; grid.set(key, list); }
+      list.push([i, p[0], p[2]]);
+    }
+  }
+  grid.forEach(function (list, key) {
+    var cx = 0, cz = 0;
+    // Compare against this cell and its eight neighbours.
+    for (var dx = -1; dx <= 1; dx++) {
+      for (var dz = -1; dz <= 1; dz++) {
+        var other = grid.get(key + dx * 100003 + dz);
+        if (!other) continue;
+        for (var a = 0; a < list.length; a++) {
+          for (var b = 0; b < other.length; b++) {
+            var A = list[a], B = other[b];
+            if (A[0] === B[0]) continue;
+            var lim = P[A[0]].halfWidth + P[B[0]].halfWidth;
+            var ddx = A[1] - B[1], ddz = A[2] - B[2];
+            if (ddx * ddx + ddz * ddz < lim * lim) union(A[0], B[0]);
+          }
+        }
+      }
+    }
+  });
+
+  var start = -1;
+  for (var n = 0; n < P.length; n++) if (P[n].name === 'Home') start = n;
+  var root = find(start);
+  var stranded = [];
+  var byState = {};
+  home.states.forEach(function (st) { byState[st.abbr] = [0, 0]; });
+  for (var m = 0; m < P.length; m++) {
+    var sp2 = P[m].spline;
+    var mid = sp2.points[Math.floor(sp2.count / 2)];
+    var st2 = home.stateAt(mid[0], mid[2]);
+    var ok = find(m) === root;
+    if (st2) { byState[st2.abbr][1]++; if (ok) byState[st2.abbr][0]++; }
+    if (!ok && stranded.length < 6) stranded.push(P[m].name || 'road');
+  }
+  var joined = 0;
+  for (var q = 0; q < P.length; q++) if (find(q) === root) joined++;
+  return JSON.stringify({ roads: P.length, joined: joined, stranded: stranded,
+    byState: byState });
+})()`));
+console.log(`    ${network.joined}/${network.roads} roads reachable from the driveway`);
+console.log('    ' + Object.entries(network.byState)
+  .map(([k, v]) => `${k}:${v[0]}/${v[1]}`).join(' '));
+check('every road in the country can be driven to from home',
+  network.joined === network.roads,
+  network.stranded.length ? `stranded: ${network.stranded.join(', ')}` : '');
+check('every state is reachable on tarmac',
+  Object.values(network.byState).every((v) => v[1] > 0 && v[0] === v[1]),
+  Object.entries(network.byState).filter(([, v]) => v[0] !== v[1])
+    .map(([k]) => k).join(' ') || `${Object.keys(network.byState).length} states`);
+
 // The drive home ends by parking on the driveway, so that specific spot has to
 // be reachable. The road check above skips the last stations of a dead end -
 // the garage is allowed to be at the end of the drive - and that blind spot is

@@ -6132,10 +6132,11 @@ const HOME_ZONES = [
 
 // --- the states -------------------------------------------------------------
 //
-// Eight real ones, laid out the way they actually sit: Washington, Idaho,
-// Montana and North Dakota across the north, with Oregon, Nevada, Wyoming and
-// South Dakota below them. Each is 1400 by 1300 metres, with the interstate
-// running the length of every row and linking them. They are not
+// Twelve real ones, laid out the way they actually sit: Washington, Idaho,
+// Montana and North Dakota across the north; Oregon, Nevada, Wyoming and South
+// Dakota through the middle; California, Arizona, Colorado and Nebraska along
+// the south. Each is 1400 by 1300 metres, and the interstates run the length of
+// every row and column. They are not
 // separate places you get taken to: it is one continuous world with one road
 // network, so the state line is just a sign you drive past.
 //
@@ -6148,7 +6149,7 @@ const HOME_ZONES = [
 // deliberate - eight identical grids would be eight of the same place.
 const STATE_W = 1400, STATE_D = 1300;
 const STATE_X0 = -1550, STATE_Z0 = -250;
-const STATE_COLS = 4, STATE_ROWS = 2;
+const STATE_COLS = 4, STATE_ROWS = 3;
 
 const STATES = [
   { col: 0, row: 0, name: 'Washington', abbr: 'WA', capital: 'Spokane',
@@ -6167,6 +6168,14 @@ const STATES = [
     tint: [0.88, 0.90, 0.98], town: { cols: 5, rows: 3, gap: 106 }, trees: 0.6 },
   { col: 3, row: 1, name: 'South Dakota', abbr: 'SD', capital: 'Pierre',
     tint: [1.02, 0.90, 0.62], town: { cols: 4, rows: 3, gap: 100 }, trees: 0.45 },
+  { col: 0, row: 2, name: 'California', abbr: 'CA', capital: 'Redding',
+    tint: [1.02, 0.94, 0.66], town: { cols: 5, rows: 4, gap: 98 }, trees: 0.8 },
+  { col: 1, row: 2, name: 'Arizona', abbr: 'AZ', capital: 'Flagstaff',
+    tint: [1.08, 0.78, 0.56], town: { cols: 4, rows: 3, gap: 106 }, trees: 0.2 },
+  { col: 2, row: 2, name: 'Colorado', abbr: 'CO', capital: 'Durango',
+    tint: [0.86, 0.92, 0.86], town: { cols: 5, rows: 3, gap: 102 }, trees: 1.0 },
+  { col: 3, row: 2, name: 'Nebraska', abbr: 'NE', capital: 'Kearney',
+    tint: [0.96, 0.96, 0.64], town: { cols: 4, rows: 3, gap: 104 }, trees: 0.3 },
 ];
 for (const s of STATES) {
   s.x0 = STATE_X0 + s.col * STATE_W;
@@ -6322,6 +6331,13 @@ function buildHomeRoute(gl) {
     addSide([[colX[2], rowZ[CITY.rows]], [colX[2] - 12, rowZ[CITY.rows] + 60], [244, 486]]);
     addSide([[colX[5], rowZ[CITY.rows]], [colX[5] + 18, rowZ[CITY.rows] + 55], [470, 424]]);
     addSide([[470, 424], [468, 330], [472, 250]]);
+    // And a ramp off the north end of the grid onto the interstate. Every other
+    // state's town gets one automatically; Ashcombe is built separately as the
+    // capital and was missed, which meant the only paved way out of the city
+    // was to double back down the route home toward the circuit first.
+    addSide([[colX[3], rowZ[0]], [colX[3] - 40, rowZ[0] - 120],
+      [colX[3] - 150, rowZ[0] - 240], [-80, -40]],
+    { halfWidth: 4.6, markings: true, name: 'Ashcombe Interchange' });
   }
 
   // --- the rest of the country ----------------------------------------------
@@ -6329,6 +6345,15 @@ function buildHomeRoute(gl) {
   // in each of the other seven states with a slip road onto the highway. All of
   // it is one connected network: from the driveway you can reach every state
   // without leaving the tarmac.
+  // The interstate network: three running east-west, one along each row, and
+  // four running north-south. Real numbers on roughly the right ground - I-90
+  // across the north, I-80 through the middle, I-40 along the south, I-5 down
+  // the west coast, I-25 through the mountain states, I-29 out east - because a
+  // highway you recognise tells you where you are before the sign does.
+  //
+  // Every one is placed off its state's centre so it runs past the towns rather
+  // than through them, and I-15 threads the gap west of Ashcombe rather than
+  // ploughing through the city and the house.
   const interstates = [];
   {
     const hwy = (pts, name) => {
@@ -6339,26 +6364,35 @@ function buildHomeRoute(gl) {
       interstates.push(p);
       return p;
     };
-    // One east-west interstate per row, kept off the state centres so it runs
-    // past the towns rather than through them.
-    for (let row = 0; row < STATE_ROWS; row++) {
-      const z = STATE_Z0 + row * STATE_D + STATE_D * (row === 0 ? 0.12 : 0.52);
+    const EAST_WEST = [
+      { row: 0, frac: 0.12, name: 'Interstate 90' },
+      { row: 1, frac: 0.52, name: 'Interstate 80' },
+      { row: 2, frac: 0.50, name: 'Interstate 40' },
+    ];
+    for (const h of EAST_WEST) {
+      const z = STATE_Z0 + h.row * STATE_D + STATE_D * h.frac;
       const pts = [];
       for (let c = 0; c <= STATE_COLS * 2; c++) {
         const x = STATE_X0 + (c / (STATE_COLS * 2)) * STATE_W * STATE_COLS;
         pts.push([x, z + Math.sin(c * 0.7) * 26]);
       }
-      hwy(pts, row === 0 ? 'Interstate 40' : 'Interstate 70');
+      hwy(pts, h.name);
     }
-    // And two north-south links so the rows are not two separate countries.
-    for (const col of [0, 2]) {
-      const x = STATE_X0 + col * STATE_W + STATE_W * 0.55;
+    const NORTH_SOUTH = [
+      { col: 0, frac: 0.55, name: 'Interstate 5' },
+      { col: 1, frac: 0.05, name: 'Interstate 15' },
+      { col: 2, frac: 0.55, name: 'Interstate 25' },
+      { col: 3, frac: 0.50, name: 'Interstate 29' },
+    ];
+    for (const h of NORTH_SOUTH) {
+      const x = STATE_X0 + h.col * STATE_W + STATE_W * h.frac;
       const pts = [];
-      for (let r = 0; r <= 8; r++) {
-        const z = STATE_Z0 + (r / 8) * STATE_D * STATE_ROWS;
+      const steps = 4 * STATE_ROWS;
+      for (let r = 0; r <= steps; r++) {
+        const z = STATE_Z0 + (r / steps) * STATE_D * STATE_ROWS;
         pts.push([x + Math.sin(r * 0.8) * 22, z]);
       }
-      hwy(pts, col === 0 ? 'Route 12' : 'Route 33');
+      hwy(pts, h.name);
     }
   }
 
@@ -6843,7 +6877,7 @@ function buildHomeRoute(gl) {
   // Pinecrest is
   // forest, Redrock is nearly bare, and you can tell which one you are in from
   // the driver's seat.
-  for (let i = 0; i < 12000; i++) {
+  for (let i = 0; i < 15000; i++) {
     const x = rnd2(rng, STATE_X0, STATE_X0 + STATE_W * STATE_COLS);
     const z = rnd2(rng, STATE_Z0, STATE_Z0 + STATE_D * STATE_ROWS);
     const st = stateAt(x, z);

@@ -33,20 +33,38 @@ with the light on.
 
 ## Eight states, and going wherever you like
 
-The world is a country: **eight states**, laid out the way they actually sit —
-**Washington, Idaho, Montana and North Dakota** across the north, with
-**Oregon, Nevada, Wyoming and South Dakota** below them. 5,600 by 2,600 metres
-of continuous ground. Nevada is desert and nearly bare, Washington is
-evergreen, Wyoming runs cold and blue, Montana is gold stubble. Each has its
-own ground colour, its own tree density, its own town and its own petrol
-station and shop.
+The world is a country: **twelve states**, laid out the way they actually sit —
+**Washington, Idaho, Montana and North Dakota** across the north, **Oregon,
+Nevada, Wyoming and South Dakota** through the middle, and **California,
+Arizona, Colorado and Nebraska** along the south. **5,600 by 3,900 metres —
+about 22 km²** of continuous ground. Nevada and Arizona are desert, Washington
+is evergreen, Wyoming runs cold and blue, Montana and Nebraska are gold
+stubble. Each has its own ground colour, its own tree density, its own town and
+its own petrol station and shop.
 
 They are not separate places you get taken to. It is one world with one road
 network, so a state line is just a sign you drive past — the ground colour
-changes, the HUD names the new state, and nothing loads. Two interstates run
-the length of the country and two routes cross it, with a slip road into every
-town, so from your own driveway you can reach any of the eight without leaving
-the tarmac.
+changes, the HUD names the new state, and nothing loads.
+
+**Seven interstates** carry you between them, numbered for roughly the ground
+they cover, because a highway you recognise tells you where you are before the
+sign does:
+
+| | |
+|---|---|
+| **I-90** | east–west across the north: Washington, Idaho, Montana, North Dakota |
+| **I-80** | east–west through the middle: Oregon, Nevada, Wyoming, South Dakota |
+| **I-40** | east–west along the south: California, Arizona, Colorado, Nebraska |
+| **I-5** | north–south down the west: Washington → Oregon → California |
+| **I-15** | north–south past Ashcombe: Idaho → Nevada → Arizona |
+| **I-25** | north–south through the mountains: Montana → Wyoming → Colorado |
+| **I-29** | north–south out east: North Dakota → South Dakota → Nebraska |
+
+Every town has a slip road onto the nearest one, and Ashcombe has an
+interchange off the north end of its grid, so **all 161 roads in the country
+are reachable from your own driveway** without leaving the tarmac. That is not
+a claim, it is a test: `solid.mjs` unions every pair of roads whose tarmac
+overlaps and floods out from the drive.
 
 Ashcombe, in Idaho, is much the biggest town: **twelve avenues and ten cross
 streets** over about 1,150 by 840 metres, with buildings lining every frontage.
@@ -72,8 +90,8 @@ is just getting lost.
 
 `Tab` — or the map button on a phone — puts the whole country on screen: every
 state as a block in its own colour with its name across it, the one you are in
-picked out, the whole road network, and all **24 destinations** — **home**, the
-**other house**, thirteen named **shops**, and **nine petrol stations**, at
+picked out, the whole road network, and all **32 destinations** — **home**, the
+**other house**, seventeen named **shops**, and **thirteen petrol stations**, at
 least one of each in every state. Pick one with `A` / `D` and `Enter`, or by tapping the pin, and the satnav switches from
 turn-by-turn to a bearing and a distance — there is no sensible instruction to
 give for an arbitrary corner of a street grid, and a compass is what a car has
