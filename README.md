@@ -31,7 +31,7 @@ to a stop, and the shopping is on the passenger seat when you get home. It costs
 nothing but time. The drive ends when the car is stopped in front of the garage
 with the light on.
 
-## Eight states, and going wherever you like
+## Twelve states, and going wherever you like
 
 The world is a country: **twelve states**, laid out the way they actually sit —
 **Washington, Idaho, Montana and North Dakota** across the north, **Oregon,
@@ -69,7 +69,7 @@ overlaps and floods out from the drive.
 Ashcombe, in Idaho, is much the biggest town: **twelve avenues and ten cross
 streets** over about 1,150 by 840 metres, with buildings lining every frontage.
 The others run from proper towns down to a few blocks at an interstate
-junction, because eight identical grids would be eight of the same place.
+junction, because twelve identical grids would be twelve of the same place.
 
 No grid is a lattice: streets bow by a few metres and the spacing varies block
 to block, because a perfect grid reads as a spreadsheet from inside the car and
@@ -110,16 +110,16 @@ each other is no better than no map.
 Two ways to get there: take the chequered flag and press **Drive home** on the
 results screen, or **Skip to the drive home** on the title screen.
 
-The circuit and the country are two separate worlds — together they are over
-two and a half million triangles, and their coordinates overlap — so the
+The circuit and the country are two separate worlds — together they are three
+million triangles, and their coordinates overlap — so the
 handover happens as you pass under the gate. The car keeps its speed, gear and
 revs across it, and both sides of the gate carry the same stonework and the same
 avenue of trees, so there is nothing in shot when the world changes.
 
 ## Number plates
 
-Every car carries one on the nose and one on the tail — the eight on the grid,
-the traffic on the road home, and yours. No two are the same, and each is
+Every car carries one on the nose and one on the tail — the eight on the race
+grid, the traffic on the road home, and yours. No two are the same, and each is
 registered in a real state: `WAHM361` out of Washington, `MTTV648` out of
 Montana. Yours is `IDAPEX1` and follows you from the circuit to the driveway.
 
