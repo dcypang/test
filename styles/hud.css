@@ -1,0 +1,510 @@
+/* ============================================================
+   Redline Rider — HUD
+   Landscape-first, touch-first. All sizing keys off vmin so the
+   overlay scales sensibly from a phone to a tablet to a desktop.
+   ============================================================ */
+
+:root {
+  --accent: #6bf0ad;
+  --accent-dim: #3fbe86;
+  --accent-glow: rgba(107, 240, 173, 0.55);
+  --danger: #ff5f57;
+  --ink: #f2f6f8;
+  --ink-dim: rgba(242, 246, 248, 0.62);
+  --glass: rgba(12, 18, 22, 0.42);
+  --glass-strong: rgba(10, 14, 18, 0.72);
+  --stroke: rgba(255, 255, 255, 0.68);
+  --stroke-soft: rgba(255, 255, 255, 0.26);
+  --shadow: 0 2px 14px rgba(0, 0, 0, 0.45);
+  --u: 1vmin;              /* layout unit */
+  --safe-t: env(safe-area-inset-top, 0px);
+  --safe-b: env(safe-area-inset-bottom, 0px);
+  --safe-l: env(safe-area-inset-left, 0px);
+  --safe-r: env(safe-area-inset-right, 0px);
+  --mono: ui-monospace, "SF Mono", "Roboto Mono", Menlo, Consolas, monospace;
+  --sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Inter, Roboto, system-ui, sans-serif;
+}
+
+* { box-sizing: border-box; }
+
+html, body {
+  margin: 0;
+  padding: 0;
+  height: 100%;
+  overflow: hidden;
+  background: #04070c;
+  color: var(--ink);
+  font-family: var(--sans);
+  /* Stop iOS rubber-banding and long-press callouts from eating touches. */
+  overscroll-behavior: none;
+  touch-action: none;
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-touch-callout: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+#app { position: fixed; inset: 0; }
+
+#scene {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  display: block;
+  touch-action: none;
+}
+
+/* ------------------------------------------------------------
+   HUD frame
+   ------------------------------------------------------------ */
+.hud {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;               /* children opt back in */
+  padding: calc(var(--safe-t) + 1.6vmin) calc(var(--safe-r) + 2vmin)
+           calc(var(--safe-b) + 1.6vmin) calc(var(--safe-l) + 2vmin);
+  opacity: 0;
+  transition: opacity 320ms ease;
+}
+.hud.is-live { opacity: 1; }
+.hud.is-hidden { opacity: 0; }
+
+.hud-corner { position: absolute; display: flex; }
+.hud-tl { top: calc(var(--safe-t) + 1.6vmin); left: calc(var(--safe-l) + 2vmin); }
+.hud-tr {
+  top: calc(var(--safe-t) + 1.6vmin); right: calc(var(--safe-r) + 2vmin);
+  flex-direction: column; align-items: flex-end; gap: 1.2vmin;
+}
+.hud-bl {
+  bottom: calc(var(--safe-b) + 1.8vmin); left: calc(var(--safe-l) + 2vmin);
+  gap: 2vmin; align-items: flex-end;
+}
+.hud-br {
+  bottom: calc(var(--safe-b) + 1.8vmin); right: calc(var(--safe-r) + 2vmin);
+  gap: 2.4vmin; align-items: center;
+}
+
+.hud-top-center {
+  position: absolute; top: calc(var(--safe-t) + 1.6vmin); left: 50%;
+  transform: translateX(-50%);
+}
+.hud-bottom-center {
+  position: absolute; bottom: calc(var(--safe-b) + 1.6vmin); left: 50%;
+  transform: translateX(-50%); display: flex; gap: 1.2vmin;
+}
+.hud-right {
+  position: absolute; right: calc(var(--safe-r) + 2vmin); top: 50%;
+  transform: translateY(-42%);
+  display: flex; flex-direction: column; gap: 1vmin; align-items: flex-end;
+}
+.hud-left {
+  position: absolute; left: calc(var(--safe-l) + 2vmin); top: 50%;
+  transform: translateY(-50%);
+  display: flex; flex-direction: column; gap: 1.4vmin;
+  max-width: 30vmin;
+}
+
+/* ------------------------------------------------------------
+   Icons
+   ------------------------------------------------------------ */
+.icon {
+  width: 100%; height: 100%;
+  fill: none; stroke: currentColor;
+  stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round;
+}
+
+/* ------------------------------------------------------------
+   Pills (clock, distance, best time)
+   ------------------------------------------------------------ */
+.pill {
+  display: inline-flex; align-items: center; gap: 0.9vmin;
+  padding: 0.75vmin 1.5vmin;
+  border-radius: 0.9vmin;
+  font-size: 2.2vmin; font-weight: 700; letter-spacing: 0.02em;
+  box-shadow: var(--shadow);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  white-space: nowrap;
+}
+.pill .icon { width: 2.4vmin; height: 2.4vmin; flex: none; }
+.pill-dark  { background: var(--glass-strong); color: var(--accent); border: 1px solid rgba(255,255,255,0.1); }
+.pill-green { background: linear-gradient(180deg, #7ff0b4, #4fd694); color: #06231a; }
+.pill-light { background: rgba(255,255,255,0.9); color: #10171c; }
+.pill-unit  { font-size: 1.7vmin; opacity: 0.7; margin-left: 0.3vmin; }
+.pill-value { font-family: var(--mono); }
+.mono { font-family: var(--mono); font-variant-numeric: tabular-nums; }
+
+#clock-pill { font-size: 2.8vmin; padding: 0.9vmin 2vmin; }
+#clock-pill .icon { width: 3vmin; height: 3vmin; }
+
+.info-row { display: flex; align-items: center; gap: 0.9vmin; }
+.info-icon {
+  width: 4.6vmin; height: 4.6vmin; flex: none;
+  display: grid; place-items: center;
+  color: rgba(255,255,255,0.92);
+  filter: drop-shadow(0 1px 3px rgba(0,0,0,0.6));
+}
+.info-icon .icon { width: 78%; height: 78%; stroke-width: 1.6; }
+
+/* ------------------------------------------------------------
+   Objective banner
+   ------------------------------------------------------------ */
+.banner { display: flex; align-items: stretch; gap: 0.8vmin; opacity: 0.95; }
+.banner-icon {
+  width: 5vmin; height: 5vmin; flex: none;
+  background: #fff; color: #10171c;
+  display: grid; place-items: center;
+  box-shadow: var(--shadow);
+}
+.banner-icon .icon { width: 66%; height: 66%; stroke-width: 2; }
+.banner-text {
+  background: linear-gradient(180deg, #7ff0b4, #4fd694);
+  color: #06231a;
+  font-size: 1.55vmin; font-weight: 800; line-height: 1.24;
+  letter-spacing: 0.01em;
+  padding: 0.7vmin 1vmin;
+  display: flex; align-items: center;
+  box-shadow: var(--shadow);
+}
+.banner.is-broken .banner-text { background: linear-gradient(180deg, #ff8a80, #e8524a); color: #2a0603; }
+
+.toast {
+  align-self: flex-start;
+  background: var(--glass-strong);
+  border: 1px solid rgba(255,255,255,0.14);
+  border-left: 3px solid var(--accent);
+  color: var(--ink);
+  font-size: 1.7vmin; font-weight: 700;
+  padding: 0.8vmin 1.4vmin; border-radius: 0.6vmin;
+  box-shadow: var(--shadow);
+  animation: toast-in 220ms ease;
+}
+.toast.is-warn { border-left-color: var(--danger); }
+@keyframes toast-in { from { opacity: 0; transform: translateX(-8px); } to { opacity: 1; transform: none; } }
+
+/* ------------------------------------------------------------
+   Minimap
+   ------------------------------------------------------------ */
+.minimap { position: relative; width: 17vmin; height: 17vmin; }
+.minimap canvas {
+  width: 100%; height: 100%; display: block;
+  border-radius: 50%;
+  background: rgba(8, 12, 16, 0.55);
+}
+.minimap-ring {
+  position: absolute; inset: 0; border-radius: 50%;
+  border: 0.42vmin solid rgba(255,255,255,0.92);
+  box-shadow: 0 2px 16px rgba(0,0,0,0.5), inset 0 0 18px rgba(0,0,0,0.45);
+  pointer-events: none;
+}
+
+/* ------------------------------------------------------------
+   Speedometer
+   ------------------------------------------------------------ */
+.speedo { position: relative; width: 23vmin; height: 23vmin; }
+.speedo canvas { width: 100%; height: 100%; display: block; }
+.speedo-readout {
+  position: absolute; left: 0; right: 0; bottom: 7%;
+  text-align: center; pointer-events: none;
+}
+.speedo-unit {
+  font-size: 1.5vmin; font-weight: 700; letter-spacing: 0.16em;
+  color: rgba(255,255,255,0.82);
+  text-shadow: 0 1px 3px rgba(0,0,0,0.8);
+}
+.speedo-value {
+  font-size: 4.9vmin; font-weight: 800; line-height: 1.05;
+  font-style: italic;
+  color: #fff;
+  text-shadow: 0 2px 10px rgba(0,0,0,0.75);
+}
+.gear-badge {
+  position: absolute; top: 20%; left: 50%; transform: translateX(-50%);
+  font-size: 1.6vmin; font-weight: 800; color: var(--accent);
+  text-shadow: 0 0 10px var(--accent-glow);
+}
+
+/* ------------------------------------------------------------
+   Round utility buttons (pause / camera / restart / flip)
+   ------------------------------------------------------------ */
+.btn-row { display: flex; gap: 1.2vmin; }
+.btn-col { display: flex; flex-direction: column; gap: 1.2vmin; align-items: flex-end; }
+
+.rbtn {
+  pointer-events: auto;
+  display: grid; place-items: center;
+  width: 6.6vmin; height: 6.6vmin;
+  border-radius: 50%;
+  background: var(--glass);
+  border: 0.34vmin solid var(--stroke);
+  color: var(--ink);
+  padding: 0; margin: 0;
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+  box-shadow: var(--shadow);
+  transition: transform 90ms ease, background 140ms ease, border-color 140ms ease;
+  touch-action: none;
+}
+.rbtn .icon { width: 52%; height: 52%; stroke-width: 2; }
+.rbtn.accent { border-color: var(--accent); color: var(--accent); box-shadow: 0 0 12px var(--accent-glow), var(--shadow); }
+.rbtn:active, .rbtn.is-down { transform: scale(0.92); background: rgba(255,255,255,0.2); }
+.rbtn-sm { width: 6.2vmin; height: 6.2vmin; }
+
+/* ------------------------------------------------------------
+   Big touch controls
+   ------------------------------------------------------------ */
+.tbtn {
+  pointer-events: auto;
+  position: relative;
+  display: grid; place-items: center;
+  background: none; border: 0; padding: 0; margin: 0;
+  color: rgba(255,255,255,0.9);
+  touch-action: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* dashed inner ring, like the reference HUD */
+.tbtn-ring {
+  position: absolute; inset: 8%;
+  border-radius: 50%;
+  border: 0.3vmin dashed rgba(255,255,255,0.45);
+  transition: border-color 140ms ease, transform 140ms ease;
+  pointer-events: none;
+}
+
+.tbtn.steer {
+  width: 15vmin; height: 15vmin;
+  border-radius: 50%;
+  background: rgba(20, 26, 30, 0.30);
+  border: 0.45vmin solid rgba(255,255,255,0.72);
+  backdrop-filter: blur(3px);
+  -webkit-backdrop-filter: blur(3px);
+  box-shadow: var(--shadow);
+  transition: transform 90ms ease, background 120ms ease, border-color 120ms ease;
+}
+.tbtn.steer .chevron { width: 46%; height: 46%; stroke-width: 2.6; }
+.tbtn.steer.is-down {
+  background: rgba(107, 240, 173, 0.22);
+  border-color: var(--accent);
+  color: var(--accent);
+  transform: scale(0.95);
+  box-shadow: 0 0 18px var(--accent-glow), var(--shadow);
+}
+.tbtn.steer.is-down .tbtn-ring { border-color: var(--accent); transform: rotate(18deg); }
+
+.tbtn.brake {
+  width: 15vmin; height: 15vmin;
+  border-radius: 50%;
+  background: rgba(20, 26, 30, 0.30);
+  border: 0.45vmin solid rgba(255,255,255,0.72);
+  backdrop-filter: blur(3px);
+  -webkit-backdrop-filter: blur(3px);
+  box-shadow: var(--shadow);
+  transition: transform 90ms ease, background 120ms ease, border-color 120ms ease;
+}
+.tbtn.brake .disc { width: 70%; height: 70%; stroke-width: 1.5; }
+.tbtn.brake .disc-holes { stroke-width: 1.2; }
+.tbtn-label {
+  position: absolute; font-size: 1.5vmin; font-weight: 800; letter-spacing: 0.06em;
+  text-shadow: 0 1px 3px rgba(0,0,0,0.9);
+}
+.tbtn.brake.is-down {
+  background: rgba(255, 95, 87, 0.26);
+  border-color: var(--danger);
+  color: #ffd8d5;
+  transform: scale(0.95);
+  box-shadow: 0 0 18px rgba(255,95,87,0.5), var(--shadow);
+}
+
+.tbtn.throttle { width: 24vmin; height: 13vmin; }
+.tbtn.throttle .grip { width: 100%; height: 100%; filter: drop-shadow(0 2px 6px rgba(0,0,0,0.7)); }
+.grip-barrel { fill: rgba(255,255,255,0.16); stroke: rgba(255,255,255,0.92); stroke-width: 3; }
+.grip-lever  { stroke: rgba(255,255,255,0.92); stroke-width: 5; fill: none; stroke-linecap: round; }
+.grip-ridges { stroke: rgba(255,255,255,0.75); stroke-width: 2.6; }
+.tbtn.throttle.is-down .grip-barrel { fill: rgba(107,240,173,0.42); stroke: var(--accent); }
+.tbtn.throttle.is-down .grip-lever  { stroke: var(--accent); }
+.tbtn.throttle.is-down .grip-ridges { stroke: rgba(255,255,255,0.95); }
+.tbtn.throttle.is-down { transform: scale(0.96); }
+
+.chip {
+  pointer-events: auto;
+  background: var(--glass);
+  border: 0.28vmin solid var(--stroke-soft);
+  color: var(--ink-dim);
+  font-size: 1.5vmin; font-weight: 800; letter-spacing: 0.08em;
+  padding: 0.7vmin 1.4vmin; border-radius: 3vmin;
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+  touch-action: none;
+}
+.chip[aria-pressed="true"], .chip.is-down {
+  color: #06231a; background: var(--accent); border-color: var(--accent);
+}
+
+/* ------------------------------------------------------------
+   Overlays
+   ------------------------------------------------------------ */
+.overlay {
+  position: absolute; inset: 0; z-index: 20;
+  display: grid; place-items: center;
+  background: radial-gradient(120% 90% at 50% 40%, rgba(6, 12, 18, 0.72), rgba(2, 4, 8, 0.94));
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  padding: calc(var(--safe-t) + 2vmin) calc(var(--safe-r) + 2vmin)
+           calc(var(--safe-b) + 2vmin) calc(var(--safe-l) + 2vmin);
+  animation: fade-in 220ms ease;
+}
+.overlay[hidden] { display: none; }
+.overlay-soft { background: rgba(2, 4, 8, 0.9); }
+@keyframes fade-in { from { opacity: 0; } to { opacity: 1; } }
+
+.panel {
+  width: min(92vw, 62vmin);
+  max-height: 92%;
+  overflow-y: auto;
+  background: linear-gradient(180deg, rgba(20, 28, 36, 0.94), rgba(10, 15, 20, 0.96));
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 2vmin;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.6);
+  padding: 4vmin;
+  text-align: center;
+  -webkit-overflow-scrolling: touch;
+}
+.panel-wide { width: min(94vw, 96vmin); }
+.panel-slim { width: min(80vw, 44vmin); }
+
+.logo {
+  font-size: 6vmin; font-weight: 900; letter-spacing: 0.06em; font-style: italic;
+  line-height: 1; margin-bottom: 1.4vmin;
+}
+.logo span { color: var(--accent); text-shadow: 0 0 24px var(--accent-glow); }
+
+.panel-title {
+  font-size: 3.6vmin; font-weight: 900; letter-spacing: 0.14em;
+  color: var(--accent); margin-bottom: 2.4vmin;
+}
+.sub { color: var(--ink-dim); font-size: 2vmin; line-height: 1.5; margin: 0 0 3vmin; }
+.hint { color: rgba(242,246,248,0.42); font-size: 1.6vmin; margin: 2.4vmin 0 0; line-height: 1.6; }
+.hint b { color: var(--ink-dim); font-family: var(--mono); }
+
+.menu-grid {
+  display: grid; grid-template-columns: repeat(auto-fit, minmax(24vmin, 1fr));
+  gap: 1.6vmin; margin-bottom: 2.4vmin;
+}
+.menu-card {
+  pointer-events: auto;
+  display: flex; flex-direction: column; gap: 0.6vmin;
+  padding: 2.4vmin 2vmin;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 1.4vmin;
+  color: var(--ink); text-align: left;
+  transition: background 140ms ease, border-color 140ms ease, transform 140ms ease;
+}
+.menu-card:active, .menu-card:hover {
+  background: rgba(107, 240, 173, 0.14);
+  border-color: var(--accent);
+  transform: translateY(-2px);
+}
+.menu-card-title { font-size: 2.4vmin; font-weight: 800; }
+.menu-card-sub { font-size: 1.6vmin; color: var(--ink-dim); }
+
+.menu-row { display: flex; flex-wrap: wrap; gap: 1.6vmin; justify-content: center; }
+.opt {
+  display: flex; align-items: center; gap: 0.8vmin;
+  font-size: 1.7vmin; font-weight: 700; color: var(--ink-dim);
+  letter-spacing: 0.04em;
+}
+.opt select {
+  pointer-events: auto;
+  background: rgba(255,255,255,0.08);
+  border: 1px solid rgba(255,255,255,0.16);
+  color: var(--ink);
+  border-radius: 0.8vmin; padding: 0.6vmin 1vmin;
+  font-size: 1.7vmin; font-family: inherit;
+}
+
+.stat-row {
+  display: flex; justify-content: space-between; align-items: center;
+  padding: 1.2vmin 0; font-size: 2.1vmin;
+  border-bottom: 1px solid rgba(255,255,255,0.07);
+  color: var(--ink-dim);
+}
+.stat-row b { color: var(--ink); font-size: 2.3vmin; }
+.stat-row.bonus b { color: var(--accent); }
+.stat-row.total { border-bottom: 0; margin-top: 0.8vmin; }
+.stat-row.total b { color: var(--accent); font-size: 3.4vmin; }
+
+.panel-actions { display: flex; gap: 1.4vmin; margin-top: 3vmin; justify-content: center; flex-wrap: wrap; }
+.btn {
+  pointer-events: auto;
+  background: rgba(255,255,255,0.1);
+  border: 1px solid rgba(255,255,255,0.18);
+  color: var(--ink);
+  font-size: 2vmin; font-weight: 800; letter-spacing: 0.08em;
+  padding: 1.4vmin 3vmin; border-radius: 1vmin;
+  transition: transform 90ms ease, background 140ms ease;
+}
+.btn:active { transform: scale(0.96); }
+.btn-primary {
+  background: linear-gradient(180deg, #7ff0b4, #45c98a);
+  border-color: transparent; color: #04231a;
+  box-shadow: 0 6px 22px rgba(107, 240, 173, 0.34);
+}
+.btn-ghost { background: transparent; color: var(--ink-dim); }
+
+.loader {
+  width: 100%; height: 0.9vmin; border-radius: 1vmin;
+  background: rgba(255,255,255,0.1); overflow: hidden; margin: 3vmin 0 1.4vmin;
+}
+.loader-bar {
+  height: 100%; width: 0%;
+  background: linear-gradient(90deg, var(--accent-dim), var(--accent));
+  border-radius: 1vmin;
+  transition: width 220ms ease;
+}
+.loader-label { font-size: 1.7vmin; color: var(--ink-dim); letter-spacing: 0.06em; }
+
+.rotate-icon {
+  width: 14vmin; height: 14vmin; margin-bottom: 2vmin;
+  fill: none; stroke: var(--accent); stroke-width: 2.4;
+  stroke-linecap: round; stroke-linejoin: round;
+  animation: rotate-hint 2.4s ease-in-out infinite;
+}
+@keyframes rotate-hint {
+  0%, 45% { transform: rotate(0deg); }
+  65%, 100% { transform: rotate(-90deg); }
+}
+
+button { font-family: inherit; cursor: pointer; }
+button:focus-visible, select:focus-visible {
+  outline: 2px solid var(--accent); outline-offset: 2px;
+}
+
+/* ------------------------------------------------------------
+   Small screens: the reference layout is dense; on a phone in
+   landscape we trade a little size for reach.
+   ------------------------------------------------------------ */
+@media (max-height: 430px) {
+  .speedo { width: 26vmin; height: 26vmin; }
+  .minimap { width: 19vmin; height: 19vmin; }
+  .tbtn.steer, .tbtn.brake { width: 18vmin; height: 18vmin; }
+  .tbtn.throttle { width: 27vmin; height: 15vmin; }
+  .banner-text { font-size: 1.8vmin; }
+  /* The chips stay: the strip between the thumb clusters is empty at this
+     aspect, and hiding them left phone players with no wheelie button at all. */
+  .hud-bottom-center { gap: 1vmin; }
+  .chip { font-size: 1.9vmin; padding: 0.9vmin 1.8vmin; }
+}
+
+/* Pointer-capable desktops: hide the thumb controls, keyboard drives. */
+@media (hover: hover) and (pointer: fine) {
+  .hud-bl, .hud-br { opacity: 0.5; transition: opacity 180ms ease; }
+  .hud-bl:hover, .hud-br:hover { opacity: 1; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .rotate-icon { animation: none; }
+  .overlay, .toast { animation: none; }
+}

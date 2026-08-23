@@ -1,0 +1,12 @@
+{
+  "name": "Redline Rider",
+  "short_name": "Redline",
+  "description": "A touch-first 3D motorcycle racing game that runs in the browser.",
+  "start_url": "./index.html",
+  "display": "fullscreen",
+  "orientation": "landscape",
+  "background_color": "#04070c",
+  "theme_color": "#04070c",
+  "categories": ["games"],
+  "icons": []
+}

@@ -1,0 +1,286 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<title>Redline Rider — Mobile Motorcycle Racing</title>
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
+<meta name="theme-color" content="#04070c" />
+<meta name="mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+<meta name="description" content="A touch-first 3D motorcycle racing game that runs in the browser." />
+<link rel="manifest" href="./manifest.webmanifest" />
+<link rel="stylesheet" href="./styles/hud.css" />
+<script type="importmap">
+{
+  "imports": {
+    "three": "./vendor/three.module.min.js"
+  }
+}
+</script>
+</head>
+<body>
+
+<div id="app">
+  <canvas id="scene"></canvas>
+
+  <!-- ============================ HUD ============================ -->
+  <div id="hud" class="hud" aria-hidden="false">
+
+    <!-- Top left: minimap -->
+    <div class="hud-corner hud-tl">
+      <div class="minimap" id="minimap">
+        <canvas id="minimap-canvas" width="256" height="256"></canvas>
+        <div class="minimap-ring"></div>
+      </div>
+    </div>
+
+    <!-- Top center: lap clock -->
+    <div class="hud-top-center">
+      <div class="pill pill-dark" id="clock-pill">
+        <svg class="icon" viewBox="0 0 24 24" aria-hidden="true">
+          <path d="M9 2h6M12 5a8 8 0 1 0 0 16 8 8 0 0 0 0-16zm0 4v4l3 2" />
+          <path d="M19.5 5.5l1.6-1.6" />
+        </svg>
+        <span class="pill-value mono" id="clock-value">00:00.00</span>
+      </div>
+    </div>
+
+    <!-- Top right: pause / camera + speedometer -->
+    <div class="hud-corner hud-tr">
+      <div class="btn-row">
+        <button class="rbtn rbtn-sm" id="btn-camera" aria-label="Change camera">
+          <svg class="icon" viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M3 8.5A1.5 1.5 0 0 1 4.5 7h2.2l1.2-2h8.2l1.2 2h2.2A1.5 1.5 0 0 1 21 8.5v9A1.5 1.5 0 0 1 19.5 19h-15A1.5 1.5 0 0 1 3 17.5z" />
+            <circle cx="12" cy="13" r="3.4" />
+          </svg>
+        </button>
+        <button class="rbtn rbtn-sm accent" id="btn-pause" aria-label="Pause">
+          <svg class="icon" viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M9.5 6.5v11M14.5 6.5v11" />
+          </svg>
+        </button>
+      </div>
+
+      <div class="speedo" id="speedo">
+        <canvas id="speedo-canvas" width="300" height="300"></canvas>
+        <div class="speedo-readout">
+          <div class="speedo-unit" id="speedo-unit">MPH</div>
+          <div class="speedo-value mono" id="speedo-value">0</div>
+        </div>
+        <div class="gear-badge mono" id="gear-badge">N</div>
+      </div>
+
+      <div class="btn-col">
+        <button class="rbtn rbtn-sm" id="btn-flip" aria-label="Flip bike upright">
+          <svg class="icon" viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M20 12a8 8 0 1 1-2.4-5.7" />
+            <path d="M20 4v4h-4" />
+          </svg>
+        </button>
+        <button class="rbtn rbtn-sm" id="btn-restart" aria-label="Restart race">
+          <svg class="icon" viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M4 12a8 8 0 1 0 2.4-5.7" />
+            <path d="M4 4v4h4" />
+          </svg>
+        </button>
+      </div>
+    </div>
+
+    <!-- Right: race info stack -->
+    <div class="hud-right">
+      <div class="info-row">
+        <div class="pill pill-green"><span class="mono" id="best-value">--:--.--</span></div>
+        <div class="info-icon" title="Best lap">
+          <svg class="icon" viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M7 4h10v5a5 5 0 0 1-10 0z" />
+            <path d="M7 5.5H4.5V7a3.5 3.5 0 0 0 3 3.4" />
+            <path d="M17 5.5h2.5V7a3.5 3.5 0 0 1-3 3.4" />
+            <path d="M12 14v3.5M8.5 20.5h7" />
+          </svg>
+        </div>
+      </div>
+      <div class="info-row">
+        <div class="pill pill-light"><span class="mono" id="dist-value">0.00</span><span class="pill-unit">KM</span></div>
+        <div class="info-icon" title="Distance">
+          <svg class="icon" viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M6.5 21c3.5-4.5 3.5-9 0-13.5M17.5 21c-3.5-4.5-3.5-9 0-13.5" />
+            <path d="M12 6.5v3.5M12 13v3.5" />
+          </svg>
+        </div>
+      </div>
+      <div class="info-row">
+        <div class="pill pill-light"><span class="mono" id="combo-value">x1.0</span></div>
+        <div class="info-icon" title="Clean-run multiplier">
+          <svg class="icon" viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M5 13l7-7 7 7M5 19l7-7 7 7" />
+          </svg>
+        </div>
+      </div>
+    </div>
+
+    <!-- Left: objective banner -->
+    <div class="hud-left">
+      <div class="banner" id="banner">
+        <div class="banner-icon">
+          <svg class="icon" viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M12 3.5 22 20H2z" /><path d="M12 10v4.5M12 17.2v.3" />
+          </svg>
+        </div>
+        <div class="banner-text" id="banner-text">FINISH THE RACE WITHOUT ANY CRASH TO RECEIVE THE BONUS</div>
+      </div>
+      <div class="toast" id="toast" hidden></div>
+    </div>
+
+    <!-- Bottom left: steering -->
+    <div class="hud-corner hud-bl">
+      <button class="tbtn steer" id="btn-left" aria-label="Steer left">
+        <span class="tbtn-ring"></span>
+        <svg class="icon chevron" viewBox="0 0 24 24" aria-hidden="true"><path d="M15 5 8 12l7 7" /></svg>
+      </button>
+      <button class="tbtn steer" id="btn-right" aria-label="Steer right">
+        <span class="tbtn-ring"></span>
+        <svg class="icon chevron" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 5l7 7-7 7" /></svg>
+      </button>
+    </div>
+
+    <!-- Bottom right: brake + throttle -->
+    <div class="hud-corner hud-br">
+      <button class="tbtn brake" id="btn-brake" aria-label="Brake">
+        <span class="tbtn-ring"></span>
+        <svg class="icon disc" viewBox="0 0 48 48" aria-hidden="true">
+          <circle cx="24" cy="24" r="18.5" />
+          <circle cx="24" cy="24" r="9" />
+          <circle cx="24" cy="24" r="3.4" />
+          <g class="disc-holes">
+            <circle cx="24" cy="10.5" r="1.5" /><circle cx="33.5" cy="14.5" r="1.5" />
+            <circle cx="37.5" cy="24" r="1.5" /><circle cx="33.5" cy="33.5" r="1.5" />
+            <circle cx="24" cy="37.5" r="1.5" /><circle cx="14.5" cy="33.5" r="1.5" />
+            <circle cx="10.5" cy="24" r="1.5" /><circle cx="14.5" cy="14.5" r="1.5" />
+          </g>
+        </svg>
+        <span class="tbtn-label">BRAKE</span>
+      </button>
+
+      <button class="tbtn throttle" id="btn-throttle" aria-label="Throttle">
+        <svg class="icon grip" viewBox="0 0 120 64" aria-hidden="true">
+          <path class="grip-lever" d="M10 30c6-12 20-18 33-16" />
+          <rect class="grip-barrel" x="38" y="16" width="70" height="30" rx="15" />
+          <path class="grip-ridges" d="M52 20v22M62 20v22M72 20v22M82 20v22M92 20v22" />
+        </svg>
+      </button>
+    </div>
+
+    <!-- Bottom center: gear + tilt toggle -->
+    <div class="hud-bottom-center">
+      <button class="chip" id="btn-tilt" aria-pressed="false">TILT STEER</button>
+      <button class="chip" id="btn-wheelie" aria-label="Wheelie">WHEELIE</button>
+    </div>
+  </div>
+
+  <!-- ========================= OVERLAYS ========================= -->
+  <div class="overlay" id="overlay-loading">
+    <div class="panel">
+      <div class="logo">REDLINE<span>RIDER</span></div>
+      <div class="loader"><div class="loader-bar" id="loader-bar"></div></div>
+      <div class="loader-label" id="loader-label">Building the world…</div>
+    </div>
+  </div>
+
+  <div class="overlay" id="overlay-menu" hidden>
+    <div class="panel panel-wide">
+      <div class="logo">REDLINE<span>RIDER</span></div>
+      <p class="sub">Touch-first street racing. Hold the throttle, lean into the corners, keep it clean for the bonus.</p>
+
+      <div class="menu-grid">
+        <button class="menu-card" data-track="highway">
+          <span class="menu-card-title">Coastal Highway</span>
+          <span class="menu-card-sub">Daylight · fast sweepers · light traffic</span>
+        </button>
+        <button class="menu-card" data-track="city">
+          <span class="menu-card-title">Downtown Night</span>
+          <span class="menu-card-sub">Wet asphalt · neon · heavy traffic</span>
+        </button>
+        <button class="menu-card" data-track="canyon">
+          <span class="menu-card-title">Canyon Run</span>
+          <span class="menu-card-sub">Dusk · tight turns · no mercy</span>
+        </button>
+      </div>
+
+      <div class="menu-row">
+        <label class="opt">Quality
+          <select id="opt-quality">
+            <option value="auto" selected>Auto</option>
+            <option value="low">Low</option>
+            <option value="medium">Medium</option>
+            <option value="high">High</option>
+          </select>
+        </label>
+        <label class="opt">Units
+          <select id="opt-units">
+            <option value="mph" selected>MPH</option>
+            <option value="kmh">KM/H</option>
+          </select>
+        </label>
+        <label class="opt">Steering
+          <select id="opt-steer">
+            <option value="buttons" selected>Buttons</option>
+            <option value="tilt">Tilt</option>
+          </select>
+        </label>
+      </div>
+      <p class="hint">Keyboard: <b>W/↑</b> throttle · <b>S/↓</b> brake · <b>A/D</b> or <b>←/→</b> steer · <b>Shift</b> wheelie · <b>R</b> restart · <b>C</b> camera · <b>Esc</b> pause</p>
+    </div>
+  </div>
+
+  <div class="overlay" id="overlay-pause" hidden>
+    <div class="panel">
+      <div class="panel-title">PAUSED</div>
+      <div class="stat-row"><span>Distance</span><b class="mono" id="pause-dist">0.00 km</b></div>
+      <div class="stat-row"><span>Top speed</span><b class="mono" id="pause-top">0</b></div>
+      <div class="stat-row"><span>Clean run</span><b class="mono" id="pause-clean">yes</b></div>
+      <div class="panel-actions">
+        <button class="btn btn-primary" id="btn-resume">RESUME</button>
+        <button class="btn" id="btn-pause-restart">RESTART</button>
+        <button class="btn btn-ghost" id="btn-quit">MENU</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="overlay" id="overlay-finish" hidden>
+    <div class="panel">
+      <div class="panel-title" id="finish-title">RACE COMPLETE</div>
+      <div class="stat-row"><span>Time</span><b class="mono" id="finish-time">00:00.00</b></div>
+      <div class="stat-row"><span>Distance</span><b class="mono" id="finish-dist">0.00 km</b></div>
+      <div class="stat-row"><span>Top speed</span><b class="mono" id="finish-top">0</b></div>
+      <div class="stat-row"><span>Crashes</span><b class="mono" id="finish-crashes">0</b></div>
+      <div class="stat-row bonus" id="finish-bonus-row"><span>Clean bonus</span><b class="mono" id="finish-bonus">+0</b></div>
+      <div class="stat-row total"><span>Score</span><b class="mono" id="finish-score">0</b></div>
+      <div class="panel-actions">
+        <button class="btn btn-primary" id="btn-again">RACE AGAIN</button>
+        <button class="btn btn-ghost" id="btn-finish-menu">MENU</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="overlay overlay-soft" id="overlay-rotate" hidden>
+    <div class="panel panel-slim">
+      <svg class="rotate-icon" viewBox="0 0 64 64" aria-hidden="true">
+        <rect x="18" y="6" width="28" height="52" rx="5" />
+        <path d="M8 44a26 26 0 0 0 12 12M8 44l-1-7M8 44l7 1" />
+      </svg>
+      <p>Rotate your device to landscape</p>
+    </div>
+  </div>
+
+  <div class="overlay" id="overlay-error" hidden>
+    <div class="panel">
+      <div class="panel-title">CAN'T START</div>
+      <p class="sub" id="error-text">WebGL is not available in this browser.</p>
+    </div>
+  </div>
+</div>
+
+<script type="module" src="./src/main.js"></script>
+</body>
+</html>
