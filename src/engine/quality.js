@@ -22,6 +22,18 @@ const TIERS = {
     lightPools: false,
     anisotropy: 2,
     sparks: false,
+    // --- rendering ---
+    postFx: 'off',          // no composer at all: straight to the canvas
+    bloom: false,
+    motionBlur: false,
+    grain: false,
+    antialias: 'none',
+    normalMaps: false,
+    textureScale: 0.5,      // multiplier on procedural texture resolution
+    clearcoat: false,
+    lightStreaks: false,
+    roadColumns: 5,
+    facadeDetail: false,
   },
   medium: {
     name: 'medium',
@@ -36,6 +48,17 @@ const TIERS = {
     lightPools: true,
     anisotropy: 4,
     sparks: true,
+    postFx: 'on',
+    bloom: true,
+    motionBlur: true,
+    grain: true,
+    antialias: 'fxaa',
+    normalMaps: true,
+    textureScale: 1,
+    clearcoat: false,
+    lightStreaks: true,
+    roadColumns: 7,
+    facadeDetail: false,
   },
   high: {
     name: 'high',
@@ -50,6 +73,42 @@ const TIERS = {
     lightPools: true,
     anisotropy: 8,
     sparks: true,
+    postFx: 'on',
+    bloom: true,
+    motionBlur: true,
+    grain: true,
+    antialias: 'smaa',
+    normalMaps: true,
+    textureScale: 1,
+    clearcoat: true,
+    lightStreaks: true,
+    roadColumns: 9,
+    facadeDetail: true,
+  },
+  ultra: {
+    name: 'ultra',
+    maxPixelRatio: 2.0,
+    shadows: true,
+    shadowMapSize: 4096,
+    drawDistance: 1200,
+    treeDensity: 1.35,
+    trafficCount: 20,
+    rainCount: 4200,
+    reflections: true,
+    lightPools: true,
+    anisotropy: 16,
+    sparks: true,
+    postFx: 'ultra',        // adds MSAA on the HDR target
+    bloom: true,
+    motionBlur: true,
+    grain: true,
+    antialias: 'smaa',
+    normalMaps: true,
+    textureScale: 2,
+    clearcoat: true,
+    lightStreaks: true,
+    roadColumns: 13,
+    facadeDetail: true,
   },
 };
 
@@ -65,7 +124,7 @@ export function detectTier() {
   // iPadOS 13+ reports as desktop Safari; the touch-point count gives it away.
   const isIpad = /iPad/.test(ua) || (/Macintosh/.test(ua) && navigator.maxTouchPoints > 1);
 
-  if (!isMobile && !isIpad) return cores >= 8 ? 'high' : 'medium';
+  if (!isMobile && !isIpad) return cores >= 12 && mem >= 8 ? 'ultra' : cores >= 8 ? 'high' : 'medium';
   if (isIpad) return cores >= 6 ? 'high' : 'medium';
   if (cores >= 8 && mem >= 6) return 'high';
   if (cores >= 6 && mem >= 4) return 'medium';

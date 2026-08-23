@@ -11,6 +11,77 @@ import { makeCanvas, makeRng, grainOverlay, blotches, rand, clamp, TAU } from '.
 
 const cache = new Map();
 
+/**
+ * Global multiplier on procedural texture resolution, set from the quality
+ * tier before any texture is built. 1 = the authored size.
+ */
+let RES = 1;
+
+export function setTextureScale(scale) {
+  const next = Math.max(0.25, Math.min(2, scale || 1));
+  if (next === RES) return;
+  RES = next;
+  disposeTextures();
+}
+
+/** Authored size scaled by the current tier, rounded to a power of two. */
+function px(base) {
+  const v = Math.round(base * RES);
+  return Math.max(16, 2 ** Math.round(Math.log2(v)));
+}
+
+/**
+ * Derive a tangent-space normal map from a colour canvas.
+ *
+ * A Sobel gradient over perceived luminance is not physically meaningful, but
+ * for surfaces whose colour variation *is* their height variation — asphalt
+ * aggregate, gravel, grass, concrete — it reads convincingly and costs one
+ * pass over the pixels rather than a second authored texture.
+ */
+function normalFromCanvas(source, strength = 1.6) {
+  const w = source.width;
+  const h = source.height;
+  const src = source.getContext('2d').getImageData(0, 0, w, h).data;
+
+  const lum = new Float32Array(w * h);
+  for (let i = 0, p = 0; i < src.length; i += 4, p++) {
+    lum[p] = (src[i] * 0.2126 + src[i + 1] * 0.7152 + src[i + 2] * 0.0722) / 255;
+  }
+
+  const out = makeCanvas(w, h);
+  const octx = out.getContext('2d');
+  const img = octx.createImageData(w, h);
+  const d = img.data;
+  const at = (x, y) => lum[((y + h) % h) * w + ((x + w) % w)];
+
+  for (let y = 0; y < h; y++) {
+    for (let x = 0; x < w; x++) {
+      // Sobel, wrapping at the edges so tiled textures stay seamless.
+      const dx =
+        (at(x + 1, y - 1) + 2 * at(x + 1, y) + at(x + 1, y + 1)) -
+        (at(x - 1, y - 1) + 2 * at(x - 1, y) + at(x - 1, y + 1));
+      const dy =
+        (at(x - 1, y + 1) + 2 * at(x, y + 1) + at(x + 1, y + 1)) -
+        (at(x - 1, y - 1) + 2 * at(x, y - 1) + at(x + 1, y - 1));
+
+      let nx = -dx * strength;
+      let ny = -dy * strength;
+      const nz = 1;
+      const len = Math.hypot(nx, ny, nz) || 1;
+      nx /= len; ny /= len;
+      const nzn = nz / len;
+
+      const i = (y * w + x) * 4;
+      d[i] = (nx * 0.5 + 0.5) * 255;
+      d[i + 1] = (ny * 0.5 + 0.5) * 255;
+      d[i + 2] = (nzn * 0.5 + 0.5) * 255;
+      d[i + 3] = 255;
+    }
+  }
+  octx.putImageData(img, 0, 0);
+  return out;
+}
+
 function finish(canvas, { repeat = [1, 1], srgb = true, aniso = 4, wrapU, wrapV } = {}) {
   const tex = new THREE.CanvasTexture(canvas);
   tex.wrapS = wrapU ?? THREE.RepeatWrapping;
@@ -47,65 +118,108 @@ export function disposeTextures() {
  * centre, two lanes, shoulder line — the layout in the reference footage.
  */
 export function roadTexture({ wet = false, aniso = 8 } = {}) {
-  return cached(`road:${wet}:${aniso}`, () => {
-    const W = 512;
-    const H = 1024;
+  return cached(`road:${wet}:${aniso}:${RES}`, () => {
+    const W = px(1024);
+    const H = px(2048);
     const canvas = makeCanvas(W, H);
     const ctx = canvas.getContext('2d');
     const rng = makeRng(9137);
 
-    ctx.fillStyle = wet ? '#22262b' : '#3a3d42';
+    ctx.fillStyle = wet ? '#1e2227' : '#35383d';
     ctx.fillRect(0, 0, W, H);
 
-    // Long-grain streaks left by traffic wear.
-    for (let i = 0; i < 260; i++) {
+    // ---- aggregate ----------------------------------------------------
+    // Individual chips of stone are what make asphalt read as asphalt rather
+    // than as grey noise, and they give the normal map something to bite on.
+    const chips = Math.round(W * H / 190);
+    for (let i = 0; i < chips; i++) {
       const x = rng() * W;
       const y = rng() * H;
-      const h = rand(rng, 30, 260);
-      ctx.globalAlpha = rand(rng, 0.03, 0.11);
-      ctx.fillStyle = rng() > 0.5 ? '#4b4f55' : '#2b2e33';
-      ctx.fillRect(x, y, rand(rng, 1, 4), h);
+      const r = rand(rng, 0.6, 2.6) * (W / 1024);
+      const shade = rand(rng, 0.55, 1.5);
+      const base = wet ? 40 : 62;
+      const v = Math.round(base * shade);
+      ctx.fillStyle = `rgba(${v},${v + 2},${v + 5},${rand(rng, 0.25, 0.75)})`;
+      ctx.beginPath();
+      // Slightly irregular chips beat perfect circles at this density.
+      ctx.ellipse(x, y, r, r * rand(rng, 0.6, 1.4), rng() * TAU, 0, TAU);
+      ctx.fill();
+    }
+
+    // Long-grain streaks left by traffic wear.
+    for (let i = 0; i < 420; i++) {
+      ctx.globalAlpha = rand(rng, 0.03, 0.1);
+      ctx.fillStyle = rng() > 0.5 ? '#4b4f55' : '#282b30';
+      ctx.fillRect(rng() * W, rng() * H, rand(rng, 1, 5) * (W / 1024), rand(rng, 60, 520));
     }
     ctx.globalAlpha = 1;
 
     // Darker polished wheel tracks in each lane.
     const laneCentres = [0.185, 0.375, 0.625, 0.815];
     for (const lc of laneCentres) {
-      const g = ctx.createLinearGradient((lc - 0.09) * W, 0, (lc + 0.09) * W, 0);
+      const g = ctx.createLinearGradient((lc - 0.095) * W, 0, (lc + 0.095) * W, 0);
       g.addColorStop(0, 'rgba(20,22,26,0)');
-      g.addColorStop(0.5, wet ? 'rgba(12,14,18,0.55)' : 'rgba(30,32,36,0.5)');
+      g.addColorStop(0.5, wet ? 'rgba(10,12,16,0.6)' : 'rgba(28,30,34,0.52)');
       g.addColorStop(1, 'rgba(20,22,26,0)');
       ctx.fillStyle = g;
-      ctx.fillRect((lc - 0.09) * W, 0, 0.18 * W, H);
+      ctx.fillRect((lc - 0.095) * W, 0, 0.19 * W, H);
     }
 
-    blotches(ctx, W, H, 40, rng,
-      (r) => (r() > 0.5 ? 'rgba(24,25,28,ALPHA)' : 'rgba(70,72,76,ALPHA)'), 14, 60);
+    blotches(ctx, W, H, 70, rng,
+      (r) => (r() > 0.5 ? 'rgba(20,21,24,ALPHA)' : 'rgba(76,78,82,ALPHA)'), 26, 130);
 
-    // Cracks and patch seams.
-    ctx.strokeStyle = 'rgba(22,23,26,0.5)';
-    for (let i = 0; i < 26; i++) {
-      ctx.lineWidth = rand(rng, 0.8, 2.2);
+    // ---- tar seams ----------------------------------------------------
+    // Repair lines: glossy black snakes that catch the light differently from
+    // the surrounding surface.
+    ctx.lineCap = 'round';
+    for (let i = 0; i < 14; i++) {
+      ctx.strokeStyle = `rgba(14,15,18,${rand(rng, 0.5, 0.85)})`;
+      ctx.lineWidth = rand(rng, 3, 9) * (W / 1024);
+      ctx.beginPath();
+      let x = rng() * W;
+      let y = rng() * H;
+      ctx.moveTo(x, y);
+      const steps = Math.floor(rand(rng, 4, 12));
+      for (let s = 0; s < steps; s++) {
+        x += rand(rng, -70, 70);
+        y += rand(rng, 40, 180);
+        ctx.lineTo(x, y);
+      }
+      ctx.stroke();
+    }
+
+    // ---- cracks -------------------------------------------------------
+    for (let i = 0; i < 30; i++) {
+      ctx.strokeStyle = `rgba(20,21,24,${rand(rng, 0.18, 0.4)})`;
+      ctx.lineWidth = rand(rng, 0.7, 1.8) * (W / 1024);
       ctx.beginPath();
       let x = rng() * W;
       let y = rng() * H;
       ctx.moveTo(x, y);
       const steps = Math.floor(rand(rng, 3, 9));
       for (let s = 0; s < steps; s++) {
-        x += rand(rng, -34, 34);
-        y += rand(rng, 12, 48);
+        x += rand(rng, -60, 60);
+        y += rand(rng, 20, 90);
         ctx.lineTo(x, y);
       }
       ctx.stroke();
     }
 
-    grainOverlay(ctx, W, H, wet ? 12 : 18, rng);
+    // ---- patches ------------------------------------------------------
+    // Rectangular resurfacing squares, slightly off-colour from the rest.
+    for (let i = 0; i < 5; i++) {
+      const pw = rand(rng, 0.12, 0.4) * W;
+      const ph = rand(rng, 0.03, 0.1) * H;
+      ctx.fillStyle = `rgba(${wet ? 30 : 52},${wet ? 33 : 55},${wet ? 38 : 60},${rand(rng, 0.3, 0.6)})`;
+      ctx.fillRect(rng() * W, rng() * H, pw, ph);
+    }
 
-    // ---- markings ----------------------------------------------------
-    const paint = wet ? 'rgba(228,232,236,0.82)' : 'rgba(238,242,246,0.92)';
-    const yellow = wet ? 'rgba(226,182,64,0.85)' : 'rgba(240,196,72,0.95)';
+    grainOverlay(ctx, W, H, wet ? 10 : 15, rng);
 
-    // Solid white edge lines.
+    // ---- markings ------------------------------------------------------
+    const paint = wet ? 'rgba(226,230,235,0.8)' : 'rgba(238,242,246,0.9)';
+    const yellow = wet ? 'rgba(224,180,62,0.84)' : 'rgba(240,196,72,0.94)';
+
     ctx.fillStyle = paint;
     ctx.fillRect(0.035 * W, 0, 0.014 * W, H);
     ctx.fillRect(0.951 * W, 0, 0.014 * W, H);
@@ -119,28 +233,38 @@ export function roadTexture({ wet = false, aniso = 8 } = {}) {
       }
     }
 
-    // Double yellow centre line.
     ctx.fillStyle = yellow;
     ctx.fillRect(0.484 * W, 0, 0.013 * W, H);
     ctx.fillRect(0.503 * W, 0, 0.013 * W, H);
 
-    // Scuff the paint so it doesn't look freshly applied.
-    ctx.globalAlpha = 0.35;
-    ctx.fillStyle = wet ? '#22262b' : '#3a3d42';
-    for (let i = 0; i < 200; i++) {
-      ctx.fillRect(rng() * W, rng() * H, rand(rng, 2, 9), rand(rng, 2, 14));
+    // Scuff the paint so it doesn't look freshly applied: worn patches, and
+    // aggregate showing through where tyres have polished it away.
+    ctx.globalAlpha = 0.4;
+    ctx.fillStyle = wet ? '#1e2227' : '#35383d';
+    for (let i = 0; i < 520; i++) {
+      ctx.fillRect(rng() * W, rng() * H, rand(rng, 2, 12) * (W / 1024), rand(rng, 3, 22));
     }
     ctx.globalAlpha = 1;
+
+    cache.set(`roadNormal:${wet}:${RES}`,
+      finish(normalFromCanvas(canvas, 1.5), { srgb: false, aniso }));
 
     return finish(canvas, { repeat: [1, 1], aniso });
   });
 }
 
+/** Normal map matching `roadTexture`. Built as a side effect of the colour map. */
+export function roadNormalTexture({ wet = false, aniso = 8 } = {}) {
+  const key = `roadNormal:${wet}:${RES}`;
+  if (!cache.has(key)) roadTexture({ wet, aniso });
+  return cache.get(key);
+}
+
 /** Roughness map for the road: puddles read as dark (smooth) patches. */
 export function roadRoughnessTexture({ wet = false } = {}) {
-  return cached(`roadRough:${wet}`, () => {
-    const W = 256;
-    const H = 512;
+  return cached(`roadRough:${wet}:${RES}`, () => {
+    const W = px(512);
+    const H = px(1024);
     const canvas = makeCanvas(W, H);
     const ctx = canvas.getContext('2d');
     const rng = makeRng(4421);
@@ -173,8 +297,8 @@ export function roadRoughnessTexture({ wet = false } = {}) {
    ------------------------------------------------------------------ */
 
 export function grassTexture(palette = 'summer') {
-  return cached(`grass:${palette}`, () => {
-    const S = 512;
+  return cached(`grass:${palette}:${RES}`, () => {
+    const S = px(1024);
     const canvas = makeCanvas(S);
     const ctx = canvas.getContext('2d');
     const rng = makeRng(palette === 'dry' ? 771 : 5512);
@@ -200,13 +324,22 @@ export function grassTexture(palette = 'summer') {
       ctx.stroke();
     }
     grainOverlay(ctx, S, S, 12, rng);
+    cache.set(`grassNormal:${palette}:${RES}`,
+      finish(normalFromCanvas(canvas, 1.1), { srgb: false, aniso: 4 }));
     return finish(canvas, { repeat: [1, 1], aniso: 4 });
   });
 }
 
+/** Normal map matching `grassTexture`. */
+export function grassNormalTexture(palette = 'summer') {
+  const key = `grassNormal:${palette}:${RES}`;
+  if (!cache.has(key)) grassTexture(palette);
+  return cache.get(key);
+}
+
 export function dirtTexture() {
-  return cached('dirt', () => {
-    const S = 256;
+  return cached(`dirt:${RES}`, () => {
+    const S = px(512);
     const canvas = makeCanvas(S);
     const ctx = canvas.getContext('2d');
     const rng = makeRng(3311);
@@ -222,13 +355,21 @@ export function dirtTexture() {
       ctx.fill();
     }
     grainOverlay(ctx, S, S, 16, rng);
+    cache.set(`dirtNormal:${RES}`, finish(normalFromCanvas(canvas, 1.9), { srgb: false }));
     return finish(canvas);
   });
 }
 
+/** Normal map matching `dirtTexture`. */
+export function dirtNormalTexture() {
+  const key = `dirtNormal:${RES}`;
+  if (!cache.has(key)) dirtTexture();
+  return cache.get(key);
+}
+
 export function concreteTexture() {
-  return cached('concrete', () => {
-    const S = 256;
+  return cached(`concrete:${RES}`, () => {
+    const S = px(512);
     const canvas = makeCanvas(S);
     const ctx = canvas.getContext('2d');
     const rng = makeRng(8123);
@@ -241,8 +382,16 @@ export function concreteTexture() {
     ctx.lineWidth = 2;
     ctx.strokeRect(0.5, 0.5, S - 1, S - 1);
     grainOverlay(ctx, S, S, 14, rng);
+    cache.set(`concreteNormal:${RES}`, finish(normalFromCanvas(canvas, 1.2), { srgb: false }));
     return finish(canvas);
   });
+}
+
+/** Normal map matching `concreteTexture`. */
+export function concreteNormalTexture() {
+  const key = `concreteNormal:${RES}`;
+  if (!cache.has(key)) concreteTexture();
+  return cache.get(key);
 }
 
 /* ------------------------------------------------------------------
@@ -254,9 +403,9 @@ export function concreteTexture() {
  * Returns { map, emissive } so the night city can glow without a second draw.
  */
 export function buildingTextures(variant = 0, lit = true) {
-  return cached(`building:${variant}:${lit}`, () => {
-    const W = 256;
-    const H = 512;
+  return cached(`building:${variant}:${lit}:${RES}`, () => {
+    const W = px(512);
+    const H = px(1024);
     const rng = makeRng(1000 + variant * 37);
 
     const cols = [6, 8, 5, 7][variant % 4];
@@ -324,6 +473,9 @@ export function buildingTextures(variant = 0, lit = true) {
     return {
       map: finish(map, { aniso: 4 }),
       emissive: finish(emi, { aniso: 4 }),
+      // Mullions and window reveals get real relief from this rather than
+      // reading as a flat photograph pasted onto a box.
+      normal: finish(normalFromCanvas(map, 2.2), { srgb: false, aniso: 4 }),
     };
   });
 }

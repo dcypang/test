@@ -10,7 +10,8 @@ import * as THREE from 'three';
 import { Renderer, webglAvailable } from './engine/renderer.js';
 import { detectTier, getTierSettings, isTouchDevice } from './engine/quality.js';
 import { Sky } from './engine/sky.js';
-import { disposeTextures } from './engine/textures.js';
+import { PostFx } from './engine/post.js';
+import { disposeTextures, setTextureScale } from './engine/textures.js';
 import { clamp, damp, MPS_TO_MPH } from './engine/util.js';
 
 import { Track, TRACK_PRESETS } from './world/track.js';
@@ -68,6 +69,7 @@ class Game {
     this.audio = new Audio();
 
     this.world = null;
+    this.post = null;
     this.accumulator = 0;
     this.lastTime = 0;
     this.running = false;
@@ -211,6 +213,10 @@ class Game {
     if (this.qualityChoice !== 'auto') {
       this.settings = getTierSettings(this.qualityChoice);
     }
+    // Must happen before any texture is built: changing it invalidates the
+    // procedural texture cache, so doing it mid-build would strand materials
+    // holding disposed textures.
+    setTextureScale(this.settings.textureScale);
 
     await this._teardownWorld();
     await this._buildWorld(preset);
@@ -275,6 +281,14 @@ class Game {
       jacketColor: preset.sky === 'night' ? 0x6d6250 : 0x8a7a5e,
     }));
 
+    await step(0.97, 'Grading the picture…', () => {
+      // The composer holds the camera, so it is rebuilt per track alongside
+      // the sky it grades for.
+      this.post?.dispose();
+      this.post = new PostFx(this.renderer, this.scene, this.chase.camera, settings, preset.sky);
+      this.renderer.attachPost(this.post.enabled ? this.post : null);
+    });
+
     await step(0.99, 'Almost there…', () => {
       world.physics = new BikePhysics(world.track, { wet: world.sky.preset.wet });
       world.rain = new Rain(this.scene, settings, preset.rain);
@@ -317,7 +331,10 @@ class Game {
     this.hud.hide();
     this.audio.setActive(false);
     this.overlays.show('menu');
-    this.canvas.style.opacity = '0';
+    // Once a track has been built, leave it rendering behind the menu — the
+    // overlay is already frosted, and a live world reads far better than the
+    // flat backdrop a cold start has to fall back on.
+    this.canvas.style.opacity = this.world ? '1' : '0';
   }
 
   restart() {
@@ -356,6 +373,7 @@ class Game {
 
   cycleCamera() {
     const name = this.chase.cycleMode();
+    this.post?.setCamera(this.chase.camera);
     this.hud.toast(`Camera: ${name}`);
   }
 
@@ -474,8 +492,10 @@ class Game {
 
     bike.update(render, dt);
     this.chase.update(render, physics.groundNormal, dt, 88);
-    sky.update(physics.position);
+    sky.update(physics.position, dt);
     rain.update(dt, this.chase.camera.position, physics.velocity);
+
+    this.post?.update(dt, physics.speed / 88);
 
     this.hud.update(this.state, physics, traffic, dt);
     this.hud.setObjective(this.state.objective, !this.state.clean);

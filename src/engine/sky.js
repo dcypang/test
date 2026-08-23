@@ -21,22 +21,58 @@ const SKY_VERT = /* glsl */ `
 const SKY_FRAG = /* glsl */ `
   varying vec3 vWorld;
 
-  uniform vec3 uZenith;
-  uniform vec3 uHorizon;
-  uniform vec3 uGround;
-  uniform vec3 uSunDir;
-  uniform vec3 uSunColor;
+  uniform vec3  uZenith;
+  uniform vec3  uHorizon;
+  uniform vec3  uGround;
+  uniform vec3  uSunDir;
+  uniform vec3  uSunColor;
   uniform float uSunSize;
   uniform float uHazeStrength;
   uniform float uStars;
   uniform float uGroundGlow;
-  uniform vec3 uGlowColor;
+  uniform vec3  uGlowColor;
+  uniform float uRayleigh;
+  uniform float uScatterGain;
+  uniform float uScatterMix;
+  uniform float uMie;
+  uniform float uCloudAmount;
+  uniform float uCloudSharpness;
+  uniform vec3  uCloudColor;
+  uniform vec3  uCloudShadow;
+  uniform float uTime;
 
-  // Hash-based star field: stable per direction, no texture needed.
+  const float PI = 3.141592653589793;
+
+  // ---- hashes / noise ------------------------------------------------
   float hash(vec3 p) {
     p = fract(p * vec3(443.897, 441.423, 437.195));
     p += dot(p, p.yzx + 19.19);
     return fract((p.x + p.y) * p.z);
+  }
+
+  float hash2(vec2 p) {
+    return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453123);
+  }
+
+  float valueNoise(vec2 p) {
+    vec2 i = floor(p);
+    vec2 f = fract(p);
+    vec2 u = f * f * (3.0 - 2.0 * f);
+    return mix(mix(hash2(i + vec2(0.0, 0.0)), hash2(i + vec2(1.0, 0.0)), u.x),
+               mix(hash2(i + vec2(0.0, 1.0)), hash2(i + vec2(1.0, 1.0)), u.x), u.y);
+  }
+
+  float fbm(vec2 p) {
+    float v = 0.0;
+    float a = 0.5;
+    float norm = 0.0;
+    for (int i = 0; i < 5; i++) {
+      v += a * valueNoise(p);
+      norm += a;
+      p *= 2.03;
+      a *= 0.5;
+    }
+    return v / norm;
   }
 
   float stars(vec3 dir) {
@@ -50,34 +86,112 @@ const SKY_FRAG = /* glsl */ `
     return smoothstep(0.34, 0.0, d) * bright;
   }
 
+  // ---- scattering phase functions -------------------------------------
+  float rayleighPhase(float mu) {
+    return (3.0 / (16.0 * PI)) * (1.0 + mu * mu);
+  }
+
+  // Henyey-Greenstein: forward-scattering lobe that produces the bright
+  // aureole around the sun and the glow along the horizon near it.
+  float miePhase(float mu, float g) {
+    float g2 = g * g;
+    float denom = 1.0 + g2 - 2.0 * g * mu;
+    return (1.0 - g2) / (4.0 * PI * pow(max(denom, 1e-4), 1.5));
+  }
+
   void main() {
     vec3 dir = normalize(vWorld);
+    vec3 sun = normalize(uSunDir);
     float h = dir.y;
+    float mu = dot(dir, sun);
 
-    // Sky body: ground colour below the horizon, zenith above, haze between.
+    // ---- single-scattering atmosphere ---------------------------------
+    // Standard form:  L = I * (BR*PR + BM*PM)/BT * (1 - e^-BT*d) * Tsun
+    //
+    // DEPTH_SCALE is chosen so the blue optical depth looking straight up is
+    // a few tenths — that is what makes midday sun near-white while a low sun
+    // still reddens hard, because its path length grows as 1/height.
+    const float DEPTH_SCALE = 8.0;
+
+    vec3 betaR = vec3(5.8e-3, 1.35e-2, 3.31e-2) * uRayleigh;
+    vec3 betaM = vec3(3.0e-3) * uMie;
+    vec3 betaT = betaR + betaM;
+
+    float viewDepth = DEPTH_SCALE / (max(h, 0.0) + 0.25);
+    float sunDepth  = DEPTH_SCALE / (max(sun.y, 0.02) + 0.25);
+
+    float rPhase = rayleighPhase(mu);
+    // The Mie lobe is unbounded as mu -> 1; clamping keeps the aureole bright
+    // without letting a single pixel run away to five figures.
+    float mPhase = min(miePhase(mu, 0.76), 6.0);
+
+    vec3 sunTransmit = exp(-betaT * sunDepth);
+    vec3 inscatter = ((betaR * rPhase + betaM * mPhase) / betaT)
+                   * (1.0 - exp(-betaT * viewDepth));
+
+    vec3 scattered = uSunColor * inscatter * sunTransmit * uScatterGain;
+
+    // Blend with the authored palette: the physical term supplies the
+    // gradient shape and the sun-side warmth, the preset keeps each track
+    // looking the way it was art-directed.
     float up = clamp(h, 0.0, 1.0);
-    vec3 col = mix(uHorizon, uZenith, pow(up, 0.42));
+    vec3 palette = mix(uHorizon, uZenith, pow(up, 0.42));
+    vec3 col = mix(palette, scattered, uScatterMix);
     col = mix(col, uGround, smoothstep(0.0, -0.16, h));
 
-    // Haze thickens toward the horizon and toward the sun's azimuth.
+    // Extra haze band hugging the horizon, strongest toward the sun.
     float horizonBand = exp(-abs(h) * 7.0);
     float sunAz = clamp(dot(normalize(vec3(dir.x, 0.0, dir.z)),
-                            normalize(vec3(uSunDir.x, 0.0, uSunDir.z))), 0.0, 1.0);
+                            normalize(vec3(sun.x, 0.0, sun.z))), 0.0, 1.0);
     col += uSunColor * horizonBand * uHazeStrength * (0.35 + 0.65 * pow(sunAz, 3.0));
-
-    // City / sunset glow hugging the horizon.
     col += uGlowColor * uGroundGlow * exp(-abs(h) * 12.0) * (0.4 + 0.6 * pow(sunAz, 2.0));
 
-    // Sun or moon disc plus its aureole.
-    float sd = max(dot(dir, normalize(uSunDir)), 0.0);
-    col += uSunColor * pow(sd, uSunSize) * 2.4;
-    col += uSunColor * pow(sd, 6.0) * 0.16;
+    // ---- clouds --------------------------------------------------------
+    if (uCloudAmount > 0.001 && h > -0.02) {
+      // Project onto a flat layer: dividing by height stretches the cells
+      // toward the horizon the way a real cloud deck recedes.
+      float t = 1.0 / max(h + 0.06, 0.06);
+      vec2 uv = dir.xz * t * 0.55 + vec2(uTime * 0.0032, uTime * 0.0018);
+
+      float n0 = fbm(uv * 1.1);
+      // Domain warp: pushes the noise around by more noise, which turns even
+      // bands into billows.
+      float n = fbm(uv * 1.1 + vec2(n0 * 0.9, n0 * 0.6));
+
+      // Domain-warping shifts the noise distribution well below the naive
+      // [0,1] assumption — measured median is about 0.39, 95th percentile
+      // about 0.61 — so the coverage threshold is mapped onto that range
+      // rather than onto (1 - amount), which never triggered at all.
+      float lo = mix(0.62, 0.20, uCloudAmount);
+      float cover = smoothstep(lo, lo + uCloudSharpness, n);
+      // Fade the deck out at the horizon so it never shows a hard edge.
+      cover *= smoothstep(-0.02, 0.16, h);
+
+      // Cheap self-shadowing. Shading off the coverage value alone makes
+      // thick cloud also bright, so the deck reads as a flat stencil; the
+      // difference between the warped and unwarped noise is a free stand-in
+      // for a density gradient, and gives each billow a lit and a shaded side.
+      float lit = clamp((n - n0) * 2.6 + 0.5, 0.0, 1.0);
+      float sunUp = clamp(sun.y * 2.0, 0.0, 1.0);
+      vec3 cloudLit = mix(uCloudShadow, uCloudColor, lit);
+      cloudLit += uSunColor * pow(max(mu, 0.0), 8.0) * 0.5 * sunUp * (1.0 - lit * 0.5);
+
+      col = mix(col, cloudLit, cover * 0.92);
+    }
+
+    // ---- sun / moon disc ------------------------------------------------
+    float sd = max(mu, 0.0);
+    // Limb-darkened disc plus two falloff terms for the aureole.
+    float disc = pow(sd, uSunSize);
+    col += uSunColor * disc * 3.0;
+    col += uSunColor * pow(sd, 24.0) * 0.35;
+    col += uSunColor * pow(sd, 6.0) * 0.12 * uHazeStrength;
 
     if (uStars > 0.001) {
       col += vec3(stars(dir)) * uStars * smoothstep(-0.02, 0.25, h);
     }
 
-    gl_FragColor = vec4(col, 1.0);
+    gl_FragColor = vec4(max(col, 0.0), 1.0);
     #include <tonemapping_fragment>
     #include <colorspace_fragment>
   }
@@ -107,6 +221,14 @@ export const SKY_PRESETS = {
     fogDensity: 0.0016,
     exposure: 1.0,
     wet: false,
+    rayleigh: 1.0,
+    mie: 0.9,
+    scatterGain: 48.0,
+    scatterMix: 0.62,
+    cloudAmount: 0.62,
+    cloudSharpness: 0.20,
+    cloudColor: 0xfbfcff,
+    cloudShadow: 0x7d90ab,
   },
   dusk: {
     // Golden hour, not nightfall: the sun is low enough to rake the canyon
@@ -130,6 +252,14 @@ export const SKY_PRESETS = {
     fogDensity: 0.0019,
     exposure: 1.0,
     wet: false,
+    rayleigh: 1.9,
+    mie: 1.8,
+    scatterGain: 22.0,
+    scatterMix: 0.6,
+    cloudAmount: 0.66,
+    cloudSharpness: 0.26,
+    cloudColor: 0xffcfa4,
+    cloudShadow: 0x6b5470,
   },
   night: {
     // A real city night is not dark — it is lit from below by sodium and
@@ -154,8 +284,21 @@ export const SKY_PRESETS = {
     fogDensity: 0.0028,
     exposure: 1.25,
     wet: true,
+    rayleigh: 0.25,
+    mie: 0.35,
+    scatterGain: 5.0,
+    scatterMix: 0.35,
+    cloudAmount: 0.5,
+    cloudSharpness: 0.3,
+    cloudColor: 0x2c3a52,
+    cloudShadow: 0x0d1420,
   },
 };
+
+/** Mirrors the shadow-map choice made in engine/renderer.js. */
+function renderUsesVsm(settings) {
+  return settings.name !== 'low' && settings.name !== 'medium';
+}
 
 export class Sky {
   constructor(scene, presetName, settings) {
@@ -175,6 +318,15 @@ export class Sky {
       uStars: { value: p.stars },
       uGroundGlow: { value: p.groundGlow },
       uGlowColor: { value: new THREE.Color(p.glowColor) },
+      uRayleigh: { value: p.rayleigh ?? 1.0 },
+      uScatterGain: { value: p.scatterGain ?? 40.0 },
+      uScatterMix: { value: p.scatterMix ?? 0.6 },
+      uMie: { value: p.mie ?? 1.0 },
+      uCloudAmount: { value: p.cloudAmount ?? 0.4 },
+      uCloudSharpness: { value: p.cloudSharpness ?? 0.25 },
+      uCloudColor: { value: new THREE.Color(p.cloudColor ?? 0xffffff) },
+      uCloudShadow: { value: new THREE.Color(p.cloudShadow ?? 0x8899aa) },
+      uTime: { value: 0 },
     };
 
     const geo = new THREE.SphereGeometry(1, 32, 20);
@@ -213,8 +365,18 @@ export class Sky {
       s.camera.right = 46;
       s.camera.top = 46;
       s.camera.bottom = -46;
-      s.bias = -0.0009;
-      s.normalBias = 0.035;
+      // VSM stores depth moments rather than sampling a depth test, so the
+      // slope-scaled offsets PCF needs would only smear the shadow: keep the
+      // bias tiny and let the blur radius do the softening.
+      if (settings.shadows && renderUsesVsm(settings)) {
+        s.bias = -0.0004;
+        s.normalBias = 0;
+        s.radius = 3.5;
+        s.blurSamples = 12;
+      } else {
+        s.bias = -0.0009;
+        s.normalBias = 0.035;
+      }
     }
     scene.add(this.sun);
     scene.add(this.sun.target);
@@ -279,7 +441,10 @@ export class Sky {
   }
 
   /** Keep the dome and shadow volume centred on the rider. */
-  update(focus) {
+  update(focus, dt = 0) {
+    // The deck drifts slowly. It is scrolled in the shader rather than by
+    // rotating the dome, so the sun and stars stay put.
+    this.uniforms.uTime.value += dt;
     this.mesh.position.copy(focus);
     this.mesh.updateMatrix();
     if (this.backdrop) {

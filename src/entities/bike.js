@@ -99,9 +99,18 @@ export class Bike {
 
   _materials() {
     const env = this.night ? 1.4 : 0.9;
+    const cc = this.settings.clearcoat;
+    // Automotive paint is a pigment coat under a thin clear lacquer. Modelling
+    // that second specular lobe is the single biggest difference between
+    // "coloured plastic" and "painted metal" on the hero object.
+    const Paint = cc ? THREE.MeshPhysicalMaterial : THREE.MeshStandardMaterial;
+    const paintOpts = cc
+      ? { clearcoat: 1.0, clearcoatRoughness: 0.14, reflectivity: 0.45 }
+      : {};
     const mats = {
-      paint: new THREE.MeshStandardMaterial({
-        vertexColors: true, roughness: 0.22, metalness: 0.45, envMapIntensity: env,
+      paint: new Paint({
+        vertexColors: true, roughness: 0.34, metalness: 0.25, envMapIntensity: env,
+        ...paintOpts,
       }),
       metal: new THREE.MeshStandardMaterial({
         vertexColors: true, roughness: 0.3, metalness: 0.9, envMapIntensity: env * 1.2,

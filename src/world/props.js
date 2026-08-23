@@ -30,17 +30,22 @@ function pineGeometry(rng) {
   trunk.translate(0, trunkH / 2, 0);
   parts.push(colorize(trunk, 0x4a3527));
 
-  const tiers = 3;
-  let y = trunkH * 0.75;
+  // Five overlapping skirts rather than three: the extra silhouette breaks
+  // gives a conifer its recognisable ragged outline instead of a stack of
+  // three obvious cones.
+  const tiers = 5;
+  let y = trunkH * 0.7;
   for (let i = 0; i < tiers; i++) {
     const t = i / (tiers - 1 || 1);
-    const r = lerp(h * 0.24, h * 0.10, t);
-    const ch = lerp(h * 0.42, h * 0.30, t);
-    const cone = new THREE.ConeGeometry(r, ch, 7);
+    const r = lerp(h * 0.26, h * 0.07, t);
+    const ch = lerp(h * 0.34, h * 0.24, t);
+    const cone = new THREE.ConeGeometry(r, ch, 8);
+    // A little yaw per tier stops the facets lining up into flat panels.
+    cone.rotateY(t * 2.1 + i * 0.7);
     cone.translate(0, y + ch / 2, 0);
     // Darker toward the base of each skirt, which reads as self-shadowing.
-    parts.push(colorize(cone, new THREE.Color(0x2f5226).multiplyScalar(lerp(0.78, 1.12, t))));
-    y += ch * 0.58;
+    parts.push(colorize(cone, new THREE.Color(0x2f5226).multiplyScalar(lerp(0.72, 1.16, t))));
+    y += ch * 0.5;
   }
   return mergeGeometries(parts);
 }
@@ -420,15 +425,17 @@ export class Scenery {
       }
       this.buildingMats = [];
       for (let v = 0; v < 4; v++) {
-        const { map, emissive } = buildingTextures(v, true);
+        const { map, emissive, normal } = buildingTextures(v, true);
         const mat = new THREE.MeshStandardMaterial({
           map,
           emissiveMap: emissive,
           emissive: 0xffffff,
           emissiveIntensity: 1.35,
-          roughness: 0.62,
-          metalness: 0.12,
-          envMapIntensity: 0.5,
+          normalMap: this.settings.normalMaps ? normal : null,
+          normalScale: new THREE.Vector2(0.7, 0.7),
+          roughness: 0.55,
+          metalness: 0.2,
+          envMapIntensity: 0.7,
         });
         this.buildingMats.push(mat);
         this.disposables.push(mat);
@@ -744,22 +751,26 @@ export class Scenery {
       push('lens:0', this._at(s, side * (outer - 0.8), { turn: side > 0 ? Math.PI : 0 }));
 
       if (this.settings.lightPools) {
-        // Pool of light on the tarmac beneath the lamp head.
         const lampLat = side * (outer - 0.8 - this.lampReach);
+
+        // Pool of light on the tarmac beneath the lamp head.
         push('glow:0', this._at(s, lampLat, {
-          onRoad: true,
-          dy: 0.045,
-          scaleX: 15,
-          scaleZ: 22,
-          scaleY: 1,
+          onRoad: true, dy: 0.045, scaleX: 15, scaleZ: 22, scaleY: 1,
         }));
+
+        // Wet asphalt does not scatter a lamp into a round pool — it mirrors
+        // it into a long streak running away from the viewer. One narrow,
+        // heavily elongated quad per lamp sells the wet road better than any
+        // amount of roughness tuning.
+        if (this.settings.lightStreaks && this.sky.preset.wet) {
+          push('glow:0', this._at(s, lampLat, {
+            onRoad: true, dy: 0.06, scaleX: 2.6, scaleZ: 46, scaleY: 1,
+          }));
+        }
+
         // Vertical halo around the lamp itself.
         push('halo:0', this._at(s, lampLat, {
-          onRoad: true,
-          dy: this.lampHeight,
-          scaleX: 6,
-          scaleY: 6,
-          scaleZ: 1,
+          onRoad: true, dy: this.lampHeight, scaleX: 6, scaleY: 6, scaleZ: 1,
         }));
       }
     }

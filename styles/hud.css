@@ -345,6 +345,48 @@ html, body {
 /* ------------------------------------------------------------
    Overlays
    ------------------------------------------------------------ */
+/* ------------------------------------------------------------
+   Menu backdrop
+
+   The menu is the first thing anyone sees, and on a cold load there is no
+   world behind it yet. Rather than a flat black field, the ground carries
+   the two things the game is about: a low horizon glow in the headlight's
+   colour, and streaks raking past at speed.
+   ------------------------------------------------------------ */
+#overlay-menu::before,
+#overlay-menu::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+/* Horizon: a wide, low ellipse, as if the road ran off toward a lit city. */
+#overlay-menu::before {
+  background:
+    radial-gradient(120% 62% at 50% 108%, rgba(107, 240, 173, 0.16), transparent 62%),
+    radial-gradient(90% 50% at 50% 100%, rgba(96, 150, 235, 0.14), transparent 70%);
+}
+
+/* Streaks: a raked gradient that drifts across, fading out toward the panel
+   so it never competes with the type. */
+#overlay-menu::after {
+  background-image: repeating-linear-gradient(
+    102deg,
+    transparent 0 38px,
+    rgba(190, 225, 255, 0.05) 38px 40px,
+    transparent 40px 96px
+  );
+  -webkit-mask-image: radial-gradient(75% 60% at 50% 50%, transparent 12%, #000 85%);
+  mask-image: radial-gradient(75% 60% at 50% 50%, transparent 12%, #000 85%);
+  animation: menu-streaks 5.5s linear infinite;
+}
+
+@keyframes menu-streaks {
+  from { background-position: 0 0; }
+  to   { background-position: 192px 0; }
+}
+
 .overlay {
   position: absolute; inset: 0; z-index: 20;
   display: grid; place-items: center;
@@ -360,6 +402,8 @@ html, body {
 @keyframes fade-in { from { opacity: 0; } to { opacity: 1; } }
 
 .panel {
+  position: relative;
+  z-index: 1;
   width: min(92vw, 62vmin);
   max-height: 92%;
   overflow-y: auto;
@@ -507,4 +551,5 @@ button:focus-visible, select:focus-visible {
 @media (prefers-reduced-motion: reduce) {
   .rotate-icon { animation: none; }
   .overlay, .toast { animation: none; }
+  #overlay-menu::after { animation: none; }
 }

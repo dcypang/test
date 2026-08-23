@@ -1,0 +1,14 @@
+{
+  "name": "redline-rider",
+  "version": "1.0.0",
+  "private": true,
+  "description": "A touch-first 3D motorcycle racing game that runs in the browser.",
+  "type": "module",
+  "scripts": {
+    "serve": "python3 -m http.server 8000",
+    "build": "node tools/build-standalone.mjs"
+  },
+  "devDependencies": {
+    "esbuild": "^0.28.2"
+  }
+}

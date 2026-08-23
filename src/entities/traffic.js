@@ -180,8 +180,8 @@ export class Traffic {
 
   _makeMaterials() {
     this.trimMat = new THREE.MeshStandardMaterial({
-      vertexColors: true, roughness: 0.7, metalness: 0.15,
-      envMapIntensity: this.night ? 0.9 : 0.5,
+      vertexColors: true, roughness: 0.45, metalness: 0.35,
+      envMapIntensity: this.night ? 1.3 : 0.9,
     });
     this.glowMat = new THREE.MeshStandardMaterial({
       vertexColors: true,
@@ -215,11 +215,14 @@ export class Traffic {
     const geos = this.shapeGeos[shapeIndex];
 
     const group = new THREE.Group();
-    const paintMat = new THREE.MeshStandardMaterial({
+    const cc = this.settings.clearcoat;
+    const Paint = cc ? THREE.MeshPhysicalMaterial : THREE.MeshStandardMaterial;
+    const paintMat = new Paint({
       color: pick(rng, BODY_COLORS),
-      roughness: 0.32,
-      metalness: 0.4,
+      roughness: cc ? 0.42 : 0.32,
+      metalness: cc ? 0.15 : 0.4,
       envMapIntensity: this.night ? 1.2 : 0.7,
+      ...(cc ? { clearcoat: 1.0, clearcoatRoughness: 0.08 } : {}),
     });
     this.disposables.push(paintMat);
 

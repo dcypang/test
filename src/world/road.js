@@ -8,7 +8,9 @@
 
 import * as THREE from 'three';
 import {
-  roadTexture, roadRoughnessTexture, grassTexture, dirtTexture, concreteTexture,
+  roadTexture, roadNormalTexture, roadRoughnessTexture,
+  grassTexture, grassNormalTexture, dirtTexture, dirtNormalTexture,
+  concreteTexture, concreteNormalTexture,
 } from '../engine/textures.js';
 import { makeNoise1D, fbm1D, clamp, lerp, makeCanvas } from '../engine/util.js';
 
@@ -59,10 +61,16 @@ export class RoadBuilder {
     roadMap.repeat.set(1, 1);
     const roadRough = roadRoughnessTexture({ wet });
 
+    const nm = this.settings.normalMaps;
+
     this.roadMat = new THREE.MeshStandardMaterial({
       map: roadMap,
       roughnessMap: roadRough,
-      roughness: wet ? 0.34 : 0.92,
+      normalMap: nm ? roadNormalTexture({ wet, aniso }) : null,
+      // Asphalt relief is millimetres deep. Dialling this past about 0.5
+      // turns the aggregate into gravel you could turn an ankle on.
+      normalScale: new THREE.Vector2(wet ? 0.28 : 0.45, wet ? 0.28 : 0.45),
+      roughness: wet ? 0.34 : 0.9,
       metalness: wet ? 0.35 : 0.04,
       envMapIntensity: wet ? 1.5 : 0.35,
       color: wet ? 0x8d949c : 0xffffff,
@@ -70,8 +78,11 @@ export class RoadBuilder {
 
     const vergeIsSidewalk = p.guardrail === 'kerb';
     const vergeMap = vergeIsSidewalk ? concreteTexture() : dirtTexture();
+    const vergeNormal = vergeIsSidewalk ? concreteNormalTexture() : dirtNormalTexture();
     this.vergeMat = new THREE.MeshStandardMaterial({
       map: vergeMap,
+      normalMap: nm ? vergeNormal : null,
+      normalScale: new THREE.Vector2(0.8, 0.8),
       roughness: wet ? 0.6 : 0.95,
       metalness: 0,
       envMapIntensity: wet ? 0.7 : 0.3,
@@ -79,8 +90,11 @@ export class RoadBuilder {
     });
 
     const groundMap = vergeIsSidewalk ? concreteTexture() : grassTexture(p.grass);
+    const groundNormal = vergeIsSidewalk ? concreteNormalTexture() : grassNormalTexture(p.grass);
     this.terrainMat = new THREE.MeshStandardMaterial({
       map: groundMap,
+      normalMap: nm ? groundNormal : null,
+      normalScale: new THREE.Vector2(0.6, 0.6),
       roughness: 0.98,
       metalness: 0,
       envMapIntensity: 0.2,
@@ -138,7 +152,11 @@ export class RoadBuilder {
     );
 
     // --- road surface -------------------------------------------------
-    this._ribbon(line, centre, [[-HW, -HW * 0.5, 0, HW * 0.5, HW]], this.roadMat, {
+    // Column count comes from the quality tier: more columns give the camber
+    // and the normal-mapped highlight something to interpolate across.
+    const cols = Math.max(3, this.settings.roadColumns | 0);
+    const roadLats = Array.from({ length: cols }, (_, i) => -HW + (2 * HW * i) / (cols - 1));
+    this._ribbon(line, centre, [roadLats], this.roadMat, {
       uv: (lat) => (lat + HW) / (2 * HW),
       vScale: 1 / ROAD_TILE,
       yOffset: () => 0,

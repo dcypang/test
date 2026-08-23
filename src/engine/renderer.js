@@ -27,8 +27,15 @@ export class Renderer {
     this.gl.setClearColor(0x0a0f16, 1);
 
     this.gl.shadowMap.enabled = settings.shadows;
-    this.gl.shadowMap.type = THREE.PCFSoftShadowMap;
+    // VSM gives noticeably softer, more natural contact shadows than PCF at
+    // the same map size, which matters most for the bike's own shadow.
+    this.gl.shadowMap.type = settings.name === 'medium' || settings.name === 'low'
+      ? THREE.PCFShadowMap
+      : THREE.VSMShadowMap;
     this.gl.shadowMap.autoUpdate = settings.shadows;
+
+    /** Optional post-processing chain; set by `attachPost`. */
+    this.post = null;
 
     this.maxPixelRatio = Math.min(window.devicePixelRatio || 1, settings.maxPixelRatio);
     this.adaptive = new AdaptiveResolution({
@@ -57,11 +64,19 @@ export class Renderer {
       this.camera.aspect = this.width / this.height;
       this.camera.updateProjectionMatrix();
     }
+    this.post?.resize(this.width, this.height, this.gl.getPixelRatio());
   }
 
   applyPixelRatio() {
     const ratio = clamp(this.maxPixelRatio * this.adaptive.scale, 0.5, 3);
     this.gl.setPixelRatio(ratio);
+    this.post?.resize(this.width, this.height, ratio);
+  }
+
+  /** Hand the renderer its post chain so resizes stay in one place. */
+  attachPost(post) {
+    this.post = post;
+    this.post?.resize(this.width, this.height, this.gl.getPixelRatio());
   }
 
   /** Call once per frame with the frame delta in seconds. */
@@ -70,7 +85,13 @@ export class Renderer {
   }
 
   render(scene, camera) {
-    this.gl.render(scene, camera);
+    // A composer issues several `gl.render` calls per frame and three resets
+    // its counters on each one, so the stats would only ever describe the last
+    // full-screen quad. Reset once per frame instead and let them accumulate.
+    this.gl.info.autoReset = false;
+    this.gl.info.reset();
+    if (this.post) this.post.render(scene, camera);
+    else this.gl.render(scene, camera);
   }
 
   dispose() {
