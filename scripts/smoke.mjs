@@ -49,7 +49,7 @@ async function waitFor(fn, timeout, label) {
 }
 
 console.log('waiting for boot...');
-const booted = await waitFor(() => window.__game && window.__game.state === 'menu', 180000, 'menu');
+const booted = await waitFor(() => window.__game && window.__game.state === 'menu', 600000, 'menu');
 console.log('booted:', booted);
 if (booted) {
   await page.evaluate(() => {

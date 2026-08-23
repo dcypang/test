@@ -487,6 +487,8 @@ class Hud {
     // The states, under everything else: a block of the state's own colour, its
     // name across the middle, and a brighter edge on the one you are in. This
     // is the layer that turns a tangle of roads into a country.
+    // Boxes that labels must not land on: the state names, filled in below.
+    const reserved = [];
     if (state.states && state.stateBounds) {
       const b = state.stateBounds;
       const here = state.currentState;
@@ -500,9 +502,21 @@ class Hud {
         ctx.strokeStyle = st === here ? 'rgba(255, 209, 102, 0.85)' : 'rgba(255,255,255,0.16)';
         ctx.lineWidth = st === here ? 2 : 1;
         ctx.strokeRect(ax, ay, bx - ax, by - ay);
-        this.text(st.name.toUpperCase(), (ax + bx) / 2, ay + 20, 13,
+        // Fifty-six cells means some are narrower than their state's name, so
+        // anything that will not fit falls back to the postal code rather than
+        // running into next door.
+        const size = 13;
+        ctx.font = `700 ${size}px ${this.font}`;
+        const full = st.name.toUpperCase();
+        const room = (bx - ax) - 10;
+        const label = ctx.measureText(full).width <= room ? full : st.abbr;
+        const half = ctx.measureText(label).width / 2;
+        const lx = (ax + bx) / 2, ly = ay + 20;
+        this.text(label, lx, ly, size,
           st === here ? 'rgba(255, 209, 102, 0.9)' : 'rgba(255,255,255,0.30)',
           'center', 700);
+        // Destination labels have to keep off it, or the two overprint.
+        reserved.push({ x0: lx - half - 3, y0: ly - size, x1: lx + half + 3, y1: ly + 4 });
       }
     }
 
@@ -577,7 +591,7 @@ class Hud {
     // ring of candidate positions and takes the first one that is clear of
     // every label and pin already down. The chosen destination goes first so
     // it always gets the spot it wants.
-    const boxes = pins.map((p) => ({ x0: p.sx - 10, y0: p.sy - 10, x1: p.sx + 10, y1: p.sy + 10 }));
+    const boxes = reserved.concat(pins.map((p) => ({ x0: p.sx - 10, y0: p.sy - 10, x1: p.sx + 10, y1: p.sy + 10 })));
     const hits = (b) => boxes.some((o) =>
       b.x0 < o.x1 && b.x1 > o.x0 && b.y0 < o.y1 && b.y1 > o.y0);
     // Straight up and down first, then progressively further out to the side:

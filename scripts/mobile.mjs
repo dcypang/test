@@ -48,7 +48,7 @@ const check = (name, pass, detail = '') => {
   console.log(`${pass ? ' ok ' : 'FAIL'}  ${name}${detail ? '  ' + detail : ''}`);
 };
 
-await waitFor(() => window.__game && window.__game.state === 'menu', 240000, 'menu');
+await waitFor(() => window.__game && window.__game.state === 'menu', 600000, 'menu');
 check('detected as a touch device', await page.evaluate(() => window.__game.isTouch));
 check('auto-selected the light render preset',
   await page.evaluate(() => window.__game.settings.quality === 'fast'

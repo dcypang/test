@@ -320,31 +320,44 @@ class MeshBuilder {
   // Returns builders, not meshes, so the caller decides what to upload.
   chunk(cellSize) {
     const v = this.verts, idx = this.indices;
-    const buckets = new Map();
     const key = (x, z) => Math.floor(x / cellSize) * 100003 + Math.floor(z / cellSize);
+
+    // Vertices are remapped through a pair of typed arrays rather than a Map
+    // per bucket. This runs over every triangle in the world - several million
+    // of them once the country is built - and at that size a Map lookup and a
+    // dozen separate pushes per vertex was half the entire scene build.
+    const vertCount = v.length / VERTEX_FLOATS;
+    const remap = new Int32Array(vertCount);
+    const stamp = new Int32Array(vertCount).fill(-1);
+    const buckets = [];
+    const byKey = new Map();
 
     for (let t = 0; t < idx.length; t += 3) {
       const a = idx[t] * VERTEX_FLOATS, b = idx[t + 1] * VERTEX_FLOATS, c = idx[t + 2] * VERTEX_FLOATS;
       const cx = (v[a] + v[b] + v[c]) / 3;
       const cz = (v[a + 2] + v[b + 2] + v[c + 2]) / 3;
       const k = key(cx, cz);
-      let bucket = buckets.get(k);
-      if (!bucket) { bucket = { mb: new MeshBuilder(), remap: new Map() }; buckets.set(k, bucket); }
-      const out = bucket.mb;
-      const tri = [];
-      for (const src of [idx[t], idx[t + 1], idx[t + 2]]) {
-        let dst = bucket.remap.get(src);
-        if (dst === undefined) {
-          dst = out.verts.length / VERTEX_FLOATS;
-          const o = src * VERTEX_FLOATS;
-          for (let f = 0; f < VERTEX_FLOATS; f++) out.verts.push(v[o + f]);
-          bucket.remap.set(src, dst);
-        }
-        tri.push(dst);
+      let bi = byKey.get(k);
+      if (bi === undefined) {
+        bi = buckets.length;
+        byKey.set(k, bi);
+        buckets.push(new MeshBuilder());
       }
-      out.indices.push(tri[0], tri[1], tri[2]);
+      const out = buckets[bi];
+      const ov = out.verts, oi = out.indices;
+      for (let n = 0; n < 3; n++) {
+        const src = idx[t + n];
+        if (stamp[src] !== bi) {
+          stamp[src] = bi;
+          remap[src] = ov.length / VERTEX_FLOATS;
+          const o = src * VERTEX_FLOATS;
+          ov.push(v[o], v[o + 1], v[o + 2], v[o + 3], v[o + 4], v[o + 5],
+            v[o + 6], v[o + 7], v[o + 8], v[o + 9], v[o + 10], v[o + 11], v[o + 12]);
+        }
+        oi.push(remap[src]);
+      }
     }
-    return Array.from(buckets.values()).map((b) => b.mb);
+    return buckets;
   }
 
   bounds() {

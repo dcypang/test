@@ -5,7 +5,7 @@ const b = await chromium.launch({ args: ['--use-gl=angle','--use-angle=swiftshad
 const p = await (await b.newContext({ viewport:{width:640,height:400} })).newPage();
 await p.goto('file:///home/user/test/index.html');
 const t0=Date.now();
-while (Date.now()-t0 < 240000) { if (await p.evaluate(()=>window.__game&&window.__game.state==='menu').catch(()=>false)) break; await p.waitForTimeout(300); }
+while (Date.now()-t0 < 600000) { if (await p.evaluate(()=>window.__game&&window.__game.state==='menu').catch(()=>false)) break; await p.waitForTimeout(300); }
 const r = await p.evaluate(() => {
   const g = window.__game;
   // Static scene meshes are chunked for culling, so each is an array of parts.

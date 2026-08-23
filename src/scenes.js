@@ -600,64 +600,140 @@ const HOME_ZONES = [
 
 // --- the states -------------------------------------------------------------
 //
-// Twelve real ones, laid out the way they actually sit: Washington, Idaho,
-// Montana and North Dakota across the north; Oregon, Nevada, Wyoming and South
-// Dakota through the middle; California, Arizona, Colorado and Nebraska along
-// the south. Each is 1400 by 1300 metres, and the interstates run the length of
-// every row and column. They are not
-// separate places you get taken to: it is one continuous world with one road
-// network, so the state line is just a sign you drive past.
+// All fifty-six of them: the fifty states, the District of Columbia, and the
+// five territories. Laid out eight across and seven down in roughly the order
+// they sit on a real map - the Pacific north-west at the top left, New England
+// down the right, the south-west and the islands along the bottom - so that
+// driving east really does take you east.
 //
-// Each state gets its own ground colour and its own town. The tints only ever
-// darken or shift hue, never brighten: pushing the ground toward white walks it
-// straight into the fog colour, and the world starts looking like it ends a few
-// hundred metres away. Ashcombe, where the
-// race and the house are, is the capital and by far the biggest; the rest run
-// from proper towns down to a few blocks at an interstate junction. That is
-// deliberate - eight identical grids would be eight of the same place.
-const STATE_W = 1400, STATE_D = 1300;
-const STATE_X0 = -1550, STATE_Z0 = -250;
-const STATE_COLS = 4, STATE_ROWS = 3;
+// They are not separate places you get taken to. It is one continuous world
+// with one road network, so a state line is just a sign you drive past.
+//
+// Idaho is the home state and holds Ashcombe, the circuit road and the house,
+// which is why every cell is 1400 by 1200 metres: that is what Ashcombe needs.
+// The rest carry a town of a few blocks, which is the point - fifty-six copies
+// of the same grid would be fifty-six of the same place.
+// The grid is not uniform, and cannot be. Idaho holds Ashcombe, the circuit
+// road and the house, which together need 1400 by 1200 metres; every other
+// state needs room for a town of a few blocks and some open country. Sizing all
+// fifty-six cells for Idaho doubled the country's area - and its terrain, its
+// trees and its load time - for empty ground nobody would ever drive across. So
+// Idaho's column and row are wide and the rest are not.
+const STATE_COLS = 8, STATE_ROWS = 7;
+const HOME_COL = 1, HOME_ROW = 1;
+const COL_W = [], ROW_D = [];
+for (let c = 0; c < STATE_COLS; c++) COL_W.push(c === HOME_COL ? 1400 : 900);
+for (let r = 0; r < STATE_ROWS; r++) ROW_D.push(r === HOME_ROW ? 1200 : 800);
+// Anchored so Idaho's cell lands over the content that is already there.
+const COL_X = [-1000], ROW_Z = [-890];
+for (let c = 0; c < STATE_COLS; c++) COL_X.push(COL_X[c] + COL_W[c]);
+for (let r = 0; r < STATE_ROWS; r++) ROW_Z.push(ROW_Z[r] + ROW_D[r]);
+const STATE_X0 = COL_X[0], STATE_Z0 = ROW_Z[0];
+const STATE_X1 = COL_X[STATE_COLS], STATE_Z1 = ROW_Z[STATE_ROWS];
 
-const STATES = [
-  { col: 0, row: 0, name: 'Washington', abbr: 'WA', capital: 'Spokane',
-    tint: [0.66, 0.86, 0.68], town: { cols: 5, rows: 4, gap: 96 }, trees: 1.6 },
-  { col: 1, row: 0, name: 'Idaho', abbr: 'ID', capital: 'Ashcombe',
-    tint: [1, 1, 1], town: null, trees: 1 },
-  { col: 2, row: 0, name: 'Montana', abbr: 'MT', capital: 'Bozeman',
-    tint: [1.00, 0.92, 0.58], town: { cols: 6, rows: 4, gap: 98 }, trees: 0.5 },
-  { col: 3, row: 0, name: 'North Dakota', abbr: 'ND', capital: 'Minot',
-    tint: [0.88, 0.94, 0.72], town: { cols: 4, rows: 3, gap: 110 }, trees: 0.35 },
-  { col: 0, row: 1, name: 'Oregon', abbr: 'OR', capital: 'Bend',
-    tint: [0.74, 0.96, 0.78], town: { cols: 4, rows: 4, gap: 96 }, trees: 1.3 },
-  { col: 1, row: 1, name: 'Nevada', abbr: 'NV', capital: 'Elko',
-    tint: [1.05, 0.72, 0.50], town: { cols: 5, rows: 4, gap: 100 }, trees: 0.15 },
-  { col: 2, row: 1, name: 'Wyoming', abbr: 'WY', capital: 'Cody',
-    tint: [0.88, 0.90, 0.98], town: { cols: 5, rows: 3, gap: 106 }, trees: 0.6 },
-  { col: 3, row: 1, name: 'South Dakota', abbr: 'SD', capital: 'Pierre',
-    tint: [1.02, 0.90, 0.62], town: { cols: 4, rows: 3, gap: 100 }, trees: 0.45 },
-  { col: 0, row: 2, name: 'California', abbr: 'CA', capital: 'Redding',
-    tint: [1.02, 0.94, 0.66], town: { cols: 5, rows: 4, gap: 98 }, trees: 0.8 },
-  { col: 1, row: 2, name: 'Arizona', abbr: 'AZ', capital: 'Flagstaff',
-    tint: [1.08, 0.78, 0.56], town: { cols: 4, rows: 3, gap: 106 }, trees: 0.2 },
-  { col: 2, row: 2, name: 'Colorado', abbr: 'CO', capital: 'Durango',
-    tint: [0.86, 0.92, 0.86], town: { cols: 5, rows: 3, gap: 102 }, trees: 1.0 },
-  { col: 3, row: 2, name: 'Nebraska', abbr: 'NE', capital: 'Kearney',
-    tint: [0.96, 0.96, 0.64], town: { cols: 4, rows: 3, gap: 104 }, trees: 0.3 },
+// Ground colour and tree cover by the kind of country it is, rather than fifty
+// six hand-picked colours. The tints only ever darken or shift hue, never
+// brighten: pushing the ground toward white walks it into the fog colour, and
+// the world starts looking like it ends a few hundred metres away.
+const BIOMES = {
+  forest:    { tint: [0.66, 0.86, 0.68], trees: 1.6 },
+  temperate: { tint: [0.86, 0.96, 0.80], trees: 1.0 },
+  plains:    { tint: [1.00, 0.92, 0.58], trees: 0.4 },
+  desert:    { tint: [1.05, 0.72, 0.50], trees: 0.15 },
+  golden:    { tint: [1.02, 0.94, 0.66], trees: 0.7 },
+  south:     { tint: [0.92, 0.98, 0.66], trees: 1.2 },
+  cold:      { tint: [0.88, 0.90, 0.98], trees: 0.7 },
+  tropical:  { tint: [0.72, 0.98, 0.70], trees: 1.8 },
+};
+
+// Row by row, west to east. Every cell is filled, so the grid lookup is plain
+// arithmetic rather than a search.
+const STATE_TABLE = [
+  ['WA', 'Washington', 'Spokane', 'forest'],
+  ['MT', 'Montana', 'Bozeman', 'plains'],
+  ['ND', 'North Dakota', 'Minot', 'plains'],
+  ['MN', 'Minnesota', 'Duluth', 'forest'],
+  ['WI', 'Wisconsin', 'Eau Claire', 'forest'],
+  ['MI', 'Michigan', 'Traverse City', 'forest'],
+  ['NY', 'New York', 'Ithaca', 'temperate'],
+  ['ME', 'Maine', 'Bangor', 'forest'],
+
+  ['OR', 'Oregon', 'Bend', 'forest'],
+  ['ID', 'Idaho', 'Ashcombe', 'temperate'],
+  ['WY', 'Wyoming', 'Cody', 'plains'],
+  ['SD', 'South Dakota', 'Pierre', 'plains'],
+  ['IA', 'Iowa', 'Ames', 'temperate'],
+  ['IL', 'Illinois', 'Peoria', 'temperate'],
+  ['PA', 'Pennsylvania', 'Altoona', 'temperate'],
+  ['VT', 'Vermont', 'Rutland', 'forest'],
+
+  ['CA', 'California', 'Redding', 'golden'],
+  ['NV', 'Nevada', 'Elko', 'desert'],
+  ['UT', 'Utah', 'Moab', 'desert'],
+  ['CO', 'Colorado', 'Durango', 'plains'],
+  ['NE', 'Nebraska', 'Kearney', 'plains'],
+  ['IN', 'Indiana', 'Kokomo', 'temperate'],
+  ['OH', 'Ohio', 'Lima', 'temperate'],
+  ['NH', 'New Hampshire', 'Berlin', 'forest'],
+
+  ['AK', 'Alaska', 'Homer', 'cold'],
+  ['AZ', 'Arizona', 'Flagstaff', 'desert'],
+  ['NM', 'New Mexico', 'Gallup', 'desert'],
+  ['KS', 'Kansas', 'Salina', 'plains'],
+  ['MO', 'Missouri', 'Rolla', 'temperate'],
+  ['KY', 'Kentucky', 'Corbin', 'temperate'],
+  ['WV', 'West Virginia', 'Elkins', 'temperate'],
+  ['MA', 'Massachusetts', 'Pittsfield', 'temperate'],
+
+  ['HI', 'Hawaii', 'Hilo', 'tropical'],
+  ['GU', 'Guam', 'Dededo', 'tropical'],
+  ['OK', 'Oklahoma', 'Enid', 'plains'],
+  ['AR', 'Arkansas', 'Conway', 'south'],
+  ['TN', 'Tennessee', 'Cookeville', 'temperate'],
+  ['VA', 'Virginia', 'Staunton', 'temperate'],
+  ['MD', 'Maryland', 'Cumberland', 'temperate'],
+  ['CT', 'Connecticut', 'Danbury', 'temperate'],
+
+  ['MP', 'Northern Marianas', 'Saipan', 'tropical'],
+  ['AS', 'American Samoa', 'Pago Pago', 'tropical'],
+  ['TX', 'Texas', 'Abilene', 'golden'],
+  ['LA', 'Louisiana', 'Monroe', 'south'],
+  ['MS', 'Mississippi', 'Meridian', 'south'],
+  ['AL', 'Alabama', 'Dothan', 'south'],
+  ['NC', 'North Carolina', 'Hickory', 'temperate'],
+  ['RI', 'Rhode Island', 'Westerly', 'temperate'],
+
+  ['PR', 'Puerto Rico', 'Ponce', 'tropical'],
+  ['VI', 'US Virgin Islands', 'Christiansted', 'tropical'],
+  ['DC', 'District of Columbia', 'Georgetown', 'temperate'],
+  ['DE', 'Delaware', 'Dover', 'temperate'],
+  ['NJ', 'New Jersey', 'Vineland', 'temperate'],
+  ['GA', 'Georgia', 'Valdosta', 'south'],
+  ['SC', 'South Carolina', 'Florence', 'south'],
+  ['FL', 'Florida', 'Ocala', 'tropical'],
 ];
-for (const s of STATES) {
-  s.x0 = STATE_X0 + s.col * STATE_W;
-  s.z0 = STATE_Z0 + s.row * STATE_D;
-  s.x1 = s.x0 + STATE_W;
-  s.z1 = s.z0 + STATE_D;
-  s.cx = (s.x0 + s.x1) / 2;
-  s.cz = (s.z0 + s.z1) / 2;
-}
+
+const STATES = STATE_TABLE.map(([abbr, name, capital, biome], i) => {
+  const col = i % STATE_COLS, row = Math.floor(i / STATE_COLS);
+  const b = BIOMES[biome];
+  const x0 = COL_X[col], z0 = ROW_Z[row];
+  // Town size varies with the code so no two neighbours come out the same
+  // shape. Idaho has Ashcombe, which is built separately and far larger.
+  const h = (abbr.charCodeAt(0) * 31 + abbr.charCodeAt(1)) % 3;
+  return {
+    abbr, name, capital, biome, col, row,
+    tint: b.tint, trees: b.trees,
+    town: abbr === 'ID' ? null
+      : { cols: 2 + (h > 1 ? 1 : 0), rows: 2 + (h > 0 ? 1 : 0), gap: 92 + h * 8 },
+    x0, z0, x1: COL_X[col + 1], z1: ROW_Z[row + 1],
+    cx: (x0 + COL_X[col + 1]) / 2, cz: (z0 + ROW_Z[row + 1]) / 2,
+  };
+});
 
 function stateAt(x, z) {
-  const col = Math.floor((x - STATE_X0) / STATE_W);
-  const row = Math.floor((z - STATE_Z0) / STATE_D);
-  if (col < 0 || col >= STATE_COLS || row < 0 || row >= STATE_ROWS) return null;
+  if (x < STATE_X0 || x >= STATE_X1 || z < STATE_Z0 || z >= STATE_Z1) return null;
+  let col = 0; while (col < STATE_COLS - 1 && x >= COL_X[col + 1]) col++;
+  let row = 0; while (row < STATE_ROWS - 1 && z >= ROW_Z[row + 1]) row++;
   return STATES[row * STATE_COLS + col];
 }
 
@@ -682,7 +758,7 @@ function makeTownGrid(world, opts) {
   const add = (pts, o) => {
     const p = world.addPath(new Path(xz(pts), Object.assign({
       closed: false, halfWidth: 3.6, surface: SURFACES.asphalt, kerbs: false,
-      type: 'street', markings: false, spacing: 5.0,
+      type: 'street', markings: false, spacing: 7.5,
     }, o)));
     // The town name rides alongside the road type rather than inside it, so
     // "Avenue" keeps meaning the same thing everywhere while the map can still
@@ -799,13 +875,8 @@ function buildHomeRoute(gl) {
     addSide([[colX[2], rowZ[CITY.rows]], [colX[2] - 12, rowZ[CITY.rows] + 60], [244, 486]]);
     addSide([[colX[5], rowZ[CITY.rows]], [colX[5] + 18, rowZ[CITY.rows] + 55], [470, 424]]);
     addSide([[470, 424], [468, 330], [472, 250]]);
-    // And a ramp off the north end of the grid onto the interstate. Every other
-    // state's town gets one automatically; Ashcombe is built separately as the
-    // capital and was missed, which meant the only paved way out of the city
-    // was to double back down the route home toward the circuit first.
-    addSide([[colX[3], rowZ[0]], [colX[3] - 40, rowZ[0] - 120],
-      [colX[3] - 150, rowZ[0] - 240], [-80, -40]],
-    { halfWidth: 4.6, markings: true, name: 'Ashcombe Interchange' });
+    // Ashcombe's own interchange is added after the interstates exist, further
+    // down, since it has to find the nearest one like every other town's.
   }
 
   // --- the rest of the country ----------------------------------------------
@@ -822,47 +893,76 @@ function buildHomeRoute(gl) {
   // Every one is placed off its state's centre so it runs past the towns rather
   // than through them, and I-15 threads the gap west of Ashcombe rather than
   // ploughing through the city and the house.
+  // The interstate network. Seven run east-west, one along each row, and four
+  // run north-south. The numbers are the real ones in roughly the right order -
+  // I-94 across the top down to I-10 along the bottom, I-5 on the west coast
+  // and I-95 on the east - because a number you recognise tells you where you
+  // are before the sign does.
   const interstates = [];
   {
     const hwy = (pts, name) => {
       const p = world.addPath(new Path(xz(pts), {
         closed: false, halfWidth: 7.2, surface: SURFACES.asphalt, kerbs: false,
-        type: 'road', markings: true, spacing: 6.0, name,
+        type: 'road', markings: true, spacing: 9.0, name,
       }));
       interstates.push(p);
       return p;
     };
-    const EAST_WEST = [
-      { row: 0, frac: 0.12, name: 'Interstate 90' },
-      { row: 1, frac: 0.52, name: 'Interstate 80' },
-      { row: 2, frac: 0.50, name: 'Interstate 40' },
-    ];
-    for (const h of EAST_WEST) {
-      const z = STATE_Z0 + h.row * STATE_D + STATE_D * h.frac;
+    // North to south. Each sits off its row's centre so it runs past the towns
+    // rather than through them.
+    const EAST_WEST = ['Interstate 94', 'Interstate 90', 'Interstate 80',
+      'Interstate 70', 'Interstate 40', 'Interstate 20', 'Interstate 10'];
+    EAST_WEST.forEach((name, row) => {
+      const z = ROW_Z[row] + ROW_D[row] * (row % 2 ? 0.20 : 0.80);
       const pts = [];
       for (let c = 0; c <= STATE_COLS * 2; c++) {
-        const x = STATE_X0 + (c / (STATE_COLS * 2)) * STATE_W * STATE_COLS;
+        const x = STATE_X0 + (c / (STATE_COLS * 2)) * (STATE_X1 - STATE_X0);
         pts.push([x, z + Math.sin(c * 0.7) * 26]);
       }
-      hwy(pts, h.name);
-    }
+      hwy(pts, name);
+    });
+    // West to east. Column 1 is Idaho, and its share of the grid is taken up by
+    // Ashcombe, so the western pair straddle it rather than run through it.
     const NORTH_SOUTH = [
-      { col: 0, frac: 0.55, name: 'Interstate 5' },
-      { col: 1, frac: 0.05, name: 'Interstate 15' },
-      { col: 2, frac: 0.55, name: 'Interstate 25' },
-      { col: 3, frac: 0.50, name: 'Interstate 29' },
+      { col: 0, frac: 0.50, name: 'Interstate 5' },
+      { col: 2, frac: 0.22, name: 'Interstate 15' },
+      { col: 5, frac: 0.50, name: 'Interstate 35' },
+      { col: 7, frac: 0.62, name: 'Interstate 95' },
     ];
     for (const h of NORTH_SOUTH) {
-      const x = STATE_X0 + h.col * STATE_W + STATE_W * h.frac;
+      const x = COL_X[h.col] + COL_W[h.col] * h.frac;
       const pts = [];
-      const steps = 4 * STATE_ROWS;
+      const steps = 3 * STATE_ROWS;
       for (let r = 0; r <= steps; r++) {
-        const z = STATE_Z0 + (r / steps) * STATE_D * STATE_ROWS;
+        const z = STATE_Z0 + (r / steps) * (STATE_Z1 - STATE_Z0);
         pts.push([x + Math.sin(r * 0.8) * 22, z]);
       }
       hwy(pts, h.name);
     }
   }
+
+  // A slip road from anywhere to the nearest interstate. Every town gets one,
+  // Ashcombe included - it is the only way a grid in the middle of a state is
+  // part of the country rather than an island in it.
+  const slipRoad = (fromX, fromZ, name, halfWidth = 4.2) => {
+    let best = null, bestD = Infinity;
+    for (const hw of interstates) {
+      const sp = hw.spline;
+      for (let i = 2; i < sp.count - 2; i++) {
+        const d = Math.hypot(sp.points[i][0] - fromX, sp.points[i][2] - fromZ);
+        if (d < bestD) { bestD = d; best = sp.points[i]; }
+      }
+    }
+    if (!best) return null;
+    return world.addPath(new Path(xz([
+      [fromX, fromZ],
+      [(fromX + best[0]) / 2, (fromZ + best[2]) / 2],
+      [best[0], best[2]],
+    ]), {
+      closed: false, halfWidth, surface: SURFACES.asphalt, kerbs: false,
+      type: 'road', markings: true, spacing: 6.0, name,
+    }));
+  };
 
   // Towns, one per state. Ashcombe already has its own, far larger grid.
   const stateTowns = [];
@@ -876,27 +976,19 @@ function buildHomeRoute(gl) {
       seed: 4100 + st.col * 37 + st.row * 91, town: st.capital,
     });
     stateTowns.push(g);
-    // A slip road from the town out to the nearest interstate.
-    let best = null, bestD = Infinity;
-    for (const hw of interstates) {
-      const sp = hw.spline;
-      for (let i = 2; i < sp.count - 2; i++) {
-        const dd = Math.hypot(sp.points[i][0] - st.cx, sp.points[i][2] - st.cz);
-        if (dd < bestD) { bestD = dd; best = sp.points[i]; }
-      }
-    }
-    if (best) {
-      const edgeZ = st.cz - d / 2 > best[2] ? st.cz - d / 2 : st.cz + d / 2;
-      world.addPath(new Path(xz([
-        [st.cx, edgeZ],
-        [(st.cx + best[0]) / 2, (edgeZ + best[2]) / 2],
-        [best[0], best[2]],
-      ]), {
-        closed: false, halfWidth: 4.2, surface: SURFACES.asphalt, kerbs: false,
-        type: 'road', markings: true, spacing: 6.0, name: `${st.capital} Road`,
-      }));
-    }
+    // Out to the interstate from an actual junction of the grid, not from the
+    // midpoint of the town's edge - that lands between two streets as often as
+    // not, and a slip road that touches nothing leaves the whole town stranded.
+    const mid = Math.floor(cols / 2);
+    slipRoad(g.colX[mid], g.rowZ[0], `${st.capital} Road`);
+    slipRoad(g.colX[mid], g.rowZ[rows], `${st.capital} Spur`);
   }
+  // And Ashcombe's, off the north end of the city grid. Every other town gets
+  // one automatically; the capital is built separately and was missed, which
+  // once meant the only paved way out of the city was to double back down the
+  // route home toward the circuit first.
+  slipRoad(cityStreets[3].spline.points[0][0], cityStreets[3].spline.points[0][2],
+    'Ashcombe Interchange', 4.6);
 
   // The driveway at the end of the road.
   const driveway = world.addPath(new Path(xz([[502, 858], [500, 878], [499, 892]]), {
@@ -911,9 +1003,9 @@ function buildHomeRoute(gl) {
   // keeps the triangle count in hand over an area fourteen times the size; it
   // is chunked, so only what the camera can see is ever submitted.
   const terrainMB = buildTerrainMesh(world, {
-    minX: STATE_X0 - 120, maxX: STATE_X0 + STATE_W * STATE_COLS + 120,
-    minZ: STATE_Z0 - 120, maxZ: STATE_Z0 + STATE_D * STATE_ROWS + 120,
-    cell: 16,
+    minX: STATE_X0 - 120, maxX: STATE_X1 + 120,
+    minZ: STATE_Z0 - 120, maxZ: STATE_Z1 + 120,
+    cell: 26,
     // Each state has its own ground colour, so crossing a line looks like
     // crossing a line even before you read the sign.
     tintAt: (x, z) => {
@@ -1224,13 +1316,16 @@ function buildHomeRoute(gl) {
         }
         return null;
       };
-      const fuel = pick(15, 90, station, si * 7);
+      // Far enough apart that they stay two pins on a map of a whole country:
+      // at this scale eighty metres is a dozen pixels, and two pins a dozen
+      // pixels apart are one pin.
+      const fuel = pick(15, 130, station, si * 7);
       if (fuel) {
         addPlace('fuel', `${st.capital} Fuel`, fuel.x, fuel.z, fuel.yaw + Math.PI, station, 11);
       }
       const mb = new MeshBuilder();
       buildTownBuilding(mb, prng, { width: rnd2(prng, 12, 16), depth: 11, floors: 2 });
-      const shop = pick(11.5, 80, mb, si * 7 + 4);
+      const shop = pick(11.5, 130, mb, si * 7 + 4);
       if (shop) {
         addPlace('shop', `${st.capital} ${SHOP_NAMES[si % SHOP_NAMES.length]}`,
           shop.x, shop.z, shop.yaw, mb, 9);
@@ -1298,7 +1393,7 @@ function buildHomeRoute(gl) {
     if (!g) return;
     fillTownBlocks(world, g.streets, propMB, roadMB, {
       rng: makeRng(9000 + i * 131), shops: townShops, lib,
-      gapChance: 0.42, step: 6,
+      gapChance: 0.55, step: 7,
     });
   });
 
@@ -1345,9 +1440,9 @@ function buildHomeRoute(gl) {
   // Pinecrest is
   // forest, Redrock is nearly bare, and you can tell which one you are in from
   // the driver's seat.
-  for (let i = 0; i < 15000; i++) {
-    const x = rnd2(rng, STATE_X0, STATE_X0 + STATE_W * STATE_COLS);
-    const z = rnd2(rng, STATE_Z0, STATE_Z0 + STATE_D * STATE_ROWS);
+  for (let i = 0; i < 8000; i++) {
+    const x = rnd2(rng, STATE_X0, STATE_X1);
+    const z = rnd2(rng, STATE_Z0, STATE_Z1);
     const st = stateAt(x, z);
     if (!st) continue;
     const hit = world.query(x, z);
@@ -1513,8 +1608,8 @@ function buildHomeRoute(gl) {
     stateAt,
     stateBounds: {
       x0: STATE_X0, z0: STATE_Z0,
-      x1: STATE_X0 + STATE_W * STATE_COLS, z1: STATE_Z0 + STATE_D * STATE_ROWS,
-      w: STATE_W, d: STATE_D, cols: STATE_COLS, rows: STATE_ROWS,
+      x1: STATE_X1, z1: STATE_Z1,
+      cols: STATE_COLS, rows: STATE_ROWS,
     },
     trafficLights,
     routeLength: total,

@@ -31,45 +31,55 @@ to a stop, and the shopping is on the passenger seat when you get home. It costs
 nothing but time. The drive ends when the car is stopped in front of the garage
 with the light on.
 
-## Twelve states, and going wherever you like
+## Fifty-six states, and going wherever you like
 
-The world is a country: **twelve states**, laid out the way they actually sit —
-**Washington, Idaho, Montana and North Dakota** across the north, **Oregon,
-Nevada, Wyoming and South Dakota** through the middle, and **California,
-Arizona, Colorado and Nebraska** along the south. **5,600 by 3,900 metres —
-about 22 km²** of continuous ground. Nevada and Arizona are desert, Washington
-is evergreen, Wyoming runs cold and blue, Montana and Nebraska are gold
-stubble. Each has its own ground colour, its own tree density, its own town and
-its own petrol station and shop.
+The world is the whole country: **all fifty states, the District of Columbia
+and the five territories** — 56 in total, laid out eight across and seven down
+in roughly the order they sit on a real map. The Pacific north-west at the top
+left, New England down the right, the south along the bottom, the islands in
+the corners. Driving east really does take you east.
+
+**7,700 by 6,000 metres — about 46 km²** of continuous ground. Ground colour
+and tree cover come from the kind of country each one is rather than fifty-six
+hand-picked palettes: Nevada, Utah, Arizona and New Mexico are bare desert;
+Washington, Oregon, Maine and the lake states are evergreen; the Dakotas and
+the plains are gold stubble; Hawaii and the territories are tropical.
+
+The grid is deliberately **not uniform**. Idaho holds Ashcombe, the circuit
+road and the house, and needs 1,400 by 1,200 metres; every other state needs
+room for a town of a few blocks. Sizing all fifty-six cells for Idaho doubled
+the country's area — and its terrain, its trees and its load time — for empty
+ground nobody would ever drive across, so Idaho's column and row are wide and
+the rest are not.
 
 They are not separate places you get taken to. It is one world with one road
 network, so a state line is just a sign you drive past — the ground colour
 changes, the HUD names the new state, and nothing loads.
 
-**Seven interstates** carry you between them, numbered for roughly the ground
-they cover, because a highway you recognise tells you where you are before the
-sign does:
+**Eleven interstates** carry you between them, numbered the way the real ones
+are, because a number you recognise tells you where you are before the sign
+does:
 
 | | |
 |---|---|
-| **I-90** | east–west across the north: Washington, Idaho, Montana, North Dakota |
-| **I-80** | east–west through the middle: Oregon, Nevada, Wyoming, South Dakota |
-| **I-40** | east–west along the south: California, Arizona, Colorado, Nebraska |
-| **I-5** | north–south down the west: Washington → Oregon → California |
-| **I-15** | north–south past Ashcombe: Idaho → Nevada → Arizona |
-| **I-25** | north–south through the mountains: Montana → Wyoming → Colorado |
-| **I-29** | north–south out east: North Dakota → South Dakota → Nebraska |
+| **I-94, I-90, I-80, I-70, I-40, I-20, I-10** | east–west, one along each row, north to south |
+| **I-5** | north–south down the west coast |
+| **I-15** | north–south through the mountain west |
+| **I-35** | north–south up the middle |
+| **I-95** | north–south down the east coast |
 
-Every town has a slip road onto the nearest one, and Ashcombe has an
-interchange off the north end of its grid, so **all 161 roads in the country
+Every town has two slip roads onto the nearest one, anchored to a real junction
+of its grid rather than to the midpoint of its edge — that lands between two
+streets as often as not, and a slip road touching nothing leaves a whole town
+stranded, which is exactly what happened first. **All 545 roads in the country
 are reachable from your own driveway** without leaving the tarmac. That is not
 a claim, it is a test: `solid.mjs` unions every pair of roads whose tarmac
 overlaps and floods out from the drive.
 
 Ashcombe, in Idaho, is much the biggest town: **twelve avenues and ten cross
 streets** over about 1,150 by 840 metres, with buildings lining every frontage.
-The others run from proper towns down to a few blocks at an interstate
-junction, because twelve identical grids would be twelve of the same place.
+The other fifty-five carry a town of a few blocks each, which is the point —
+fifty-six copies of the same grid would be fifty-six of the same place.
 
 No grid is a lattice: streets bow by a few metres and the spacing varies block
 to block, because a perfect grid reads as a spreadsheet from inside the car and
@@ -90,9 +100,12 @@ is just getting lost.
 
 `Tab` — or the map button on a phone — puts the whole country on screen: every
 state as a block in its own colour with its name across it, the one you are in
-picked out, the whole road network, and all **32 destinations** — **home**, the
-**other house**, seventeen named **shops**, and **thirteen petrol stations**, at
-least one of each in every state. Pick one with `A` / `D` and `Enter`, or by tapping the pin, and the satnav switches from
+picked out, the whole road network, and all **120 destinations** — **home**, the
+**other house**, and a named **shop** and **petrol station** in every one of
+the fifty-six. A state whose name is too wide for its cell falls back to its
+postal code, and destination labels keep off the state names.
+
+Pick one with `A` / `D` and `Enter`, or by tapping the pin, and the satnav switches from
 turn-by-turn to a bearing and a distance — there is no sensible instruction to
 give for an arbitrary corner of a street grid, and a compass is what a car has
 always had. Stop inside the arrival radius and it says so; stop on a forecourt
@@ -110,9 +123,9 @@ each other is no better than no map.
 Two ways to get there: take the chequered flag and press **Drive home** on the
 results screen, or **Skip to the drive home** on the title screen.
 
-The circuit and the country are two separate worlds — together they are three
-million triangles, and their coordinates overlap — so the
-handover happens as you pass under the gate. The car keeps its speed, gear and
+The circuit and the country are two separate worlds — together they are under
+three million triangles, and their coordinates overlap — so the handover
+happens as you pass under the gate. The car keeps its speed, gear and
 revs across it, and both sides of the gate carry the same stonework and the same
 avenue of trees, so there is nothing in shot when the world changes.
 
@@ -186,12 +199,12 @@ particles, capped resolution.
 
 The world is solid. Tree trunks, lamp posts, sign posts, traffic light poles,
 gate piers, hedges and the walls of every building carry a collider — about
-42,000 of them across the country, bucketed into a grid so testing them all
+44,000 of them across the country, bucketed into a grid so testing them all
 every frame costs nothing. Hedges and fences are soft and mostly just drag at you; a lamp
 post is not.
 
 Two test scripts cover this from opposite ends. `scripts/solid.mjs` is
-geometric rather than behavioural: it walks the perimeter of all 1,700-odd
+geometric rather than behavioural: it walks the perimeter of all 1,680-odd
 buildings looking for a gap wider than the car, walks every road checking the
 lane is not pinched by scenery, checks the collider index returns what it is
 asked for, and checks home can actually be parked at. `scripts/drivehome.mjs`

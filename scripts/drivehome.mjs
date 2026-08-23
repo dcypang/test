@@ -27,7 +27,7 @@ const check = (name, pass, detail = '') => {
 };
 
 const t0 = Date.now();
-while (Date.now() - t0 < 240000) {
+while (Date.now() - t0 < 600000) {
   if (await page.evaluate(() => window.__game && window.__game.state === 'menu').catch(() => false)) break;
   await page.waitForTimeout(300);
 }
