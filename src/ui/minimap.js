@@ -59,9 +59,11 @@ export class Minimap {
     const project = (wx, wz, out) => {
       const dx = wx - px;
       const dz = wz - pz;
-      // Inverse of the heading rotation: forward component and right component.
+      // Inverse of the heading rotation. The lateral axis is negated because
+      // positive `lateral` is the rider's left (see world/track.js); without
+      // it the dial would come out mirrored against what the player sees.
       const fwd = dx * sinH + dz * cosH;
-      const right = dx * cosH - dz * sinH;
+      const right = -(dx * cosH - dz * sinH);
       out[0] = cx + right * scale;
       out[1] = cy - fwd * scale;
       return out;

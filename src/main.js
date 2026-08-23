@@ -385,7 +385,7 @@ class Game {
       p.respawn();
       this.chase.snap(p);
     } else if (p.offRoad || p.speed < 2) {
-      p.lateral = this.world.track.laneCentre(this.world.track.forwardLanes[0]);
+      p.lateral = this.world.track.laneCentre(this.world.track.racingLane);
       p.yawRel = 0;
       this.hud.toast('Back on the road');
     }

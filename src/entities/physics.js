@@ -90,7 +90,7 @@ export class BikePhysics {
 
   reset(s = this.track.startS, speed = 0) {
     this.s = s;
-    this.lateral = this.track.laneCentre(this.track.forwardLanes[0]);
+    this.lateral = this.track.laneCentre(this.track.racingLane);
     this.yawRel = 0;
     this.speed = speed;
     this.yawRate = 0;
@@ -184,7 +184,11 @@ export class BikePhysics {
     const latAccelLimit = surfaceGrip * G;
     const yawFromGrip = latAccelLimit / Math.max(this.speed, 5);
     const maxYawRate = Math.min(2.0, yawFromGrip);
-    const targetYawRate = input.steer * maxYawRate;
+    // The one place player intent is converted into the track frame. `steer`
+    // is +1 for "right" as the player means it, but heading increases
+    // counter-clockwise (see the note atop world/track.js), so a right turn
+    // is a *decreasing* heading. Getting this backwards mirrors the controls.
+    const targetYawRate = -input.steer * maxYawRate;
 
     // Steering response is quick but not instant, which is what stops the bike
     // feeling like it is on rails.
@@ -211,7 +215,9 @@ export class BikePhysics {
 
     // Visual steering: bars barely move at speed, and turn into the corner
     // when manoeuvring slowly.
-    const steerVisual = input.steer * 0.26 * (1 - clamp(this.speed / 45, 0, 0.88));
+    // Same conversion for the visible bar angle: the front wheel yaws with the
+    // turn, so it follows the sign of the yaw rate, not of the raw input.
+    const steerVisual = -input.steer * 0.26 * (1 - clamp(this.speed / 45, 0, 0.88));
     this.steerAngle = damp(this.steerAngle, steerVisual, 0.002, dt);
 
     // ---- pitch: wheelie and stoppie --------------------------------
@@ -364,7 +370,7 @@ export class BikePhysics {
     const track = this.track;
     // Rewind slightly so the player re-approaches whatever caught them out.
     this.s = track.clampS(Math.max(track.startS, this.s - 12));
-    this.lateral = track.laneCentre(track.forwardLanes[0]);
+    this.lateral = track.laneCentre(track.racingLane);
     this.yawRel = 0;
     this.yawRate = 0;
     this.speed = Math.min(this.speed, 14);

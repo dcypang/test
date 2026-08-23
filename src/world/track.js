@@ -8,13 +8,21 @@
  *
  * Frame convention, which the rest of the game depends on:
  *
- *   forward(h) = ( sin h, 0,  cos h )     an object's local +Z
- *   right(h)   = ( cos h, 0, -sin h )     an object's local +X
+ *   forward(h) = ( sin h, 0,  cos h )     a mesh's local +Z
+ *   lateral(h) = ( cos h, 0, -sin h )     a mesh's local +X
  *   up         = ( 0,     1,  0     )
  *
  * That is exactly three.js's rotation about +Y, so a mesh placed on the course
  * only ever needs `rotation.y = heading` — no sign flips, no mirrored models.
- * Increasing heading turns right; `lateral` is positive to the rider's right.
+ *
+ * Note the axis is called `lateral`, not `right`, and the distinction is not
+ * cosmetic. For a mesh built facing local +Z, "right" is `forward x up`, which
+ * comes out as local -X — the same reason three.js's own camera looks down -Z
+ * with +X to its right. So **positive `lateral` is the rider's LEFT**, and
+ * increasing `heading` turns left (counter-clockwise seen from above).
+ *
+ * Everything downstream is consistent with that, and the steering input is
+ * negated once, in physics.js, to convert player intent into this frame.
  */
 
 import * as THREE from 'three';
@@ -161,9 +169,10 @@ export class Track {
         Math.sin(s / 143) * 1.6 * p.hilliness;
       this.y[i] = hill * endFade;
 
-      // Banking follows curvature. The sign is negative because the outside of
-      // the turn has to be the high side: a right-hander (k > 0) lifts the
-      // left edge, which is the negative-lateral side.
+      // Banking follows curvature: the outside of the turn is the high side.
+      // k > 0 is a left-hander (heading increases counter-clockwise), whose
+      // outside is the rider's right — the negative-lateral edge — so the
+      // camber has to be negative to lift it.
       this.camber[i] = clamp(-k * 340, -0.14, 0.14);
 
       // Integrate forward. The course runs toward +Z at heading 0.
@@ -290,7 +299,17 @@ export class Track {
     return dx * Math.cos(c.heading) - dz * Math.sin(c.heading);
   }
 
-  /** Centre of lane `i` (0 = leftmost) as a lateral offset. */
+  /**
+   * The forward lane nearest the centre line — the one a rider racing the
+   * course would actually use, with road on both sides rather than a shoulder
+   * immediately to hand. Used for spawning and for recovery after a crash.
+   */
+  get racingLane() {
+    const lanes = this.forwardLanes;
+    return lanes[lanes.length - 1];
+  }
+
+  /** Centre of lane `i` (0 = rider's-right edge) as a lateral offset. */
   laneCentre(i) {
     const lanes = this.preset.laneCount;
     const laneWidth = (this.halfWidth * 2) / lanes;
@@ -301,16 +320,23 @@ export class Track {
     return (this.halfWidth * 2) / this.preset.laneCount;
   }
 
-  /** Lanes travelling in the player's direction: the right-hand half. */
+  /**
+   * Lanes travelling in the player's direction.
+   *
+   * Low lane indices are at negative `lateral`, which — per the note at the
+   * top of this file — is the rider's right. The road texture bakes an
+   * American layout with a double-yellow centre line, so the player and the
+   * traffic going their way belong on that side of it.
+   */
   get forwardLanes() {
     const lanes = this.preset.laneCount;
-    return Array.from({ length: Math.max(1, lanes / 2) }, (_, i) => Math.floor(lanes / 2) + i);
+    return Array.from({ length: Math.max(1, Math.floor(lanes / 2)) }, (_, i) => i);
   }
 
-  /** Oncoming lanes: the left-hand half. */
+  /** Oncoming lanes: the far side of the centre line. */
   get oncomingLanes() {
     const lanes = this.preset.laneCount;
-    return Array.from({ length: Math.max(1, Math.floor(lanes / 2)) }, (_, i) => i);
+    return Array.from({ length: Math.max(1, lanes / 2) }, (_, i) => Math.floor(lanes / 2) + i);
   }
 }
 

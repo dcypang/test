@@ -137,18 +137,28 @@ export class ChaseCamera {
     }
     this.lookAt.copy(bike.position).add(this._followLook);
 
-    // Roll: part bike lean, part road camber.
-    const targetRoll = bike.crashed ? 0 : -bike.lean * 0.22 + (roadUp ? roadUp.x * 0.1 : 0);
+    // Roll follows the bike's lean. The road camber deliberately does not feed
+    // in here: the surface normal is a world vector, so its X component means
+    // something different at every heading and using it as a roll term made
+    // the horizon tip according to which way the course happened to be facing.
+    const targetRoll = bike.crashed ? 0 : bike.lean * 0.22;
     this.roll = damp(this.roll, targetRoll, 0.02, dt);
+    void roadUp;
 
     // FOV opens up with speed and snaps a little wider under hard acceleration.
     const targetFov = m.fovBase + m.fovGain * Math.pow(speedT, 1.35) + (bike.boosting ? 3 : 0);
     this.fov = damp(this.fov, targetFov, 0.05, dt);
 
     // ---- apply ------------------------------------------------------
+    // Aim with a true world up, then roll about the camera's own view axis.
+    // Tilting the *world* up vector instead only produces a roll while the
+    // camera happens to look along Z; as the course turns, that same vector
+    // gains a component along the view direction and starts yawing the shot
+    // instead — and degenerates completely when the two align.
     this.camera.position.copy(this.position);
-    this.camera.up.set(Math.sin(this.roll), Math.cos(this.roll), 0);
+    this.camera.up.set(0, 1, 0);
     this.camera.lookAt(this.lookAt);
+    if (this.roll !== 0) this.camera.rotateZ(this.roll);
 
     if (this.shake > 0.001) {
       this.shakeTime += dt;
