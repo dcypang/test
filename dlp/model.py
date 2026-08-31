@@ -108,6 +108,7 @@ class PlanItem:
     track: int = 0            # 0 = family track, 1 = free-parent track
     value: float = 0.0
     walk_min: int = 0         # of start..board, how much was spent walking
+    walk_m: int = 0           # ground actually covered getting here
     #: For a "book_pa" item, the start of the return window that was secured.
     return_minute: int | None = None
 
@@ -149,6 +150,7 @@ class PlanItem:
             "actual_wait": self.actual_wait,
             "wait_min": self.wait_min,
             "walk_min": self.walk_min,
+            "walk_m": self.walk_m,
             "track": self.track,
             "value": round(self.value, 3),
         }
@@ -215,6 +217,9 @@ class Plan:
             "parallel_queue_min": self.total_parallel_wait(),
             "overlapped_queue_min": self.parallel_minutes(),
             "walk_min": sum(i.walk_min for i in self.items),
+            "walk_km": round(sum(i.walk_m for i in self.items) / 1000.0, 1),
+            "child_walk_km": round(
+                sum(i.walk_m for i in self.rides(track=0)) / 1000.0, 1),
             "premier_access_used": sum(1 for i in self.items if i.kind == "book_pa"),
             "premier_access_redeemed": sum(1 for i in self.rides() if i.mode == "premier"),
             "single_rider_used": sum(1 for i in self.rides() if i.mode == "single_rider"),

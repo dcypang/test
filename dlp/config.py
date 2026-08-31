@@ -31,11 +31,15 @@ class Party:
     adults: int = 2
     children: int = 1
     #: Child height in centimetres. CHECK THIS BEFORE THE TRIP -- it decides
-    #: which attractions the optimiser is allowed to put the child on.
-    child_height_cm: int = 125
-    #: Rough stamina budget. After this many minutes on foot the optimiser
-    #: starts charging a fatigue penalty and prefers a break.
-    child_stamina_min: int = 300
+    #: which attractions the optimiser is allowed to put the child on, and at
+    #: 110cm the party is only 3cm clear of Crush's Coaster and 8cm clear of
+    #: the 102cm rides. Measure in the shoes he will actually wear.
+    child_height_cm: int = 110
+    #: Rough stamina budget. Once the child has spent this many minutes on
+    #: foot, every further walking minute is charged at
+    #: ``Strategy.tired_child_penalty_per_min``, so late in the day the
+    #: planner stops sending them across the park for a marginal ride.
+    child_stamina_min: int = 180
     #: Walking speed in metres per second for a group that includes the child.
     walk_speed_family_mps: float = 0.85
     #: Walking speed for a lone adult moving with purpose.
@@ -85,7 +89,24 @@ class Strategy:
     #: Each repeat of the same attraction is worth this fraction of the last.
     repeat_decay: float = 0.35
     #: Penalty per minute spent walking, in units of ride value.
-    walk_penalty_per_min: float = 0.012
+    #:
+    #: Deliberately small, and worth understanding before you raise it.
+    #: Walking is already paid for twice over: travel time is consumed by the
+    #: schedule (you cannot be in two places at once), and the planner ranks
+    #: candidates by value per minute *including* the walk, so it already
+    #: prefers the nearer ride. Measured over several simulated days, moving
+    #: this knob from 0 to 0.05 changes the distance walked by under 100
+    #: metres out of ~5km -- the route is already about as tight as the
+    #: geography allows. What it really trades is ride count against time on
+    #: foot: at 0 the child gets ~21.7 rides and walks ~306 minutes, at 0.012
+    #: it is ~20.3 rides and ~269 minutes. Raise it if you would rather have a
+    #: calmer day than one more attraction.
+    walk_penalty_per_min: float = 0.004
+    #: Extra penalty per walking minute once the child is past their stamina
+    #: budget, so late in the day a marginal ride across the park stops being
+    #: worth it. A tiebreaker rather than a dominant term -- it only visibly
+    #: bites when the stamina budget is set low.
+    tired_child_penalty_per_min: float = 0.09
     #: Penalty per minute spent queueing.
     queue_penalty_per_min: float = 0.004
 

@@ -35,6 +35,22 @@ Track A**. Booking a Premier Access return window while the family is standing
 in the Meet Mickey line is a genuine second queue, and it is where most of the
 gain comes from.
 
+Measured over four simulated days, against the same party restricted to one
+queue at a time (`parallel_queues: 1`):
+
+| | one queue | two queues |
+|---|---|---|
+| Family time in line | 449 min | **402 min** |
+| Queueing for two things at once | 0 min | 98 min |
+| Distinct rides for the child | 19.8 | 20.5 |
+| Must-do list | 5/5 | 5/5 |
+
+The reliable win is **47 fewer minutes standing in line** for the same must-dos
+— it held on every day tested. The extra rides did not: on one of the four days
+the two-queue plan did *fewer* distinct rides, because the second queue buys
+options and some days it spends them on better rides rather than more of them.
+Anyone claiming this kind of tool reliably adds rides is overselling it.
+
 The planner decides, minute by minute, when splitting up is worth it and when
 the family should just ride together — because a holiday where one parent
 queues alone all day is efficient and miserable.
@@ -192,8 +208,15 @@ python3 -m dlp.cli --config mytrip.json plan
 
 The settings worth thinking about:
 
-- **`child_height_cm`** decides which rides the child can join. Measure them in
-  shoes; it changes the plan substantially around 102cm and 120cm.
+- **`child_height_cm`** decides which rides the child can join, and it is the
+  single most consequential setting. The default is **110cm**. At that height
+  four attractions are off limits: Indiana Jones (140cm), Hyperspace Mountain,
+  RC Racer and Avengers Flight Force (120cm each). Growing to 120cm would
+  unlock three of those. Note how little margin 110cm has: **3cm** clear of
+  Crush's Coaster (107cm) and **8cm** clear of Big Thunder, Star Tours and
+  Tower of Terror (102cm each). Measure in the shoes he will actually wear,
+  and verify the limits in the official app — the ones here are seeded
+  approximations, and at this height a 5cm error costs you a headliner.
 - **`must_do`** rides get a large value bonus, so the planner treats missing one
   as a failure. Keep the list to five or six or it stops meaning anything.
 - **`premier_access_budget`** is how many paid return windows you will buy.
@@ -210,6 +233,32 @@ The settings worth thinking about:
   difference is the whole point of the tool.
 
 ---
+
+## Walking
+
+Walking is charged three ways, because it is a real cost with a small child:
+
+- **Time** is consumed by the schedule. Travel between attractions uses
+  straight-line distance times a 1.35 detour factor (park paths curve around
+  lakes and buildings), plus a penalty for crossing between lands and a much
+  larger one for hopping between the two parks — that leg is mostly a walk
+  down Main Street, the esplanade, and a bag check. A group with the child
+  walks at 0.85 m/s; a lone adult at 1.30.
+- **Distance** is reported per leg and totalled, separately for the child and
+  for the whole party. A typical plan has the child covering about 5km.
+- **Fatigue.** Past `child_stamina_min` on foot, every further walking minute
+  costs more, so the planner stops marching a tired child across the park for
+  a marginal ride.
+
+One honest caveat on the tuning. Measured across several simulated days,
+changing `walk_penalty_per_min` from 0 to 0.05 moves the distance walked by
+**under 100 metres out of roughly 5km**. The route is already about as tight
+as the geography allows, because the planner ranks each candidate by value per
+minute *including* the walk to reach it — so it prefers the nearer ride before
+any penalty is applied. What the knob actually trades is ride count against
+time on foot: at 0 the child gets ~21.7 rides and ~306 minutes walking; at
+0.012 it is ~20.3 rides and ~269 minutes. It is a preference, not an optimum.
+Raise it if you would rather have a calmer day than one more attraction.
 
 ## Things to check before you go
 

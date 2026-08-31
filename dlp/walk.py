@@ -60,6 +60,17 @@ class WalkMatrix:
             penalty += LAND_CHANGE_PENALTY
         return metres, penalty
 
+    def metres(self, a: str, b: str) -> float:
+        """Path distance in metres, ignoring the fixed time penalties.
+
+        Walking distance is what wears a small child out, and it is not the
+        same thing as walking time: the park-hop penalty is mostly a bag
+        check, which costs minutes but no steps.
+        """
+        if a == b:
+            return 0.0
+        return self._leg(a, b)[0]
+
     def minutes(self, a: str, b: str, with_child: bool = True) -> float:
         if a == b:
             return 0.0

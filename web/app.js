@@ -54,7 +54,8 @@ function drawStats(s, meta) {
       s.must_do_missed.length ? "bad" : "good"],
     ["Time in line", `${s.family_queue_min}m`, ""],
     ["Saved by 2nd queue", `${saved}m`, saved > 0 ? "good" : ""],
-    ["Walking", `${s.walk_min}m`, ""],
+    ["Child on foot", `${s.child_walk_km}km`, s.child_walk_km > 9 ? "bad" : ""],
+    ["Walking time", `${s.walk_min}m`, ""],
     ["Premier Access", s.premier_access_used, ""],
   ];
   $("stats").innerHTML = cells.map(([l, n, cls]) =>
@@ -106,13 +107,14 @@ function drawSchedule(items) {
     const who = i.members.map(m => m.replace("Parent ", "P")).join("+");
     const tag = i.mode && i.mode !== "standby"
       ? ` <span class="tag ${i.mode}">${i.mode.replace("_", " ")}</span>` : "";
+    const legs = i.walk_m ? ` · ${i.walk_m}m walk` : "";
     const q = i.kind === "ride"
       ? `${i.wait_min}m${i.actual_wait !== null && i.actual_wait !== undefined ? ` <span class="muted">(was ${i.actual_wait})</span>` : ""}`
       : "—";
     return `<tr class="t${i.track}">
       <td class="mono">${i.start_hhmm}<br><span class="muted">${i.end_hhmm}</span></td>
       <td class="mono">${who}</td>
-      <td>${esc(i.name)}${tag}<br><span class="muted">${esc(i.land || i.park)}</span></td>
+      <td>${esc(i.name)}${tag}<br><span class="muted">${esc(i.land || i.park)}${legs}</span></td>
       <td class="mono">${q}</td></tr>`;
   }).join("");
 }

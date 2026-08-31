@@ -80,6 +80,10 @@ class State:
     #: ((ride_id, finished_at), ...) for the family track, pruned to the
     #: repeat-cooldown window. Small enough to scan on every expansion.
     recent0: tuple = ()
+    #: Minutes the child has spent walking so far, and metres covered. Legs
+    #: get more expensive as these climb.
+    walked0_min: int = 0
+    walked0_m: int = 0
 
     def key(self) -> tuple:
         return (
@@ -147,6 +151,18 @@ class Optimizer:
                 or (a.type in {"coaster", "drop", "simulator"} and a.appeal >= 6)
                 or a.appeal >= 9)
 
+    def _walk_cost(self, walked_so_far: int, leg_min: int) -> float:
+        """What this leg costs, charging tired minutes at a steeper rate.
+
+        The first stretch of walking is free-ish; once the child is past their
+        stamina budget every further minute on foot is expensive, because that
+        is when a plan stops being followed.
+        """
+        s = self.cfg.strategy
+        stamina = self.cfg.party.child_stamina_min
+        over = max(0, walked_so_far + leg_min - stamina) - max(0, walked_so_far - stamina)
+        return s.walk_penalty_per_min * leg_min + s.tired_child_penalty_per_min * over
+
     def _ride_value(self, a: Attraction, group: int, repeats: int) -> float:
         s = self.cfg.strategy
         base = self._appeal[a.id]
@@ -206,8 +222,10 @@ class Optimizer:
                 continue
             q = self.oracle.expected_queue_min(a.id, int(arrive))
             value = self._ride_value(a, group, repeats)
-            if track == 0 and a.id in self.cfg.must_do and a.id not in state.child_done:
-                value += MUST_DO_BONUS
+            if track == 0:
+                value += MUST_DO_BONUS if (
+                    a.id in self.cfg.must_do and a.id not in state.child_done) else 0.0
+                value -= self._walk_cost(state.walked0_min, int(walk))
             if track == 1 and self.cfg.strategy.allow_standby_hold:
                 # A ride the parent would never bother with alone can still be
                 # the best thing to go and hold a place in.
@@ -312,15 +330,18 @@ class Optimizer:
         something the family cannot.
         """
         s = self.cfg.strategy
+        metres = int(self.walk.metres(state.loc0, a.id))
         value = self._ride_value(a, FAMILY, repeats)
         if a.id in self.cfg.must_do and a.id not in state.child_done:
             value += MUST_DO_BONUS
-        value -= s.walk_penalty_per_min * walk + s.queue_penalty_per_min * max(0, board - arrive)
+        value -= self._walk_cost(state.walked0_min, walk)
+        value -= s.queue_penalty_per_min * max(0, board - arrive)
 
         item = PlanItem(
             kind="ride", ride_id=a.id, name=a.name, park=a.park, land=a.land,
             group=FAMILY, start=state.t0, board=board, end=end, mode=mode,
             predicted_wait=wait, track=0, value=value, walk_min=walk,
+            walk_m=metres,
         )
         return State(
             t0=end,
@@ -337,6 +358,8 @@ class Optimizer:
             value=state.value + value,
             items=state.items + (item,),
             recent0=state.push_recent(a.id, end),
+            walked0_min=state.walked0_min + walk,
+            walked0_m=state.walked0_m + metres,
         )
 
     def _commit_rider_switch(self, state: State, a: Attraction, walk: int,
@@ -347,20 +370,23 @@ class Optimizer:
         # Two adult rides for the price of one wait, less the cost of parking
         # a bored child beside the exit for the duration.
         value = 2 * self._ride_value(a, PARENT_B, repeats)
-        value -= s.walk_penalty_per_min * walk
+        value -= self._walk_cost(state.walked0_min, walk)
         value -= s.queue_penalty_per_min * (board - arrive) * 2
 
+        metres = int(self.walk.metres(state.loc0, a.id))
         item = PlanItem(
             kind="ride", ride_id=a.id, name=a.name, park=a.park, land=a.land,
             group=EVERYONE, start=state.t0, board=board, end=end,
             mode="rider_switch", predicted_wait=wait, track=0, value=value,
-            walk_min=walk,
+            walk_min=walk, walk_m=metres,
         )
         return replace(
             state, t0=end, t1=end, loc0=a.id, loc1=a.id, cur0=None,
             adult_done=state.adult_done | {a.id},
             value=state.value + value,
             items=state.items + (item,),
+            walked0_min=state.walked0_min + walk,
+            walked0_m=state.walked0_m + metres,
         )
 
     def _do_meal(self, state: State) -> State:
@@ -433,6 +459,7 @@ class Optimizer:
             start=state.t1, board=cur.board if rides_along else cur.end,
             end=cur.end, mode="standby" if rides_along else "",
             predicted_wait=0, track=1, value=value, walk_min=walk,
+            walk_m=int(self.walk.metres(state.loc1, cur.ride_id)),
         )
         return replace(state, t1=cur.end, loc1=cur.ride_id,
                        value=state.value + value,
@@ -466,6 +493,7 @@ class Optimizer:
                 kind="ride", ride_id=a.id, name=a.name, park=a.park, land=a.land,
                 group=PARENT_B, start=t, board=board, end=end, mode=mode,
                 predicted_wait=int(wait), track=1, value=value, walk_min=walk,
+                walk_m=int(self.walk.metres(state.loc1, a.id)),
             )
             yield replace(
                 state, t1=end, loc1=a.id,
@@ -498,13 +526,15 @@ class Optimizer:
         value = self._ride_value(a, EVERYONE, repeats)
         if a.id in self.cfg.must_do and a.id not in state.child_done:
             value += MUST_DO_BONUS
-        value -= s.walk_penalty_per_min * (walk + family_walk)
+        value -= s.walk_penalty_per_min * walk
+        value -= self._walk_cost(state.walked0_min, family_walk)
         value -= s.queue_penalty_per_min * max(0, board - family_arrive)
 
         item = PlanItem(
             kind="ride", ride_id=a.id, name=a.name, park=a.park, land=a.land,
             group=EVERYONE, start=state.t1, board=board, end=end, mode="hold",
             predicted_wait=int(q), track=1, value=value, walk_min=walk,
+            walk_m=int(self.walk.metres(state.loc1, a.id)),
         )
         yield State(
             t0=end, t1=end, loc0=a.id, loc1=a.id,
@@ -516,6 +546,8 @@ class Optimizer:
             value=state.value + value,
             items=state.items + (item,),
             recent0=state.push_recent(a.id, end),
+            walked0_min=state.walked0_min + family_walk,
+            walked0_m=state.walked0_m + int(self.walk.metres(state.loc0, a.id)),
         )
 
     def _book_premier_options(self, state: State) -> Iterable[State]:

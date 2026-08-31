@@ -100,9 +100,11 @@ def _print_plan(plan, cfg) -> None:
     print(f"child rides {s['distinct_child_rides']} distinct "
           f"({s['child_rides']} total) · must-do {len(s['must_do_hit'])}/"
           f"{len(s['must_do_hit']) + len(s['must_do_missed'])}")
-    print(f"family time in line {s['family_queue_min']}m · "
-          f"walking {s['walk_min']}m · "
-          f"{s['overlapped_queue_min']}m of that queueing was done in parallel")
+    print(f"family time in line {s['family_queue_min']}min · "
+          f"{s['overlapped_queue_min']}min of it queueing two things at once")
+    print(f"child on foot {s['walk_min']}min / {s['child_walk_km']}km "
+          f"(stamina budget {cfg.party.child_stamina_min}min) · "
+          f"whole party {s['walk_km']}km")
     print(f"Premier Access bought {s['premier_access_used']} · "
           f"single rider used {s['single_rider_used']}")
     if s["must_do_missed"]:
