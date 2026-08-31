@@ -47,8 +47,16 @@ def _load(args) -> tuple[TripConfig, Catalog, Store]:
 
 def cmd_plan(args) -> int:
     cfg, catalog, store = _load(args)
-    now = _hhmm(args.now) if args.now else max(
-        cfg.day_start(), datetime.now().hour * 60 + datetime.now().minute)
+    if args.now:
+        now = _hhmm(args.now)
+    elif args.simulate:
+        # Simulating a day means the whole day. Defaulting to the wall clock
+        # here means running the demo at 18:00 silently plans four hours and
+        # reports half the must-do list as unreachable.
+        now = cfg.day_start()
+    else:
+        now = max(cfg.day_start(),
+                  datetime.now().hour * 60 + datetime.now().minute)
 
     if args.simulate:
         traces = simulate_day(catalog, cfg.trip_date, crowd_index=args.crowd,
@@ -294,7 +302,8 @@ def build_parser() -> argparse.ArgumentParser:
     sub = p.add_subparsers(dest="cmd", required=True)
 
     sp = sub.add_parser("plan", help="build a plan and print it")
-    sp.add_argument("--now", help="plan from this local time, HH:MM")
+    sp.add_argument("--now", help="plan from this local time, HH:MM "
+                    "(default: now, or park opening when --simulate)")
     sp.add_argument("--simulate", action="store_true",
                     help="use a simulated day instead of live data")
     sp.add_argument("--crowd", type=float, default=6.0, help="crowd index 1-10 when simulating")
