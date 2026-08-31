@@ -5,6 +5,25 @@
   var $ = U.$;
   var toastTimer = null;
 
+  /**
+   * Photo credit for the result card. CC licences require naming the author
+   * and the licence, so say both when Commons tells us, and always link back
+   * to the file page. Shown only after the answer, since a file name would
+   * give the landmark away.
+   */
+  function buildCredit(photo) {
+    if (!photo || !photo.creditUrl) return '';
+    var who = photo.author ? U.esc(photo.author) : 'Wikimedia Commons';
+    var lic = photo.license
+      ? (photo.licenseUrl
+          ? ' · <a href="' + U.esc(photo.licenseUrl) + '" target="_blank" rel="noopener noreferrer">' + U.esc(photo.license) + '</a>'
+          : ' · ' + U.esc(photo.license))
+      : '';
+    return '<p class="card__credit">Photo: ' +
+      '<a href="' + U.esc(photo.creditUrl) + '" target="_blank" rel="noopener noreferrer">' + who + '</a>' +
+      lic + '</p>';
+  }
+
   var UI = {
     show: function (id) {
       var screens = document.querySelectorAll('.screen');
@@ -136,9 +155,7 @@
     /* ---------------- result ---------------- */
     renderResult: function (r, handlers) {
       var good = r.found;
-      var creditHtml = r.creditUrl
-        ? '<a class="card__credit" href="' + U.esc(r.creditUrl) + '" target="_blank" rel="noopener noreferrer">Photo: Wikimedia Commons</a>'
-        : '';
+      var creditHtml = buildCredit(r.photo);
 
       var brk = '';
       brk += row('City', r.cityCorrect ? 'Named it' : 'Missed', r.cityXp);

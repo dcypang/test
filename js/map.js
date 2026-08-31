@@ -22,7 +22,7 @@
   }
 
   /* ---------------------------------------------------------- Leaflet */
-  function createLeaflet(el) {
+  function createLeaflet(el, styleId) {
     var map = L.map(el, {
       zoomControl: false,
       attributionControl: true,
@@ -32,12 +32,24 @@
       tap: true
     }).setView([WORLD.lat, WORLD.lng], WORLD.zoom);
 
-    L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
-      maxZoom: 19,
-      crossOrigin: true,
-      attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
-    }).addTo(map);
+    var tiles = null;
 
+    /* Each style carries the attribution its licence requires. */
+    function applyStyle(id) {
+      var style = TILES.get(id);
+      if (tiles) map.removeLayer(tiles);
+      tiles = L.tileLayer(style.url, {
+        maxZoom: style.maxZoom || 19,
+        subdomains: style.subdomains || 'abc',
+        detectRetina: true,
+        crossOrigin: true,
+        attribution: style.attribution
+      }).addTo(map);
+      map.setMaxZoom(style.maxZoom || 19);
+      return style;
+    }
+
+    applyStyle(styleId);
     L.control.zoom({ position: 'bottomleft' }).addTo(map);
 
     var guessMarker = null, answerMarker = null, line = null, ring = null;
@@ -73,6 +85,7 @@
 
     return {
       provider: 'osm',
+      setStyle: applyStyle,
       reset: function () {
         clear();
         picking = true;
@@ -171,6 +184,7 @@
 
       return {
         provider: 'google',
+        setStyle: function () { /* Google supplies its own styles */ },
         reset: function () {
           clear();
           picking = true;
@@ -212,14 +226,15 @@
      */
     create: function (el, opts) {
       opts = opts || {};
+      var style = opts.mapStyle || TILES['default'];
       if (opts.provider === 'google' && opts.googleKey) {
         return createGoogle(el, opts.googleKey).catch(function (err) {
           if (opts.onFallback) opts.onFallback(err);
           el.innerHTML = '';
-          return createLeaflet(el);
+          return createLeaflet(el, style);
         });
       }
-      return Promise.resolve(createLeaflet(el));
+      return Promise.resolve(createLeaflet(el, style));
     }
   };
 })(window);

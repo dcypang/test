@@ -152,6 +152,7 @@
 
     mapPending = GameMap.create($('map'), {
       provider: profile.settings.mapProvider,
+      mapStyle: profile.settings.mapStyle,
       googleKey: profile.settings.googleKey,
       onFallback: function () {
         UI.toast('Google Maps key rejected — using OpenStreetMap', 3600);
@@ -274,7 +275,7 @@
 
     var result = {
       landmark: round.landmark,
-      creditUrl: round.photo ? round.photo.creditUrl : '',
+      photo: round.photo,
       cityCorrect: round.cityCorrect,
       cityXp: round.cityXp,
       mapXp: mapXp,
@@ -352,14 +353,26 @@
 
   function showSettings() {
     var s = profile.settings;
+    var styleButtons = TILES.all.map(function (t) {
+      return '<button type="button" class="style' + (s.mapStyle === t.id ? ' is-on' : '') + '" data-style="' + t.id + '">' +
+        '<span class="style__name">' + U.esc(t.label) + '</span>' +
+        '<span class="style__blurb">' + U.esc(t.blurb) + '</span>' +
+      '</button>';
+    }).join('');
+
     UI.sheet('Settings',
       '<div class="field">' +
         '<span class="field__label">Map</span>' +
         '<div class="seg" id="seg-provider">' +
-          '<button type="button" data-provider="osm" class="' + (s.mapProvider === 'osm' ? 'is-on' : '') + '">OpenStreetMap</button>' +
+          '<button type="button" data-provider="osm" class="' + (s.mapProvider === 'osm' ? 'is-on' : '') + '">Open maps</button>' +
           '<button type="button" data-provider="google" class="' + (s.mapProvider === 'google' ? 'is-on' : '') + '">Google Maps</button>' +
         '</div>' +
-        '<span class="field__hint">OpenStreetMap needs no key and works straight away. Google Maps needs your own Maps JavaScript API key.</span>' +
+        '<span class="field__hint">The open styles need no key and work straight away. Google Maps needs your own Maps JavaScript API key.</span>' +
+      '</div>' +
+      '<div class="field">' +
+        '<span class="field__label">Style</span>' +
+        '<div class="styles" id="styles">' + styleButtons + '</div>' +
+        '<span class="field__hint" id="style-terms"></span>' +
       '</div>' +
       '<div class="field">' +
         '<span class="field__label">Google Maps API key</span>' +
@@ -375,6 +388,21 @@
       '</div>' +
       '<button class="btn" id="btn-reset" style="border-color:rgba(255,107,107,.5);color:#ff9b9b">Reset progress</button>',
       function (body) {
+        var terms = body.querySelector('#style-terms');
+        terms.textContent = TILES.get(s.mapStyle).terms;
+
+        body.querySelectorAll('#styles .style').forEach(function (b) {
+          b.addEventListener('click', function () {
+            var id = b.getAttribute('data-style');
+            profile.settings.mapStyle = id;
+            saveProfile();
+            body.querySelectorAll('#styles .style').forEach(function (o) { o.classList.remove('is-on'); });
+            b.classList.add('is-on');
+            terms.textContent = TILES.get(id).terms;
+            if (mapAdapter) mapAdapter.setStyle(id);
+          });
+        });
+
         body.querySelectorAll('#seg-provider button').forEach(function (b) {
           b.addEventListener('click', function () {
             setProvider(b.getAttribute('data-provider'));
