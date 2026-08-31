@@ -13,7 +13,7 @@
     pinsFound: 0,
     bestStreak: 0,
     settings: {
-      mapProvider: 'osm',      // 'osm' (open tiles) | 'google'
+      mapProvider: 'auto',     // 'auto' (Google when a key is configured) | 'osm' | 'google'
       mapStyle: 'osm',         // which open tile style — see js/tiles.js
       googleKey: '',
       haptics: true

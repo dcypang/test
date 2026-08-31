@@ -10,17 +10,29 @@ within **200 km**; every level after that shortens the clock and tightens the ra
 
 ## Play it
 
-It is a static site — open `index.html` through any web server:
+It is a static site — no build step, no server code.
+
+**On your phone, right now.** Serve the folder from your computer and open it from your
+phone on the same Wi-Fi:
 
 ```sh
-npx http-server . -p 8080     # or: python3 -m http.server 8080
+python3 -m http.server 8080        # or: npx http-server . -p 8080
+ipconfig getifaddr en0             # macOS; Linux: hostname -I
 ```
 
-Then open `http://localhost:8080` (opening the file directly with `file://` will not work,
-because the browser blocks the Wikipedia requests that fetch the photos).
+Then browse to `http://<that-address>:8080` on the phone. Opening `index.html` directly
+as a `file://` URL will *not* work — the browser blocks the Wikipedia requests that fetch
+the photos.
 
-To publish it, push this branch and turn on GitHub Pages for the repository — the whole
-game is static files.
+**Put it online (free).** This repo is public, so GitHub Pages costs nothing:
+
+1. Settings → Pages
+2. Source: *Deploy from a branch*
+3. Branch: `claude/geo-landmark-game-u7jki3` (or `master` once merged), folder `/ (root)`
+4. Save, wait a minute, and it is live at `https://dcypang.github.io/test/`
+
+Pages serves from any branch, so you do not have to merge first. Any static host works
+just as well — Netlify, Vercel and Cloudflare Pages will all take this folder as-is.
 
 ## Levels
 
@@ -64,11 +76,60 @@ None of these are built for heavy traffic. If the game gets real use, sign up wi
 provider (MapTiler, Stadia, Thunderforest and others have free tiers) or run your own tile
 server, and add it to `js/tiles.js`.
 
-If you would rather use **Google Maps**, open Settings → Map → Google Maps and paste your
-own Maps JavaScript API key. It is kept in `localStorage` on that device only and used
-solely to load the Google script. A rejected key falls back to the open tiles rather than
-breaking the round. The key is deliberately not hardcoded: anything checked into a public
-static site is readable by anyone who views source.
+Individual players can also switch to **Google Maps** in Settings with a key of their own,
+kept in `localStorage` on that device. To power the whole game with Google Maps, see below.
+
+## Powering it with Google Maps
+
+Paste a key into `js/config.js` and the game uses Google Maps for everyone:
+
+```js
+window.GEO_CONFIG = { googleMapsKey: 'AIza…' };
+```
+
+That is the only code change. The open styles stay available in Settings, and a player's
+own key still wins over the deployment key.
+
+**What the key needs**
+
+1. A Google Cloud project with a **billing account** attached. Maps Platform will not serve
+   a key without one, even within the free allowance.
+2. The **Maps JavaScript API** enabled on that project. That is the only API this game
+   calls — no Places, no Geocoding, no Street View.
+3. The key **restricted, both ways**, before it goes anywhere public:
+   - *Application restriction* → HTTP referrers → `https://dcypang.github.io/test/*`
+     (add `http://localhost:*/*` while developing).
+   - *API restriction* → Maps JavaScript API only.
+
+A Maps JavaScript key is always visible in the page — that is how the API works. The
+referrer restriction, not secrecy, is what stops another site spending your quota. Never
+put an unrestricted key in `js/config.js`, and never reuse a server-side key.
+
+**What it costs**
+
+Google bills Dynamic Maps per *map load* — one map initialisation, not one per round. This
+game builds the map once per session and reuses it across rounds, so a twenty-round session
+is a single map load. (There is a test for that; it is easy to regress.)
+
+Google replaced its old flat monthly credit with per-API free allowances in 2025, and the
+Dynamic Maps allowance was in the region of 10,000 loads a month with a few dollars per
+thousand after that. **Check the current Maps Platform pricing page rather than trusting
+that figure** — it is the number that decides whether a public deployment can surprise you.
+Set a budget alert, and cap the daily quota for the Maps JavaScript API (APIs & Services →
+Quotas): with a public key, a quota cap is what turns a runaway bill into a map that simply
+stops loading.
+
+**Before publishing a Google-powered version**
+
+Google Maps Platform's terms restrict some uses, and geo-guessing games specifically have
+historically needed an arrangement with Google rather than running on a plain key. Read the
+restrictions in the current Maps Platform Terms of Service before putting a public,
+Google-powered version online. The open-tile version raises no such question.
+
+**Is it worth it?** For gameplay, not obviously. Esri satellite imagery is already the best
+view for hunting a landmark. Google's real advantages are familiarity and denser labelling
+when you are zoomed in close, which starts to matter at level 8 and up where the radius is
+under 25 km.
 
 ## Photos
 
@@ -93,6 +154,7 @@ index.html          screens: home, quiz, map, result
 css/styles.css      mobile-first, dark, safe-area aware
 js/landmarks.js     the landmark database (coords, tier, clue, fact)
 js/tiles.js         open map styles, each with its required attribution
+js/config.js        deployment settings (optional Google Maps key)
 js/levels.js        level table + scoring
 js/photos.js        Wikipedia photo lookup, licence check, caching, fallbacks
 js/map.js           map providers (open tiles / Google) behind one interface

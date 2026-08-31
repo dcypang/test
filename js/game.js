@@ -25,6 +25,19 @@
 
   function buzz(pattern) { if (profile.settings.haptics) U.buzz(pattern); }
 
+  /* A key can come from the deployment (js/config.js) or from this player. */
+  function deploymentKey() {
+    return (window.GEO_CONFIG && window.GEO_CONFIG.googleMapsKey) || '';
+  }
+  function googleKey() { return profile.settings.googleKey || deploymentKey(); }
+
+  /** 'auto' means: Google if a key is available, open tiles otherwise. */
+  function mapProvider() {
+    var chosen = profile.settings.mapProvider;
+    if (chosen === 'google' || chosen === 'osm') return chosen;
+    return googleKey() ? 'google' : 'osm';
+  }
+
   function saveProfile() { Store.save(profile); }
 
   /** Pick a landmark suited to the level, avoiding ones already seen this run. */
@@ -146,14 +159,14 @@
     if (mapAdapter) return Promise.resolve(mapAdapter);
     if (mapPending) return mapPending;
 
-    if (profile.settings.mapProvider !== 'google' && typeof window.L === 'undefined') {
+    if (mapProvider() !== 'google' && typeof window.L === 'undefined') {
       return Promise.reject(new Error('map library unavailable'));
     }
 
     mapPending = GameMap.create($('map'), {
-      provider: profile.settings.mapProvider,
+      provider: mapProvider(),
       mapStyle: profile.settings.mapStyle,
-      googleKey: profile.settings.googleKey,
+      googleKey: googleKey(),
       onFallback: function () {
         UI.toast('Google Maps key rejected — using OpenStreetMap', 3600);
       }
@@ -353,6 +366,7 @@
 
   function showSettings() {
     var s = profile.settings;
+    var active = mapProvider();
     var styleButtons = TILES.all.map(function (t) {
       return '<button type="button" class="style' + (s.mapStyle === t.id ? ' is-on' : '') + '" data-style="' + t.id + '">' +
         '<span class="style__name">' + U.esc(t.label) + '</span>' +
@@ -364,10 +378,13 @@
       '<div class="field">' +
         '<span class="field__label">Map</span>' +
         '<div class="seg" id="seg-provider">' +
-          '<button type="button" data-provider="osm" class="' + (s.mapProvider === 'osm' ? 'is-on' : '') + '">Open maps</button>' +
-          '<button type="button" data-provider="google" class="' + (s.mapProvider === 'google' ? 'is-on' : '') + '">Google Maps</button>' +
+          '<button type="button" data-provider="osm" class="' + (active === 'osm' ? 'is-on' : '') + '">Open maps</button>' +
+          '<button type="button" data-provider="google" class="' + (active === 'google' ? 'is-on' : '') + '">Google Maps</button>' +
         '</div>' +
-        '<span class="field__hint">The open styles need no key and work straight away. Google Maps needs your own Maps JavaScript API key.</span>' +
+        '<span class="field__hint">' + (deploymentKey()
+            ? 'This copy of the game ships with a Google Maps key, so Google Maps is the default. The open styles are always available.'
+            : 'The open styles need no key and work straight away. Google Maps needs a Maps JavaScript API key — yours below, or one set in js/config.js for everyone.') +
+        '</span>' +
       '</div>' +
       '<div class="field">' +
         '<span class="field__label">Style</span>' +
@@ -376,7 +393,7 @@
       '</div>' +
       '<div class="field">' +
         '<span class="field__label">Google Maps API key</span>' +
-        '<input type="text" id="inp-gkey" placeholder="AIza…" autocomplete="off" autocapitalize="off" spellcheck="false" value="' + U.esc(s.googleKey) + '">' +
+        '<input type="text" id="inp-gkey" placeholder="' + (deploymentKey() ? 'Using the key from js/config.js' : 'AIza…') + '" autocomplete="off" autocapitalize="off" spellcheck="false" value="' + U.esc(s.googleKey) + '">' +
         '<span class="field__hint">Stored only in this browser and used only to load the Google Maps script.</span>' +
       '</div>' +
       '<div class="switch">' +
@@ -434,11 +451,11 @@
   }
 
   function setProvider(provider) {
-    if (profile.settings.mapProvider === provider) return;
+    if (mapProvider() === provider && profile.settings.mapProvider === provider) return;
     profile.settings.mapProvider = provider;
     saveProfile();
     dropMap();
-    if (provider === 'google' && !profile.settings.googleKey) {
+    if (provider === 'google' && !googleKey()) {
       UI.toast('Add a Google Maps API key below', 3200);
     }
   }
