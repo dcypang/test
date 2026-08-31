@@ -1,0 +1,14 @@
+{
+  "name": "Landmark Rush",
+  "short_name": "Landmark Rush",
+  "description": "Guess the city from a landmark photo, then race the clock to pin it on the map.",
+  "start_url": ".",
+  "scope": ".",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#0b1020",
+  "theme_color": "#0b1020",
+  "icons": [
+    { "src": "icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" }
+  ]
+}
