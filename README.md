@@ -148,23 +148,86 @@ python3 -m dlp.cli backtest --use-stored --days 20
 
 ---
 
-## Getting started
+## Testing it
+
+Nothing to install. Timings below are measured on a clean clone.
 
 ```bash
 git clone <this repo> && cd test
+```
 
-# 1. See it work immediately, on a simulated day
+**1. See a plan — 5 seconds.** No network needed; uses the built-in simulator.
+
+```bash
 python3 -m dlp.cli plan --simulate
-python3 -m dlp.cli serve            # then open http://127.0.0.1:8000
+```
 
-# 2. Check the strategy holds up
-python3 -m dlp.cli seed --days 8    # synthetic history to chew on
-python3 -m dlp.cli backtest --days 8
+You should get a full 09:30–22:00 day, two tracks (A = parent + child,
+B = free parent), `must-do 5/5`, and a footer reporting time in line, parallel
+queueing, and how far the child walks. Try `--crowd 9` for a packed day and
+`--crowd 3` for a quiet one; the plan should visibly change shape.
 
-# 3. Start banking the real thing (do this now, not in November)
+**2. See it on the map — instant.**
+
+```bash
+python3 -m dlp.cli serve      # open http://127.0.0.1:8000
+```
+
+Switch the source dropdown to **simulated day** (live APIs will be unreachable
+until you have collected data). Change the *plan from* time and hit **Re-plan
+now** to watch the day rebuild from that moment. Hover any pin for its posted
+wait and height limit.
+
+**3. Run the test suite — about 2 minutes.** 37 tests.
+
+```bash
+python3 -m unittest discover -s tests -v
+```
+
+These check the things worth checking, not just that the code runs: that no
+track is ever in two places at once, that nothing is scheduled past park
+close, that the child is never put on a ride they are too short for, that
+lunch lands inside its window, that the Premier Access budget is respected,
+that the forecaster reverts a spiking ride toward its prior, that the replay
+source never leaks future data into the planner, and that the online planner
+never beats the perfect-foresight oracle.
+
+**4. Validate the strategy — about 1 minute for 4 days.**
+
+```bash
+python3 -m dlp.cli backtest --days 4
+```
+
+Expect the optimiser around 93–95% of the oracle, roughly 2x the best
+baseline, and `must 1.00`. Scale up with `--days 20` (about 5 minutes). If
+`optimizer_online` ever exceeds 100% of the oracle, something is leaking
+future data and the result is meaningless.
+
+**5. Point it at the real thing** — needs internet.
+
+```bash
 python3 -m dlp.cli collect --resolve-ids   # confirm provider park ids
-python3 -m dlp.cli collect --loop          # leave running
+python3 -m dlp.cli collect                 # one poll
 python3 -m dlp.cli status                  # what you have so far
+python3 -m dlp.cli collect --loop          # leave running until November
+```
+
+`--resolve-ids` is the one to run first: it asks each provider for its real
+Disneyland Paris park ids by name. If the ids in the config have gone stale,
+this is where you find out, rather than discovering an empty database in
+November. A failed poll prints the actual reason, not just "no data".
+
+> **This is the one path not verified end to end.** The sandbox this was built
+> in blocks outbound requests to both wait-time APIs, so the live adapters are
+> exercised against stub and error paths but have never seen a real response
+> from queue-times.com or themeparks.wiki. Expect to need one round of fixes
+> on the attraction name matching the first time you run `collect` for real —
+> `status` will show you how many of the 43 attractions actually matched.
+
+Once you have collected real days:
+
+```bash
+python3 -m dlp.cli backtest --use-stored --days 20
 ```
 
 **Start the collector early.** The forecaster falls back to generic curves until
