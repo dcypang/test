@@ -9,6 +9,18 @@
   --track0: #ffb84d;
   --track1: #6ee7a8;
   --warn: #ff7a6b;
+  /* The shared map renderer (web/map.js, also used by demo/park-day.html)
+     draws through these names, so they must exist here too. */
+  --route-a: #ffb84d;
+  --route-b: #6ee7a8;
+  --sunk: #11151c;
+  --water: #2f6ea8;
+  --card: #161d2e;
+  --edge: #2a3550;
+  --ink-2: #8e9ab6;
+  --ink-3: #6f7fa3;
+  --w1:#43b077; --w2:#9dc44a; --w3:#e0aa38; --w4:#e08542; --w5:#e05a5a;
+  --closed:#5b6480;
   --ok: #6ee7a8;
   --radius: 10px;
 }
@@ -88,29 +100,32 @@ button.primary { background: var(--accent); color: #06101f; border-color: var(--
 .stat .n.bad { color: var(--warn); }
 
 /* ---- map ---- */
-#map { display: block; width: 100%; height: auto; background: #0b1120; }
-.land-shape { opacity: 0.5; }
-.path-line { fill: none; stroke-linecap: round; stroke-linejoin: round; }
+#map { display: block; width: 100%; height: auto; background: var(--bg); }
+.panel-t { font-size: 10.5px; font-weight: 600; letter-spacing: 0.16em;
+           text-transform: uppercase; fill: var(--muted); }
+.land { opacity: 0.34; }
+.route { fill: none; stroke-linecap: round; stroke-linejoin: round; }
+
 .pin { cursor: pointer; }
 .pin circle { transition: r 120ms ease; }
 .pin:hover circle.halo { opacity: 0.35; }
-.pin-label {
-  font-size: 7px;
+.plabel {
+  font-size: 7.4px;
   fill: var(--ink);
   paint-order: stroke;
-  stroke: #0b1120;
+  stroke: var(--panel-2);
   stroke-width: 2.4px;
   pointer-events: none;
 }
-.land-label {
-  font-size: 8px;
+.llabel {
+  font-size: 8.5px;
   fill: #6f7fa3;
   letter-spacing: 0.16em;
   text-transform: uppercase;
   pointer-events: none;
 }
-.seq {
-  font-size: 7.5px;
+.seqno {
+  font-size: 7.4px;
   font-weight: 700;
   fill: #06101f;
   text-anchor: middle;

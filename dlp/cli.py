@@ -5,6 +5,7 @@
     python3 -m dlp.cli collect --loop       start banking real wait times
     python3 -m dlp.cli backtest             validate the strategy
     python3 -m dlp.cli sync-catalog         refresh coordinates/hours from the API
+    python3 -m dlp.cli import-map           replace the schematic map with real OSM geometry
     python3 -m dlp.cli status               what is in the database
 """
 
@@ -22,6 +23,7 @@ from .collector import Collector
 from .config import TripConfig, _hhmm, fmt_minute
 from .forecast import Forecaster
 from .model import Catalog
+from .osm import build_query, fetch as osm_fetch, parse as osm_parse, apply as osm_apply
 from .optimizer import Optimizer
 from .sources.base import SourceError
 from .sources.queue_times import QueueTimesSource
@@ -260,6 +262,39 @@ def cmd_sync_catalog(args) -> int:
     return 0
 
 
+def cmd_import_map(args) -> int:
+    """Pull real park geometry from OpenStreetMap over the schematic."""
+    cfg, catalog, store = _load(args)
+    print("querying Overpass for Disneyland Paris geometry "
+          "(this takes a minute — the resort is densely mapped)")
+    try:
+        raw = osm_fetch(build_query(), timeout=args.timeout)
+    except SourceError as e:
+        print(f"could not reach OpenStreetMap: {e}", file=sys.stderr)
+        return 1
+
+    result = osm_parse(raw, catalog)
+    print(f"\nOverpass returned {len(raw.get('elements', []))} elements:")
+    print(result.describe())
+
+    if args.dry_run:
+        print("\n--dry-run: nothing written.")
+        return 0 if result.ok() else 1
+
+    try:
+        out = osm_apply(result)
+    except SourceError as e:
+        print(f"\n{e}", file=sys.stderr)
+        return 1
+
+    print(f"\nmoved {out['moved']} attractions onto surveyed coordinates")
+    if out["not_found"]:
+        print(f"still schematic (no OSM match): {', '.join(out['not_found'])}")
+        print("Those keep their generated positions; the map stays usable.")
+    print("Map data © OpenStreetMap contributors, ODbL.")
+    return 0
+
+
 def cmd_status(args) -> int:
     cfg, catalog, store = _load(args)
     rows = store.coverage()
@@ -333,6 +368,13 @@ def build_parser() -> argparse.ArgumentParser:
 
     sy = sub.add_parser("sync-catalog", help="refresh coordinates and hours from the API")
     sy.set_defaults(func=cmd_sync_catalog)
+
+    im = sub.add_parser("import-map",
+                        help="replace the schematic map with real OpenStreetMap geometry")
+    im.add_argument("--dry-run", action="store_true",
+                    help="show what Overpass returns without writing anything")
+    im.add_argument("--timeout", type=int, default=200)
+    im.set_defaults(func=cmd_import_map)
 
     st = sub.add_parser("status", help="what data has been collected")
     st.set_defaults(func=cmd_status)

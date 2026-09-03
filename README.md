@@ -86,10 +86,11 @@ breakdowns, and a must-do list it treats as near-mandatory.
 
 **Validates the strategy.** `dlp/backtest.py` — see below.
 
-**Draws it on the park map.** A single self-contained SVG projected from the
-attractions' real coordinates: no tile server, no map library, works offline.
-Two coloured routes, numbered stops, pins sized and coloured by current wait,
-and a two-track timeline underneath.
+**Draws it on the park map.** A single self-contained SVG projected from
+lat/lon: no tile server, no map library, works offline and prints. Park
+outlines, themed lands, water and the Main Street axis are drawn as real
+regions, with two coloured routes, numbered stops, and pins sized and coloured
+by current wait. See **The map** below for what is surveyed and what is not.
 
 ---
 
@@ -323,14 +324,53 @@ time on foot: at 0 the child gets ~21.7 rides and ~306 minutes walking; at
 0.012 it is ~20.3 rides and ~269 minutes. It is a preference, not an optimum.
 Raise it if you would rather have a calmer day than one more attraction.
 
+## The map
+
+Disneyland Park is hub-and-spoke: Main Street runs north from the entrance to a
+Central Plaza with the castle on it, and the themed lands fan out around it.
+The map draws that structure — lands as regions at their **real compass
+bearings**, the Studios as its actual arrangement of lots, both parks on **one
+shared scale** so their true relative sizes show. Rescaling each park to fill
+its own panel would quietly misrepresent a resort where one park is twice the
+other.
+
+What ships in `dlp/data/park_geometry.json` is nonetheless a **schematic**, and
+says so in its own metadata. The topology is right; the outlines are generated
+shapes, not surveyed ones. It is produced by `tools/make_schematic_map.py`,
+which places every land and every attraction by bearing and radius from the
+Central Plaza — so the file is reproducible and auditable rather than a list of
+hand-typed numbers, and a test asserts every attraction really does fall inside
+its own land.
+
+For the real thing:
+
+```bash
+python3 -m dlp.cli import-map --dry-run   # see what Overpass returns
+python3 -m dlp.cli import-map             # write it
+```
+
+That pulls surveyed park boundaries, land polygons, water and attraction
+positions from OpenStreetMap, which maps Disneyland Paris in detail. The
+importer tries three Overpass mirrors, matches OSM attraction names against the
+catalog, prints what it found and what it could not match, and **refuses to
+write a thin response** over working data — Overpass returns almost nothing
+when it is busy, and silently replacing a good map with an empty one would be
+worse than failing. Imported data is © OpenStreetMap contributors, ODbL.
+
+> The import has been tested against recorded responses, not against the live
+> API — the sandbox this was built in blocks every OSM endpoint. Run
+> `--dry-run` first.
+
 ## Things to check before you go
 
 The catalog in `dlp/data/attractions.json` is a **seed**, and it is marked as
 such in the file:
 
-- **Coordinates** are approximate, laid out to be geographically coherent for
-  the stylised map. Run `python3 -m dlp.cli sync-catalog` from a machine with
-  internet access to overwrite them with real ones from the API.
+- **Coordinates** are schematic (see **The map** above). Run
+  `python3 -m dlp.cli import-map` for surveyed OpenStreetMap geometry, or
+  `sync-catalog` for attraction coordinates from themeparks.wiki. Walking
+  distances are only as good as these, so do this before trusting the
+  kilometre figures.
 - **Height limits** are approximations. Verify them in the official Disneyland
   Paris app — they are the one input where being wrong ruins a moment in front
   of a child.
@@ -356,9 +396,12 @@ dlp/
   backtest.py    online replay, baselines, oracle, optimality gap
   collector.py   the polling daemon
   server.py      stdlib HTTP server for the web UI
+  osm.py         OpenStreetMap import: real park geometry over the schematic
   cli.py         command line
   sources/       queue-times, themeparks.wiki, simulator, db replay
+tools/           make_schematic_map.py — regenerates the fallback map
 web/             map (SVG), timeline, schedule
+demo/            self-contained browser build of the planner
 tests/           python3 -m unittest discover -s tests
 ```
 

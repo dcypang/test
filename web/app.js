@@ -1,9 +1,9 @@
-import { renderMap, waitColor } from "/map.js";
+import { drawMap } from "/map.js";
 
 const $ = id => document.getElementById(id);
 const hhmm = m => `${String(Math.floor(m / 60) % 24).padStart(2, "0")}:${String(m % 60).padStart(2, "0")}`;
 
-let STATE = { attractions: [], waits: {}, plan: null, meta: {} };
+let STATE = { attractions: [], waits: {}, geometry: {}, plan: null, meta: {} };
 
 /* ---- data -------------------------------------------------------------- */
 
@@ -31,15 +31,12 @@ function banner(msg) {
 /* ---- render ------------------------------------------------------------ */
 
 function draw() {
-  const { attractions, waits, plan, meta } = STATE;
+  const { attractions, waits, geometry, plan, meta } = STATE;
   $("subtitle").textContent =
     `${meta.trip_date} · ${meta.party} · waits from ${meta.source} at ${meta.snapshot_at}`;
   banner(meta.warning || "");
 
-  renderMap($("map"), {
-    attractions, waits, plan,
-    onHover: showTip, onLeave: hideTip,
-  });
+  drawMap($("map"), attractions, waits, plan, geometry, showTip, hideTip);
   drawStats(plan.summary, meta);
   drawTimeline(plan.items, meta);
   drawSchedule(plan.items);
@@ -131,6 +128,11 @@ function drawStrategy(plan, meta) {
   bits.push(`<p><b>Why this beats queueing together.</b> ${s.overlapped_queue_min} minutes of
     this plan have both tracks in a line at once. That is time the family would otherwise have
     spent standing in a single queue, one attraction at a time.</p>`);
+  bits.push(`<p><b>The map.</b> ${meta.map_source === "openstreetmap"
+    ? "Outlines, lands and water are surveyed geometry from OpenStreetMap."
+    : "Land outlines are a <b>schematic</b> — real compass bearings, generated shapes. "
+      + "Run <code>python3 -m dlp.cli import-map</code> to replace them with "
+      + "OpenStreetMap geometry."}</p>`);
   if (meta.replan_note) bits.push(`<p class="muted">${esc(meta.replan_note)}</p>`);
   if (plan.notes?.length) {
     bits.push(`<p class="muted" style="font-size:11.5px">${plan.notes.map(esc).join("<br>")}</p>`);

@@ -20,6 +20,7 @@ from .config import TripConfig, _hhmm, fmt_minute
 from .forecast import Forecaster
 from .model import Catalog
 from .optimizer import Optimizer
+from .osm import load_geometry
 from .sources.base import SourceError
 from .sources.queue_times import QueueTimesSource
 from .sources.simulator import SimulatedSource, simulate_day
@@ -39,6 +40,7 @@ class PlannerService:
         self.store = store
         self.walk = WalkMatrix(self.catalog, cfg.party.walk_speed_family_mps,
                                cfg.party.walk_speed_adult_mps)
+        self.geometry = load_geometry() or {}
         self._lock = threading.Lock()
         self._sim_cache: dict = {}
 
@@ -120,6 +122,7 @@ class PlannerService:
                 for a in self.catalog
             ],
             "waits": waits,
+            "geometry": self.geometry,
             "plan": plan.to_dict(self.cfg),
             "meta": {
                 "trip_date": self.cfg.trip_date.isoformat(),
@@ -129,6 +132,7 @@ class PlannerService:
                 "day_start": self.cfg.day_start(),
                 "day_end": self.cfg.day_end(),
                 "warning": warning,
+                "map_source": (self.geometry.get("_meta", {}) or {}).get("source", "none"),
                 "replan_note": (
                     f"Re-plan every {self.cfg.strategy.replan_interval_min} minutes "
                     f"during the day: queues move, and the plan is only as good as "

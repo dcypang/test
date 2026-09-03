@@ -10,7 +10,7 @@
   --route-a:#1f56b8; --route-a-soft:#dbe6fb;
   --route-b:#7a45d8; --route-b-soft:#e8ddfb;
   --w1:#2f8f5f; --w2:#7fa62f; --w3:#c9911f; --w4:#cd6f2c; --w5:#c03d3d;
-  --closed:#98a2b4;
+  --closed:#98a2b4; --water:#5c9bd6;
   --good:#1c7a4f; --bad:#b8342f;
   --shadow:0 1px 2px rgba(20,22,29,.06),0 8px 24px rgba(20,22,29,.06);
   --r:10px;
@@ -25,7 +25,7 @@
     --route-a:#5b93f5; --route-a-soft:#1b2b48;
     --route-b:#a884f7; --route-b-soft:#2c2145;
     --w1:#43b077; --w2:#9dc44a; --w3:#e0aa38; --w4:#e08542; --w5:#e05a5a;
-    --closed:#5d6779;
+    --closed:#5d6779; --water:#2f6ea8;
     --good:#4cc48a; --bad:#f0736c;
     --shadow:0 1px 2px rgba(0,0,0,.4),0 8px 24px rgba(0,0,0,.35);
   }
@@ -36,7 +36,7 @@
   --route-a:#5b93f5; --route-a-soft:#1b2b48;
   --route-b:#a884f7; --route-b-soft:#2c2145;
   --w1:#43b077; --w2:#9dc44a; --w3:#e0aa38; --w4:#e08542; --w5:#e05a5a;
-  --closed:#5d6779;
+  --closed:#5d6779; --water:#2f6ea8;
   --good:#4cc48a; --bad:#f0736c;
   --shadow:0 1px 2px rgba(0,0,0,.4),0 8px 24px rgba(0,0,0,.35);
 }
@@ -121,13 +121,14 @@ main{max-width:1360px;margin:0 auto;padding:20px 22px 56px;
 
 /* ── map ─────────────────────────────────────────────────────────── */
 #map{display:block;width:100%;height:auto;background:var(--sunk)}
+.prose code{font-family:var(--f-mono);font-size:12px;background:var(--sunk);padding:1px 5px;border-radius:4px}
 .legend{display:flex;flex-wrap:wrap;gap:8px 18px;padding:11px 16px 0;
   font-size:12.5px;color:var(--ink-2);align-items:center}
 .legend .sw{display:inline-block;width:16px;height:3px;border-radius:2px;
   margin-right:6px;vertical-align:middle}
 .legend .dot{display:inline-block;width:9px;height:9px;border-radius:50%;
   margin-right:5px;vertical-align:middle}
-.land{opacity:.42}
+.land{opacity:.34}
 .route{fill:none;stroke-linecap:round;stroke-linejoin:round}
 .pin{cursor:pointer}
 .pin:hover .halo{opacity:.3}
@@ -288,50 +289,51 @@ tr.b td:first-child{box-shadow:inset 3px 0 0 var(--route-b)}
 
 <script>
 const RIDES = [
-  {id:"big_thunder",n:"Big Thunder Mountain",p:"DLP",l:"Frontierland",lat:48.8729,lon:2.7733,d:8,t:"coaster",h:102,ap:10,pa:true,sr:true,pk:70,cc:"high"},
-  {id:"phantom_manor",n:"Phantom Manor",p:"DLP",l:"Frontierland",lat:48.872,lon:2.7738,d:12,t:"dark_ride",h:null,ap:9,pa:true,sr:false,pk:45,cc:"high"},
-  {id:"riverboat",n:"Thunder Mesa Riverboat Landing",p:"DLP",l:"Frontierland",lat:48.8725,lon:2.7743,d:15,t:"boat",h:null,ap:4,pa:false,sr:false,pk:20,cc:"high"},
-  {id:"pocahontas",n:"Pocahontas Indian Village",p:"DLP",l:"Frontierland",lat:48.8718,lon:2.773,d:10,t:"playground",h:null,ap:3,pa:false,sr:false,pk:0,cc:"high"},
-  {id:"shootin_gallery",n:"Rustler Roundup Shootin' Gallery",p:"DLP",l:"Frontierland",lat:48.8722,lon:2.7746,d:6,t:"flat",h:null,ap:3,pa:false,sr:false,pk:5,cc:"high"},
-  {id:"pirates",n:"Pirates of the Caribbean",p:"DLP",l:"Adventureland",lat:48.8712,lon:2.7741,d:15,t:"boat",h:null,ap:9,pa:true,sr:false,pk:45,cc:"high"},
-  {id:"indiana_jones",n:"Indiana Jones et le Temple du Peril",p:"DLP",l:"Adventureland",lat:48.8727,lon:2.7725,d:5,t:"coaster",h:140,ap:7,pa:true,sr:true,pk:40,cc:"low"},
-  {id:"aladdin",n:"Le Passage Enchante d'Aladdin",p:"DLP",l:"Adventureland",lat:48.871,lon:2.7747,d:6,t:"walkthrough",h:null,ap:3,pa:false,sr:false,pk:5,cc:"high"},
-  {id:"robinson",n:"La Cabane des Robinson",p:"DLP",l:"Adventureland",lat:48.8716,lon:2.7734,d:12,t:"walkthrough",h:null,ap:4,pa:false,sr:false,pk:5,cc:"high"},
-  {id:"adventure_isle",n:"Adventure Isle",p:"DLP",l:"Adventureland",lat:48.8714,lon:2.7737,d:15,t:"playground",h:null,ap:4,pa:false,sr:false,pk:0,cc:"high"},
-  {id:"peter_pan",n:"Peter Pan's Flight",p:"DLP",l:"Fantasyland",lat:48.8731,lon:2.7769,d:4,t:"dark_ride",h:null,ap:9,pa:true,sr:false,pk:75,cc:"low"},
-  {id:"small_world",n:"it's a small world",p:"DLP",l:"Fantasyland",lat:48.874,lon:2.7768,d:12,t:"boat",h:null,ap:7,pa:true,sr:false,pk:35,cc:"high"},
-  {id:"dumbo",n:"Dumbo the Flying Elephant",p:"DLP",l:"Fantasyland",lat:48.8729,lon:2.7763,d:3,t:"flat",h:null,ap:7,pa:false,sr:false,pk:45,cc:"low"},
-  {id:"snow_white",n:"Blanche-Neige et les Sept Nains",p:"DLP",l:"Fantasyland",lat:48.8728,lon:2.777,d:4,t:"dark_ride",h:null,ap:6,pa:false,sr:false,pk:30,cc:"medium"},
-  {id:"pinocchio",n:"Les Voyages de Pinocchio",p:"DLP",l:"Fantasyland",lat:48.87275,lon:2.7772,d:4,t:"dark_ride",h:null,ap:6,pa:false,sr:false,pk:25,cc:"medium"},
-  {id:"carrousel",n:"Le Carrousel de Lancelot",p:"DLP",l:"Fantasyland",lat:48.873,lon:2.7766,d:3,t:"flat",h:null,ap:5,pa:false,sr:false,pk:15,cc:"high"},
-  {id:"teacups",n:"Mad Hatter's Tea Cups",p:"DLP",l:"Fantasyland",lat:48.8734,lon:2.7774,d:3,t:"flat",h:null,ap:5,pa:false,sr:false,pk:20,cc:"medium"},
-  {id:"alice_labyrinth",n:"Alice's Curious Labyrinth",p:"DLP",l:"Fantasyland",lat:48.8736,lon:2.7762,d:15,t:"walkthrough",h:null,ap:5,pa:false,sr:false,pk:15,cc:"high"},
-  {id:"casey_jr",n:"Casey Jr. - le Petit Train du Cirque",p:"DLP",l:"Fantasyland",lat:48.8743,lon:2.776,d:4,t:"coaster",h:null,ap:6,pa:false,sr:false,pk:35,cc:"low"},
-  {id:"storybook",n:"Le Pays des Contes de Fees",p:"DLP",l:"Fantasyland",lat:48.8742,lon:2.7757,d:8,t:"boat",h:null,ap:6,pa:false,sr:false,pk:30,cc:"medium"},
-  {id:"meet_mickey",n:"Meet Mickey Mouse",p:"DLP",l:"Fantasyland",lat:48.8737,lon:2.7777,d:5,t:"meet",h:null,ap:8,pa:true,sr:false,pk:50,cc:"low"},
-  {id:"princess_pavilion",n:"Princess Pavilion",p:"DLP",l:"Fantasyland",lat:48.8733,lon:2.7778,d:5,t:"meet",h:null,ap:6,pa:true,sr:false,pk:60,cc:"low"},
-  {id:"dragon_lair",n:"La Taniere du Dragon",p:"DLP",l:"Fantasyland",lat:48.87235,lon:2.7762,d:5,t:"walkthrough",h:null,ap:4,pa:false,sr:false,pk:5,cc:"high"},
-  {id:"hyperspace_mountain",n:"Star Wars Hyperspace Mountain",p:"DLP",l:"Discoveryland",lat:48.8725,lon:2.779,d:6,t:"coaster",h:120,ap:9,pa:true,sr:true,pk:60,cc:"high"},
-  {id:"buzz_lightyear",n:"Buzz Lightyear Laser Blast",p:"DLP",l:"Discoveryland",lat:48.8718,lon:2.7786,d:6,t:"dark_ride",h:null,ap:8,pa:true,sr:false,pk:45,cc:"high"},
-  {id:"star_tours",n:"Star Tours: The Adventures Continue",p:"DLP",l:"Discoveryland",lat:48.8713,lon:2.7793,d:8,t:"simulator",h:102,ap:7,pa:true,sr:false,pk:40,cc:"high"},
-  {id:"orbitron",n:"Orbitron",p:"DLP",l:"Discoveryland",lat:48.872,lon:2.7782,d:3,t:"flat",h:null,ap:5,pa:false,sr:false,pk:25,cc:"low"},
-  {id:"autopia",n:"Autopia",p:"DLP",l:"Discoveryland",lat:48.8731,lon:2.7788,d:6,t:"flat",h:81,ap:6,pa:false,sr:false,pk:35,cc:"medium"},
-  {id:"nautilus",n:"Les Mysteres du Nautilus",p:"DLP",l:"Discoveryland",lat:48.87215,lon:2.7779,d:10,t:"walkthrough",h:null,ap:4,pa:false,sr:false,pk:10,cc:"high"},
-  {id:"railroad_main",n:"Disneyland Railroad - Main Street Station",p:"DLP",l:"Main Street U.S.A.",lat:48.87,lon:2.776,d:20,t:"train",h:null,ap:5,pa:false,sr:false,pk:25,cc:"medium"},
-  {id:"tower_of_terror",n:"The Twilight Zone Tower of Terror",p:"DAW",l:"Production Courtyard",lat:48.8675,lon:2.7818,d:8,t:"drop",h:102,ap:9,pa:true,sr:true,pk:55,cc:"medium"},
-  {id:"crush_coaster",n:"Crush's Coaster",p:"DAW",l:"Worlds of Pixar",lat:48.8682,lon:2.7809,d:4,t:"coaster",h:107,ap:9,pa:true,sr:true,pk:90,cc:"low"},
-  {id:"ratatouille",n:"Ratatouille: L'Aventure Totalement Toquee de Remy",p:"DAW",l:"Worlds of Pixar",lat:48.867,lon:2.7806,d:6,t:"dark_ride",h:null,ap:10,pa:true,sr:true,pk:70,cc:"medium"},
-  {id:"cars_road_trip",n:"Cars ROAD TRIP",p:"DAW",l:"Worlds of Pixar",lat:48.8666,lon:2.7814,d:12,t:"tram",h:null,ap:5,pa:false,sr:false,pk:30,cc:"high"},
-  {id:"cars_rallye",n:"Cars Quatre Roues Rallye",p:"DAW",l:"Worlds of Pixar",lat:48.8678,lon:2.7804,d:3,t:"flat",h:81,ap:5,pa:false,sr:false,pk:30,cc:"medium"},
-  {id:"slinky_dog",n:"Slinky Dog Zigzag Spin",p:"DAW",l:"Worlds of Pixar",lat:48.8685,lon:2.7813,d:2,t:"flat",h:null,ap:5,pa:false,sr:false,pk:30,cc:"low"},
-  {id:"toy_soldiers",n:"Toy Soldiers Parachute Drop",p:"DAW",l:"Worlds of Pixar",lat:48.8687,lon:2.781,d:3,t:"drop",h:81,ap:5,pa:false,sr:false,pk:30,cc:"low"},
-  {id:"rc_racer",n:"RC Racer",p:"DAW",l:"Worlds of Pixar",lat:48.8686,lon:2.7816,d:2,t:"coaster",h:120,ap:6,pa:false,sr:false,pk:45,cc:"low"},
-  {id:"flight_force",n:"Avengers Assemble: Flight Force",p:"DAW",l:"Avengers Campus",lat:48.8679,lon:2.783,d:4,t:"coaster",h:120,ap:8,pa:true,sr:true,pk:55,cc:"medium"},
-  {id:"spiderman_web",n:"Spider-Man W.E.B. Adventure",p:"DAW",l:"Avengers Campus",lat:48.8674,lon:2.7833,d:5,t:"dark_ride",h:null,ap:8,pa:true,sr:true,pk:50,cc:"medium"},
-  {id:"flying_carpets",n:"Les Tapis Volants - Flying Carpets over Agrabah",p:"DAW",l:"Toon Studio",lat:48.869,lon:2.7806,d:3,t:"flat",h:null,ap:4,pa:false,sr:false,pk:20,cc:"medium"},
-  {id:"stitch_live",n:"Stitch Live!",p:"DAW",l:"Production Courtyard",lat:48.868,lon:2.7821,d:20,t:"show",h:null,ap:5,pa:false,sr:false,pk:20,cc:"high"},
-  {id:"animagique",n:"Animagique Theater",p:"DAW",l:"Toon Studio",lat:48.8688,lon:2.7801,d:30,t:"show",h:null,ap:5,pa:false,sr:false,pk:15,cc:"high"}
+  {id:"big_thunder",n:"Big Thunder Mountain",p:"DLP",l:"Frontierland",lat:48.873276,lon:2.771256,d:8,t:"coaster",h:102,ap:10,pa:true,sr:true,pk:70,cc:"high"},
+  {id:"phantom_manor",n:"Phantom Manor",p:"DLP",l:"Frontierland",lat:48.871522,lon:2.772157,d:12,t:"dark_ride",h:null,ap:9,pa:true,sr:false,pk:45,cc:"high"},
+  {id:"riverboat",n:"Thunder Mesa Riverboat Landing",p:"DLP",l:"Frontierland",lat:48.872351,lon:2.771785,d:15,t:"boat",h:null,ap:4,pa:false,sr:false,pk:20,cc:"high"},
+  {id:"pocahontas",n:"Pocahontas Indian Village",p:"DLP",l:"Frontierland",lat:48.873335,lon:2.773103,d:10,t:"playground",h:null,ap:3,pa:false,sr:false,pk:0,cc:"high"},
+  {id:"shootin_gallery",n:"Rustler Roundup Shootin' Gallery",p:"DLP",l:"Frontierland",lat:48.871787,lon:2.772943,d:6,t:"flat",h:null,ap:3,pa:false,sr:false,pk:5,cc:"high"},
+  {id:"pirates",n:"Pirates of the Caribbean",p:"DLP",l:"Adventureland",lat:48.870208,lon:2.773749,d:15,t:"boat",h:null,ap:9,pa:true,sr:false,pk:45,cc:"high"},
+  {id:"indiana_jones",n:"Indiana Jones et le Temple du Peril",p:"DLP",l:"Adventureland",lat:48.870665,lon:2.771243,d:5,t:"coaster",h:140,ap:7,pa:true,sr:true,pk:40,cc:"low"},
+  {id:"aladdin",n:"Le Passage Enchante d'Aladdin",p:"DLP",l:"Adventureland",lat:48.870438,lon:2.774745,d:6,t:"walkthrough",h:null,ap:3,pa:false,sr:false,pk:5,cc:"high"},
+  {id:"robinson",n:"La Cabane des Robinson",p:"DLP",l:"Adventureland",lat:48.870655,lon:2.772554,d:12,t:"walkthrough",h:null,ap:4,pa:false,sr:false,pk:5,cc:"high"},
+  {id:"adventure_isle",n:"Adventure Isle",p:"DLP",l:"Adventureland",lat:48.870257,lon:2.7726,d:15,t:"playground",h:null,ap:4,pa:false,sr:false,pk:0,cc:"high"},
+  {id:"peter_pan",n:"Peter Pan's Flight",p:"DLP",l:"Fantasyland",lat:48.873619,lon:2.775226,d:4,t:"dark_ride",h:null,ap:9,pa:true,sr:false,pk:75,cc:"low"},
+  {id:"small_world",n:"it's a small world",p:"DLP",l:"Fantasyland",lat:48.874425,lon:2.777125,d:12,t:"boat",h:null,ap:7,pa:true,sr:false,pk:35,cc:"high"},
+  {id:"dumbo",n:"Dumbo the Flying Elephant",p:"DLP",l:"Fantasyland",lat:48.873491,lon:2.776415,d:3,t:"flat",h:null,ap:7,pa:false,sr:false,pk:45,cc:"low"},
+  {id:"snow_white",n:"Blanche-Neige et les Sept Nains",p:"DLP",l:"Fantasyland",lat:48.873371,lon:2.774949,d:4,t:"dark_ride",h:null,ap:6,pa:false,sr:false,pk:30,cc:"medium"},
+  {id:"pinocchio",n:"Les Voyages de Pinocchio",p:"DLP",l:"Fantasyland",lat:48.87343,lon:2.775616,d:4,t:"dark_ride",h:null,ap:6,pa:false,sr:false,pk:25,cc:"medium"},
+  {id:"carrousel",n:"Le Carrousel de Lancelot",p:"DLP",l:"Fantasyland",lat:48.873197,lon:2.775771,d:3,t:"flat",h:null,ap:5,pa:false,sr:false,pk:15,cc:"high"},
+  {id:"teacups",n:"Mad Hatter's Tea Cups",p:"DLP",l:"Fantasyland",lat:48.873655,lon:2.777284,d:3,t:"flat",h:null,ap:5,pa:false,sr:false,pk:20,cc:"medium"},
+  {id:"alice_labyrinth",n:"Alice's Curious Labyrinth",p:"DLP",l:"Fantasyland",lat:48.874101,lon:2.77606,d:15,t:"walkthrough",h:null,ap:5,pa:false,sr:false,pk:15,cc:"high"},
+  {id:"casey_jr",n:"Casey Jr. - le Petit Train du Cirque",p:"DLP",l:"Fantasyland",lat:48.874453,lon:2.77464,d:4,t:"coaster",h:null,ap:6,pa:false,sr:false,pk:35,cc:"low"},
+  {id:"storybook",n:"Le Pays des Contes de Fees",p:"DLP",l:"Fantasyland",lat:48.874513,lon:2.773982,d:8,t:"boat",h:null,ap:6,pa:false,sr:false,pk:30,cc:"medium"},
+  {id:"meet_mickey",n:"Meet Mickey Mouse",p:"DLP",l:"Fantasyland",lat:48.874014,lon:2.777305,d:5,t:"meet",h:null,ap:8,pa:true,sr:false,pk:50,cc:"low"},
+  {id:"princess_pavilion",n:"Princess Pavilion",p:"DLP",l:"Fantasyland",lat:48.873825,lon:2.776122,d:5,t:"meet",h:null,ap:6,pa:true,sr:false,pk:60,cc:"low"},
+  {id:"dragon_lair",n:"La Taniere du Dragon",p:"DLP",l:"Fantasyland",lat:48.872676,lon:2.7757,d:5,t:"walkthrough",h:null,ap:4,pa:false,sr:false,pk:5,cc:"high"},
+  {id:"hyperspace_mountain",n:"Star Wars Hyperspace Mountain",p:"DLP",l:"Discoveryland",lat:48.872474,lon:2.779008,d:6,t:"coaster",h:120,ap:9,pa:true,sr:true,pk:60,cc:"high"},
+  {id:"buzz_lightyear",n:"Buzz Lightyear Laser Blast",p:"DLP",l:"Discoveryland",lat:48.871315,lon:2.778536,d:6,t:"dark_ride",h:null,ap:8,pa:true,sr:false,pk:45,cc:"high"},
+  {id:"star_tours",n:"Star Tours: The Adventures Continue",p:"DLP",l:"Discoveryland",lat:48.87066,lon:2.778596,d:8,t:"simulator",h:102,ap:7,pa:true,sr:false,pk:40,cc:"high"},
+  {id:"orbitron",n:"Orbitron",p:"DLP",l:"Discoveryland",lat:48.871731,lon:2.777768,d:3,t:"flat",h:null,ap:5,pa:false,sr:false,pk:25,cc:"low"},
+  {id:"autopia",n:"Autopia",p:"DLP",l:"Discoveryland",lat:48.873206,lon:2.779272,d:6,t:"flat",h:81,ap:6,pa:false,sr:false,pk:35,cc:"medium"},
+  {id:"nautilus",n:"Les Mysteres du Nautilus",p:"DLP",l:"Discoveryland",lat:48.871909,lon:2.778266,d:10,t:"walkthrough",h:null,ap:4,pa:false,sr:false,pk:10,cc:"high"},
+  {id:"railroad_main",n:"Disneyland Railroad - Main Street Station",p:"DLP",l:"Main Street U.S.A.",lat:48.868841,lon:2.7757,d:20,t:"train",h:null,ap:5,pa:false,sr:false,pk:25,cc:"medium"},
+  {id:"tower_of_terror",n:"The Twilight Zone Tower of Terror",p:"DAW",l:"Production Courtyard",lat:48.863838,lon:2.782063,d:8,t:"drop",h:102,ap:9,pa:true,sr:true,pk:55,cc:"medium"},
+  {id:"crush_coaster",n:"Crush's Coaster",p:"DAW",l:"Worlds of Pixar",lat:48.86558,lon:2.782609,d:4,t:"coaster",h:107,ap:9,pa:true,sr:true,pk:90,cc:"low"},
+  {id:"ratatouille",n:"Ratatouille: L'Aventure Totalement Toquee de Remy",p:"DAW",l:"Worlds of Pixar",lat:48.865095,lon:2.782555,d:6,t:"dark_ride",h:null,ap:10,pa:true,sr:true,pk:70,cc:"medium"},
+  {id:"cars_road_trip",n:"Cars ROAD TRIP",p:"DAW",l:"Worlds of Pixar",lat:48.865095,lon:2.783811,d:12,t:"tram",h:null,ap:5,pa:false,sr:false,pk:30,cc:"high"},
+  {id:"cars_rallye",n:"Cars Quatre Roues Rallye",p:"DAW",l:"Worlds of Pixar",lat:48.865221,lon:2.782964,d:3,t:"flat",h:81,ap:5,pa:false,sr:false,pk:30,cc:"medium"},
+  {id:"slinky_dog",n:"Slinky Dog Zigzag Spin",p:"DAW",l:"Worlds of Pixar",lat:48.865958,lon:2.783538,d:2,t:"flat",h:null,ap:5,pa:false,sr:false,pk:30,cc:"low"},
+  {id:"toy_soldiers",n:"Toy Soldiers Parachute Drop",p:"DAW",l:"Worlds of Pixar",lat:48.866101,lon:2.783155,d:3,t:"drop",h:81,ap:5,pa:false,sr:false,pk:30,cc:"low"},
+  {id:"rc_racer",n:"RC Racer",p:"DAW",l:"Worlds of Pixar",lat:48.86585,lon:2.78392,d:2,t:"coaster",h:120,ap:6,pa:false,sr:false,pk:45,cc:"low"},
+  {id:"flight_force",n:"Avengers Assemble: Flight Force",p:"DAW",l:"Avengers Campus",lat:48.864448,lon:2.784166,d:4,t:"coaster",h:120,ap:8,pa:true,sr:true,pk:55,cc:"medium"},
+  {id:"spiderman_web",n:"Spider-Man W.E.B. Adventure",p:"DAW",l:"Avengers Campus",lat:48.863999,lon:2.783811,d:5,t:"dark_ride",h:null,ap:8,pa:true,sr:true,pk:50,cc:"medium"},
+  {id:"flying_carpets",n:"Les Tapis Volants - Flying Carpets over Agrabah",p:"DAW",l:"Toon Studio",lat:48.86567,lon:2.781708,d:3,t:"flat",h:null,ap:4,pa:false,sr:false,pk:20,cc:"medium"},
+  {id:"stitch_live",n:"Stitch Live!",p:"DAW",l:"Production Courtyard",lat:48.864233,lon:2.781544,d:20,t:"show",h:null,ap:5,pa:false,sr:false,pk:20,cc:"high"},
+  {id:"animagique",n:"Animagique Theater",p:"DAW",l:"Toon Studio",lat:48.865886,lon:2.78138,d:30,t:"show",h:null,ap:5,pa:false,sr:false,pk:15,cc:"high"}
 ];
+const GEO = {"_meta":{"source":"schematic","generated_by":"tools/make_schematic_map.py","note":"Geographically faithful in topology \u2014 lands sit at their real compass bearings around the Central Plaza, and the Studios lots in their real arrangement \u2014 but this is a SCHEMATIC, not survey data. Distances and outlines are approximate. Replace it with real geometry using `python3 -m dlp.cli import-map`."},"parks":{"DLP":{"name":"Disneyland Park","outline":[[48.875713,2.7757],[48.875654,2.77672],[48.87548,2.777709],[48.875195,2.778636],[48.874809,2.779475],[48.874333,2.780199],[48.873781,2.780786],[48.873171,2.781219],[48.872521,2.781483],[48.87185,2.781573],[48.871179,2.781483],[48.870529,2.781219],[48.869919,2.780786],[48.869367,2.780199],[48.868891,2.779475],[48.868505,2.778636],[48.86822,2.777709],[48.868046,2.77672],[48.867987,2.7757],[48.868046,2.77468],[48.86822,2.773691],[48.868505,2.772764],[48.868891,2.771925],[48.869367,2.771201],[48.869919,2.770614],[48.870529,2.770181],[48.871179,2.769917],[48.87185,2.769827],[48.872521,2.769917],[48.873171,2.770181],[48.873781,2.770614],[48.874333,2.771201],[48.874809,2.771925],[48.875195,2.772764],[48.87548,2.773691],[48.875654,2.77468]],"hub":[48.87185,2.7757]},"DAW":{"name":"Walt Disney Studios","outline":[[48.862948,2.779701],[48.862948,2.785299],[48.866452,2.785299],[48.866452,2.779701]],"hub":[48.8647,2.7825]}},"lands":[{"name":"Central Plaza","park":"DLP","polygon":[[48.872497,2.7757],[48.872483,2.775904],[48.872441,2.7761],[48.872373,2.776278],[48.872283,2.776431],[48.872173,2.776552],[48.87205,2.776635],[48.871918,2.776678],[48.871782,2.776678],[48.87165,2.776635],[48.871527,2.776552],[48.871417,2.776431],[48.871327,2.776278],[48.871259,2.7761],[48.871217,2.775904],[48.871203,2.7757],[48.871217,2.775496],[48.871259,2.7753],[48.871327,2.775122],[48.871417,2.774969],[48.871527,2.774848],[48.87165,2.774765],[48.871782,2.774722],[48.871918,2.774722],[48.87205,2.774765],[48.872173,2.774848],[48.872283,2.774969],[48.872373,2.775122],[48.872441,2.7753],[48.872483,2.775496]]},{"name":"Main Street U.S.A.","park":"DLP","polygon":[[48.868396,2.777206],[48.868335,2.776836],[48.868292,2.77646],[48.868266,2.776081],[48.868257,2.7757],[48.868266,2.775319],[48.868292,2.77494],[48.868335,2.774564],[48.868396,2.774194],[48.871246,2.775436],[48.871235,2.775501],[48.871227,2.775567],[48.871223,2.775633],[48.871221,2.7757],[48.871223,2.775767],[48.871227,2.775833],[48.871235,2.775899],[48.871246,2.775964]]},{"name":"Adventureland","park":"DLP","polygon":[[48.868353,2.774175],[48.868431,2.773808],[48.868526,2.77345],[48.868638,2.773103],[48.868765,2.772769],[48.868907,2.772449],[48.869063,2.772145],[48.869233,2.771858],[48.869416,2.771589],[48.86961,2.771341],[48.869816,2.771114],[48.870031,2.77091],[48.870255,2.770729],[48.870487,2.770572],[48.870726,2.770439],[48.87097,2.770333],[48.871676,2.77464],[48.871628,2.774661],[48.871581,2.774687],[48.871535,2.774718],[48.871491,2.774754],[48.871448,2.774794],[48.871408,2.774839],[48.871369,2.774888],[48.871333,2.774941],[48.871299,2.774998],[48.871269,2.775058],[48.871241,2.775121],[48.871215,2.775187],[48.871193,2.775256],[48.871175,2.775326],[48.871159,2.775399]]},{"name":"Frontierland","park":"DLP","polygon":[[48.870926,2.770068],[48.871198,2.769981],[48.871473,2.769924],[48.87175,2.769898],[48.872028,2.769902],[48.872304,2.769937],[48.872578,2.770002],[48.872849,2.770098],[48.873114,2.770223],[48.873372,2.770377],[48.873623,2.770559],[48.873864,2.770769],[48.874094,2.771004],[48.874313,2.771264],[48.874518,2.771548],[48.874709,2.771854],[48.874886,2.77218],[48.875046,2.772525],[48.875189,2.772886],[48.872479,2.77517],[48.872452,2.775102],[48.872421,2.775037],[48.872388,2.774976],[48.872352,2.774918],[48.872314,2.774865],[48.872272,2.774816],[48.872229,2.774772],[48.872184,2.774732],[48.872137,2.774698],[48.872088,2.774669],[48.872038,2.774645],[48.871987,2.774627],[48.871936,2.774615],[48.871883,2.774609],[48.871831,2.774608],[48.871779,2.774613],[48.871727,2.774623],[48.871676,2.77464]]},{"name":"Fantasyland","park":"DLP","polygon":[[48.874993,2.773051],[48.875111,2.773406],[48.875212,2.773772],[48.875295,2.774148],[48.87536,2.774533],[48.875407,2.774924],[48.875434,2.775319],[48.875443,2.775716],[48.875433,2.776113],[48.875404,2.776507],[48.875356,2.776898],[48.875289,2.777282],[48.875205,2.777658],[48.875102,2.778023],[48.874983,2.778376],[48.874846,2.778715],[48.874694,2.779038],[48.874527,2.779344],[48.874346,2.77963],[48.872412,2.776584],[48.872452,2.77652],[48.87249,2.776451],[48.872524,2.776378],[48.872555,2.776302],[48.872582,2.776223],[48.872605,2.77614],[48.872624,2.776056],[48.872639,2.77597],[48.87265,2.775882],[48.872656,2.775793],[48.872658,2.775704],[48.872657,2.775614],[48.87265,2.775525],[48.87264,2.775437],[48.872625,2.775351],[48.872606,2.775266],[48.872584,2.775184],[48.872557,2.775104]]},{"name":"Discoveryland","park":"DLP","polygon":[[48.874346,2.77963],[48.874156,2.779889],[48.873955,2.780127],[48.873743,2.780343],[48.873522,2.780536],[48.873292,2.780704],[48.873055,2.780847],[48.872811,2.780964],[48.872563,2.781054],[48.872312,2.781118],[48.872057,2.781154],[48.871802,2.781162],[48.871548,2.781144],[48.871294,2.781097],[48.871044,2.781024],[48.870797,2.780923],[48.870556,2.780797],[48.870322,2.780644],[48.870095,2.780467],[48.869877,2.780265],[48.869669,2.780041],[48.869471,2.779795],[48.869286,2.779528],[48.869114,2.779242],[48.868956,2.778938],[48.868812,2.778617],[48.868683,2.778282],[48.868571,2.777934],[48.868475,2.777575],[48.868396,2.777206],[48.871159,2.776001],[48.871175,2.776075],[48.871194,2.776147],[48.871217,2.776216],[48.871242,2.776283],[48.871271,2.776348],[48.871303,2.776408],[48.871337,2.776466],[48.871374,2.776519],[48.871414,2.776568],[48.871455,2.776613],[48.871499,2.776653],[48.871544,2.776689],[48.871591,2.776719],[48.871639,2.776745],[48.871689,2.776765],[48.871739,2.776779],[48.87179,2.776789],[48.87184,2.776792],[48.871891,2.776791],[48.871942,2.776784],[48.871993,2.776771],[48.872042,2.776753],[48.872091,2.776729],[48.872138,2.776701],[48.872184,2.776667],[48.872229,2.776629],[48.872271,2.776585],[48.872311,2.776538],[48.872349,2.776486]]},{"name":"Front Lot","park":"DAW","polygon":[[48.863083,2.779769],[48.863083,2.780861],[48.866317,2.780861],[48.866317,2.779769]]},{"name":"Toon Studio","park":"DAW","polygon":[[48.86488,2.780861],[48.86488,2.782363],[48.866317,2.782363],[48.866317,2.780861]]},{"name":"Worlds of Pixar","park":"DAW","polygon":[[48.86488,2.782363],[48.86488,2.785231],[48.866317,2.785231],[48.866317,2.782363]]},{"name":"Production Courtyard","park":"DAW","polygon":[[48.863083,2.780861],[48.863083,2.78291],[48.86488,2.78291],[48.86488,2.780861]]},{"name":"Avengers Campus","park":"DAW","polygon":[[48.863083,2.78291],[48.863083,2.785231],[48.86488,2.785231],[48.86488,2.78291]]}],"water":[{"name":"Rivers of the Far West","park":"DLP","polygon":[[48.871975,2.770268],[48.872224,2.770294],[48.872471,2.770347],[48.872715,2.770426],[48.872955,2.77053],[48.873189,2.77066],[48.873417,2.770814],[48.873638,2.770993],[48.873849,2.771194],[48.874051,2.771417],[48.874242,2.771661],[48.874422,2.771924],[48.874589,2.772206],[48.874742,2.772505],[48.874882,2.77282],[48.875007,2.773148],[48.874111,2.773873],[48.874021,2.773637],[48.873921,2.773412],[48.873811,2.773198],[48.873692,2.772996],[48.873563,2.772807],[48.873426,2.772633],[48.873282,2.772473],[48.87313,2.772329],[48.872972,2.772202],[48.872809,2.772091],[48.872641,2.771998],[48.872469,2.771923],[48.872295,2.771867],[48.872118,2.771829],[48.871939,2.77181]]}],"landmarks":[{"name":"Sleeping Beauty Castle","park":"DLP","kind":"castle","at":[48.872676,2.7757]},{"name":"Central Plaza","park":"DLP","kind":"plaza","at":[48.87185,2.7757]},{"name":"Park entrance","park":"DLP","kind":"entrance","at":[48.868122,2.7757]},{"name":"Studios entrance","park":"DAW","kind":"entrance","at":[48.8647,2.779837]}],"paths":[{"name":"Main Street U.S.A.","park":"DLP","line":[[48.868257,2.7757],[48.871221,2.7757]]},{"name":"Central Plaza ring","park":"DLP","line":[[48.872479,2.7757],[48.872469,2.775866],[48.872441,2.776027],[48.872395,2.776178],[48.872332,2.776315],[48.872254,2.776432],[48.872164,2.776528],[48.872065,2.776598],[48.871959,2.776641],[48.87185,2.776656],[48.871741,2.776641],[48.871635,2.776598],[48.871536,2.776528],[48.871446,2.776432],[48.871368,2.776315],[48.871305,2.776178],[48.871259,2.776027],[48.871231,2.775866],[48.871221,2.7757],[48.871231,2.775534],[48.871259,2.775373],[48.871305,2.775222],[48.871368,2.775085],[48.871446,2.774968],[48.871536,2.774872],[48.871635,2.774802],[48.871741,2.774759],[48.87185,2.774744],[48.871959,2.774759],[48.872065,2.774802],[48.872164,2.774872],[48.872254,2.774968],[48.872332,2.775085],[48.872395,2.775222],[48.872441,2.775373],[48.872469,2.775534],[48.872479,2.7757]]},{"name":"Esplanade","park":"BOTH","line":[[48.868122,2.7757],[48.8647,2.779837]]}]};
 /* ===================================================================
    Planner engine — a browser port of the Python package.
    Simulator, walk matrix, forecaster and the two-track beam search.
@@ -859,19 +861,23 @@ function summarise(plan, cfg) {
 
 /* ===================================================================
    Map, ribbon, timetable and controls.
-   The map is one SVG projected from the attractions' real lat/lon —
-   no tiles, no map library. The two parks sit ~1km apart, so each
-   gets its own panel and projection; projecting both into one frame
-   spends the canvas on the empty esplanade between them.
+
+   The map draws actual park geometry — outlines, themed lands, water,
+   the Main Street axis — rather than hulls thrown around the pins.
+   Disneyland Park is hub-and-spoke: Main Street runs north from the
+   entrance to a Central Plaza with the castle on it, and the lands
+   fan out as sectors at their real compass bearings. The two parks
+   sit ~1km apart, so each gets its own panel and projection.
    =================================================================== */
 const NS = "http://www.w3.org/2000/svg";
 const LAND_HUE = {
-  "Main Street U.S.A.":"#8a6f4a", "Frontierland":"#a9603c", "Adventureland":"#3f7d55",
-  "Fantasyland":"#5f5aa8", "Discoveryland":"#2f6f8f", "Production Courtyard":"#7a4a63",
-  "Worlds of Pixar":"#4a6f9e", "Avengers Campus":"#8c4340", "Toon Studio":"#7e6b3a",
+  "Main Street U.S.A.":"#9a7b52", "Frontierland":"#b06a42", "Adventureland":"#3f8459",
+  "Fantasyland":"#6560b4", "Discoveryland":"#2f7796", "Production Courtyard":"#84506c",
+  "Worlds of Pixar":"#4f76a8", "Avengers Campus":"#964945", "Toon Studio":"#87733d",
+  "Front Lot":"#6b7385", "Central Plaza":"#8f9bb0",
 };
 const PARK_NAME = { DLP:"Disneyland Park", DAW:"Walt Disney Studios" };
-const MW = 980, PADX = 46, HEAD = 24, GAPX = 14;
+const MW = 980, PADX = 30, HEAD = 24, GAPX = 14;
 
 const $ = id => document.getElementById(id);
 const el = (t, at = {}, tx) => { const n = document.createElementNS(NS, t);
@@ -884,103 +890,168 @@ function waitHue(w){
   if (w <= 15) return "var(--w1)"; if (w <= 30) return "var(--w2)";
   if (w <= 45) return "var(--w3)"; if (w <= 70) return "var(--w4)"; return "var(--w5)";
 }
-const pinR = w => (w === null || w === undefined) ? 3.4 : 3.4 + Math.min(7, w/13);
+const pinR = w => (w === null || w === undefined) ? 3.2 : 3.2 + Math.min(6.5, w/14);
 
-function bounds(pts){
-  const la = pts.map(p=>p.lat), lo = pts.map(p=>p.lon);
+/* ---- projection --------------------------------------------------- */
+function boundsOf(latlons){
+  const la = latlons.map(p=>p[0]), lo = latlons.map(p=>p[1]);
   const laMin=Math.min(...la), laMax=Math.max(...la), loMin=Math.min(...lo), loMax=Math.max(...lo);
   const kx = Math.cos((laMin+laMax)/2*Math.PI/180);
   const w = Math.max(1e-6,(loMax-loMin)*kx), h = Math.max(1e-6,laMax-laMin);
   return {laMax, loMin, kx, w, h, aspect:w/h};
 }
-function hull(p){
-  if (p.length<3) return p.slice();
-  const s=p.slice().sort((a,b)=>a[0]-b[0]||a[1]-b[1]);
-  const cr=(o,a,b)=>(a[0]-o[0])*(b[1]-o[1])-(a[1]-o[1])*(b[0]-o[0]);
-  const lo=[]; for(const q of s){ while(lo.length>=2&&cr(lo[lo.length-2],lo[lo.length-1],q)<=0)lo.pop(); lo.push(q); }
-  const up=[]; for(let i=s.length-1;i>=0;i--){const q=s[i]; while(up.length>=2&&cr(up[up.length-2],up[up.length-1],q)<=0)up.pop(); up.push(q);}
-  lo.pop(); up.pop(); return lo.concat(up);
-}
-function grow(p,by){
-  const cx=p.reduce((s,q)=>s+q[0],0)/p.length, cy=p.reduce((s,q)=>s+q[1],0)/p.length;
-  return p.map(([x,y])=>{const dx=x-cx,dy=y-cy,d=Math.hypot(dx,dy)||1;return [x+dx/d*by,y+dy/d*by];});
-}
-function blob(p){
-  if (p.length<3) return "";
-  const n=p.length; let d=`M ${p[0][0].toFixed(1)} ${p[0][1].toFixed(1)}`;
-  for(let i=0;i<n;i++){
-    const a=p[(i-1+n)%n],b=p[i],c=p[(i+1)%n],e=p[(i+2)%n];
-    const c1=[b[0]+(c[0]-a[0])/6,b[1]+(c[1]-a[1])/6], c2=[c[0]-(e[0]-b[0])/6,c[1]-(e[1]-b[1])/6];
-    d+=` C ${c1[0].toFixed(1)} ${c1[1].toFixed(1)}, ${c2[0].toFixed(1)} ${c2[1].toFixed(1)}, ${c[0].toFixed(1)} ${c[1].toFixed(1)}`;
+const projector = (b, r) => {
+  const sc = Math.min((r.w-2*PADX)/b.w, (r.h-2*PADX)/b.h);
+  const ox = r.x+(r.w-b.w*sc)/2, oy = r.y+(r.h-b.h*sc)/2;
+  return (lat,lon) => [ox+(lon-b.loMin)*b.kx*sc, oy+(b.laMax-lat)*sc];
+};
+const pathOf = (ring, P, close) =>
+  ring.map((p,i)=>{const [x,y]=P(p[0],p[1]);
+    return `${i?"L":"M"} ${x.toFixed(1)} ${y.toFixed(1)}`;}).join(" ") + (close?" Z":"");
+
+/* Place labels greedily in priority order, nudging each one up or down a
+   little to find a gap and dropping it if none exists. Fantasyland packs a
+   dozen attractions into a few hundred metres; without this the names pile
+   into an unreadable stack and the map stops being a map. */
+function placeLabels(cands){
+  const placed=[], out=[];
+  const overlaps=(a,b)=> !(a.x1<b.x0||b.x1<a.x0||a.y1<b.y0||b.y1<a.y0);
+  for(const c of cands){
+    const w=c.text.length*c.em, h=c.size+3;
+    let done=false;
+    const nudges=c.keep
+      ? [[0,0],[0,-13],[0,13],[0,-26],[0,26],[0,-40],[0,40],
+         [-w/2,0],[w/2,0],[-w/2,-15],[w/2,-15],[-w/2,15],[w/2,15]]
+      : [[0,0],[0,-11],[0,11],[0,-21],[0,21],[0,-31],[0,31]];
+    for(const [dx,dy] of nudges){
+      const box={x0:c.x+dx-w/2-2,x1:c.x+dx+w/2+2,y0:c.y+dy-h,y1:c.y+dy+3};
+      if(placed.some(p=>overlaps(box,p))) continue;
+      placed.push(box); out.push({...c,x:c.x+dx,y:c.y+dy}); done=true; break;
+    }
+    if(!done && c.keep){          // land names must never be dropped
+      out.push(c);
+      placed.push({x0:c.x-w/2-2,x1:c.x+w/2+2,y0:c.y-h,y1:c.y+3});
+    }
   }
-  return d+" Z";
-}
-function spread(labels,gap=9){
-  const cols=new Map();
-  for(const l of labels){ const k=Math.round(l.x/70);
-    if(!cols.has(k)) cols.set(k,[]); cols.get(k).push(l); }
-  for(const g of cols.values()){ g.sort((a,b)=>a.y-b.y);
-    for(let i=1;i<g.length;i++) if(g[i].y-g[i-1].y<gap) g[i].y=g[i-1].y+gap; }
-  return labels;
+  return out;
 }
 
-function drawMap(svg, rides, waits, plan){
+/* ---- rendering ---------------------------------------------------- */
+function drawMap(svg, rides, waits, plan, geo){
   svg.innerHTML="";
   const parks=[...new Set(rides.map(a=>a.p))].sort((x,y)=>x==="DLP"?-1:y==="DLP"?1:0);
   const inP={}, bn={};
-  for(const p of parks){ inP[p]=rides.filter(a=>a.p===p); bn[p]=bounds(inP[p]); }
-  const shares=parks.map(p=>Math.max(.36,inP[p].length/rides.length));
-  const sum=shares.reduce((s,v)=>s+v,0);
-  const R={}; let cx=0;
-  parks.forEach((p,i)=>{const w=(MW-GAPX*(parks.length-1))*(shares[i]/sum);
-    R[p]={x:cx,y:HEAD,w,h:0}; cx+=w+GAPX;});
-  const need=parks.map(p=>(R[p].w-2*PADX)/bn[p].aspect+2*PADX);
-  const ph=Math.max(320,Math.min(700,Math.max(...need)));
-  for(const p of parks) R[p].h=ph;
+  for(const p of parks){
+    inP[p]=rides.filter(a=>a.p===p);
+    // Frame on the park outline, not just the pins, so the whole park shows
+    // and its shape reads correctly.
+    const pts=[...inP[p].map(a=>[a.lat,a.lon])];
+    const o=geo && geo.parks && geo.parks[p] && geo.parks[p].outline;
+    if(o) pts.push(...o);
+    bn[p]=boundsOf(pts);
+  }
+
+  // One scale for both parks. Disneyland Park really is about twice the
+  // Studios, and drawing each to fit its own panel would quietly hide that;
+  // a map that rescales each half is not a map of the resort.
+  const totalW=parks.reduce((s,p)=>s+bn[p].w,0);
+  const maxH=Math.max(...parks.map(p=>bn[p].h));
+  const scale=Math.min((MW-2*PADX-GAPX*(parks.length-1))/totalW,
+                       (660-2*PADX)/maxH);
+  const ph=Math.max(300, maxH*scale+2*PADX);
   svg.setAttribute("viewBox",`0 0 ${MW} ${HEAD+ph}`);
 
-  const xy={};
+  const R={}, P={}, xy={};
+  let cx=PADX;
   for(const p of parks){
-    const b=bn[p], r=R[p];
-    const sc=Math.min((r.w-2*PADX)/b.w,(r.h-2*PADX)/b.h);
-    const ox=r.x+(r.w-b.w*sc)/2, oy=r.y+(r.h-b.h*sc)/2;
-    for(const a of inP[p]) xy[a.id]=[ox+(a.lon-b.loMin)*b.kx*sc, oy+(b.laMax-a.lat)*sc];
+    const w=bn[p].w*scale, h=bn[p].h*scale;
+    R[p]={x:cx, y:HEAD+(ph-h)/2, w, h};
+    const b=bn[p], ox=R[p].x, oy=R[p].y;
+    P[p]=(lat,lon)=>[ox+(lon-b.loMin)*b.kx*scale, oy+(b.laMax-lat)*scale];
+    for(const a of inP[p]) xy[a.id]=P[p](a.lat,a.lon);
+    cx+=w+GAPX;
   }
-  const gF=el("g"), gL=el("g"), gR=el("g"), gP=el("g"), gT=el("g");
-  svg.append(gF,gL,gR,gP,gT);
 
-  for(const p of parks){ const r=R[p];
-    gF.append(el("rect",{x:r.x,y:r.y,width:r.w,height:r.h,rx:10,
+  const gFrame=el("g"), gLand=el("g"), gWater=el("g"), gPath=el("g"),
+        gMark=el("g"), gRoute=el("g"), gPin=el("g"), gText=el("g");
+  svg.append(gFrame,gLand,gWater,gPath,gMark,gRoute,gPin,gText);
+
+  /* park outline and title */
+  for(const p of parks){
+    const r=R[p], o=geo?.parks?.[p]?.outline;
+    if(o) gFrame.append(el("path",{d:pathOf(o,P[p],true),fill:"var(--card)",
+      stroke:"var(--edge)","stroke-width":1.4}));
+    else gFrame.append(el("rect",{x:r.x,y:r.y,width:r.w,height:r.h,rx:10,
       fill:"var(--card)",stroke:"var(--edge)","stroke-width":1}));
-    gF.append(el("text",{x:r.x+12,y:HEAD-8,class:"panel-t"},PARK_NAME[p]||p)); }
-
-  const byLand={};
-  for(const a of rides){ const k=a.p+"|"+a.l;
-    (byLand[k]||(byLand[k]={land:a.l,park:a.p,pts:[]})).pts.push(xy[a.id]); }
-  for(const {land,park,pts} of Object.values(byLand)){
-    const hue=LAND_HUE[land]||"#5b6479";
-    const mg=Math.max(12,Math.min(26,R[park].w/16));
-    const cx=pts.reduce((s,q)=>s+q[0],0)/pts.length, cy=pts.reduce((s,q)=>s+q[1],0)/pts.length;
-    let d;
-    if(pts.length>=3) d=blob(grow(hull(pts),mg));
-    else { const rx=pts.length===1?mg+8:Math.max(mg+8,Math.hypot(pts[0][0]-pts[1][0],pts[0][1]-pts[1][1])/2+mg);
-      const ry=mg+4; d=`M ${cx-rx} ${cy} a ${rx} ${ry} 0 1 0 ${rx*2} 0 a ${rx} ${ry} 0 1 0 ${-rx*2} 0`; }
-    gL.append(el("path",{d,fill:hue,stroke:hue,"stroke-width":1,class:"land"}));
-    gT.append(el("text",{x:cx,y:cy-mg-12,class:"llabel","text-anchor":"middle"},land));
+    gFrame.append(el("text",{x:r.x,y:r.y-9,class:"panel-t"},PARK_NAME[p]||p));
   }
 
-  const rideItems=(plan.items||[]).filter(i=>i.id&&xy[i.id]).sort((a,b)=>a.start-b.start);
-  const stops={0:[],1:[]};
-  for(const i of rideItems){ const prev=stops[i.track][stops[i.track].length-1];
-    if(!prev||prev.id!==i.id) stops[i.track].push(i); }
+  /* themed lands, drawn as real regions */
+  const landLabels=[];
+  for(const L of (geo?.lands||[])){
+    const p=L.park; if(!P[p]) continue;
+    const hue=LAND_HUE[L.name]||"#5b6479";
+    gLand.append(el("path",{d:pathOf(L.polygon,P[p],true),fill:hue,
+      stroke:hue,"stroke-width":1,class:"land"}));
+    const c=L.polygon.reduce((s,q)=>[s[0]+q[0],s[1]+q[1]],[0,0]).map(v=>v/L.polygon.length);
+    const [lx,ly]=P[p](c[0],c[1]);
+    landLabels.push({x:lx,y:ly,size:8.5,em:7.3,text:L.name,cls:"llabel",keep:true});
+  }
+
+  for(const W of (geo?.water||[])){
+    const p=W.park; if(!P[p]) continue;
+    // Lands are washed back to 34%; water at the same weight just reads as
+    // another land, so give it full strength.
+    gWater.append(el("path",{d:pathOf(W.polygon,P[p],true),
+      fill:"var(--water)",stroke:"var(--water)","stroke-width":1,opacity:.55}));
+  }
+  for(const T of (geo?.paths||[])){
+    // Each park has its own projection, so a path spanning both would be a
+    // line between two unrelated coordinate frames. Skip it.
+    if(T.park==="BOTH") continue;
+    const p=T.park; if(!P[p]) continue;
+    gPath.append(el("path",{d:pathOf(T.line,P[p],false),fill:"none",
+      stroke:"var(--edge)","stroke-width":T.name==="Main Street U.S.A."?4:1.6,
+      "stroke-linecap":"round",opacity:.9}));
+  }
+
+  /* landmarks: the castle is how anyone orients on this map */
+  /* landmarks last, so they can join the same label pass */
+  for(const M of (geo?.landmarks||[])){
+    const p=M.park; if(!P[p]||!M.at) continue;
+    const [x,y]=P[p](M.at[0],M.at[1]);
+    if(M.kind==="castle"){
+      const s=1.5;   // the castle is how anyone orients on this map
+      gMark.append(el("path",{d:`M ${x-9*s} ${y+6*s} L ${x-9*s} ${y-3*s} L ${x-5.5*s} ${y-7*s}`
+        +` L ${x-2*s} ${y-3*s} L ${x-2*s} ${y-7*s} L ${x} ${y-13*s} L ${x+2*s} ${y-7*s}`
+        +` L ${x+2*s} ${y-3*s} L ${x+5.5*s} ${y-7*s} L ${x+9*s} ${y-3*s} L ${x+9*s} ${y+6*s} Z`,
+        fill:"var(--ink-2)",opacity:.9}));
+    } else if(M.kind==="entrance"){
+      gMark.append(el("circle",{cx:x,cy:y,r:4.5,fill:"var(--card)",
+        stroke:"var(--ink-3)","stroke-width":1.8}));
+      landLabels.push({x,y:y+15,size:8.5,em:7.3,text:"Entrance",cls:"llabel"});
+    }
+  }
+  const named=new Set(stopsOf(plan,xy)[0].map(i=>i.id));
+  const nameLabels=rides.filter(a=>named.has(a.id))
+    .sort((a,b)=>b.ap-a.ap)
+    .map(a=>({x:xy[a.id][0], y:xy[a.id][1]+14, size:7.4, em:3.5,
+              text:a.n.length>22?a.n.slice(0,21)+"\u2026":a.n, cls:"plabel"}));
+  for(const l of placeLabels(landLabels.concat(nameLabels)))
+    gText.append(el("text",{x:l.x,y:l.y,class:l.cls,"text-anchor":"middle"},l.text));
+
+  fitViewBox(svg);
+
+  /* the two routes, broken where the party crosses between parks */
+  const stops=stopsOf(plan,xy);
   for(const tr of [1,0]){
     let run=[]; const runs=[];
     for(const i of stops[tr]){ if(run.length&&run[run.length-1].park!==i.park){runs.push(run);run=[];} run.push(i); }
     if(run.length) runs.push(run);
     for(const seg of runs){ if(seg.length<2) continue;
       const d=seg.map((i,k)=>{const [x,y]=xy[i.id];return `${k?"L":"M"} ${x.toFixed(1)} ${y.toFixed(1)}`;}).join(" ");
-      gR.append(el("path",{d,class:"route",stroke:tr===0?"var(--route-a)":"var(--route-b)",
-        "stroke-width":tr===0?2.4:1.8,"stroke-dasharray":tr===0?"none":"6 5",opacity:.82})); }
+      gRoute.append(el("path",{d,class:"route",stroke:tr===0?"var(--route-a)":"var(--route-b)",
+        "stroke-width":tr===0?2.4:1.8,"stroke-dasharray":tr===0?"none":"6 5",opacity:.85})); }
   }
 
   for(const a of rides){
@@ -992,7 +1063,7 @@ function drawMap(svg, rides, waits, plan){
       `${a.l} · ${PARK_NAME[a.p]}\n${w===null?"currently down":w+" min posted"}`
       +(a.h?`\nminimum height ${a.h} cm`:"")));
     g.addEventListener("mouseleave",hideTip);
-    gP.append(g);
+    gPin.append(g);
   }
   for(const tr of [0,1]){
     stops[tr].forEach((it,k)=>{
@@ -1003,14 +1074,31 @@ function drawMap(svg, rides, waits, plan){
       g.append(el("text",{x:x+dx,y:y-10,class:"seqno"},String(k+1)));
       g.addEventListener("mousemove",e=>tip(e,`${k+1}. ${it.name}`,itemLine(it)));
       g.addEventListener("mouseleave",hideTip);
-      gP.append(g);
+      gPin.append(g);
     });
   }
-  const named=new Set(stops[0].map(i=>i.id));
-  const labels=rides.filter(a=>named.has(a.id))
-    .map(a=>({x:xy[a.id][0],y:xy[a.id][1]+15,t:a.n.length>24?a.n.slice(0,23)+"…":a.n}));
-  for(const l of spread(labels))
-    gT.append(el("text",{x:l.x,y:l.y,class:"plabel","text-anchor":"middle"},l.t));
+}
+
+/* Titles and place names spill past the park outlines, so the canvas is
+   sized to what was actually drawn. Without this the bottom of Disneyland
+   Park — Main Street and the entrance — is quietly cut off. */
+function fitViewBox(svg){
+  try{
+    const b=svg.getBBox();
+    if(!b.width||!b.height) return;
+    const m=6;
+    svg.setAttribute("viewBox",
+      `${(b.x-m).toFixed(1)} ${(b.y-m).toFixed(1)} `
+      +`${(b.width+2*m).toFixed(1)} ${(b.height+2*m).toFixed(1)}`);
+  }catch(e){ /* not laid out yet; the geometry-derived box still works */ }
+}
+
+function stopsOf(plan, xy){
+  const items=(plan.items||[]).filter(i=>i.id&&xy[i.id]).sort((a,b)=>a.start-b.start);
+  const stops={0:[],1:[]};
+  for(const i of items){ const prev=stops[i.track][stops[i.track].length-1];
+    if(!prev||prev.id!==i.id) stops[i.track].push(i); }
+  return stops;
 }
 
 const itemLine = i => i.kind!=="ride"
@@ -1146,7 +1234,7 @@ function plan(){
   const s = summarise(result, cfg);
 
   const waits = {}; for (const a of RIDES) waits[a.id] = waitAt(traces, a.id, from);
-  drawMap($("map"), RIDES, waits, result);
+  drawMap($("map"), RIDES, waits, result, GEO);
   drawRibbon(result.items, DAY_START, DAY_END);
   drawTable(result.items);
   drawTiles(s, height);
@@ -1197,6 +1285,13 @@ function drawNotes(s, cfg, dropped, from, fc, ms, result){
     walking; the whole party covers ${s.partyKm} km, because Track&nbsp;B ranges separately.
     Distances are real: straight-line between attractions × 1.35 for the way paths actually
     bend, plus a penalty for changing land and a much larger one for crossing between parks.</p>`);
+
+  p.push(`<p><b>The map.</b> ${GEO._meta.source === "openstreetmap"
+    ? "Outlines, lands and water are surveyed geometry from OpenStreetMap."
+    : "Land outlines are a <b>schematic</b>: the lands sit at their real compass bearings "
+      +"around the Central Plaza and the Studios lots in their real arrangement, but the "
+      +"shapes are generated, not surveyed. <code>python3 -m dlp.cli import-map</code> "
+      +"replaces the whole map with OpenStreetMap geometry."}</p>`);
 
   p.push(`<p class="sub2">Beam search over ${RIDES.length} attractions, width ${cfg.beam},
     solved in ${ms} ms. Wait times are <b>simulated</b>, not live — a calibrated model of how

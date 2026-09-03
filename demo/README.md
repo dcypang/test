@@ -23,5 +23,12 @@ statistically equivalent) day. Spot-checked at build time, Python vs JS over
 comparable days: 21-23 distinct child rides, must-do 5/5, 374-420 minutes in
 line, 79-146 minutes of parallel queueing, ~5km walked by the child.
 
+The map is the same renderer as `web/map.js`, drawing the geometry from
+`dlp/data/park_geometry.json`: park outlines, themed lands at their real
+compass bearings, water, and both parks on one shared scale. That geometry is
+a schematic until `python3 -m dlp.cli import-map` replaces it with surveyed
+OpenStreetMap data — after which regenerate the demo so it picks up the new
+shapes.
+
 To edit it, change `park-day.html` directly — it is one file, ordered as
-styles, markup, ride data, engine, renderers, controls.
+styles, markup, ride data, park geometry, engine, renderers, controls.
