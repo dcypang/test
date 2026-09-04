@@ -1,0 +1,78 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Disneyland Paris — Ride Plan</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Ctext y='26' font-size='26'%3E%F0%9F%8E%A2%3C/text%3E%3C/svg%3E">
+<link rel="stylesheet" href="/style.css">
+</head>
+<body>
+
+<header>
+  <h1>Disneyland Paris — ride plan</h1>
+  <div class="sub" id="subtitle">loading…</div>
+  <div class="spacer"></div>
+  <label class="sub" for="nowInput">plan from</label>
+  <input id="nowInput" type="time" value="09:30"
+         style="background:var(--panel-2);color:var(--ink);border:1px solid var(--line);border-radius:8px;padding:5px 8px;font:inherit;font-size:13px;">
+  <select id="sourceSel" title="where wait times come from">
+    <option value="live">live data</option>
+    <option value="sim">simulated day</option>
+  </select>
+  <button id="replanBtn" class="primary">Re-plan now</button>
+</header>
+
+<div id="banner" class="banner" style="display:none;margin-top:12px"></div>
+
+<div class="layout">
+  <div style="display:flex;flex-direction:column;gap:16px;min-width:0">
+    <div class="card">
+      <h2>Park map &amp; route</h2>
+      <div class="legend">
+        <span><i style="background:var(--track0)"></i>Track A — parent + child</span>
+        <span><i style="background:var(--track1)"></i>Track B — free parent (2nd queue)</span>
+        <span><i style="background:#4ade80"></i>&lt;15m</span>
+        <span><i style="background:#facc15"></i>30–45m</span>
+        <span><i style="background:#f87171"></i>70m+</span>
+        <span><i style="background:#5b6480"></i>closed</span>
+      </div>
+      <svg id="map"></svg>
+    </div>
+
+    <div class="card">
+      <h2>Two-track timeline</h2>
+      <div class="body timeline"><div class="tl-inner" id="timeline"></div></div>
+    </div>
+  </div>
+
+  <div style="display:flex;flex-direction:column;gap:16px;min-width:0">
+    <div class="card">
+      <h2>Day at a glance</h2>
+      <div class="stats" id="stats"></div>
+      <div class="note" id="notes"></div>
+    </div>
+
+    <div class="card">
+      <h2>Schedule</h2>
+      <div class="body scroll" style="padding:0">
+        <table>
+          <thead><tr>
+            <th>Time</th><th>Who</th><th>What</th><th class="mono">Queue</th>
+          </tr></thead>
+          <tbody id="schedule"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>Strategy notes</h2>
+      <div class="body" id="strategy"></div>
+    </div>
+  </div>
+</div>
+
+<div id="tooltip"></div>
+<script type="module" src="/app.js"></script>
+</body>
+</html>

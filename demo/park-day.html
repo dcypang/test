@@ -1,0 +1,1312 @@
+<title>Two-Track Park Day</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=Barlow:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500;600&display=swap">
+<style>
+/* ── tokens ─────────────────────────────────────────────────────────
+   Light is the base. Dark redefines only tokens, twice: once for the
+   un-stamped system default, once for an explicit toggle.            */
+:root{
+  --paper:#eef1f5; --card:#ffffff; --sunk:#e4e9f0; --edge:#ccd5e0;
+  --ink:#14161d; --ink-2:#4a5364; --ink-3:#78839a;
+  --route-a:#1f56b8; --route-a-soft:#dbe6fb;
+  --route-b:#7a45d8; --route-b-soft:#e8ddfb;
+  --w1:#2f8f5f; --w2:#7fa62f; --w3:#c9911f; --w4:#cd6f2c; --w5:#c03d3d;
+  --closed:#98a2b4; --water:#5c9bd6;
+  --good:#1c7a4f; --bad:#b8342f;
+  --shadow:0 1px 2px rgba(20,22,29,.06),0 8px 24px rgba(20,22,29,.06);
+  --r:10px;
+  --f-disp:"Barlow Condensed",ui-sans-serif,system-ui,sans-serif;
+  --f-body:"Barlow",ui-sans-serif,system-ui,-apple-system,sans-serif;
+  --f-mono:"IBM Plex Mono",ui-monospace,SFMono-Regular,Menlo,monospace;
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]){
+    --paper:#0f1218; --card:#171b23; --sunk:#11151c; --edge:#2a3140;
+    --ink:#e8ecf3; --ink-2:#a3adbf; --ink-3:#7b8698;
+    --route-a:#5b93f5; --route-a-soft:#1b2b48;
+    --route-b:#a884f7; --route-b-soft:#2c2145;
+    --w1:#43b077; --w2:#9dc44a; --w3:#e0aa38; --w4:#e08542; --w5:#e05a5a;
+    --closed:#5d6779; --water:#2f6ea8;
+    --good:#4cc48a; --bad:#f0736c;
+    --shadow:0 1px 2px rgba(0,0,0,.4),0 8px 24px rgba(0,0,0,.35);
+  }
+}
+:root[data-theme="dark"]{
+  --paper:#0f1218; --card:#171b23; --sunk:#11151c; --edge:#2a3140;
+  --ink:#e8ecf3; --ink-2:#a3adbf; --ink-3:#7b8698;
+  --route-a:#5b93f5; --route-a-soft:#1b2b48;
+  --route-b:#a884f7; --route-b-soft:#2c2145;
+  --w1:#43b077; --w2:#9dc44a; --w3:#e0aa38; --w4:#e08542; --w5:#e05a5a;
+  --closed:#5d6779; --water:#2f6ea8;
+  --good:#4cc48a; --bad:#f0736c;
+  --shadow:0 1px 2px rgba(0,0,0,.4),0 8px 24px rgba(0,0,0,.35);
+}
+
+*{box-sizing:border-box}
+body{margin:0;background:var(--paper);color:var(--ink);
+  font-family:var(--f-body);font-size:15px;line-height:1.5;
+  -webkit-font-smoothing:antialiased}
+h1,h2,h3{font-family:var(--f-disp);font-weight:700;margin:0;text-wrap:balance;
+  letter-spacing:.005em}
+.mono{font-family:var(--f-mono);font-variant-numeric:tabular-nums}
+:focus-visible{outline:2px solid var(--route-a);outline-offset:2px;border-radius:4px}
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+
+/* ── masthead: a departure board header ──────────────────────────── */
+.mast{background:var(--card);border-bottom:1px solid var(--edge)}
+.mast-in{max-width:1360px;margin:0 auto;padding:18px 22px 0}
+.eyebrow{font-family:var(--f-disp);font-weight:600;font-size:12px;
+  letter-spacing:.18em;text-transform:uppercase;color:var(--ink-3)}
+.mast h1{font-size:34px;line-height:1.05;margin:2px 0 4px}
+.mast .sub{color:var(--ink-2);font-size:14.5px;max-width:68ch}
+.mast .sub b{color:var(--ink);font-weight:600}
+
+/* ── control rail ────────────────────────────────────────────────── */
+.rail{display:flex;flex-wrap:wrap;gap:18px 28px;align-items:flex-start;
+  padding:16px 0 18px;margin-top:14px;border-top:1px solid var(--edge)}
+.rail > .ctl{padding-top:2px}
+.ctl.wide{flex:1 1 340px;min-width:300px}
+.ctl.act{margin-left:auto;align-self:flex-end}
+.ctl{display:flex;flex-direction:column;gap:5px;min-width:0}
+.ctl > label{font-family:var(--f-disp);font-weight:600;font-size:11.5px;
+  letter-spacing:.12em;text-transform:uppercase;color:var(--ink-3)}
+.ctl .val{font-family:var(--f-mono);font-size:12px;color:var(--ink-2);
+  font-weight:500}
+input[type=range]{width:150px;accent-color:var(--route-a);height:18px}
+input[type=time],select{font-family:var(--f-mono);font-size:13.5px;
+  background:var(--sunk);color:var(--ink);border:1px solid var(--edge);
+  border-radius:7px;padding:6px 9px}
+.chips{display:flex;flex-wrap:wrap;gap:6px;max-width:430px}
+.chip{font-family:var(--f-body);font-size:12.5px;font-weight:500;
+  padding:4px 10px;border-radius:999px;cursor:pointer;user-select:none;
+  border:1px solid var(--edge);background:var(--sunk);color:var(--ink-2);
+  transition:background .12s,border-color .12s,color .12s}
+.chip[aria-pressed=true]{background:var(--route-a);border-color:var(--route-a);
+  color:#fff}
+.chip:hover{border-color:var(--route-a)}
+.toggles{display:flex;flex-direction:column;gap:5px}
+.tog{display:flex;align-items:center;gap:7px;font-size:13px;color:var(--ink-2);
+  cursor:pointer}
+.tog input{accent-color:var(--route-a);width:15px;height:15px;margin:0}
+.tog.warn{color:var(--bad)}
+.go{font-family:var(--f-disp);font-weight:700;font-size:15px;letter-spacing:.06em;
+  text-transform:uppercase;background:var(--route-a);color:#fff;border:0;
+  border-radius:8px;padding:10px 20px;cursor:pointer;height:38px}
+.go:hover{filter:brightness(1.08)}
+.go[disabled]{opacity:.55;cursor:progress}
+
+/* ── layout ──────────────────────────────────────────────────────── */
+main{max-width:1360px;margin:0 auto;padding:20px 22px 56px;
+  display:grid;gap:18px;grid-template-columns:minmax(0,1.5fr) minmax(330px,.85fr);
+  align-items:start}
+@media (max-width:1080px){main{grid-template-columns:1fr}}
+.col{display:flex;flex-direction:column;gap:18px;min-width:0}
+.card{background:var(--card);border:1px solid var(--edge);border-radius:var(--r);
+  box-shadow:var(--shadow);overflow:hidden}
+.card > h2{font-size:13px;letter-spacing:.14em;text-transform:uppercase;
+  color:var(--ink-3);padding:12px 16px;border-bottom:1px solid var(--edge);
+  font-weight:600}
+.pad{padding:16px}
+
+/* ── stat tiles ──────────────────────────────────────────────────── */
+.tiles{display:grid;grid-template-columns:repeat(auto-fit,minmax(104px,1fr));
+  gap:1px;background:var(--edge)}
+.tile{background:var(--card);padding:13px 15px}
+.tile .n{font-family:var(--f-disp);font-weight:700;font-size:27px;line-height:1;
+  letter-spacing:-.01em;font-variant-numeric:tabular-nums}
+.tile .n.good{color:var(--good)} .tile .n.bad{color:var(--bad)}
+.tile .k{font-family:var(--f-disp);font-weight:600;font-size:11px;
+  letter-spacing:.1em;text-transform:uppercase;color:var(--ink-3);margin-top:5px}
+.foot{padding:11px 16px;border-top:1px solid var(--edge);font-size:13px;
+  color:var(--ink-2)}
+
+/* ── map ─────────────────────────────────────────────────────────── */
+#map{display:block;width:100%;height:auto;background:var(--sunk)}
+.prose code{font-family:var(--f-mono);font-size:12px;background:var(--sunk);padding:1px 5px;border-radius:4px}
+.legend{display:flex;flex-wrap:wrap;gap:8px 18px;padding:11px 16px 0;
+  font-size:12.5px;color:var(--ink-2);align-items:center}
+.legend .sw{display:inline-block;width:16px;height:3px;border-radius:2px;
+  margin-right:6px;vertical-align:middle}
+.legend .dot{display:inline-block;width:9px;height:9px;border-radius:50%;
+  margin-right:5px;vertical-align:middle}
+.land{opacity:.34}
+.route{fill:none;stroke-linecap:round;stroke-linejoin:round}
+.pin{cursor:pointer}
+.pin:hover .halo{opacity:.3}
+.plabel{font-family:var(--f-body);font-size:7.4px;font-weight:500;fill:var(--ink);
+  paint-order:stroke;stroke:var(--sunk);stroke-width:2.6px;pointer-events:none}
+.llabel{font-family:var(--f-disp);font-size:8.5px;font-weight:600;
+  letter-spacing:.15em;text-transform:uppercase;fill:var(--ink-3);
+  pointer-events:none}
+.seqno{font-family:var(--f-mono);font-size:7.4px;font-weight:600;fill:#fff;
+  text-anchor:middle;dominant-baseline:central;pointer-events:none}
+.panel-t{font-family:var(--f-disp);font-size:10.5px;font-weight:600;
+  letter-spacing:.16em;text-transform:uppercase;fill:var(--ink-3)}
+
+/* ── time ribbon ─────────────────────────────────────────────────── */
+.ribbon{overflow-x:auto;padding:14px 16px 16px}
+.rib-in{position:relative;min-width:min(100%,760px)}
+.hours{position:relative;height:17px;border-bottom:1px solid var(--edge)}
+.hr{position:absolute;top:0;bottom:0;width:1px;background:var(--edge)}
+.hrl{position:absolute;top:0;font-family:var(--f-mono);font-size:10px;
+  color:var(--ink-3);transform:translateX(-50%)}
+.trk{position:relative;height:38px;margin-top:22px}
+.trk-l{position:absolute;left:0;top:-17px;font-family:var(--f-disp);
+  font-weight:600;font-size:11px;letter-spacing:.11em;text-transform:uppercase}
+.blk{position:absolute;top:6px;height:26px;border-radius:4px;overflow:hidden;
+  font-size:10.5px;line-height:26px;white-space:nowrap;padding:0 6px;
+  font-weight:500;cursor:default;color:#fff}
+.blk .q{position:absolute;inset:0 auto 0 0;background:rgba(0,0,0,.26)}
+.blk span{position:relative}
+.blk.a{background:var(--route-a)} .blk.b{background:var(--route-b)}
+.blk.meal{background:var(--ink-3)} .blk.pa{background:var(--route-b);opacity:.62}
+
+/* ── timetable ───────────────────────────────────────────────────── */
+.tt-wrap{max-height:560px;overflow:auto}
+table{width:100%;border-collapse:collapse;font-size:13px}
+thead th{position:sticky;top:0;background:var(--card);text-align:left;
+  font-family:var(--f-disp);font-weight:600;font-size:11px;letter-spacing:.1em;
+  text-transform:uppercase;color:var(--ink-3);padding:8px 12px;
+  border-bottom:1px solid var(--edge);z-index:1}
+td{padding:8px 12px;border-bottom:1px solid var(--edge);vertical-align:top}
+tbody tr:hover td{background:var(--sunk)}
+tr.a td:first-child{box-shadow:inset 3px 0 0 var(--route-a)}
+tr.b td:first-child{box-shadow:inset 3px 0 0 var(--route-b)}
+.who{font-family:var(--f-mono);font-size:11.5px;color:var(--ink-2);
+  white-space:nowrap}
+.sub2{color:var(--ink-3);font-size:11.5px}
+.tag{display:inline-block;padding:1px 7px;border-radius:999px;font-size:11px;
+  font-weight:500;border:1px solid currentColor;margin-left:5px}
+.tag.premier{color:var(--route-b)} .tag.single_rider{color:var(--route-a)}
+.tag.rider_switch{color:var(--w3)} .tag.hold{color:var(--bad)}
+
+.prose{padding:16px;font-size:14px;color:var(--ink-2);max-width:66ch}
+.prose p{margin:0 0 11px} .prose p:last-child{margin:0}
+.prose b{color:var(--ink);font-weight:600}
+.note{padding:11px 16px;background:var(--route-a-soft);color:var(--ink);
+  font-size:13px;border-bottom:1px solid var(--edge)}
+#tip{position:fixed;z-index:50;pointer-events:none;opacity:0;max-width:270px;
+  background:var(--card);border:1px solid var(--edge);border-radius:8px;
+  padding:8px 11px;font-size:12.5px;box-shadow:var(--shadow);
+  transition:opacity .1s;color:var(--ink)}
+#tip b{display:block;font-weight:600;margin-bottom:2px}
+#tip .m{font-family:var(--f-mono);font-size:11.5px;color:var(--ink-2)}
+</style>
+
+<header class="mast">
+  <div class="mast-in">
+    <div class="eyebrow">Disneyland Paris · Friday 27 November 2026</div>
+    <h1>Two-track park day</h1>
+    <p class="sub">Two parents and one child (<b id="hLabel">110&nbsp;cm</b>) who can stand in
+      <b>two queues at once</b>. Track&nbsp;A is a parent with the child and accounts for every
+      ride the child gets on; Track&nbsp;B is the free parent, whose job is to buy the family
+      time. Everything below is computed in your browser — change anything and re-plan.</p>
+
+    <div class="rail">
+      <div class="ctl">
+        <label for="crowd">Crowd level</label>
+        <input type="range" id="crowd" min="1" max="10" step="0.5" value="6">
+        <span class="val" id="crowdVal">6.0 — typical late November</span>
+      </div>
+      <div class="ctl">
+        <label for="height">Child height</label>
+        <input type="range" id="height" min="85" max="145" step="1" value="110">
+        <span class="val" id="heightVal">110 cm · 4 rides off limits</span>
+      </div>
+      <div class="ctl">
+        <label for="from">Plan from</label>
+        <input type="time" id="from" value="09:30">
+        <span class="val">park 09:30–22:00</span>
+      </div>
+      <div class="ctl">
+        <label for="pa">Premier Access</label>
+        <input type="range" id="pa" min="0" max="8" step="1" value="4">
+        <span class="val" id="paVal">4 paid return windows</span>
+      </div>
+      <div class="ctl wide">
+        <label>Must do</label>
+        <div class="chips" id="mustChips"></div>
+      </div>
+      <div class="ctl">
+        <label>Second queue</label>
+        <div class="toggles">
+          <label class="tog"><input type="checkbox" id="twoQ" checked> Free parent queues separately</label>
+          <label class="tog"><input type="checkbox" id="sr" checked> Use single-rider lines</label>
+          <label class="tog warn"><input type="checkbox" id="hold"> Hold a standby place (not permitted by the park)</label>
+        </div>
+      </div>
+      <div class="ctl act"><button class="go" id="go">Re-plan</button></div>
+    </div>
+  </div>
+</header>
+
+<main>
+  <div class="col">
+    <section class="card">
+      <h2>Park map &amp; route</h2>
+      <div class="legend">
+        <span><i class="sw" style="background:var(--route-a)"></i>Track A — parent + child</span>
+        <span><i class="sw" style="background:var(--route-b);height:0;border-top:3px dashed var(--route-b)"></i>Track B — free parent</span>
+        <span style="margin-left:auto;color:var(--ink-3)">Queue now:</span>
+        <span><i class="dot" style="background:var(--w1)"></i>≤15</span>
+        <span><i class="dot" style="background:var(--w3)"></i>30–45</span>
+        <span><i class="dot" style="background:var(--w5)"></i>70+</span>
+        <span><i class="dot" style="background:var(--closed)"></i>down</span>
+      </div>
+      <svg id="map" role="img" aria-label="Route through both parks"></svg>
+    </section>
+
+    <section class="card">
+      <h2>The day, two tracks at once</h2>
+      <div class="ribbon"><div class="rib-in" id="ribbon"></div></div>
+    </section>
+  </div>
+
+  <div class="col">
+    <section class="card">
+      <h2>Day at a glance</h2>
+      <div class="tiles" id="tiles"></div>
+      <div class="foot" id="foot"></div>
+    </section>
+
+    <section class="card">
+      <h2>Timetable</h2>
+      <div class="tt-wrap">
+        <table>
+          <thead><tr><th>Time</th><th>Who</th><th>Attraction</th><th style="text-align:right">Queue</th></tr></thead>
+          <tbody id="tt"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <section class="card">
+      <h2>What the planner did</h2>
+      <div class="prose" id="notes"></div>
+    </section>
+  </div>
+</main>
+
+<div id="tip" role="tooltip"></div>
+
+<script>
+const RIDES = [
+  {id:"big_thunder",n:"Big Thunder Mountain",p:"DLP",l:"Frontierland",lat:48.873276,lon:2.771256,d:8,t:"coaster",h:102,ap:10,pa:true,sr:true,pk:70,cc:"high"},
+  {id:"phantom_manor",n:"Phantom Manor",p:"DLP",l:"Frontierland",lat:48.871522,lon:2.772157,d:12,t:"dark_ride",h:null,ap:9,pa:true,sr:false,pk:45,cc:"high"},
+  {id:"riverboat",n:"Thunder Mesa Riverboat Landing",p:"DLP",l:"Frontierland",lat:48.872351,lon:2.771785,d:15,t:"boat",h:null,ap:4,pa:false,sr:false,pk:20,cc:"high"},
+  {id:"pocahontas",n:"Pocahontas Indian Village",p:"DLP",l:"Frontierland",lat:48.873335,lon:2.773103,d:10,t:"playground",h:null,ap:3,pa:false,sr:false,pk:0,cc:"high"},
+  {id:"shootin_gallery",n:"Rustler Roundup Shootin' Gallery",p:"DLP",l:"Frontierland",lat:48.871787,lon:2.772943,d:6,t:"flat",h:null,ap:3,pa:false,sr:false,pk:5,cc:"high"},
+  {id:"pirates",n:"Pirates of the Caribbean",p:"DLP",l:"Adventureland",lat:48.870208,lon:2.773749,d:15,t:"boat",h:null,ap:9,pa:true,sr:false,pk:45,cc:"high"},
+  {id:"indiana_jones",n:"Indiana Jones et le Temple du Peril",p:"DLP",l:"Adventureland",lat:48.870665,lon:2.771243,d:5,t:"coaster",h:140,ap:7,pa:true,sr:true,pk:40,cc:"low"},
+  {id:"aladdin",n:"Le Passage Enchante d'Aladdin",p:"DLP",l:"Adventureland",lat:48.870438,lon:2.774745,d:6,t:"walkthrough",h:null,ap:3,pa:false,sr:false,pk:5,cc:"high"},
+  {id:"robinson",n:"La Cabane des Robinson",p:"DLP",l:"Adventureland",lat:48.870655,lon:2.772554,d:12,t:"walkthrough",h:null,ap:4,pa:false,sr:false,pk:5,cc:"high"},
+  {id:"adventure_isle",n:"Adventure Isle",p:"DLP",l:"Adventureland",lat:48.870257,lon:2.7726,d:15,t:"playground",h:null,ap:4,pa:false,sr:false,pk:0,cc:"high"},
+  {id:"peter_pan",n:"Peter Pan's Flight",p:"DLP",l:"Fantasyland",lat:48.873619,lon:2.775226,d:4,t:"dark_ride",h:null,ap:9,pa:true,sr:false,pk:75,cc:"low"},
+  {id:"small_world",n:"it's a small world",p:"DLP",l:"Fantasyland",lat:48.874425,lon:2.777125,d:12,t:"boat",h:null,ap:7,pa:true,sr:false,pk:35,cc:"high"},
+  {id:"dumbo",n:"Dumbo the Flying Elephant",p:"DLP",l:"Fantasyland",lat:48.873491,lon:2.776415,d:3,t:"flat",h:null,ap:7,pa:false,sr:false,pk:45,cc:"low"},
+  {id:"snow_white",n:"Blanche-Neige et les Sept Nains",p:"DLP",l:"Fantasyland",lat:48.873371,lon:2.774949,d:4,t:"dark_ride",h:null,ap:6,pa:false,sr:false,pk:30,cc:"medium"},
+  {id:"pinocchio",n:"Les Voyages de Pinocchio",p:"DLP",l:"Fantasyland",lat:48.87343,lon:2.775616,d:4,t:"dark_ride",h:null,ap:6,pa:false,sr:false,pk:25,cc:"medium"},
+  {id:"carrousel",n:"Le Carrousel de Lancelot",p:"DLP",l:"Fantasyland",lat:48.873197,lon:2.775771,d:3,t:"flat",h:null,ap:5,pa:false,sr:false,pk:15,cc:"high"},
+  {id:"teacups",n:"Mad Hatter's Tea Cups",p:"DLP",l:"Fantasyland",lat:48.873655,lon:2.777284,d:3,t:"flat",h:null,ap:5,pa:false,sr:false,pk:20,cc:"medium"},
+  {id:"alice_labyrinth",n:"Alice's Curious Labyrinth",p:"DLP",l:"Fantasyland",lat:48.874101,lon:2.77606,d:15,t:"walkthrough",h:null,ap:5,pa:false,sr:false,pk:15,cc:"high"},
+  {id:"casey_jr",n:"Casey Jr. - le Petit Train du Cirque",p:"DLP",l:"Fantasyland",lat:48.874453,lon:2.77464,d:4,t:"coaster",h:null,ap:6,pa:false,sr:false,pk:35,cc:"low"},
+  {id:"storybook",n:"Le Pays des Contes de Fees",p:"DLP",l:"Fantasyland",lat:48.874513,lon:2.773982,d:8,t:"boat",h:null,ap:6,pa:false,sr:false,pk:30,cc:"medium"},
+  {id:"meet_mickey",n:"Meet Mickey Mouse",p:"DLP",l:"Fantasyland",lat:48.874014,lon:2.777305,d:5,t:"meet",h:null,ap:8,pa:true,sr:false,pk:50,cc:"low"},
+  {id:"princess_pavilion",n:"Princess Pavilion",p:"DLP",l:"Fantasyland",lat:48.873825,lon:2.776122,d:5,t:"meet",h:null,ap:6,pa:true,sr:false,pk:60,cc:"low"},
+  {id:"dragon_lair",n:"La Taniere du Dragon",p:"DLP",l:"Fantasyland",lat:48.872676,lon:2.7757,d:5,t:"walkthrough",h:null,ap:4,pa:false,sr:false,pk:5,cc:"high"},
+  {id:"hyperspace_mountain",n:"Star Wars Hyperspace Mountain",p:"DLP",l:"Discoveryland",lat:48.872474,lon:2.779008,d:6,t:"coaster",h:120,ap:9,pa:true,sr:true,pk:60,cc:"high"},
+  {id:"buzz_lightyear",n:"Buzz Lightyear Laser Blast",p:"DLP",l:"Discoveryland",lat:48.871315,lon:2.778536,d:6,t:"dark_ride",h:null,ap:8,pa:true,sr:false,pk:45,cc:"high"},
+  {id:"star_tours",n:"Star Tours: The Adventures Continue",p:"DLP",l:"Discoveryland",lat:48.87066,lon:2.778596,d:8,t:"simulator",h:102,ap:7,pa:true,sr:false,pk:40,cc:"high"},
+  {id:"orbitron",n:"Orbitron",p:"DLP",l:"Discoveryland",lat:48.871731,lon:2.777768,d:3,t:"flat",h:null,ap:5,pa:false,sr:false,pk:25,cc:"low"},
+  {id:"autopia",n:"Autopia",p:"DLP",l:"Discoveryland",lat:48.873206,lon:2.779272,d:6,t:"flat",h:81,ap:6,pa:false,sr:false,pk:35,cc:"medium"},
+  {id:"nautilus",n:"Les Mysteres du Nautilus",p:"DLP",l:"Discoveryland",lat:48.871909,lon:2.778266,d:10,t:"walkthrough",h:null,ap:4,pa:false,sr:false,pk:10,cc:"high"},
+  {id:"railroad_main",n:"Disneyland Railroad - Main Street Station",p:"DLP",l:"Main Street U.S.A.",lat:48.868841,lon:2.7757,d:20,t:"train",h:null,ap:5,pa:false,sr:false,pk:25,cc:"medium"},
+  {id:"tower_of_terror",n:"The Twilight Zone Tower of Terror",p:"DAW",l:"Production Courtyard",lat:48.863838,lon:2.782063,d:8,t:"drop",h:102,ap:9,pa:true,sr:true,pk:55,cc:"medium"},
+  {id:"crush_coaster",n:"Crush's Coaster",p:"DAW",l:"Worlds of Pixar",lat:48.86558,lon:2.782609,d:4,t:"coaster",h:107,ap:9,pa:true,sr:true,pk:90,cc:"low"},
+  {id:"ratatouille",n:"Ratatouille: L'Aventure Totalement Toquee de Remy",p:"DAW",l:"Worlds of Pixar",lat:48.865095,lon:2.782555,d:6,t:"dark_ride",h:null,ap:10,pa:true,sr:true,pk:70,cc:"medium"},
+  {id:"cars_road_trip",n:"Cars ROAD TRIP",p:"DAW",l:"Worlds of Pixar",lat:48.865095,lon:2.783811,d:12,t:"tram",h:null,ap:5,pa:false,sr:false,pk:30,cc:"high"},
+  {id:"cars_rallye",n:"Cars Quatre Roues Rallye",p:"DAW",l:"Worlds of Pixar",lat:48.865221,lon:2.782964,d:3,t:"flat",h:81,ap:5,pa:false,sr:false,pk:30,cc:"medium"},
+  {id:"slinky_dog",n:"Slinky Dog Zigzag Spin",p:"DAW",l:"Worlds of Pixar",lat:48.865958,lon:2.783538,d:2,t:"flat",h:null,ap:5,pa:false,sr:false,pk:30,cc:"low"},
+  {id:"toy_soldiers",n:"Toy Soldiers Parachute Drop",p:"DAW",l:"Worlds of Pixar",lat:48.866101,lon:2.783155,d:3,t:"drop",h:81,ap:5,pa:false,sr:false,pk:30,cc:"low"},
+  {id:"rc_racer",n:"RC Racer",p:"DAW",l:"Worlds of Pixar",lat:48.86585,lon:2.78392,d:2,t:"coaster",h:120,ap:6,pa:false,sr:false,pk:45,cc:"low"},
+  {id:"flight_force",n:"Avengers Assemble: Flight Force",p:"DAW",l:"Avengers Campus",lat:48.864448,lon:2.784166,d:4,t:"coaster",h:120,ap:8,pa:true,sr:true,pk:55,cc:"medium"},
+  {id:"spiderman_web",n:"Spider-Man W.E.B. Adventure",p:"DAW",l:"Avengers Campus",lat:48.863999,lon:2.783811,d:5,t:"dark_ride",h:null,ap:8,pa:true,sr:true,pk:50,cc:"medium"},
+  {id:"flying_carpets",n:"Les Tapis Volants - Flying Carpets over Agrabah",p:"DAW",l:"Toon Studio",lat:48.86567,lon:2.781708,d:3,t:"flat",h:null,ap:4,pa:false,sr:false,pk:20,cc:"medium"},
+  {id:"stitch_live",n:"Stitch Live!",p:"DAW",l:"Production Courtyard",lat:48.864233,lon:2.781544,d:20,t:"show",h:null,ap:5,pa:false,sr:false,pk:20,cc:"high"},
+  {id:"animagique",n:"Animagique Theater",p:"DAW",l:"Toon Studio",lat:48.865886,lon:2.78138,d:30,t:"show",h:null,ap:5,pa:false,sr:false,pk:15,cc:"high"}
+];
+const GEO = {"_meta":{"source":"schematic","generated_by":"tools/make_schematic_map.py","note":"Geographically faithful in topology \u2014 lands sit at their real compass bearings around the Central Plaza, and the Studios lots in their real arrangement \u2014 but this is a SCHEMATIC, not survey data. Distances and outlines are approximate. Replace it with real geometry using `python3 -m dlp.cli import-map`."},"parks":{"DLP":{"name":"Disneyland Park","outline":[[48.875713,2.7757],[48.875654,2.77672],[48.87548,2.777709],[48.875195,2.778636],[48.874809,2.779475],[48.874333,2.780199],[48.873781,2.780786],[48.873171,2.781219],[48.872521,2.781483],[48.87185,2.781573],[48.871179,2.781483],[48.870529,2.781219],[48.869919,2.780786],[48.869367,2.780199],[48.868891,2.779475],[48.868505,2.778636],[48.86822,2.777709],[48.868046,2.77672],[48.867987,2.7757],[48.868046,2.77468],[48.86822,2.773691],[48.868505,2.772764],[48.868891,2.771925],[48.869367,2.771201],[48.869919,2.770614],[48.870529,2.770181],[48.871179,2.769917],[48.87185,2.769827],[48.872521,2.769917],[48.873171,2.770181],[48.873781,2.770614],[48.874333,2.771201],[48.874809,2.771925],[48.875195,2.772764],[48.87548,2.773691],[48.875654,2.77468]],"hub":[48.87185,2.7757]},"DAW":{"name":"Walt Disney Studios","outline":[[48.862948,2.779701],[48.862948,2.785299],[48.866452,2.785299],[48.866452,2.779701]],"hub":[48.8647,2.7825]}},"lands":[{"name":"Central Plaza","park":"DLP","polygon":[[48.872497,2.7757],[48.872483,2.775904],[48.872441,2.7761],[48.872373,2.776278],[48.872283,2.776431],[48.872173,2.776552],[48.87205,2.776635],[48.871918,2.776678],[48.871782,2.776678],[48.87165,2.776635],[48.871527,2.776552],[48.871417,2.776431],[48.871327,2.776278],[48.871259,2.7761],[48.871217,2.775904],[48.871203,2.7757],[48.871217,2.775496],[48.871259,2.7753],[48.871327,2.775122],[48.871417,2.774969],[48.871527,2.774848],[48.87165,2.774765],[48.871782,2.774722],[48.871918,2.774722],[48.87205,2.774765],[48.872173,2.774848],[48.872283,2.774969],[48.872373,2.775122],[48.872441,2.7753],[48.872483,2.775496]]},{"name":"Main Street U.S.A.","park":"DLP","polygon":[[48.868396,2.777206],[48.868335,2.776836],[48.868292,2.77646],[48.868266,2.776081],[48.868257,2.7757],[48.868266,2.775319],[48.868292,2.77494],[48.868335,2.774564],[48.868396,2.774194],[48.871246,2.775436],[48.871235,2.775501],[48.871227,2.775567],[48.871223,2.775633],[48.871221,2.7757],[48.871223,2.775767],[48.871227,2.775833],[48.871235,2.775899],[48.871246,2.775964]]},{"name":"Adventureland","park":"DLP","polygon":[[48.868353,2.774175],[48.868431,2.773808],[48.868526,2.77345],[48.868638,2.773103],[48.868765,2.772769],[48.868907,2.772449],[48.869063,2.772145],[48.869233,2.771858],[48.869416,2.771589],[48.86961,2.771341],[48.869816,2.771114],[48.870031,2.77091],[48.870255,2.770729],[48.870487,2.770572],[48.870726,2.770439],[48.87097,2.770333],[48.871676,2.77464],[48.871628,2.774661],[48.871581,2.774687],[48.871535,2.774718],[48.871491,2.774754],[48.871448,2.774794],[48.871408,2.774839],[48.871369,2.774888],[48.871333,2.774941],[48.871299,2.774998],[48.871269,2.775058],[48.871241,2.775121],[48.871215,2.775187],[48.871193,2.775256],[48.871175,2.775326],[48.871159,2.775399]]},{"name":"Frontierland","park":"DLP","polygon":[[48.870926,2.770068],[48.871198,2.769981],[48.871473,2.769924],[48.87175,2.769898],[48.872028,2.769902],[48.872304,2.769937],[48.872578,2.770002],[48.872849,2.770098],[48.873114,2.770223],[48.873372,2.770377],[48.873623,2.770559],[48.873864,2.770769],[48.874094,2.771004],[48.874313,2.771264],[48.874518,2.771548],[48.874709,2.771854],[48.874886,2.77218],[48.875046,2.772525],[48.875189,2.772886],[48.872479,2.77517],[48.872452,2.775102],[48.872421,2.775037],[48.872388,2.774976],[48.872352,2.774918],[48.872314,2.774865],[48.872272,2.774816],[48.872229,2.774772],[48.872184,2.774732],[48.872137,2.774698],[48.872088,2.774669],[48.872038,2.774645],[48.871987,2.774627],[48.871936,2.774615],[48.871883,2.774609],[48.871831,2.774608],[48.871779,2.774613],[48.871727,2.774623],[48.871676,2.77464]]},{"name":"Fantasyland","park":"DLP","polygon":[[48.874993,2.773051],[48.875111,2.773406],[48.875212,2.773772],[48.875295,2.774148],[48.87536,2.774533],[48.875407,2.774924],[48.875434,2.775319],[48.875443,2.775716],[48.875433,2.776113],[48.875404,2.776507],[48.875356,2.776898],[48.875289,2.777282],[48.875205,2.777658],[48.875102,2.778023],[48.874983,2.778376],[48.874846,2.778715],[48.874694,2.779038],[48.874527,2.779344],[48.874346,2.77963],[48.872412,2.776584],[48.872452,2.77652],[48.87249,2.776451],[48.872524,2.776378],[48.872555,2.776302],[48.872582,2.776223],[48.872605,2.77614],[48.872624,2.776056],[48.872639,2.77597],[48.87265,2.775882],[48.872656,2.775793],[48.872658,2.775704],[48.872657,2.775614],[48.87265,2.775525],[48.87264,2.775437],[48.872625,2.775351],[48.872606,2.775266],[48.872584,2.775184],[48.872557,2.775104]]},{"name":"Discoveryland","park":"DLP","polygon":[[48.874346,2.77963],[48.874156,2.779889],[48.873955,2.780127],[48.873743,2.780343],[48.873522,2.780536],[48.873292,2.780704],[48.873055,2.780847],[48.872811,2.780964],[48.872563,2.781054],[48.872312,2.781118],[48.872057,2.781154],[48.871802,2.781162],[48.871548,2.781144],[48.871294,2.781097],[48.871044,2.781024],[48.870797,2.780923],[48.870556,2.780797],[48.870322,2.780644],[48.870095,2.780467],[48.869877,2.780265],[48.869669,2.780041],[48.869471,2.779795],[48.869286,2.779528],[48.869114,2.779242],[48.868956,2.778938],[48.868812,2.778617],[48.868683,2.778282],[48.868571,2.777934],[48.868475,2.777575],[48.868396,2.777206],[48.871159,2.776001],[48.871175,2.776075],[48.871194,2.776147],[48.871217,2.776216],[48.871242,2.776283],[48.871271,2.776348],[48.871303,2.776408],[48.871337,2.776466],[48.871374,2.776519],[48.871414,2.776568],[48.871455,2.776613],[48.871499,2.776653],[48.871544,2.776689],[48.871591,2.776719],[48.871639,2.776745],[48.871689,2.776765],[48.871739,2.776779],[48.87179,2.776789],[48.87184,2.776792],[48.871891,2.776791],[48.871942,2.776784],[48.871993,2.776771],[48.872042,2.776753],[48.872091,2.776729],[48.872138,2.776701],[48.872184,2.776667],[48.872229,2.776629],[48.872271,2.776585],[48.872311,2.776538],[48.872349,2.776486]]},{"name":"Front Lot","park":"DAW","polygon":[[48.863083,2.779769],[48.863083,2.780861],[48.866317,2.780861],[48.866317,2.779769]]},{"name":"Toon Studio","park":"DAW","polygon":[[48.86488,2.780861],[48.86488,2.782363],[48.866317,2.782363],[48.866317,2.780861]]},{"name":"Worlds of Pixar","park":"DAW","polygon":[[48.86488,2.782363],[48.86488,2.785231],[48.866317,2.785231],[48.866317,2.782363]]},{"name":"Production Courtyard","park":"DAW","polygon":[[48.863083,2.780861],[48.863083,2.78291],[48.86488,2.78291],[48.86488,2.780861]]},{"name":"Avengers Campus","park":"DAW","polygon":[[48.863083,2.78291],[48.863083,2.785231],[48.86488,2.785231],[48.86488,2.78291]]}],"water":[{"name":"Rivers of the Far West","park":"DLP","polygon":[[48.871975,2.770268],[48.872224,2.770294],[48.872471,2.770347],[48.872715,2.770426],[48.872955,2.77053],[48.873189,2.77066],[48.873417,2.770814],[48.873638,2.770993],[48.873849,2.771194],[48.874051,2.771417],[48.874242,2.771661],[48.874422,2.771924],[48.874589,2.772206],[48.874742,2.772505],[48.874882,2.77282],[48.875007,2.773148],[48.874111,2.773873],[48.874021,2.773637],[48.873921,2.773412],[48.873811,2.773198],[48.873692,2.772996],[48.873563,2.772807],[48.873426,2.772633],[48.873282,2.772473],[48.87313,2.772329],[48.872972,2.772202],[48.872809,2.772091],[48.872641,2.771998],[48.872469,2.771923],[48.872295,2.771867],[48.872118,2.771829],[48.871939,2.77181]]}],"landmarks":[{"name":"Sleeping Beauty Castle","park":"DLP","kind":"castle","at":[48.872676,2.7757]},{"name":"Central Plaza","park":"DLP","kind":"plaza","at":[48.87185,2.7757]},{"name":"Park entrance","park":"DLP","kind":"entrance","at":[48.868122,2.7757]},{"name":"Studios entrance","park":"DAW","kind":"entrance","at":[48.8647,2.779837]}],"paths":[{"name":"Main Street U.S.A.","park":"DLP","line":[[48.868257,2.7757],[48.871221,2.7757]]},{"name":"Central Plaza ring","park":"DLP","line":[[48.872479,2.7757],[48.872469,2.775866],[48.872441,2.776027],[48.872395,2.776178],[48.872332,2.776315],[48.872254,2.776432],[48.872164,2.776528],[48.872065,2.776598],[48.871959,2.776641],[48.87185,2.776656],[48.871741,2.776641],[48.871635,2.776598],[48.871536,2.776528],[48.871446,2.776432],[48.871368,2.776315],[48.871305,2.776178],[48.871259,2.776027],[48.871231,2.775866],[48.871221,2.7757],[48.871231,2.775534],[48.871259,2.775373],[48.871305,2.775222],[48.871368,2.775085],[48.871446,2.774968],[48.871536,2.774872],[48.871635,2.774802],[48.871741,2.774759],[48.87185,2.774744],[48.871959,2.774759],[48.872065,2.774802],[48.872164,2.774872],[48.872254,2.774968],[48.872332,2.775085],[48.872395,2.775222],[48.872441,2.775373],[48.872469,2.775534],[48.872479,2.7757]]},{"name":"Esplanade","park":"BOTH","line":[[48.868122,2.7757],[48.8647,2.779837]]}]};
+/* ===================================================================
+   Planner engine — a browser port of the Python package.
+   Simulator, walk matrix, forecaster and the two-track beam search.
+   =================================================================== */
+
+const A = 1, B = 2, C = 4, FAMILY = A | C, ALL = A | B | C;
+
+/* ---- deterministic randomness ------------------------------------ */
+function rng(seed) {
+  let a = seed >>> 0;
+  return function () {
+    a = (a + 0x6D2B79F5) | 0;
+    let t = Math.imul(a ^ (a >>> 15), 1 | a);
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+function gauss(r, mu, sd) {
+  const u = Math.max(1e-9, r()), v = r();
+  return mu + sd * Math.sqrt(-2 * Math.log(u)) * Math.cos(2 * Math.PI * v);
+}
+
+/* ---- simulator ---------------------------------------------------- */
+const SHAPES = {
+  headliner_starved: [[0,.10],[.04,.45],[.10,.80],[.20,.95],[.35,1],[.55,.98],[.70,.92],[.85,.85],[.95,.60],[1,.20]],
+  headliner:         [[0,.08],[.05,.35],[.12,.65],[.25,.90],[.40,1],[.60,.93],[.72,.80],[.86,.88],[.95,.55],[1,.15]],
+  family:            [[0,.10],[.08,.30],[.20,.62],[.35,.88],[.50,1],[.65,.92],[.78,.72],[.90,.50],[1,.15]],
+  minor:             [[0,.15],[.15,.45],[.35,.80],[.55,1],[.75,.75],[.90,.45],[1,.15]],
+  flat_low:          [[0,.30],[.20,.70],[.50,1],[.80,.75],[1,.35]],
+};
+const PARADE_LANDS = new Set(["Main Street U.S.A.", "Frontierland"]);
+
+function rideClass(a) {
+  if (a.t === "show" || a.t === "playground" || a.t === "walkthrough") return "flat_low";
+  if (a.ap >= 9 && (a.cc === "low" || a.cc === "medium")) return "headliner_starved";
+  if (a.ap >= 8) return "headliner";
+  if (a.ap >= 6) return "family";
+  return "minor";
+}
+function interp(shape, x) {
+  if (x <= shape[0][0]) return shape[0][1];
+  if (x >= shape[shape.length - 1][1 - 1] && x >= shape[shape.length - 1][0]) return shape[shape.length - 1][1];
+  for (let i = 0; i < shape.length - 1; i++) {
+    const [x0, y0] = shape[i], [x1, y1] = shape[i + 1];
+    if (x >= x0 && x <= x1) return x1 === x0 ? y1 : y0 + (y1 - y0) * (x - x0) / (x1 - x0);
+  }
+  return shape[shape.length - 1][1];
+}
+const crowdMultiplier = ci => 0.35 + 0.13 * ci;
+
+/* Full day of queue traces: rope-drop lull, morning build, midday
+   plateau, parade dip, closing collapse, AR(1) noise, breakdowns. */
+function simulateDay(rides, { crowd = 6, open = 570, close = 1320, seed = 1, breakdowns = true }) {
+  const r = rng(seed), total = Math.max(1, close - open);
+  const k = crowdMultiplier(crowd), paradeAt = open + Math.floor(total * 0.62);
+  const out = {};
+  for (const a of rides) {
+    const shape = SHAPES[rideClass(a)];
+    const peak = Math.max(5, a.pk * k * gauss(r, 1, 0.12));
+    const downs = [];
+    if (breakdowns) {
+      let rate = { low: 0.55, medium: 0.3, high: 0.12 }[a.cc];
+      if (a.t === "coaster" || a.t === "drop" || a.t === "simulator") rate *= 1.5;
+      if (r() < rate) {
+        const s = open + 30 + Math.floor(r() * Math.max(1, (close - 60 - open) / 5)) * 5;
+        const dur = Math.min(150, Math.max(15, Math.exp(gauss(r, Math.log(30), 0.6))));
+        downs.push([s, s + dur]);
+      }
+    }
+    const series = [];
+    let noise = 0, reopened = null;
+    for (let t = open; t <= close; t += 5) {
+      const down = downs.find(([s, e]) => t >= s && t < e);
+      if (down) { series.push([t, null]); reopened = down[1]; continue; }
+      let level = interp(shape, (t - open) / total) * peak;
+      if (t >= paradeAt && t < paradeAt + 45) level *= PARADE_LANDS.has(a.l) ? 0.72 : 0.88;
+      if (reopened !== null && t - reopened >= 0 && t - reopened < 45)
+        level *= 1 + 0.45 * (1 - (t - reopened) / 45);
+      noise = 0.72 * noise + gauss(r, 0, 0.13);
+      const w = Math.max(0, level * (1 + noise));
+      series.push([t, w >= 5 ? Math.round(w / 5) * 5 : (w > 1 ? 5 : 0)]);
+    }
+    out[a.id] = series;
+  }
+  return out;
+}
+function waitAt(traces, id, minute) {
+  const s = traces[id];
+  if (!s) return null;
+  let best = null, found = false;
+  for (const [m, w] of s) { if (m > minute) break; best = w; found = true; }
+  return found ? best : null;
+}
+
+/* ---- walking ------------------------------------------------------ */
+const DETOUR = 1.35, LAND_PENALTY = 1.5, HOP_PENALTY = 14;
+const ENTRANCE = "__entrance__", ENT_LAT = 48.8693, ENT_LON = 2.7765;
+
+class Walk {
+  constructor(rides, familyMps = 0.85, adultMps = 1.30) {
+    this.fam = familyMps; this.adult = adultMps;
+    this.pt = { [ENTRANCE]: [ENT_LAT, ENT_LON, "DLP", "Main Street U.S.A."] };
+    for (const a of rides) this.pt[a.id] = [a.lat, a.lon, a.p, a.l];
+    this.cache = new Map();
+  }
+  leg(x, y) {
+    const [la1, lo1, p1, l1] = this.pt[x], [la2, lo2, p2, l2] = this.pt[y];
+    const R = 6371000, t1 = la1 * Math.PI / 180, t2 = la2 * Math.PI / 180;
+    const dp = t2 - t1, dl = (lo2 - lo1) * Math.PI / 180;
+    const h = Math.sin(dp / 2) ** 2 + Math.cos(t1) * Math.cos(t2) * Math.sin(dl / 2) ** 2;
+    const m = 2 * R * Math.asin(Math.sqrt(h)) * DETOUR;
+    return [m, p1 !== p2 ? HOP_PENALTY : (l1 !== l2 ? LAND_PENALTY : 0)];
+  }
+  metres(x, y) { return x === y ? 0 : this.leg(x, y)[0]; }
+  min(x, y, withChild = true) {
+    if (x === y) return 0;
+    const k = x + "|" + y + "|" + (withChild ? 1 : 0);
+    let v = this.cache.get(k);
+    if (v === undefined) {
+      const [m, pen] = this.leg(x, y);
+      v = m / (withChild ? this.fam : this.adult) / 60 + pen;
+      this.cache.set(k, v);
+    }
+    return v;
+  }
+  mins(x, y, wc = true) { return Math.ceil(this.min(x, y, wc)); }
+}
+
+/* ---- forecaster ---------------------------------------------------
+   Shape prior, a day-level crowd anchor fitted across every live
+   reading, and a per-ride correction decaying toward that anchor. */
+const HALF_LIFE = 55, POSTED_BIAS = 0.90, MIN_WAIT = 5, REOPEN_RATE = 0.28;
+
+class Forecaster {
+  constructor(rides, open, close) {
+    this.byId = {}; this.open = open; this.close = close;
+    for (const a of rides) this.byId[a.id] = { a, shape: SHAPES[rideClass(a)], peak: a.pk };
+    this.snap = {}; this.dev = {}; this.anchor = 1; this.cache = new Map();
+  }
+  level(id, minute) {
+    const p = this.byId[id]; if (!p) return 30;
+    const frac = Math.min(1, Math.max(0, (minute - this.open) / Math.max(1, this.close - this.open)));
+    return Math.max(1, interp(p.shape, frac) * p.peak);
+  }
+  observe(snap) {
+    this.snap = snap; this.dev = {}; this.cache.clear();
+    const logs = [];
+    for (const id in snap) {
+      const [m, w] = snap[id];
+      if (w === null || w <= 0 || !this.byId[id]) continue;
+      const exp = this.level(id, m);
+      if (exp <= 0) continue;
+      const ratio = Math.max(0.25, Math.min(4, w / exp));
+      logs.push(Math.log(ratio)); this.dev[id] = ratio;
+    }
+    this.anchor = logs.length ? Math.exp(logs.reduce((s, v) => s + v, 0) / logs.length) : 1;
+  }
+  predict(id, at) {
+    const base = this.level(id, at), obs = this.snap[id];
+    if (!obs) return Math.max(MIN_WAIT, base * this.anchor);
+    const [om, ow] = obs;
+    let w = Math.pow(0.5, Math.max(0, at - om) / HALF_LIFE);
+    let d = this.dev[id] === undefined ? this.anchor : this.dev[id];
+    if (ow === null) { d = this.anchor; w = 0; }
+    const mult = Math.exp(w * Math.log(Math.max(0.1, d)) + (1 - w) * Math.log(Math.max(0.1, this.anchor)));
+    return Math.max(MIN_WAIT, base * mult);
+  }
+  availability(id, at) {
+    const obs = this.snap[id];
+    if (!obs) return 0.97;
+    if (obs[1] !== null) return 0.97;
+    return 1 - Math.pow(1 - REOPEN_RATE, Math.max(0, at - obs[0]) / 10);
+  }
+  queue(id, at) {
+    const k = id + "|" + Math.floor(at / 5);
+    let v = this.cache.get(k);
+    if (v === undefined) {
+      const av = this.availability(id, at);
+      v = this.predict(id, at) * POSTED_BIAS + (av < 0.96 ? (1 - av) * 45 : 0);
+      this.cache.set(k, v);
+    }
+    return v;
+  }
+  singleRider(id, at) {
+    const a = this.byId[id]; if (!a || !a.a.sr) return null;
+    const s = this.predict(id, at);
+    return Math.max(MIN_WAIT, Math.min(s, s * 0.33 + 5));
+  }
+  premier(id, at) {
+    const a = this.byId[id]; if (!a || !a.a.pa) return null;
+    const s = this.predict(id, at);
+    return [at + Math.min(180, Math.round(20 + 0.55 * s)), Math.min(20, 5 + 0.12 * s)];
+  }
+}
+
+/* ---- optimizer ----------------------------------------------------- */
+const MUST_BONUS = 22, CANDIDATES = 11, PA_BOOK_MIN = 3, SLACK = 5, COOLDOWN = 150;
+
+class Planner {
+  constructor(rides, cfg, oracle, walk) {
+    this.all = rides; this.cfg = cfg; this.o = oracle;
+    this.walk = walk || new Walk(rides, cfg.famMps, cfg.adultMps);
+    this.idx = {}; rides.forEach((a, i) => { this.idx[a.id] = i; });
+    this.byId = {}; for (const a of rides) this.byId[a.id] = a;
+    this.childOk = {}; for (const a of rides) this.childOk[a.id] = a.h === null || cfg.childCm >= a.h;
+    this.must = new Set(cfg.mustDo);
+    this.rate = this.valueRate();
+  }
+  open(p) { return this.cfg.hours[p][0]; }
+  close(p) { return this.cfg.hours[p][1]; }
+  get dayEnd() { return Math.max(...Object.values(this.cfg.hours).map(h => h[1])); }
+  get dayStart() { return Math.min(...Object.values(this.cfg.hours).map(h => h[0])); }
+
+  valueRate() {
+    const best = this.all.filter(a => this.childOk[a.id]).sort((x, y) => y.ap - x.ap).slice(0, 12);
+    if (!best.length) return 0.05;
+    const v = best.reduce((s, a) => s + a.ap * this.cfg.childWeight, 0);
+    const t = best.reduce((s, a) => s + a.d + 0.55 * a.pk + 7, 0);
+    return v / Math.max(1, t);
+  }
+  soloWorth(a) {
+    return (a.h || 0) >= 100 || ((a.t === "coaster" || a.t === "drop" || a.t === "simulator") && a.ap >= 6) || a.ap >= 9;
+  }
+  walkCost(walked, leg) {
+    const over = Math.max(0, walked + leg - this.cfg.stamina) - Math.max(0, walked - this.cfg.stamina);
+    return this.cfg.walkPen * leg + this.cfg.tiredPen * over;
+  }
+  rideValue(a, group, repeats) {
+    let w;
+    if (group & C) { w = this.cfg.childWeight; if (group & B) w *= 1.05; }
+    else { w = this.cfg.adultWeight; if (!this.soloWorth(a)) return 0; }
+    return a.ap * w * Math.pow(this.cfg.repeatDecay, repeats);
+  }
+
+  candidates(st, track) {
+    const now = track === 0 ? st.t0 : st.t1;
+    const loc = track === 0 ? st.loc0 : st.loc1;
+    const wc = track === 0;
+    const out = [];
+    for (const a of this.all) {
+      const i = this.idx[a.id];
+      let repeats = 0, group;
+      if (track === 0) {
+        if (this.onCooldown(st, a.id, now)) continue;
+        if (!this.childOk[a.id]) {
+          if (!(this.cfg.riderSwitch && !hasR(st.aLo, st.aHi, i) && st.t1 <= now + 5)) continue;
+        }
+        repeats = hasR(st.cLo, st.cHi, i) ? 1 : 0;
+        group = FAMILY;
+      } else {
+        if (hasR(st.aLo, st.aHi, i)) continue;
+        if (this.childOk[a.id] && hasR(st.cLo, st.cHi, i)) continue;
+        group = B;
+      }
+      const walk = this.walk.min(loc, a.id, wc), arrive = now + walk;
+      if (arrive + a.d > this.close(a.p) - SLACK) continue;
+      const q = this.o.queue(a.id, Math.round(arrive));
+      let value = this.rideValue(a, group, repeats);
+      if (track === 0) {
+        if (this.must.has(a.id) && !hasR(st.cLo, st.cHi, i)) value += MUST_BONUS;
+        value -= this.walkCost(st.walked, Math.round(walk));
+      }
+      if (track === 1 && this.cfg.standbyHold && this.childOk[a.id] && !hasR(st.cLo, st.cHi, i)) {
+        let hv = this.rideValue(a, ALL, 0);
+        if (this.must.has(a.id)) hv += MUST_BONUS;
+        value = Math.max(value, hv);
+      }
+      out.push([value / Math.max(4, walk + q + a.d), a]);
+    }
+    out.sort((x, y) => y[0] - x[0]);
+    return out.slice(0, CANDIDATES).map(x => x[1]);
+  }
+
+  onCooldown(st, id, now) {
+    for (const [r, t] of st.recent) if (r === id && now - t < COOLDOWN) return true;
+    return false;
+  }
+  pushRecent(st, id, end) {
+    const kept = st.recent.filter(([, t]) => end - t < COOLDOWN);
+    return kept.concat([[id, end]]);
+  }
+
+  expand(st) { return st.t0 <= st.t1 ? this.expandFamily(st) : this.expandParent(st); }
+
+  expandFamily(st) {
+    const out = [];
+    const [lo, hi, len] = this.cfg.lunch;
+    if (!st.lunch && st.t0 >= lo) {
+      out.push(this.meal(st, len));
+      if (st.t0 >= hi - len) return out;
+    }
+    const deadline = st.lunch ? null : hi - len;
+    for (const a of this.candidates(st, 0)) this.familyOptions(st, a, deadline, out);
+    if (!out.length) { const n = Math.min(this.dayEnd, st.t0 + 15); if (n > st.t0) out.push({ ...st, t0: n }); }
+    return out;
+  }
+
+  familyOptions(st, a, deadline, out) {
+    const walk = this.walk.mins(st.loc0, a.id, true);
+    const arrive = Math.max(st.t0 + walk, this.open(a.p));
+    const i = this.idx[a.id], repeats = hasR(st.cLo, st.cHi, i) ? 1 : 0;
+    const cap = this.close(a.p) - SLACK;
+    const ok = e => e <= cap && (deadline === null || e <= deadline);
+
+    if (!this.childOk[a.id]) {
+      if (this.cfg.riderSwitch && st.t1 <= arrive) {
+        const q = this.o.queue(a.id, arrive), board = Math.round(arrive + q), end = board + 2 * a.d;
+        if (ok(end)) out.push(this.riderSwitch(st, a, walk, arrive, board, end, Math.round(q)));
+      }
+      return;
+    }
+    for (const [rid, ret, pw] of st.pa) {
+      if (rid !== a.id) continue;
+      const board = Math.round(Math.max(arrive, ret) + pw), end = board + a.d;
+      if (ok(end)) out.push(this.commit(st, a, walk, arrive, board, end, "premier", Math.round(pw), repeats,
+        st.pa.filter(h => h[0] !== a.id)));
+    }
+    const q = this.o.queue(a.id, arrive), board = Math.round(arrive + q), end = board + a.d;
+    if (ok(end)) out.push(this.commit(st, a, walk, arrive, board, end, "standby", Math.round(q), repeats, null));
+  }
+
+  commit(st, a, walk, arrive, board, end, mode, wait, repeats, pa) {
+    const i = this.idx[a.id], m = Math.round(this.walk.metres(st.loc0, a.id));
+    let v = this.rideValue(a, FAMILY, repeats);
+    if (this.must.has(a.id) && !hasR(st.cLo, st.cHi, i)) v += MUST_BONUS;
+    v -= this.walkCost(st.walked, walk) + this.cfg.queuePen * Math.max(0, board - arrive);
+    const item = { kind: "ride", id: a.id, name: a.n, park: a.p, land: a.l, group: FAMILY,
+      start: st.t0, board, end, mode, wait: Math.max(0, board - st.t0 - walk), walk, m, track: 0 };
+    const [cLo, cHi] = addR(st.cLo, st.cHi, i);
+    return { ...st, t0: end, loc0: a.id, cLo, cHi, cCount: st.cCount + 1,
+      pa: pa === null ? st.pa : pa, cur: { id: a.id, board, end },
+      value: st.value + v, items: st.items.concat([item]),
+      recent: this.pushRecent(st, a.id, end), walked: st.walked + walk, walkedM: st.walkedM + m };
+  }
+
+  riderSwitch(st, a, walk, arrive, board, end, wait) {
+    const i = this.idx[a.id], m = Math.round(this.walk.metres(st.loc0, a.id));
+    let v = 2 * this.rideValue(a, B, hasR(st.aLo, st.aHi, i) ? 1 : 0);
+    v -= this.walkCost(st.walked, walk) + this.cfg.queuePen * (board - arrive) * 2;
+    const item = { kind: "ride", id: a.id, name: a.n, park: a.p, land: a.l, group: ALL,
+      start: st.t0, board, end, mode: "rider_switch", wait: Math.max(0, board - st.t0 - walk), walk, m, track: 0 };
+    const [aLo, aHi] = addR(st.aLo, st.aHi, i);
+    return { ...st, t0: end, t1: end, loc0: a.id, loc1: a.id, aLo, aHi, cur: null,
+      value: st.value + v, items: st.items.concat([item]),
+      walked: st.walked + walk, walkedM: st.walkedM + m };
+  }
+
+  meal(st, len) {
+    const end = st.t0 + len;
+    const item = { kind: "meal", id: null, name: "Lunch", park: "DLP", land: "", group: ALL,
+      start: st.t0, board: st.t0, end, mode: "", wait: 0, walk: 0, m: 0, track: 0 };
+    return { ...st, t0: end, t1: Math.max(st.t1, end), lunch: true, cur: null,
+      loc1: st.loc0, items: st.items.concat([item]) };
+  }
+
+  expandParent(st) {
+    const out = [];
+    if (!this.cfg.twoQueues) {
+      if (st.cur && st.cur.end > st.t1) return [this.shadow(st)];
+      const n = Math.min(this.dayEnd, st.t1 + 15);
+      return n > st.t1 ? [{ ...st, t1: n }] : [];
+    }
+    if (st.cur && st.cur.end > st.t1) out.push(this.shadow(st));
+    for (const a of this.candidates(st, 1)) this.parentOptions(st, a, out);
+    if (this.cfg.paBudget > st.paUsed) this.bookPA(st, out);
+    const n = Math.min(this.dayEnd, st.t1 + 15);
+    if (n > st.t1) out.push({ ...st, t1: n });
+    return out;
+  }
+
+  shadow(st) {
+    const cur = st.cur, a = this.byId[cur.id];
+    const walk = this.walk.mins(st.loc1, cur.id, false);
+    const along = st.t1 + walk <= cur.board;
+    const v = along ? 0.6 * a.ap * this.cfg.adultWeight : 0;
+    const item = { kind: along ? "ride" : "walk", id: along ? cur.id : null,
+      name: along ? a.n : "Rejoin family at " + a.n, park: a.p, land: a.l, group: B,
+      start: st.t1, board: along ? cur.board : cur.end, end: cur.end,
+      mode: along ? "standby" : "", wait: 0, walk, m: Math.round(this.walk.metres(st.loc1, cur.id)), track: 1 };
+    return { ...st, t1: cur.end, loc1: cur.id, value: st.value + v, items: st.items.concat([item]) };
+  }
+
+  parentOptions(st, a, out) {
+    const walk = this.walk.mins(st.loc1, a.id, false);
+    const arrive = Math.max(st.t1 + walk, this.open(a.p));
+    const i = this.idx[a.id], cap = this.close(a.p) - SLACK;
+    const q = this.o.queue(a.id, arrive);
+    const modes = [["standby", q]];
+    if (this.cfg.singleRider) {
+      const sr = this.o.singleRider(a.id, arrive);
+      if (sr !== null && sr < q - 5) modes.push(["single_rider", sr]);
+    }
+    for (const [mode, wait] of modes) {
+      const board = Math.round(arrive + wait), end = board + a.d;
+      if (end > cap) continue;
+      let v = this.rideValue(a, B, 0);
+      v -= this.cfg.walkPen * walk + this.cfg.queuePen * Math.max(0, board - arrive);
+      const item = { kind: "ride", id: a.id, name: a.n, park: a.p, land: a.l, group: B,
+        start: st.t1, board, end, mode, wait: Math.max(0, board - st.t1 - walk), walk,
+        m: Math.round(this.walk.metres(st.loc1, a.id)), track: 1 };
+      const [aLo, aHi] = addR(st.aLo, st.aHi, i);
+      out.push({ ...st, t1: end, loc1: a.id, aLo, aHi, value: st.value + v, items: st.items.concat([item]) });
+    }
+    if (this.cfg.standbyHold && this.childOk[a.id] && !hasR(st.cLo, st.cHi, i)) this.hold(st, a, walk, arrive, q, out);
+  }
+
+  /* Free parent queues; the family walks up and joins near the front.
+     Not sanctioned by the park — off unless explicitly enabled. */
+  hold(st, a, walk, arrive, q, out) {
+    const ready = Math.round(arrive + q);
+    const fWalk = this.walk.mins(st.loc0, a.id, true);
+    const fArrive = Math.max(st.t0, st.cur ? st.cur.end : st.t0) + fWalk;
+    const board = Math.max(ready, fArrive), end = board + a.d;
+    if (end > this.close(a.p) - SLACK) return;
+    const i = this.idx[a.id];
+    let v = this.rideValue(a, ALL, hasR(st.cLo, st.cHi, i) ? 1 : 0);
+    if (this.must.has(a.id)) v += MUST_BONUS;
+    v -= this.cfg.walkPen * walk + this.walkCost(st.walked, fWalk) + this.cfg.queuePen * Math.max(0, board - fArrive);
+    const item = { kind: "ride", id: a.id, name: a.n, park: a.p, land: a.l, group: ALL,
+      start: st.t1, board, end, mode: "hold", wait: Math.max(0, board - st.t1 - walk), walk,
+      m: Math.round(this.walk.metres(st.loc1, a.id)), track: 1 };
+    const [cLo, cHi] = addR(st.cLo, st.cHi, i);
+    out.push({ ...st, t0: end, t1: end, loc0: a.id, loc1: a.id, cLo, cHi, cCount: st.cCount + 1,
+      cur: null, value: st.value + v, items: st.items.concat([item]),
+      recent: this.pushRecent(st, a.id, end), walked: st.walked + fWalk,
+      walkedM: st.walkedM + Math.round(this.walk.metres(st.loc0, a.id)) });
+  }
+
+  /* A return window is the cleanest second queue: you hold a place on
+     one ride while standing in line for another. */
+  bookPA(st, out) {
+    const held = new Set(st.pa.map(h => h[0]));
+    const scored = [];
+    for (const a of this.all) {
+      const i = this.idx[a.id];
+      if (!a.pa || held.has(a.id) || hasR(st.cLo, st.cHi, i) || !this.childOk[a.id]) continue;
+      const ret = this.o.premier(a.id, st.t1);
+      if (!ret) continue;
+      const [rm, pw] = ret;
+      if (rm > this.close(a.p) - a.d - SLACK) continue;
+      const saving = this.o.queue(a.id, rm) - pw;
+      if (saving < this.cfg.paMinSaving) continue;
+      scored.push([saving + (this.must.has(a.id) ? MUST_BONUS : 0), a, rm, pw]);
+    }
+    scored.sort((x, y) => y[0] - x[0]);
+    for (const [, a, rm, pw] of scored.slice(0, 3)) {
+      const item = { kind: "book_pa", id: a.id, name: "Book Premier Access: " + a.n,
+        park: a.p, land: a.l, group: B, start: st.t1, board: st.t1, end: st.t1 + PA_BOOK_MIN,
+        mode: "premier", wait: 0, walk: 0, m: 0, track: 1, ret: rm };
+      out.push({ ...st, t1: st.t1 + PA_BOOK_MIN, pa: st.pa.concat([[a.id, rm, pw]]),
+        paUsed: st.paUsed + 1, items: st.items.concat([item]) });
+    }
+  }
+
+  solve(startAt) {
+    const start = Math.max(startAt ?? this.dayStart, this.dayStart);
+    const [lo, hi] = this.cfg.lunch;
+    let beam = [{
+      t0: start, t1: start, loc0: ENTRANCE, loc1: ENTRANCE,
+      cLo: 0, cHi: 0, cCount: 0, aLo: 0, aHi: 0, pa: [], paUsed: 0,
+      cur: null, lunch: start > hi, value: 0, items: [], recent: [], walked: 0, walkedM: 0,
+    }];
+    const done = [];
+    let guard = 0;
+    const rank = s => s.value + this.rate * Math.max(0, this.dayEnd - Math.min(s.t0, s.t1));
+    while (beam.length && guard < 4000) {
+      guard++;
+      const next = [], seen = new Map();
+      for (const st of beam) {
+        if (Math.min(st.t0, st.t1) >= this.dayEnd) { done.push(st); continue; }
+        for (const ch of this.expand(st)) {
+          if (!((ch.t0 + ch.t1) > (st.t0 + st.t1) || ch.items.length > st.items.length)) continue;
+          const k = [Math.floor(ch.t0 / 5), Math.floor(ch.t1 / 5), ch.loc0, ch.loc1,
+            ch.cLo, ch.cHi, ch.cCount, ch.aLo, ch.aHi, ch.paUsed, ch.lunch ? 1 : 0,
+            ch.pa.map(h => h[0]).sort().join(",")].join("|");
+          const prev = seen.get(k);
+          if (prev !== undefined && prev >= ch.value) continue;
+          seen.set(k, ch.value); next.push(ch);
+        }
+      }
+      if (!next.length) { done.push(...beam); break; }
+      next.sort((a, b) => rank(b) - rank(a));
+      beam = next.slice(0, this.cfg.beam);
+    }
+    done.push(...beam);
+    if (!done.length) return { items: [], value: 0 };
+    const best = done.reduce((x, y) => (y.value > x.value ? y : x));
+    return { items: best.items, value: best.value };
+  }
+}
+
+/* 43 rides fit in two 32-bit halves; exact and fast. */
+function hasR(lo, hi, i) { return i < 32 ? (lo & (1 << i)) !== 0 : (hi & (1 << (i - 32))) !== 0; }
+function addR(lo, hi, i) { return i < 32 ? [lo | (1 << i), hi] : [lo, hi | (1 << (i - 32))]; }
+
+/* ---- summary ------------------------------------------------------- */
+function summarise(plan, cfg) {
+  const rides = plan.items.filter(i => i.kind === "ride");
+  const t0 = rides.filter(i => i.track === 0), t1 = rides.filter(i => i.track === 1);
+  const child = rides.filter(i => i.group & C);
+  const distinct = new Set(child.map(i => i.id));
+  let overlap = 0;
+  for (const x of t0) for (const y of t1) {
+    if (x.id === y.id) continue;
+    overlap += Math.max(0, Math.min(x.board, y.board) - Math.max(x.start + x.walk, y.start + y.walk));
+  }
+  const must = new Set(cfg.mustDo);
+  return {
+    childRides: child.length,
+    distinct: distinct.size,
+    hit: [...must].filter(m => distinct.has(m)),
+    missed: [...must].filter(m => !distinct.has(m)),
+    queueMin: t0.reduce((s, i) => s + i.wait, 0),
+    overlap,
+    walkMin: plan.items.reduce((s, i) => s + i.walk, 0),
+    childKm: Math.round(t0.reduce((s, i) => s + i.m, 0) / 100) / 10,
+    partyKm: Math.round(plan.items.reduce((s, i) => s + i.m, 0) / 100) / 10,
+    pa: plan.items.filter(i => i.kind === "book_pa").length,
+    sr: rides.filter(i => i.mode === "single_rider").length,
+    first: plan.items.length ? Math.min(...plan.items.map(i => i.start)) : null,
+    last: plan.items.length ? Math.max(...plan.items.map(i => i.end)) : null,
+  };
+}
+
+
+/* ===================================================================
+   Map, ribbon, timetable and controls.
+
+   The map draws actual park geometry — outlines, themed lands, water,
+   the Main Street axis — rather than hulls thrown around the pins.
+   Disneyland Park is hub-and-spoke: Main Street runs north from the
+   entrance to a Central Plaza with the castle on it, and the lands
+   fan out as sectors at their real compass bearings. The two parks
+   sit ~1km apart, so each gets its own panel and projection.
+   =================================================================== */
+const NS = "http://www.w3.org/2000/svg";
+const LAND_HUE = {
+  "Main Street U.S.A.":"#9a7b52", "Frontierland":"#b06a42", "Adventureland":"#3f8459",
+  "Fantasyland":"#6560b4", "Discoveryland":"#2f7796", "Production Courtyard":"#84506c",
+  "Worlds of Pixar":"#4f76a8", "Avengers Campus":"#964945", "Toon Studio":"#87733d",
+  "Front Lot":"#6b7385", "Central Plaza":"#8f9bb0",
+};
+const PARK_NAME = { DLP:"Disneyland Park", DAW:"Walt Disney Studios" };
+const MW = 980, PADX = 30, HEAD = 24, GAPX = 14;
+
+const $ = id => document.getElementById(id);
+const el = (t, at = {}, tx) => { const n = document.createElementNS(NS, t);
+  for (const k in at) n.setAttribute(k, at[k]); if (tx !== undefined) n.textContent = tx; return n; };
+const hhmm = m => String(Math.floor(m/60)%24).padStart(2,"0")+":"+String(Math.round(m)%60).padStart(2,"0");
+const esc = s => String(s).replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+
+function waitHue(w){
+  if (w === null || w === undefined) return "var(--closed)";
+  if (w <= 15) return "var(--w1)"; if (w <= 30) return "var(--w2)";
+  if (w <= 45) return "var(--w3)"; if (w <= 70) return "var(--w4)"; return "var(--w5)";
+}
+const pinR = w => (w === null || w === undefined) ? 3.2 : 3.2 + Math.min(6.5, w/14);
+
+/* ---- projection --------------------------------------------------- */
+function boundsOf(latlons){
+  const la = latlons.map(p=>p[0]), lo = latlons.map(p=>p[1]);
+  const laMin=Math.min(...la), laMax=Math.max(...la), loMin=Math.min(...lo), loMax=Math.max(...lo);
+  const kx = Math.cos((laMin+laMax)/2*Math.PI/180);
+  const w = Math.max(1e-6,(loMax-loMin)*kx), h = Math.max(1e-6,laMax-laMin);
+  return {laMax, loMin, kx, w, h, aspect:w/h};
+}
+const projector = (b, r) => {
+  const sc = Math.min((r.w-2*PADX)/b.w, (r.h-2*PADX)/b.h);
+  const ox = r.x+(r.w-b.w*sc)/2, oy = r.y+(r.h-b.h*sc)/2;
+  return (lat,lon) => [ox+(lon-b.loMin)*b.kx*sc, oy+(b.laMax-lat)*sc];
+};
+const pathOf = (ring, P, close) =>
+  ring.map((p,i)=>{const [x,y]=P(p[0],p[1]);
+    return `${i?"L":"M"} ${x.toFixed(1)} ${y.toFixed(1)}`;}).join(" ") + (close?" Z":"");
+
+/* Place labels greedily in priority order, nudging each one up or down a
+   little to find a gap and dropping it if none exists. Fantasyland packs a
+   dozen attractions into a few hundred metres; without this the names pile
+   into an unreadable stack and the map stops being a map. */
+function placeLabels(cands){
+  const placed=[], out=[];
+  const overlaps=(a,b)=> !(a.x1<b.x0||b.x1<a.x0||a.y1<b.y0||b.y1<a.y0);
+  for(const c of cands){
+    const w=c.text.length*c.em, h=c.size+3;
+    let done=false;
+    const nudges=c.keep
+      ? [[0,0],[0,-13],[0,13],[0,-26],[0,26],[0,-40],[0,40],
+         [-w/2,0],[w/2,0],[-w/2,-15],[w/2,-15],[-w/2,15],[w/2,15]]
+      : [[0,0],[0,-11],[0,11],[0,-21],[0,21],[0,-31],[0,31]];
+    for(const [dx,dy] of nudges){
+      const box={x0:c.x+dx-w/2-2,x1:c.x+dx+w/2+2,y0:c.y+dy-h,y1:c.y+dy+3};
+      if(placed.some(p=>overlaps(box,p))) continue;
+      placed.push(box); out.push({...c,x:c.x+dx,y:c.y+dy}); done=true; break;
+    }
+    if(!done && c.keep){          // land names must never be dropped
+      out.push(c);
+      placed.push({x0:c.x-w/2-2,x1:c.x+w/2+2,y0:c.y-h,y1:c.y+3});
+    }
+  }
+  return out;
+}
+
+/* ---- rendering ---------------------------------------------------- */
+function drawMap(svg, rides, waits, plan, geo){
+  svg.innerHTML="";
+  const parks=[...new Set(rides.map(a=>a.p))].sort((x,y)=>x==="DLP"?-1:y==="DLP"?1:0);
+  const inP={}, bn={};
+  for(const p of parks){
+    inP[p]=rides.filter(a=>a.p===p);
+    // Frame on the park outline, not just the pins, so the whole park shows
+    // and its shape reads correctly.
+    const pts=[...inP[p].map(a=>[a.lat,a.lon])];
+    const o=geo && geo.parks && geo.parks[p] && geo.parks[p].outline;
+    if(o) pts.push(...o);
+    bn[p]=boundsOf(pts);
+  }
+
+  // One scale for both parks. Disneyland Park really is about twice the
+  // Studios, and drawing each to fit its own panel would quietly hide that;
+  // a map that rescales each half is not a map of the resort.
+  const totalW=parks.reduce((s,p)=>s+bn[p].w,0);
+  const maxH=Math.max(...parks.map(p=>bn[p].h));
+  const scale=Math.min((MW-2*PADX-GAPX*(parks.length-1))/totalW,
+                       (660-2*PADX)/maxH);
+  const ph=Math.max(300, maxH*scale+2*PADX);
+  svg.setAttribute("viewBox",`0 0 ${MW} ${HEAD+ph}`);
+
+  const R={}, P={}, xy={};
+  let cx=PADX;
+  for(const p of parks){
+    const w=bn[p].w*scale, h=bn[p].h*scale;
+    R[p]={x:cx, y:HEAD+(ph-h)/2, w, h};
+    const b=bn[p], ox=R[p].x, oy=R[p].y;
+    P[p]=(lat,lon)=>[ox+(lon-b.loMin)*b.kx*scale, oy+(b.laMax-lat)*scale];
+    for(const a of inP[p]) xy[a.id]=P[p](a.lat,a.lon);
+    cx+=w+GAPX;
+  }
+
+  const gFrame=el("g"), gLand=el("g"), gWater=el("g"), gPath=el("g"),
+        gMark=el("g"), gRoute=el("g"), gPin=el("g"), gText=el("g");
+  svg.append(gFrame,gLand,gWater,gPath,gMark,gRoute,gPin,gText);
+
+  /* park outline and title */
+  for(const p of parks){
+    const r=R[p], o=geo?.parks?.[p]?.outline;
+    if(o) gFrame.append(el("path",{d:pathOf(o,P[p],true),fill:"var(--card)",
+      stroke:"var(--edge)","stroke-width":1.4}));
+    else gFrame.append(el("rect",{x:r.x,y:r.y,width:r.w,height:r.h,rx:10,
+      fill:"var(--card)",stroke:"var(--edge)","stroke-width":1}));
+    gFrame.append(el("text",{x:r.x,y:r.y-9,class:"panel-t"},PARK_NAME[p]||p));
+  }
+
+  /* themed lands, drawn as real regions */
+  const landLabels=[];
+  for(const L of (geo?.lands||[])){
+    const p=L.park; if(!P[p]) continue;
+    const hue=LAND_HUE[L.name]||"#5b6479";
+    gLand.append(el("path",{d:pathOf(L.polygon,P[p],true),fill:hue,
+      stroke:hue,"stroke-width":1,class:"land"}));
+    const c=L.polygon.reduce((s,q)=>[s[0]+q[0],s[1]+q[1]],[0,0]).map(v=>v/L.polygon.length);
+    const [lx,ly]=P[p](c[0],c[1]);
+    landLabels.push({x:lx,y:ly,size:8.5,em:7.3,text:L.name,cls:"llabel",keep:true});
+  }
+
+  for(const W of (geo?.water||[])){
+    const p=W.park; if(!P[p]) continue;
+    // Lands are washed back to 34%; water at the same weight just reads as
+    // another land, so give it full strength.
+    gWater.append(el("path",{d:pathOf(W.polygon,P[p],true),
+      fill:"var(--water)",stroke:"var(--water)","stroke-width":1,opacity:.55}));
+  }
+  for(const T of (geo?.paths||[])){
+    // Each park has its own projection, so a path spanning both would be a
+    // line between two unrelated coordinate frames. Skip it.
+    if(T.park==="BOTH") continue;
+    const p=T.park; if(!P[p]) continue;
+    gPath.append(el("path",{d:pathOf(T.line,P[p],false),fill:"none",
+      stroke:"var(--edge)","stroke-width":T.name==="Main Street U.S.A."?4:1.6,
+      "stroke-linecap":"round",opacity:.9}));
+  }
+
+  /* landmarks: the castle is how anyone orients on this map */
+  /* landmarks last, so they can join the same label pass */
+  for(const M of (geo?.landmarks||[])){
+    const p=M.park; if(!P[p]||!M.at) continue;
+    const [x,y]=P[p](M.at[0],M.at[1]);
+    if(M.kind==="castle"){
+      const s=1.5;   // the castle is how anyone orients on this map
+      gMark.append(el("path",{d:`M ${x-9*s} ${y+6*s} L ${x-9*s} ${y-3*s} L ${x-5.5*s} ${y-7*s}`
+        +` L ${x-2*s} ${y-3*s} L ${x-2*s} ${y-7*s} L ${x} ${y-13*s} L ${x+2*s} ${y-7*s}`
+        +` L ${x+2*s} ${y-3*s} L ${x+5.5*s} ${y-7*s} L ${x+9*s} ${y-3*s} L ${x+9*s} ${y+6*s} Z`,
+        fill:"var(--ink-2)",opacity:.9}));
+    } else if(M.kind==="entrance"){
+      gMark.append(el("circle",{cx:x,cy:y,r:4.5,fill:"var(--card)",
+        stroke:"var(--ink-3)","stroke-width":1.8}));
+      landLabels.push({x,y:y+15,size:8.5,em:7.3,text:"Entrance",cls:"llabel"});
+    }
+  }
+  const named=new Set(stopsOf(plan,xy)[0].map(i=>i.id));
+  const nameLabels=rides.filter(a=>named.has(a.id))
+    .sort((a,b)=>b.ap-a.ap)
+    .map(a=>({x:xy[a.id][0], y:xy[a.id][1]+14, size:7.4, em:3.5,
+              text:a.n.length>22?a.n.slice(0,21)+"\u2026":a.n, cls:"plabel"}));
+  for(const l of placeLabels(landLabels.concat(nameLabels)))
+    gText.append(el("text",{x:l.x,y:l.y,class:l.cls,"text-anchor":"middle"},l.text));
+
+  fitViewBox(svg);
+
+  /* the two routes, broken where the party crosses between parks */
+  const stops=stopsOf(plan,xy);
+  for(const tr of [1,0]){
+    let run=[]; const runs=[];
+    for(const i of stops[tr]){ if(run.length&&run[run.length-1].park!==i.park){runs.push(run);run=[];} run.push(i); }
+    if(run.length) runs.push(run);
+    for(const seg of runs){ if(seg.length<2) continue;
+      const d=seg.map((i,k)=>{const [x,y]=xy[i.id];return `${k?"L":"M"} ${x.toFixed(1)} ${y.toFixed(1)}`;}).join(" ");
+      gRoute.append(el("path",{d,class:"route",stroke:tr===0?"var(--route-a)":"var(--route-b)",
+        "stroke-width":tr===0?2.4:1.8,"stroke-dasharray":tr===0?"none":"6 5",opacity:.85})); }
+  }
+
+  for(const a of rides){
+    const [x,y]=xy[a.id]; const w=waits[a.id]===undefined?null:waits[a.id];
+    const g=el("g",{class:"pin"});
+    g.append(el("circle",{cx:x,cy:y,r:pinR(w)+7,fill:waitHue(w),opacity:0,class:"halo"}));
+    g.append(el("circle",{cx:x,cy:y,r:pinR(w),fill:waitHue(w),stroke:"var(--card)","stroke-width":1.4}));
+    g.addEventListener("mousemove",e=>tip(e,a.n,
+      `${a.l} · ${PARK_NAME[a.p]}\n${w===null?"currently down":w+" min posted"}`
+      +(a.h?`\nminimum height ${a.h} cm`:"")));
+    g.addEventListener("mouseleave",hideTip);
+    gPin.append(g);
+  }
+  for(const tr of [0,1]){
+    stops[tr].forEach((it,k)=>{
+      const [x,y]=xy[it.id], dx=tr===0?-11:11;
+      const g=el("g",{class:"pin"});
+      g.append(el("circle",{cx:x+dx,cy:y-10,r:7,fill:tr===0?"var(--route-a)":"var(--route-b)",
+        stroke:"var(--card)","stroke-width":1.3}));
+      g.append(el("text",{x:x+dx,y:y-10,class:"seqno"},String(k+1)));
+      g.addEventListener("mousemove",e=>tip(e,`${k+1}. ${it.name}`,itemLine(it)));
+      g.addEventListener("mouseleave",hideTip);
+      gPin.append(g);
+    });
+  }
+}
+
+/* Titles and place names spill past the park outlines, so the canvas is
+   sized to what was actually drawn. Without this the bottom of Disneyland
+   Park — Main Street and the entrance — is quietly cut off. */
+function fitViewBox(svg){
+  try{
+    const b=svg.getBBox();
+    if(!b.width||!b.height) return;
+    const m=6;
+    svg.setAttribute("viewBox",
+      `${(b.x-m).toFixed(1)} ${(b.y-m).toFixed(1)} `
+      +`${(b.width+2*m).toFixed(1)} ${(b.height+2*m).toFixed(1)}`);
+  }catch(e){ /* not laid out yet; the geometry-derived box still works */ }
+}
+
+function stopsOf(plan, xy){
+  const items=(plan.items||[]).filter(i=>i.id&&xy[i.id]).sort((a,b)=>a.start-b.start);
+  const stops={0:[],1:[]};
+  for(const i of items){ const prev=stops[i.track][stops[i.track].length-1];
+    if(!prev||prev.id!==i.id) stops[i.track].push(i); }
+  return stops;
+}
+
+const itemLine = i => i.kind!=="ride"
+  ? `${hhmm(i.start)}–${hhmm(i.end)}`
+  : `${hhmm(i.start)} leave · ${hhmm(i.board)} board · ${hhmm(i.end)} done\n`
+    +`queue ${i.wait} min · walk ${i.walk} min / ${i.m} m · ${i.mode.replace("_"," ")}`;
+
+function tip(e,title,body){
+  const t=$("tip");
+  t.innerHTML=`<b>${esc(title)}</b><span class="m">${esc(body).replace(/\n/g,"<br>")}</span>`;
+  t.style.opacity="1";
+  t.style.left=Math.min(e.clientX+14,innerWidth-290)+"px";
+  t.style.top=Math.min(e.clientY+14,innerHeight-120)+"px";
+}
+const hideTip = () => { $("tip").style.opacity="0"; };
+
+function drawRibbon(items, dayStart, dayEnd){
+  const span=Math.max(1,dayEnd-dayStart), pct=m=>(m-dayStart)/span*100;
+  let hours="";
+  for(let h=Math.ceil(dayStart/60)*60;h<=dayEnd;h+=60)
+    hours+=`<div class="hr" style="left:${pct(h)}%"></div><div class="hrl" style="left:${pct(h)}%">${hhmm(h)}</div>`;
+  const rows=[0,1].map(tr=>{
+    const blocks=items.filter(i=>i.track===tr).map(i=>{
+      const L=pct(i.start), W=Math.max(.55,pct(i.end)-pct(i.start));
+      const qf=i.end>i.start?(i.board-i.start)/(i.end-i.start)*100:0;
+      const cls=i.kind==="meal"?"meal":i.kind==="book_pa"?"pa":(tr===0?"a":"b");
+      const lbl=i.wait>8?`${i.name} · ${i.wait}m`:i.name;
+      return `<div class="blk ${cls}" style="left:${L}%;width:${W}%" data-i="${esc(i.name)}" data-b="${esc(itemLine(i))}">`
+        +`<div class="q" style="width:${qf}%"></div><span>${esc(lbl)}</span></div>`;
+    }).join("");
+    const nm=tr===0?"Track A — parent + child":"Track B — free parent";
+    const col=tr===0?"var(--route-a)":"var(--route-b)";
+    return `<div class="trk"><div class="trk-l" style="color:${col}">${nm}</div>${blocks}</div>`;
+  }).join("");
+  const r=$("ribbon");
+  r.innerHTML=`<div class="hours">${hours}</div>${rows}`;
+  r.querySelectorAll(".blk").forEach(b=>{
+    b.addEventListener("mousemove",e=>tip(e,b.dataset.i,b.dataset.b));
+    b.addEventListener("mouseleave",hideTip);
+  });
+}
+
+function drawTable(items){
+  $("tt").innerHTML=items.slice().sort((a,b)=>a.start-b.start||a.track-b.track).map(i=>{
+    const w=[]; if(i.group&1)w.push("P1"); if(i.group&2)w.push("P2"); if(i.group&4)w.push("child");
+    const tag=i.mode&&i.mode!=="standby"?` <span class="tag ${i.mode}">${i.mode.replace("_"," ")}</span>`:"";
+    const q=i.kind==="ride"?`${i.wait}m`:"—";
+    const dist=i.m?` · ${i.m} m walk`:"";
+    return `<tr class="${i.track===0?"a":"b"}">
+      <td class="mono">${hhmm(i.start)}<div class="sub2 mono">${hhmm(i.end)}</div></td>
+      <td class="who">${w.join("+")}</td>
+      <td>${esc(i.name)}${tag}<div class="sub2">${esc(i.land||i.park)}${dist}</div></td>
+      <td class="mono" style="text-align:right">${q}</td></tr>`;
+  }).join("");
+}
+
+/* ===================================================================
+   Controls and the planning run.
+   =================================================================== */
+const HOURS = { DLP:[570,1320], DAW:[570,1200] };
+const DAY_START = 570, DAY_END = 1320;
+const MUST_CHOICES = ["ratatouille","big_thunder","peter_pan","pirates","meet_mickey",
+  "phantom_manor","crush_coaster","buzz_lightyear","small_world","tower_of_terror"];
+let mustDo = new Set(["ratatouille","big_thunder","peter_pan","pirates","meet_mickey"]);
+const RIDE_BY = Object.fromEntries(RIDES.map(a=>[a.id,a]));
+const WALK = new Walk(RIDES);
+
+const CROWD_WORDS = [[3,"quiet midweek"],[4.5,"off-peak"],[6,"typical late November"],
+  [7.5,"busy — Christmas season"],[9,"peak, school holidays"]];
+const crowdWord = c => (CROWD_WORDS.find(([t])=>c<=t)||[,"packed"])[1];
+
+function buildChips(){
+  $("mustChips").innerHTML = MUST_CHOICES.map(id=>
+    `<button type="button" class="chip" data-id="${id}" aria-pressed="${mustDo.has(id)}">${esc(RIDE_BY[id].n.split(":")[0].split(" — ")[0].slice(0,22))}</button>`).join("");
+  $("mustChips").querySelectorAll(".chip").forEach(c=>{
+    c.addEventListener("click",()=>{
+      const id=c.dataset.id;
+      if(mustDo.has(id)) mustDo.delete(id); else mustDo.add(id);
+      c.setAttribute("aria-pressed", mustDo.has(id));
+      run();
+    });
+  });
+}
+
+function labels(){
+  const c=+$("crowd").value, h=+$("height").value, pa=+$("pa").value;
+  $("crowdVal").textContent = c.toFixed(1)+" — "+crowdWord(c);
+  const blocked = RIDES.filter(a=>a.h!==null && h<a.h);
+  $("heightVal").textContent = `${h} cm · ${blocked.length} ride${blocked.length===1?"":"s"} off limits`;
+  $("hLabel").innerHTML = h+"&nbsp;cm";
+  $("paVal").textContent = pa===0 ? "none — standby only" : `${pa} paid return window${pa===1?"":"s"}`;
+  return {crowd:c, height:h, pa};
+}
+
+function run(){
+  const btn=$("go"); btn.disabled=true; btn.textContent="Planning…";
+  /* Let the button repaint before the search blocks the thread. */
+  setTimeout(()=>{ try { plan(); } finally { btn.disabled=false; btn.textContent="Re-plan"; } }, 16);
+}
+
+function plan(){
+  const {crowd,height,pa} = labels();
+  const from = (()=>{ const v=$("from").value||"09:30";
+    return Math.max(DAY_START, +v.slice(0,2)*60 + +v.slice(3,5)); })();
+
+  const seed = Math.round(crowd*1000) + 20261127;
+  const traces = simulateDay(RIDES, {crowd, open:DAY_START, close:DAY_END, seed});
+
+  const fc = new Forecaster(RIDES, DAY_START, DAY_END);
+  const snap = {};
+  for (const a of RIDES) snap[a.id] = [from, waitAt(traces, a.id, from)];
+  fc.observe(snap);
+
+  /* A must-do the child is too short for can never be satisfied, so drop
+     it rather than reporting a permanent failure. */
+  const wanted = [...mustDo];
+  const reachable = wanted.filter(id => RIDE_BY[id].h === null || height >= RIDE_BY[id].h);
+  const dropped = wanted.filter(id => !reachable.includes(id));
+
+  const cfg = {
+    hours:HOURS, childCm:height, stamina:180, famMps:.85, adultMps:1.30,
+    mustDo:reachable, lunch:[705,870,50],
+    childWeight:2.0, adultWeight:.35, repeatDecay:.35,
+    walkPen:.004, tiredPen:.09, queuePen:.004, beam:180,
+    twoQueues:$("twoQ").checked, singleRider:$("sr").checked,
+    riderSwitch:true, standbyHold:$("hold").checked,
+    paBudget:pa, paMinSaving:25,
+  };
+
+  const t0 = performance.now();
+  const result = new Planner(RIDES, cfg, fc, WALK).solve(from);
+  const ms = Math.round(performance.now() - t0);
+  const s = summarise(result, cfg);
+
+  const waits = {}; for (const a of RIDES) waits[a.id] = waitAt(traces, a.id, from);
+  drawMap($("map"), RIDES, waits, result, GEO);
+  drawRibbon(result.items, DAY_START, DAY_END);
+  drawTable(result.items);
+  drawTiles(s, height);
+  drawNotes(s, cfg, dropped, from, fc, ms, result);
+}
+
+function drawTiles(s, height){
+  const tiles = [
+    ["Rides for the child", s.distinct, ""],
+    ["Must-do done", `${s.hit.length}/${s.hit.length+s.missed.length}`, s.missed.length?"bad":"good"],
+    ["Time in line", s.queueMin+"m", ""],
+    ["Two queues at once", s.overlap+"m", s.overlap>0?"good":""],
+    ["Child on foot", s.childKm+"km", s.childKm>9?"bad":""],
+    ["Premier Access", s.pa, ""],
+  ];
+  $("tiles").innerHTML = tiles.map(([k,n,c])=>
+    `<div class="tile"><div class="n ${c}">${n}</div><div class="k">${k}</div></div>`).join("");
+  $("foot").innerHTML = s.missed.length
+    ? `<b style="color:var(--bad)">Does not fit today:</b> ${s.missed.map(m=>esc(RIDE_BY[m].n)).join(", ")}`
+    : (s.first===null ? "No plan." :
+       `Everything on the must-do list fits. Day runs ${hhmm(s.first)}–${hhmm(s.last)}.`);
+}
+
+function drawNotes(s, cfg, dropped, from, fc, ms, result){
+  const p = [];
+  if (dropped.length) p.push(`<p><b>Too short for:</b> ${dropped.map(d=>esc(RIDE_BY[d].n)).join(", ")}
+    — dropped from the must-do list, because no plan can satisfy it. A parent can still
+    ride it on Track&nbsp;B.</p>`);
+
+  if (from <= DAY_START + 20) p.push(`<p><b>Planning at rope drop.</b> Every queue is five
+    minutes right now, so there is almost nothing to react to — this plan comes from the
+    seasonal priors, not from live information. Move <i>plan from</i> to the afternoon and
+    the crowd level starts to change the route.</p>`);
+  else p.push(`<p><b>Reading the day.</b> Comparing every posted wait against its usual
+    shape puts today at <b>${fc.anchor.toFixed(2)}×</b> a typical day. One ride is noisy;
+    forty of them together are not.</p>`);
+
+  if (cfg.twoQueues) p.push(`<p><b>The second queue.</b> Track&nbsp;B booked
+    ${s.pa} Premier Access window${s.pa===1?"":"s"} and took the single-rider line
+    ${s.sr} time${s.sr===1?"":"s"}. <b>${s.overlap} minutes</b> of the day have both tracks
+    in a line at once — that is the whole point of the exercise. Turn the second queue off
+    and watch time in line climb.</p>`);
+  else p.push(`<p><b>Moving as one unit.</b> With no second queue the family can only ever
+    be in one line, so <b>two-queue minutes are zero</b>. Across four simulated days this
+    costs about 47 minutes more standing in line for the same must-dos.</p>`);
+
+  p.push(`<p><b>Walking.</b> The child covers ${s.childKm} km on ${s.walkMin} minutes of
+    walking; the whole party covers ${s.partyKm} km, because Track&nbsp;B ranges separately.
+    Distances are real: straight-line between attractions × 1.35 for the way paths actually
+    bend, plus a penalty for changing land and a much larger one for crossing between parks.</p>`);
+
+  p.push(`<p><b>The map.</b> ${GEO._meta.source === "openstreetmap"
+    ? "Outlines, lands and water are surveyed geometry from OpenStreetMap."
+    : "Land outlines are a <b>schematic</b>: the lands sit at their real compass bearings "
+      +"around the Central Plaza and the Studios lots in their real arrangement, but the "
+      +"shapes are generated, not surveyed. <code>python3 -m dlp.cli import-map</code> "
+      +"replaces the whole map with OpenStreetMap geometry."}</p>`);
+
+  p.push(`<p class="sub2">Beam search over ${RIDES.length} attractions, width ${cfg.beam},
+    solved in ${ms} ms. Wait times are <b>simulated</b>, not live — a calibrated model of how
+    park queues behave, so you can move the crowd dial. The real tool polls
+    themeparks.wiki and queue-times.com.</p>`);
+  $("notes").innerHTML = p.join("");
+}
+
+for (const id of ["crowd","height","pa"]) $(id).addEventListener("input", labels);
+for (const id of ["crowd","height","pa","from"]) $(id).addEventListener("change", run);
+for (const id of ["twoQ","sr","hold"]) $(id).addEventListener("change", run);
+$("go").addEventListener("click", run);
+addEventListener("scroll", hideTip, {passive:true});
+
+buildChips();
+run();
+
+</script>
