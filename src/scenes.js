@@ -622,10 +622,10 @@ const HOME_ZONES = [
 const STATE_COLS = 8, STATE_ROWS = 7;
 const HOME_COL = 1, HOME_ROW = 1;
 const COL_W = [], ROW_D = [];
-for (let c = 0; c < STATE_COLS; c++) COL_W.push(c === HOME_COL ? 1400 : 900);
-for (let r = 0; r < STATE_ROWS; r++) ROW_D.push(r === HOME_ROW ? 1200 : 800);
+for (let c = 0; c < STATE_COLS; c++) COL_W.push(c === HOME_COL ? 1400 : 1150);
+for (let r = 0; r < STATE_ROWS; r++) ROW_D.push(r === HOME_ROW ? 1200 : 1000);
 // Anchored so Idaho's cell lands over the content that is already there.
-const COL_X = [-1000], ROW_Z = [-890];
+const COL_X = [-1250], ROW_Z = [-1090];
 for (let c = 0; c < STATE_COLS; c++) COL_X.push(COL_X[c] + COL_W[c]);
 for (let r = 0; r < STATE_ROWS; r++) ROW_Z.push(ROW_Z[r] + ROW_D[r]);
 const STATE_X0 = COL_X[0], STATE_Z0 = ROW_Z[0];
@@ -724,7 +724,7 @@ const STATES = STATE_TABLE.map(([abbr, name, capital, biome], i) => {
     abbr, name, capital, biome, col, row,
     tint: b.tint, trees: b.trees,
     town: abbr === 'ID' ? null
-      : { cols: 2 + (h > 1 ? 1 : 0), rows: 2 + (h > 0 ? 1 : 0), gap: 92 + h * 8 },
+      : { cols: 3 + (h > 1 ? 1 : 0), rows: 3, gap: 96 + h * 6 },
     x0, z0, x1: COL_X[col + 1], z1: ROW_Z[row + 1],
     cx: (x0 + COL_X[col + 1]) / 2, cz: (z0 + ROW_Z[row + 1]) / 2,
   };
@@ -758,7 +758,7 @@ function makeTownGrid(world, opts) {
   const add = (pts, o) => {
     const p = world.addPath(new Path(xz(pts), Object.assign({
       closed: false, halfWidth: 3.6, surface: SURFACES.asphalt, kerbs: false,
-      type: 'street', markings: false, spacing: 7.5,
+      type: 'street', markings: false, spacing: 10.0,
     }, o)));
     // The town name rides alongside the road type rather than inside it, so
     // "Avenue" keeps meaning the same thing everywhere while the map can still
@@ -1393,7 +1393,7 @@ function buildHomeRoute(gl) {
     if (!g) return;
     fillTownBlocks(world, g.streets, propMB, roadMB, {
       rng: makeRng(9000 + i * 131), shops: townShops, lib,
-      gapChance: 0.55, step: 7,
+      gapChance: 0.58, step: 8,
     });
   });
 

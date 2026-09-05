@@ -39,18 +39,19 @@ in roughly the order they sit on a real map. The Pacific north-west at the top
 left, New England down the right, the south along the bottom, the islands in
 the corners. Driving east really does take you east.
 
-**7,700 by 6,000 metres — about 46 km²** of continuous ground. Ground colour
+**9,450 by 7,200 metres — about 68 km²** of continuous ground. Ground colour
 and tree cover come from the kind of country each one is rather than fifty-six
 hand-picked palettes: Nevada, Utah, Arizona and New Mexico are bare desert;
 Washington, Oregon, Maine and the lake states are evergreen; the Dakotas and
 the plains are gold stubble; Hawaii and the territories are tropical.
 
-The grid is deliberately **not uniform**. Idaho holds Ashcombe, the circuit
-road and the house, and needs 1,400 by 1,200 metres; every other state needs
-room for a town of a few blocks. Sizing all fifty-six cells for Idaho doubled
-the country's area — and its terrain, its trees and its load time — for empty
-ground nobody would ever drive across, so Idaho's column and row are wide and
-the rest are not.
+Each state is **1,150 by 1,000 metres**, with a town of three or four blocks
+in the middle and open country around it. The grid is deliberately **not
+uniform**: Idaho holds Ashcombe, the circuit road and the house, and needs
+1,400 by 1,200. Sizing all fifty-six cells for Idaho pushed the country to
+94 km² — most of it ground nobody would ever drive across — and cost 6.7
+million triangles and a twenty-two second build, so Idaho's column and row are
+wide and the rest are merely large.
 
 They are not separate places you get taken to. It is one world with one road
 network, so a state line is just a sign you drive past — the ground colour
@@ -71,15 +72,16 @@ does:
 Every town has two slip roads onto the nearest one, anchored to a real junction
 of its grid rather than to the midpoint of its edge — that lands between two
 streets as often as not, and a slip road touching nothing leaves a whole town
-stranded, which is exactly what happened first. **All 545 roads in the country
+stranded, which is exactly what happened first. **All 615 roads in the country
 are reachable from your own driveway** without leaving the tarmac. That is not
 a claim, it is a test: `solid.mjs` unions every pair of roads whose tarmac
 overlaps and floods out from the drive.
 
 Ashcombe, in Idaho, is much the biggest town: **twelve avenues and ten cross
 streets** over about 1,150 by 840 metres, with buildings lining every frontage.
-The other fifty-five carry a town of a few blocks each, which is the point —
-fifty-six copies of the same grid would be fifty-six of the same place.
+The other fifty-five carry a town of three or four blocks each, which is the
+point — fifty-six copies of the same grid would be fifty-six of the same
+place.
 
 No grid is a lattice: streets bow by a few metres and the spacing varies block
 to block, because a perfect grid reads as a spreadsheet from inside the car and
@@ -199,12 +201,12 @@ particles, capped resolution.
 
 The world is solid. Tree trunks, lamp posts, sign posts, traffic light poles,
 gate piers, hedges and the walls of every building carry a collider — about
-44,000 of them across the country, bucketed into a grid so testing them all
+41,000 of them across the country, bucketed into a grid so testing them all
 every frame costs nothing. Hedges and fences are soft and mostly just drag at you; a lamp
 post is not.
 
 Two test scripts cover this from opposite ends. `scripts/solid.mjs` is
-geometric rather than behavioural: it walks the perimeter of all 1,680-odd
+geometric rather than behavioural: it walks the perimeter of all 1,550-odd
 buildings looking for a gap wider than the car, walks every road checking the
 lane is not pinched by scenery, checks the collider index returns what it is
 asked for, and checks home can actually be parked at. `scripts/drivehome.mjs`
