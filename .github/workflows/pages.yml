@@ -1,0 +1,41 @@
+# Publishes the game to GitHub Pages. `enablement: true` turns Pages on the
+# first time this runs, so no repository settings need changing by hand.
+name: Deploy to GitHub Pages
+
+on:
+  push:
+    branches:
+      - master
+      - claude/geo-landmark-game-u7jki3
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# Let a running deploy finish rather than cancelling it mid-publish.
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/configure-pages@v5
+        with:
+          enablement: true
+
+      # The whole repository is the site: it is static files, no build step.
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: .
+
+      - id: deployment
+        uses: actions/deploy-pages@v4
