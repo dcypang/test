@@ -2,28 +2,49 @@
    Landmark photos.
 
    Images come from Wikipedia/Wikimedia at runtime, so the game ships
-   with no bundled photos and needs no API key. Two endpoints are tried
-   (the action API, then the REST summary); if both fail the caller
-   falls back to the landmark's text clue so the round is still playable.
-   Resolved URLs are cached in localStorage for a month.
+   with no bundled photos and needs no API key.
 
-   Each photo's author and licence are looked up from Wikimedia Commons
-   alongside the image, so the result screen can credit it the way its
-   licence requires. A file that turns out not to be freely licensed is
-   refused, and that landmark falls back to its clue.
+   Three sources are tried in order, and the first one whose image the
+   browser actually decodes wins:
+
+     1. Wikipedia pageimages, asking for freely licensed lead images only
+        (pilicense=free), so the API does the licence filtering server-side.
+     2. The REST summary endpoint, for articles pageimages has nothing for.
+        This one can surface a non-free file, so it is the only source whose
+        licence is checked here before the photo is shown.
+     3. A Commons image search for the landmark. Commons hosts free files
+        exclusively, so anything found here is safe to display.
+
+   If all three fail the caller falls back to the landmark's text clue and
+   the round is still playable.
+
+   Author and licence are looked up separately and never block the photo —
+   they are only needed on the result screen, seconds later.
    ============================================================ */
 (function (window) {
   'use strict';
 
-  var CACHE_KEY = 'landmark-rush:photos:v2';
+  var CACHE_KEY = 'landmark-rush:photos:v3';   // v3: v2 cached bogus "non-free" verdicts
   var TTL_MS = 30 * 24 * 60 * 60 * 1000;
   var FETCH_TIMEOUT = 9000;
   var API = 'https://en.wikipedia.org/w/api.php';
   var COMMONS_API = 'https://commons.wikimedia.org/w/api.php';
   var REST = 'https://en.wikipedia.org/api/rest_v1/page/summary/';
 
+  dropOldCaches();
   var cache = loadCache();
+  var credits = {};        // file name -> credit, for this session
   var inflight = {};
+
+  /* v2 could mark a freely licensed photo as non-free and remember it for a
+     month; drop those older caches so nobody stays stuck on the clue. */
+  function dropOldCaches() {
+    try {
+      ['landmark-rush:photos:v1', 'landmark-rush:photos:v2'].forEach(function (k) {
+        window.localStorage.removeItem(k);
+      });
+    } catch (e) { /* storage unavailable */ }
+  }
 
   function loadCache() {
     try {
@@ -60,30 +81,67 @@
     });
   }
 
-  function viaActionApi(title) {
+  function isPhotoFile(name) { return /\.(jpe?g|png|webp)$/i.test(name || ''); }
+
+  /* ---------------------------------------------------------- sources */
+
+  function viaActionApi(landmark) {
     var url = API + '?action=query&format=json&formatversion=2&origin=*' +
-      '&prop=pageimages&piprop=thumbnail%7Cname&pithumbsize=1000&redirects=1' +
-      '&titles=' + encodeURIComponent(title);
+      '&prop=pageimages&piprop=thumbnail%7Cname&pithumbsize=1000&pilicense=free&redirects=1' +
+      '&titles=' + encodeURIComponent(landmark.wiki);
     return getJSON(url).then(function (data) {
       var page = data && data.query && data.query.pages && data.query.pages[0];
-      if (!page || !page.thumbnail || !page.thumbnail.source) throw new Error('no image');
-      return { src: page.thumbnail.source, file: page.pageimage || '', title: page.title || title };
+      if (!page || !page.thumbnail || !page.thumbnail.source) throw new Error('no lead image');
+      return { src: page.thumbnail.source, file: page.pageimage || '', source: 'pageimages' };
     });
   }
 
-  function viaRestSummary(title) {
-    return getJSON(REST + encodeURIComponent(title.replace(/ /g, '_'))).then(function (data) {
-      var src = (data.originalimage && data.originalimage.source) ||
-                (data.thumbnail && upscale(data.thumbnail.source, 1000));
-      if (!src) throw new Error('no image');
+  /* The only source that can hand back a non-free file, so it is the only
+     one that waits on a licence check before the photo is shown. */
+  function viaRestSummary(landmark) {
+    var title = landmark.wiki.replace(/ /g, '_');
+    return getJSON(REST + encodeURIComponent(title)).then(function (data) {
+      // Prefer a sized thumbnail: originals can be tens of megabytes.
+      var src = (data.thumbnail && upscale(data.thumbnail.source, 1000)) ||
+                (data.originalimage && data.originalimage.source);
+      if (!src) throw new Error('no summary image');
       var file = '';
       var m = /\/([^/]+)$/.exec(src.split('?')[0]);
       if (m) file = decodeURIComponent(m[1]).replace(/^\d+px-/, '');
-      return { src: src, file: file, title: (data.titles && data.titles.normalized) || title };
+      return fetchCredit(file).catch(function () { return null; }).then(function (credit) {
+        if (credit && credit.free === false) throw new Error('not freely licensed');
+        if (credit) credits[file] = credit;
+        return { src: src, file: file, source: 'summary' };
+      });
     });
   }
 
+  /* Commons hosts freely licensed files only, so anything found here is safe. */
+  function viaCommonsSearch(landmark) {
+    var query = landmark.name + ' ' + landmark.city;
+    var url = COMMONS_API + '?action=query&format=json&formatversion=2&origin=*' +
+      '&generator=search&gsrnamespace=6&gsrlimit=8&gsrsearch=' + encodeURIComponent(query) +
+      '&prop=imageinfo&iiprop=url%7Cextmetadata&iiurlwidth=1000' +
+      '&iiextmetadatafilter=' + CREDIT_FIELDS;
+    return getJSON(url).then(function (data) {
+      var pages = (data && data.query && data.query.pages) || [];
+      for (var i = 0; i < pages.length; i++) {
+        var page = pages[i];
+        var info = page.imageinfo && page.imageinfo[0];
+        if (!info || !info.thumburl || !isPhotoFile(page.title)) continue;
+        var file = String(page.title).replace(/^File:/, '');
+        credits[file] = creditFrom(page);
+        return { src: info.thumburl, file: file, source: 'commons-search' };
+      }
+      throw new Error('no commons match');
+    });
+  }
+
+  var SOURCES = [viaActionApi, viaRestSummary, viaCommonsSearch];
+
   /* ---------------------------------------------------------- licensing */
+
+  var CREDIT_FIELDS = 'Artist%7CCredit%7CLicense%7CLicenseShortName%7CLicenseUrl';
 
   /* extmetadata values are little HTML fragments ("<a href=…>Name</a>"). */
   function textOf(html) {
@@ -92,8 +150,15 @@
     return (doc.body.textContent || '').replace(/\s+/g, ' ').trim().slice(0, 90);
   }
 
+  /**
+   * Only an explicit non-free marker counts. Matching "copyright" loosely
+   * would refuse Commons' own "Copyrighted free use" template, which is a
+   * free licence — that bug hid a lot of perfectly good photos.
+   */
   function looksNonFree(license, shortName) {
-    return /fair.?use|non.?free|copyright/i.test(license + ' ' + shortName);
+    var text = (license + ' ' + shortName).toLowerCase();
+    if (/copyrighted free use/.test(text)) return false;
+    return /fair use|fairuse|non-free|nonfree/.test(text);
   }
 
   function creditFrom(page) {
@@ -113,26 +178,24 @@
 
   function creditQuery(host, file) {
     return host + '?action=query&format=json&formatversion=2&origin=*' +
-      '&prop=imageinfo&iiprop=extmetadata%7Curl' +
-      '&iiextmetadatafilter=Artist%7CCredit%7CLicense%7CLicenseShortName%7CLicenseUrl' +
+      '&prop=imageinfo&iiprop=extmetadata%7Curl&iiextmetadatafilter=' + CREDIT_FIELDS +
       '&titles=' + encodeURIComponent('File:' + file);
   }
 
-  /**
-   * Author + licence for a Commons file.
-   * Non-free files cannot live on Commons, so a file that is missing there
-   * but present on Wikipedia is exactly the case worth refusing.
-   */
   function fetchCredit(file) {
     if (!file) return Promise.resolve(null);
+    if (credits[file]) return Promise.resolve(credits[file]);
     return getJSON(creditQuery(COMMONS_API, file)).then(function (data) {
       var page = data && data.query && data.query.pages && data.query.pages[0];
       if (page && !page.missing) return creditFrom(page);
+      // Not on Commons: it may be a local Wikipedia upload.
       return getJSON(creditQuery(API, file)).then(function (local) {
         var lp = local && local.query && local.query.pages && local.query.pages[0];
-        if (!lp || lp.missing) return null;          // unknown: let it through
-        return creditFrom(lp);
+        return (!lp || lp.missing) ? null : creditFrom(lp);
       });
+    }).then(function (credit) {
+      if (credit) credits[file] = credit;
+      return credit;
     });
   }
 
@@ -149,84 +212,110 @@
     }), FETCH_TIMEOUT + 3000);
   }
 
+  /* ---------------------------------------------------------- resolution */
+
+  function commonsPage(file) {
+    if (!file) return '';
+    return 'https://commons.wikimedia.org/wiki/File:' + encodeURIComponent(file.replace(/ /g, '_'));
+  }
+
+  /** The object the game holds for a round. Credit fields fill in later. */
+  function photoOf(src, file, source) {
+    var photo = {
+      src: src, file: file || '', source: source || 'cache',
+      creditUrl: commonsPage(file), author: '', license: '', licenseUrl: ''
+    };
+    applyCredit(photo, credits[file]);
+    return photo;
+  }
+
+  function applyCredit(photo, credit) {
+    if (!credit) return photo;
+    photo.author = credit.author || '';
+    photo.license = credit.license || '';
+    photo.licenseUrl = credit.licenseUrl || '';
+    if (credit.pageUrl) photo.creditUrl = credit.pageUrl;
+    return photo;
+  }
+
+  /** Walk the sources until one produces an image that actually loads. */
+  function resolve(landmark, index, tried) {
+    if (index >= SOURCES.length) {
+      var err = new Error('no photo found');
+      err.tried = tried;
+      return Promise.reject(err);
+    }
+    return SOURCES[index](landmark)
+      .then(function (info) {
+        return preloadImage(info.src).then(function () { return info; });
+      })
+      .catch(function (e) {
+        tried.push(SOURCES[index].name + ': ' + e.message);
+        return resolve(landmark, index + 1, tried);
+      });
+  }
+
   var Photos = {
     /**
      * Resolve a landmark's photo.
-     * @returns {Promise<{src:string, creditUrl:string, file:string}>}
+     * @returns {Promise<{src, file, source, creditUrl, author, license, licenseUrl}>}
      */
     get: function (landmark) {
       var id = landmark.id;
       var hit = cache[id];
 
-      if (hit && hit.nonFree) return Promise.reject(new Error('not freely licensed'));
-
       if (hit && hit.src) {
         return preloadImage(hit.src)
-          .then(function () { return resolved(hit.src, hit.file, hit.credit); })
+          .then(function () { return photoOf(hit.src, hit.file, 'cache'); })
           .catch(function () {
             delete cache[id];
+            saveCache();
             return Photos.get(landmark);
           });
       }
 
       if (inflight[id]) return inflight[id];
 
-      var p = viaActionApi(landmark.wiki)
-        .catch(function () { return viaRestSummary(landmark.wiki); })
-        .then(function (info) {
-          // The licence lookup runs alongside the download, not after it.
-          return Promise.all([
-            preloadImage(info.src),
-            fetchCredit(info.file).catch(function () { return null; })
-          ]).then(function (both) {
-            info.credit = both[1];
-            return info;
-          });
-        })
-        .then(function (info) {
-          delete inflight[id];
-          if (info.credit && info.credit.free === false) {
-            cache[id] = { nonFree: true, t: Date.now() };
-            saveCache();
-            throw new Error('not freely licensed');
-          }
-          cache[id] = { src: info.src, file: info.file, credit: info.credit, t: Date.now() };
-          saveCache();
-          return resolved(info.src, info.file, info.credit);
-        })
-        .catch(function (err) {
-          delete inflight[id];
-          throw err;
-        });
+      var p = resolve(landmark, 0, []).then(function (info) {
+        // Only successes are cached: a blip must not sideline a landmark.
+        cache[id] = { src: info.src, file: info.file, t: Date.now() };
+        saveCache();
+        delete inflight[id];
+        return photoOf(info.src, info.file, info.source);
+      }).catch(function (err) {
+        delete inflight[id];
+        throw err;
+      });
 
       inflight[id] = p;
       return p;
+    },
+
+    /** Fill in author and licence for an already-displayed photo. */
+    credit: function (photo) {
+      if (!photo || !photo.file) return Promise.resolve(photo);
+      if (photo.license) return Promise.resolve(photo);
+      return fetchCredit(photo.file)
+        .then(function (credit) { return applyCredit(photo, credit); })
+        .catch(function () { return photo; });
     },
 
     /** Warm the cache for an upcoming landmark; failures are ignored. */
     prefetch: function (landmark) {
       if (!landmark) return;
       Photos.get(landmark).catch(function () { /* the round will fall back to the clue */ });
+    },
+
+    /** Used by check.html to report what happened, without the cache hiding it. */
+    diagnose: function (landmark) {
+      var started = Date.now();
+      return resolve(landmark, 0, []).then(function (info) {
+        return { ok: true, ms: Date.now() - started, source: info.source, file: info.file, src: info.src };
+      }, function (err) {
+        return { ok: false, ms: Date.now() - started, tried: err.tried || [], error: err.message };
+      });
     }
   };
-
-  function creditUrl(file) {
-    if (!file) return '';
-    return 'https://commons.wikimedia.org/wiki/File:' + encodeURIComponent(file.replace(/ /g, '_'));
-  }
-
-  /** Shape handed to the game: everything the result screen needs to credit the photo. */
-  function resolved(src, file, credit) {
-    credit = credit || null;
-    return {
-      src: src,
-      file: file || '',
-      creditUrl: (credit && credit.pageUrl) || creditUrl(file),
-      author: (credit && credit.author) || '',
-      license: (credit && credit.license) || '',
-      licenseUrl: (credit && credit.licenseUrl) || ''
-    };
-  }
 
   window.Photos = Photos;
 })(window);

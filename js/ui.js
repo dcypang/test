@@ -153,6 +153,17 @@
     },
 
     /* ---------------- result ---------------- */
+    /** Credit arrives after the photo, so it can land after the card renders. */
+    refreshCredit: function (photo) {
+      var card = document.querySelector('#result-card .card');
+      if (!card) return;
+      var existing = card.querySelector('.card__credit');
+      var html = buildCredit(photo);
+      if (!html) return;
+      if (existing) existing.outerHTML = html;
+      else card.insertAdjacentHTML('beforeend', html);
+    },
+
     renderResult: function (r, handlers) {
       var good = r.found;
       var creditHtml = buildCredit(r.photo);

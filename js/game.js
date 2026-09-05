@@ -326,6 +326,9 @@
 
   function showResult(result) {
     if (round) round.awaitingResult = null;
+    if (result.photo) {
+      Photos.credit(result.photo).then(function (photo) { UI.refreshCredit(photo); });
+    }
     UI.renderResult(result, {
       next: function () { nextRound(); },
       end: function () { endRun(); }
