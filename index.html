@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0b1020">
+<meta name="description" content="Guess the city from a landmark photo, then race the clock to pin it on the map.">
+<title>Landmark Rush — geo guessing game</title>
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icon.svg">
+<link rel="icon" href="icon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css"
+      crossorigin="anonymous" referrerpolicy="no-referrer">
+<link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+
+<div id="app">
+
+  <!-- ───────────────────────── HOME ───────────────────────── -->
+  <section class="screen screen--home is-active" id="screen-home">
+    <div class="home__inner">
+      <div class="brand">
+        <div class="brand__mark" aria-hidden="true">
+          <svg viewBox="0 0 48 48" fill="none"><circle cx="24" cy="24" r="21" stroke="currentColor" stroke-width="2.5"/><path d="M3 24h42M24 3c6 6.5 9 13.5 9 21s-3 14.5-9 21c-6-6.5-9-13.5-9-21s3-14.5 9-21Z" stroke="currentColor" stroke-width="2.5"/><circle cx="33" cy="15" r="4.5" fill="currentColor"/></svg>
+        </div>
+        <h1 class="brand__title">Landmark Rush</h1>
+        <p class="brand__tag">Name the city. Then pin it before the clock runs out.</p>
+      </div>
+
+      <div class="home__stats" id="home-stats"></div>
+
+      <button class="btn btn--primary btn--xl" id="btn-play">Play</button>
+
+      <div class="home__row">
+        <button class="btn btn--ghost" id="btn-how">How to play</button>
+        <button class="btn btn--ghost" id="btn-settings">Settings</button>
+      </div>
+
+      <p class="home__note" id="home-note"></p>
+    </div>
+  </section>
+
+  <!-- ───────────────────────── QUIZ ───────────────────────── -->
+  <section class="screen screen--quiz" id="screen-quiz">
+    <header class="topbar">
+      <button class="iconbtn" id="btn-quit-quiz" aria-label="Quit round">✕</button>
+      <div class="topbar__meta">
+        <span class="chip chip--level" id="quiz-level">Lv 1</span>
+        <span class="chip" id="quiz-round">Round 1</span>
+      </div>
+      <div class="topbar__score" id="quiz-score">0</div>
+    </header>
+
+    <div class="quiz">
+      <div class="photo" id="photo">
+        <div class="photo__skeleton" id="photo-skeleton"><span class="spinner"></span><span class="photo__loading">Finding a landmark…</span></div>
+        <img class="photo__img" id="photo-img" alt="Landmark photograph" decoding="async">
+        <div class="photo__fallback" id="photo-fallback" hidden>
+          <svg viewBox="0 0 64 64" aria-hidden="true" class="photo__glyph"><path d="M8 52h48M14 52V26l18-14 18 14v26M26 52V38h12v14" stroke="currentColor" stroke-width="3" fill="none" stroke-linejoin="round"/></svg>
+          <p class="photo__clue" id="photo-clue"></p>
+          <p class="photo__clue-note">Photo couldn't load — play from the clue.</p>
+        </div>
+      </div>
+
+      <p class="quiz__prompt">Which city is this landmark in?</p>
+      <div class="options" id="options"></div>
+    </div>
+  </section>
+
+  <!-- ───────────────────────── MAP ───────────────────────── -->
+  <section class="screen screen--map" id="screen-map">
+    <div class="mapwrap">
+      <div id="map" class="map"></div>
+
+      <div class="maphud maphud--top">
+        <div class="timer" id="timer">
+          <div class="timer__bar"><div class="timer__fill" id="timer-fill"></div></div>
+          <div class="timer__row">
+            <span class="timer__target" id="timer-target"></span>
+            <span class="timer__secs" id="timer-secs">60</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="maphud maphud--bottom">
+        <p class="maphint" id="map-hint">Tap the map to drop your pin.</p>
+        <button class="btn btn--primary btn--wide" id="btn-guess" disabled>Drop a pin first</button>
+      </div>
+
+    </div>
+  </section>
+
+  <!-- ───────────────────────── RESULT ───────────────────────── -->
+  <section class="screen screen--result" id="screen-result">
+    <div class="result" id="result-card"></div>
+  </section>
+
+  <!-- ───────────────────────── SHEETS ───────────────────────── -->
+  <div class="sheet" id="sheet" hidden>
+    <div class="sheet__scrim" data-close-sheet></div>
+    <div class="sheet__panel" role="dialog" aria-modal="true" aria-labelledby="sheet-title">
+      <div class="sheet__grip"></div>
+      <h2 class="sheet__title" id="sheet-title"></h2>
+      <div class="sheet__body" id="sheet-body"></div>
+      <button class="btn btn--primary btn--wide" data-close-sheet>Close</button>
+    </div>
+  </div>
+
+  <div class="toast" id="toast" hidden></div>
+
+</div>
+
+<!-- Leaflet powers the map round. If it fails to load the game degrades to
+     the photo round rather than breaking. -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"
+        crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+<script src="js/config.js"></script>
+<script src="js/util.js"></script>
+<script src="js/landmarks.js"></script>
+<script src="js/tiles.js"></script>
+<script src="js/levels.js"></script>
+<script src="js/storage.js"></script>
+<script src="js/photos.js"></script>
+<script src="js/map.js"></script>
+<script src="js/ui.js"></script>
+<script src="js/game.js"></script>
+</body>
+</html>
