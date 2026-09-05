@@ -1,0 +1,882 @@
+// ---------------------------------------------------------------------------
+// hud.js - the 2D overlay: tacho, speed, gear, timing, minimap, navigation.
+// Drawn on a separate canvas above the WebGL view.
+// ---------------------------------------------------------------------------
+
+function formatTime(seconds) {
+  if (!isFinite(seconds) || seconds <= 0) return '--:--.---';
+  const m = Math.floor(seconds / 60);
+  const s = Math.floor(seconds % 60);
+  const ms = Math.floor((seconds % 1) * 1000);
+  return `${m}:${String(s).padStart(2, '0')}.${String(ms).padStart(3, '0')}`;
+}
+
+function formatDelta(seconds) {
+  if (!isFinite(seconds)) return '';
+  const sign = seconds >= 0 ? '+' : '-';
+  const a = Math.abs(seconds);
+  return `${sign}${a.toFixed(3)}`;
+}
+
+class Hud {
+  constructor(canvas) {
+    this.canvas = canvas;
+    this.ctx = canvas.getContext('2d');
+    this.width = 0;
+    this.height = 0;
+    this.dpr = 1;
+    this.messages = [];
+    this.compact = false;   // small screens get a different layout, not a scale
+    this.font = '"DIN Alternate", "Bahnschrift", "Roboto Condensed", "Arial Narrow", system-ui, sans-serif';
+  }
+
+  resize(w, h, dpr) {
+    this.dpr = dpr;
+    this.width = w;
+    this.height = h;
+    this.canvas.width = Math.round(w * dpr);
+    this.canvas.height = Math.round(h * dpr);
+    this.canvas.style.width = w + 'px';
+    this.canvas.style.height = h + 'px';
+  }
+
+  message(text, duration = 2.5, kind = 'info') {
+    this.messages.push({ text, time: 0, duration, kind });
+  }
+
+  update(dt) {
+    for (const m of this.messages) m.time += dt;
+    this.messages = this.messages.filter((m) => m.time < m.duration);
+  }
+
+  begin() {
+    const ctx = this.ctx;
+    ctx.setTransform(this.dpr, 0, 0, this.dpr, 0, 0);
+    ctx.clearRect(0, 0, this.width, this.height);
+    ctx.textBaseline = 'alphabetic';
+  }
+
+  // --- primitives -----------------------------------------------------------
+
+  roundRect(x, y, w, h, r) {
+    const ctx = this.ctx;
+    ctx.beginPath();
+    ctx.moveTo(x + r, y);
+    ctx.lineTo(x + w - r, y);
+    ctx.quadraticCurveTo(x + w, y, x + w, y + r);
+    ctx.lineTo(x + w, y + h - r);
+    ctx.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
+    ctx.lineTo(x + r, y + h);
+    ctx.quadraticCurveTo(x, y + h, x, y + h - r);
+    ctx.lineTo(x, y + r);
+    ctx.quadraticCurveTo(x, y, x + r, y);
+    ctx.closePath();
+  }
+
+  panel(x, y, w, h, alpha = 0.42) {
+    const ctx = this.ctx;
+    ctx.save();
+    ctx.fillStyle = `rgba(8, 10, 14, ${alpha})`;
+    this.roundRect(x, y, w, h, 10);
+    ctx.fill();
+    ctx.strokeStyle = 'rgba(255,255,255,0.10)';
+    ctx.lineWidth = 1;
+    ctx.stroke();
+    ctx.restore();
+  }
+
+  text(str, x, y, size, color = '#fff', align = 'left', weight = 600) {
+    const ctx = this.ctx;
+    ctx.font = `${weight} ${size}px ${this.font}`;
+    ctx.fillStyle = color;
+    ctx.textAlign = align;
+    ctx.fillText(str, x, y);
+  }
+
+  // --- tachometer -----------------------------------------------------------
+
+  drawTacho(cx, cy, radius, rpm, gear, speedKmh, throttle, brake) {
+    const ctx = this.ctx;
+    const start = Math.PI * 0.78;
+    const end = Math.PI * 2.30;
+    const maxRpm = 8500;
+    const redline = 7900;
+
+    ctx.save();
+    // Dial face.
+    ctx.beginPath();
+    ctx.arc(cx, cy, radius + 12, 0, TAU);
+    ctx.fillStyle = 'rgba(8,10,14,0.55)';
+    ctx.fill();
+    ctx.strokeStyle = 'rgba(255,255,255,0.12)';
+    ctx.lineWidth = 1.5;
+    ctx.stroke();
+
+    // Track arc.
+    ctx.beginPath();
+    ctx.arc(cx, cy, radius, start, end);
+    ctx.strokeStyle = 'rgba(255,255,255,0.13)';
+    ctx.lineWidth = 12;
+    ctx.lineCap = 'round';
+    ctx.stroke();
+
+    // Redline band.
+    const redStart = start + (end - start) * (redline / maxRpm);
+    ctx.beginPath();
+    ctx.arc(cx, cy, radius, redStart, end);
+    ctx.strokeStyle = 'rgba(220,40,30,0.55)';
+    ctx.lineWidth = 12;
+    ctx.stroke();
+
+    // Value arc.
+    const t = clamp(rpm / maxRpm, 0, 1);
+    const angle = start + (end - start) * t;
+    const grad = ctx.createLinearGradient(cx - radius, cy, cx + radius, cy);
+    grad.addColorStop(0, '#39d1ff');
+    grad.addColorStop(0.62, '#7bff6a');
+    grad.addColorStop(0.86, '#ffd53d');
+    grad.addColorStop(1, '#ff3b30');
+    ctx.beginPath();
+    ctx.arc(cx, cy, radius, start, angle);
+    ctx.strokeStyle = grad;
+    ctx.lineWidth = 12;
+    ctx.stroke();
+
+    // Ticks.
+    for (let i = 0; i <= 8; i++) {
+      const tt = i / 8.5;
+      const a = start + (end - start) * tt;
+      const inner = radius - 12, outer = radius - 20;
+      ctx.beginPath();
+      ctx.moveTo(cx + Math.cos(a) * inner, cy + Math.sin(a) * inner);
+      ctx.lineTo(cx + Math.cos(a) * outer, cy + Math.sin(a) * outer);
+      ctx.strokeStyle = i >= 8 ? 'rgba(255,80,60,0.9)' : 'rgba(255,255,255,0.45)';
+      ctx.lineWidth = 2;
+      ctx.stroke();
+      this.text(String(i), cx + Math.cos(a) * (outer - 14) - 4, cy + Math.sin(a) * (outer - 14) + 5, 12, 'rgba(255,255,255,0.55)', 'center', 500);
+    }
+
+    // Needle.
+    ctx.save();
+    ctx.translate(cx, cy);
+    ctx.rotate(angle);
+    ctx.beginPath();
+    ctx.moveTo(-6, 0);
+    ctx.lineTo(radius - 18, -2.4);
+    ctx.lineTo(radius - 18, 2.4);
+    ctx.closePath();
+    ctx.fillStyle = '#ff4d3d';
+    ctx.fill();
+    ctx.restore();
+    ctx.beginPath();
+    ctx.arc(cx, cy, 7, 0, TAU);
+    ctx.fillStyle = '#161a20';
+    ctx.fill();
+    ctx.strokeStyle = 'rgba(255,255,255,0.3)';
+    ctx.stroke();
+
+    // Gear and speed.
+    this.text(gear, cx, cy + 18, 54, '#ffffff', 'center', 700);
+    this.text(String(Math.round(Math.abs(speedKmh))), cx, cy + radius + 6, 34, '#ffffff', 'center', 700);
+    this.text('km/h', cx, cy + radius + 24, 13, 'rgba(255,255,255,0.6)', 'center', 500);
+
+    // Shift lights across the top of the dial.
+    const shiftT = clamp((rpm - 5900) / (redline - 5900), 0, 1);
+    for (let i = 0; i < 8; i++) {
+      const on = shiftT > (i + 0.5) / 8;
+      const a = -Math.PI * 0.78 + (i / 7) * Math.PI * 0.56;
+      const px = cx + Math.cos(a - Math.PI / 2 + Math.PI) * 0;
+      const lx = cx - 62 + i * 17.5;
+      const ly = cy - radius - 16;
+      ctx.beginPath();
+      ctx.arc(lx, ly, 5, 0, TAU);
+      const col = i < 4 ? '#3dff6a' : (i < 6 ? '#ffd21f' : '#ff2d1f');
+      ctx.fillStyle = on ? col : 'rgba(255,255,255,0.12)';
+      ctx.fill();
+      if (on) { ctx.shadowColor = col; ctx.shadowBlur = 12; ctx.fill(); ctx.shadowBlur = 0; }
+    }
+
+    // Pedal bars.
+    const barX = cx + radius + 26;
+    const barY = cy - 34;
+    for (const [val, col, off] of [[throttle, '#4ade80', 0], [brake, '#ef4444', 14]]) {
+      ctx.fillStyle = 'rgba(255,255,255,0.12)';
+      this.roundRect(barX + off, barY, 8, 68, 4); ctx.fill();
+      ctx.fillStyle = col;
+      const hgt = 68 * clamp(val, 0, 1);
+      this.roundRect(barX + off, barY + 68 - hgt, 8, hgt, 4); ctx.fill();
+    }
+    ctx.restore();
+  }
+
+  // On a phone the round dial eats the space the thumbs need, so speed, gear
+  // and revs collapse into one small block along the bottom edge.
+  drawCompactGauge(cx, cy, rpm, gear, speedKmh) {
+    const ctx = this.ctx;
+    const w = 148, h = 50;
+    this.panel(cx - w / 2, cy - h, w, h, 0.55);
+
+    const redline = 7900;
+    const t = clamp(rpm / 8500, 0, 1);
+    const barX = cx - w / 2 + 12, barY = cy - h + 10, barW = w - 24, barH = 5;
+    ctx.fillStyle = 'rgba(255,255,255,0.14)';
+    this.roundRect(barX, barY, barW, barH, 2.5); ctx.fill();
+    const grad = ctx.createLinearGradient(barX, 0, barX + barW, 0);
+    grad.addColorStop(0, '#39d1ff');
+    grad.addColorStop(0.62, '#7bff6a');
+    grad.addColorStop(0.86, '#ffd53d');
+    grad.addColorStop(1, '#ff3b30');
+    ctx.fillStyle = grad;
+    this.roundRect(barX, barY, Math.max(3, barW * t), barH, 2.5); ctx.fill();
+    if (rpm > redline - 400) {
+      ctx.save();
+      ctx.shadowColor = '#ff2d1f'; ctx.shadowBlur = 14;
+      ctx.fillStyle = '#ff2d1f';
+      this.roundRect(barX, barY, barW, barH, 2.5); ctx.fill();
+      ctx.restore();
+    }
+
+    this.text(String(Math.round(Math.abs(speedKmh))), cx + 22, cy - 12, 30, '#fff', 'right', 700);
+    this.text('km/h', cx + 26, cy - 13, 11, 'rgba(255,255,255,0.55)', 'left', 500);
+    this.text(gear, cx - w / 2 + 22, cy - 12, 26, '#fff', 'center', 700);
+    this.text('GEAR', cx - w / 2 + 22, cy - 30, 8, 'rgba(255,255,255,0.45)', 'center', 600);
+  }
+
+  // --- minimap --------------------------------------------------------------
+
+  drawMinimap(x, y, size, spline, cars, player, extra) {
+    const ctx = this.ctx;
+    this.panel(x, y, size, size, 0.45);
+
+    // Fit the whole network, not just the route: a city off the edge of the
+    // map is no use to anyone trying to find their way around it.
+    let minX = Infinity, maxX = -Infinity, minZ = Infinity, maxZ = -Infinity;
+    const fit = (pts) => {
+      for (const p of pts) {
+        if (p[0] < minX) minX = p[0];
+        if (p[0] > maxX) maxX = p[0];
+        if (p[2] < minZ) minZ = p[2];
+        if (p[2] > maxZ) maxZ = p[2];
+      }
+    };
+    fit(spline.points);
+    if (extra && extra.roads) for (const r of extra.roads) fit(r.points);
+    const pad = 16;
+    const spanX = maxX - minX || 1, spanZ = maxZ - minZ || 1;
+    const scale = Math.min((size - pad * 2) / spanX, (size - pad * 2) / spanZ);
+    const ox = x + size / 2 - ((minX + maxX) / 2) * scale;
+    const oy = y + size / 2 - ((minZ + maxZ) / 2) * scale;
+    const px = (p) => [ox + p[0] * scale, oy + p[2] * scale];
+
+    ctx.save();
+
+    // Every other road, faintly, under the route. Without the street network
+    // on the map, "drive anywhere" means "get lost anywhere".
+    if (extra && extra.roads) {
+      ctx.strokeStyle = 'rgba(255,255,255,0.22)';
+      ctx.lineWidth = 1.6;
+      for (const road of extra.roads) {
+        if (road === spline) continue;
+        ctx.beginPath();
+        for (let i = 0; i < road.count; i += 2) {
+          const [sx, sy] = px(road.points[i]);
+          if (i === 0) ctx.moveTo(sx, sy); else ctx.lineTo(sx, sy);
+        }
+        ctx.stroke();
+      }
+    }
+
+    ctx.beginPath();
+    for (let i = 0; i < spline.count; i++) {
+      const [sx, sy] = px(spline.points[i]);
+      if (i === 0) ctx.moveTo(sx, sy); else ctx.lineTo(sx, sy);
+    }
+    if (spline.closed) ctx.closePath();
+    ctx.strokeStyle = 'rgba(255,255,255,0.75)';
+    ctx.lineWidth = 3.5;
+    ctx.lineJoin = 'round';
+    ctx.stroke();
+    ctx.strokeStyle = 'rgba(30,34,42,0.9)';
+    ctx.lineWidth = 1.6;
+    ctx.stroke();
+
+    if (extra && extra.destination) {
+      const [dx, dy] = px([extra.destination.x, 0, extra.destination.z]);
+      ctx.beginPath();
+      ctx.arc(dx, dy, 6, 0, TAU);
+      ctx.fillStyle = '#22d3ee';
+      ctx.fill();
+      ctx.strokeStyle = '#083344';
+      ctx.lineWidth = 1.5;
+      ctx.stroke();
+    }
+    if (extra && extra.lights) {
+      for (const l of extra.lights) {
+        const [lx, ly] = px([l.pos[0], 0, l.pos[2]]);
+        ctx.beginPath();
+        ctx.arc(lx, ly, 3.2, 0, TAU);
+        ctx.fillStyle = l.state === 'red' ? '#ef4444' : (l.state === 'amber' ? '#f59e0b' : '#22c55e');
+        ctx.fill();
+      }
+    }
+
+    for (const car of cars) {
+      const [cxp, cyp] = px(car.pos);
+      const isPlayer = car === player;
+      ctx.save();
+      ctx.translate(cxp, cyp);
+      ctx.rotate(-car.yaw + Math.PI);
+      ctx.beginPath();
+      ctx.moveTo(0, -6);
+      ctx.lineTo(4, 5);
+      ctx.lineTo(-4, 5);
+      ctx.closePath();
+      const c = car.livery ? car.livery.paint : [0.6, 0.6, 0.6];
+      ctx.fillStyle = isPlayer ? '#ffffff' : `rgb(${c[0] * 255 | 0},${c[1] * 255 | 0},${c[2] * 255 | 0})`;
+      ctx.fill();
+      if (isPlayer) { ctx.strokeStyle = '#111'; ctx.lineWidth = 1.4; ctx.stroke(); }
+      ctx.restore();
+    }
+    ctx.restore();
+  }
+
+  // --- race hud -------------------------------------------------------------
+
+  drawRace(state) {
+    const ctx = this.ctx;
+    const W = this.width, H = this.height;
+    const v = state.player.vehicle;
+
+    if (this.compact) {
+      this.drawRaceCompact(state);
+      return;
+    }
+
+    this.drawTacho(W - 130, H - 110, 78, v.rpm, v.gearLabel, v.speedKmh, v.throttle, v.brake);
+
+    // Position and lap.
+    this.panel(24, 24, 190, 84);
+    this.text('POS', 40, 50, 13, 'rgba(255,255,255,0.55)', 'left', 600);
+    this.text(`${state.position}`, 40, 92, 42, '#fff', 'left', 700);
+    this.text(`/${state.fieldSize}`, 78, 92, 20, 'rgba(255,255,255,0.55)', 'left', 600);
+    this.text('LAP', 140, 50, 13, 'rgba(255,255,255,0.55)', 'left', 600);
+    this.text(`${Math.min(state.lap, state.totalLaps)}`, 140, 92, 42, '#fff', 'left', 700);
+    this.text(`/${state.totalLaps}`, 176, 92, 20, 'rgba(255,255,255,0.55)', 'left', 600);
+
+    // Timing.
+    this.panel(24, 118, 250, 108);
+    this.text('CURRENT', 40, 142, 12, 'rgba(255,255,255,0.5)', 'left', 600);
+    this.text(formatTime(state.currentLapTime), 40, 170, 26, '#fff', 'left', 700);
+    this.text('BEST', 40, 194, 12, 'rgba(255,255,255,0.5)', 'left', 600);
+    this.text(formatTime(state.bestLapTime), 40, 216, 20, '#8ef2a0', 'left', 600);
+    if (isFinite(state.gapAhead)) {
+      this.text('GAP AHEAD', 168, 194, 11, 'rgba(255,255,255,0.5)', 'left', 600);
+      this.text(state.gapAhead > 0 ? `-${state.gapAhead.toFixed(1)}s` : '--', 168, 216, 18, '#ffd166', 'left', 600);
+    }
+
+    this.drawMinimap(W - 214, 24, 190, state.trackSpline, state.cars, state.player, null);
+
+    // Standings.
+    const rows = Math.min(state.standings.length, 8);
+    const sx = 24, sy = H - 34 - rows * 22;
+    this.panel(sx, sy - 22, 230, rows * 22 + 30, 0.38);
+    this.text('POSITIONS', sx + 14, sy - 4, 11, 'rgba(255,255,255,0.5)', 'left', 600);
+    for (let i = 0; i < rows; i++) {
+      const car = state.standings[i];
+      const y = sy + 18 + i * 22;
+      const me = car === state.player;
+      const c = car.livery.paint;
+      ctx.fillStyle = `rgb(${c[0] * 255 | 0},${c[1] * 255 | 0},${c[2] * 255 | 0})`;
+      this.roundRect(sx + 12, y - 11, 5, 14, 2); ctx.fill();
+      this.text(`${i + 1}`, sx + 26, y, 14, me ? '#fff' : 'rgba(255,255,255,0.7)', 'left', 700);
+      this.text(car.name, sx + 46, y, 14, me ? '#fff' : 'rgba(255,255,255,0.7)', 'left', me ? 700 : 500);
+      if (car.finished) this.text('FIN', sx + 200, y, 12, '#8ef2a0', 'right', 600);
+      else if (i > 0) this.text(`+${car.gapToLeader.toFixed(1)}`, sx + 216, y, 12, 'rgba(255,255,255,0.5)', 'right', 500);
+    }
+
+    this.drawFlags(state);
+    this.drawMessages();
+  }
+
+  // Phone layout: the corners the thumbs occupy are left clear, and the
+  // standings table is dropped - it is unreadable at this size anyway.
+  drawRaceCompact(state) {
+    const W = this.width, H = this.height;
+    const v = state.player.vehicle;
+
+    this.panel(10, 10, 132, 46, 0.5);
+    this.text('POS', 22, 28, 9, 'rgba(255,255,255,0.5)', 'left', 600);
+    this.text(`${state.position}`, 22, 48, 22, '#fff', 'left', 700);
+    this.text(`/${state.fieldSize}`, 42, 48, 12, 'rgba(255,255,255,0.5)', 'left', 600);
+    this.text('LAP', 82, 28, 9, 'rgba(255,255,255,0.5)', 'left', 600);
+    this.text(`${Math.min(state.lap, state.totalLaps)}`, 82, 48, 22, '#fff', 'left', 700);
+    this.text(`/${state.totalLaps}`, 100, 48, 12, 'rgba(255,255,255,0.5)', 'left', 600);
+
+    this.panel(10, 62, 132, 40, 0.45);
+    this.text(formatTime(state.currentLapTime), 22, 80, 15, '#fff', 'left', 700);
+    this.text(`BEST ${formatTime(state.bestLapTime)}`, 22, 95, 10, '#8ef2a0', 'left', 600);
+
+    const mm = Math.min(124, W * 0.22);
+    this.drawMinimap(W - mm - 10, 10, mm, state.trackSpline, state.cars, state.player, null);
+
+    this.drawCompactGauge(W / 2, H - 8, v.rpm, v.gearLabel, v.speedKmh);
+    this.drawFlags(state);
+    this.drawMessages();
+  }
+
+  drawFlags(state) {
+    const W = this.width;
+    if (state.countdown > 0) {
+      const n = Math.ceil(state.countdown);
+      const ctx = this.ctx;
+      // Five red lights, like the real thing.
+      const lit = 5 - Math.min(5, Math.floor(state.countdown));
+      const k = this.compact ? 0.62 : 1;
+      const cx = W / 2, cy = this.compact ? 64 : 110;
+      this.panel(cx - 150 * k, cy - 44 * k, 300 * k, 88 * k, 0.55);
+      for (let i = 0; i < 5; i++) {
+        ctx.beginPath();
+        ctx.arc(cx - 108 * k + i * 54 * k, cy, 20 * k, 0, TAU);
+        const on = i < lit;
+        ctx.fillStyle = on ? '#ff2418' : 'rgba(255,255,255,0.10)';
+        ctx.fill();
+        if (on) { ctx.shadowColor = '#ff2418'; ctx.shadowBlur = 26; ctx.fill(); ctx.shadowBlur = 0; }
+        ctx.strokeStyle = 'rgba(0,0,0,0.5)';
+        ctx.lineWidth = 2;
+        ctx.stroke();
+      }
+    }
+    if (state.wrongWay) {
+      this.text('WRONG WAY', W / 2, this.compact ? 130 : 190,
+        this.compact ? 26 : 40, '#ff4d3d', 'center', 800);
+    }
+  }
+
+  // --- drive home hud -------------------------------------------------------
+
+  // The GPS: the whole road network, every place you can go, where you are and
+  // which way you are pointing. Free roam without this is just getting lost.
+  //
+  // Drawn full screen rather than as a bigger minimap, because the point is to
+  // read street names and pick a destination, and neither works at the size
+  // that fits in a corner.
+  drawMap(state) {
+    const ctx = this.ctx;
+    const W = this.width, H = this.height;
+
+    ctx.save();
+    ctx.fillStyle = 'rgba(8, 10, 14, 0.93)';
+    ctx.fillRect(0, 0, W, H);
+
+    // Fit the network to the screen, leaving room for the header and legend.
+    const top = 56, bottom = H - 44, left = 24, right = W - 24;
+    let minX = Infinity, maxX = -Infinity, minZ = Infinity, maxZ = -Infinity;
+    for (const r of state.roads) {
+      for (const p of r.points) {
+        if (p[0] < minX) minX = p[0];
+        if (p[0] > maxX) maxX = p[0];
+        if (p[2] < minZ) minZ = p[2];
+        if (p[2] > maxZ) maxZ = p[2];
+      }
+    }
+    const scale = Math.min((right - left) / (maxX - minX || 1), (bottom - top) / (maxZ - minZ || 1));
+    const ox = (left + right) / 2 - ((minX + maxX) / 2) * scale;
+    const oy = (top + bottom) / 2 - ((minZ + maxZ) / 2) * scale;
+    const px = (x, z) => [ox + x * scale, oy + z * scale];
+
+    // The states, under everything else: a block of the state's own colour, its
+    // name across the middle, and a brighter edge on the one you are in. This
+    // is the layer that turns a tangle of roads into a country.
+    // Boxes that labels must not land on: the state names, filled in below.
+    const reserved = [];
+    if (state.states && state.stateBounds) {
+      const b = state.stateBounds;
+      const here = state.currentState;
+      for (const st of state.states) {
+        const [ax, ay] = px(st.x0, st.z0);
+        const [bx, by] = px(st.x1, st.z1);
+        const t = st.tint;
+        // The tint multiplies a mid grey, the same way it multiplies the ground.
+        ctx.fillStyle = `rgba(${Math.round(38 * t[0])}, ${Math.round(42 * t[1])}, ${Math.round(46 * t[2])}, 0.92)`;
+        ctx.fillRect(ax, ay, bx - ax, by - ay);
+        ctx.strokeStyle = st === here ? 'rgba(255, 209, 102, 0.85)' : 'rgba(255,255,255,0.16)';
+        ctx.lineWidth = st === here ? 2 : 1;
+        ctx.strokeRect(ax, ay, bx - ax, by - ay);
+        // Fifty-six cells means some are narrower than their state's name, so
+        // anything that will not fit falls back to the postal code rather than
+        // running into next door.
+        const size = 13;
+        ctx.font = `700 ${size}px ${this.font}`;
+        const full = st.name.toUpperCase();
+        const room = (bx - ax) - 10;
+        const label = ctx.measureText(full).width <= room ? full : st.abbr;
+        const half = ctx.measureText(label).width / 2;
+        const lx = (ax + bx) / 2, ly = ay + 20;
+        this.text(label, lx, ly, size,
+          st === here ? 'rgba(255, 209, 102, 0.9)' : 'rgba(255,255,255,0.30)',
+          'center', 700);
+        // Destination labels have to keep off it, or the two overprint.
+        reserved.push({ x0: lx - half - 3, y0: ly - size, x1: lx + half + 3, y1: ly + 4 });
+      }
+    }
+
+    // Roads. Wide ones read as avenues.
+    for (const r of state.roads) {
+      const wide = r.width > 4.6;
+      ctx.strokeStyle = wide ? 'rgba(255,255,255,0.55)' : 'rgba(255,255,255,0.26)';
+      ctx.lineWidth = wide ? 3.4 : 2.0;
+      ctx.lineCap = 'round';
+      ctx.beginPath();
+      for (let i = 0; i < r.points.length; i++) {
+        const [sx, sy] = px(r.points[i][0], r.points[i][2]);
+        if (i === 0) ctx.moveTo(sx, sy); else ctx.lineTo(sx, sy);
+      }
+      ctx.stroke();
+    }
+
+    // The route home, on top and in colour.
+    if (state.routeSpline) {
+      ctx.strokeStyle = 'rgba(90, 200, 255, 0.85)';
+      ctx.lineWidth = 3.0;
+      ctx.setLineDash([9, 6]);
+      ctx.beginPath();
+      for (let i = 0; i < state.routeSpline.count; i++) {
+        const p = state.routeSpline.points[i];
+        const [sx, sy] = px(p[0], p[2]);
+        if (i === 0) ctx.moveTo(sx, sy); else ctx.lineTo(sx, sy);
+      }
+      ctx.stroke();
+      ctx.setLineDash([]);
+    }
+
+    const STYLE = {
+      home: ['#4ade80', 'H'],
+      house: ['#a78bfa', 'H'],
+      fuel: ['#fbbf24', 'F'],
+      shop: ['#38bdf8', 'S'],
+    };
+
+    // Pins first, then labels: a label is allowed to move, a pin is not, so
+    // the pins all have to be on screen before anything can be laid out
+    // around them.
+    const pins = [];
+    for (let i = 0; i < state.places.length; i++) {
+      const place = state.places[i];
+      const [sx, sy] = px(place.x, place.z);
+      const [col, letter] = STYLE[place.kind] || ['#94a3b8', '?'];
+      const chosen = i === state.destinationIndex;
+
+      if (chosen) {
+        ctx.beginPath();
+        ctx.arc(sx, sy, 17, 0, TAU);
+        ctx.strokeStyle = col;
+        ctx.lineWidth = 2;
+        ctx.stroke();
+      }
+      ctx.beginPath();
+      ctx.arc(sx, sy, 9, 0, TAU);
+      ctx.fillStyle = col;
+      ctx.fill();
+      ctx.strokeStyle = 'rgba(0,0,0,0.55)';
+      ctx.lineWidth = 1.5;
+      ctx.stroke();
+      this.text(letter, sx, sy + 4, 11, '#0b1016', 'center', 800);
+      place._sx = sx; place._sy = sy;
+      pins.push({ place, sx, sy, chosen });
+    }
+
+    // Labels, placed greedily against measured boxes. Fixed offsets are not
+    // enough - wherever the map puts two destinations close together, a label
+    // in its preferred spot lands on its neighbour's - so each name tries a
+    // ring of candidate positions and takes the first one that is clear of
+    // every label and pin already down. The chosen destination goes first so
+    // it always gets the spot it wants.
+    const boxes = reserved.concat(pins.map((p) => ({ x0: p.sx - 10, y0: p.sy - 10, x1: p.sx + 10, y1: p.sy + 10 })));
+    const hits = (b) => boxes.some((o) =>
+      b.x0 < o.x1 && b.x1 > o.x0 && b.y0 < o.y1 && b.y1 > o.y0);
+    // Straight up and down first, then progressively further out to the side:
+    // vertical alone runs out of room the moment three pins share a junction.
+    const OFFSETS = [[0, -16], [0, 24], [0, -30], [0, 38],
+      [1, -16], [1, 24], [1, 4], [1.7, -16], [1.7, 24], [1.7, 4],
+      [0, -46], [0, 54], [2.5, 4]];
+
+    for (const pin of pins.slice().sort((a, b) => (b.chosen ? 1 : 0) - (a.chosen ? 1 : 0))) {
+      const size = pin.chosen ? 15 : 11;
+      ctx.font = `${pin.chosen ? 800 : 600} ${size}px ${this.font}`;
+      const half = ctx.measureText(pin.place.name).width / 2 + 3;
+      let put = null;
+      for (const [side, dy] of OFFSETS) {
+        // `side` is a multiple of the label's own width, so a long name is
+        // pushed clear of its pin instead of half covering it.
+        for (const sign of side === 0 ? [0] : [1, -1]) {
+          const lx = pin.sx + sign * side * (half + 12), ly = pin.sy + dy;
+          if (lx - half < 8 || lx + half > W - 8 || ly > H - 52 || ly < top + 8) continue;
+          const box = { x0: lx - half, y0: ly - size, x1: lx + half, y1: ly + 4 };
+          if (hits(box)) continue;
+          put = { lx, ly, box, offset: sign !== 0 };
+          break;
+        }
+        if (put) break;
+      }
+      // Nowhere clear: put it in the preferred spot anyway rather than drop the
+      // name, since an unlabelled pin is the worse failure.
+      if (!put) {
+        const lx = pin.sx, ly = pin.sy - 16;
+        put = { lx, ly, box: { x0: lx - half, y0: ly - size, x1: lx + half, y1: ly + 4 } };
+      }
+      boxes.push(put.box);
+      // A name shifted out to the side has to be tied back to its pin, or it
+      // reads as belonging to whatever it happens to be sitting next to.
+      if (put.offset) {
+        ctx.beginPath();
+        ctx.moveTo(pin.sx, pin.sy);
+        ctx.lineTo(put.lx + (put.lx < pin.sx ? half : -half), put.ly - size / 2 + 2);
+        ctx.strokeStyle = 'rgba(255,255,255,0.28)';
+        ctx.lineWidth = 1;
+        ctx.stroke();
+      }
+      this.text(pin.place.name, put.lx, put.ly, size,
+        pin.chosen ? '#fff' : 'rgba(255,255,255,0.62)', 'center', pin.chosen ? 800 : 600);
+    }
+
+    // You, and which way you are facing.
+    const [cx, cy] = px(state.player.pos[0], state.player.pos[2]);
+    ctx.save();
+    ctx.translate(cx, cy);
+    ctx.rotate(-state.player.yaw + Math.PI);
+    ctx.beginPath();
+    ctx.moveTo(0, -13); ctx.lineTo(9, 10); ctx.lineTo(0, 5); ctx.lineTo(-9, 10);
+    ctx.closePath();
+    ctx.fillStyle = '#ff3b30';
+    ctx.fill();
+    ctx.strokeStyle = '#fff';
+    ctx.lineWidth = 1.6;
+    ctx.stroke();
+    ctx.restore();
+
+    // Header and legend.
+    this.text('GPS', 28, 36, 22, '#fff', 'left', 800);
+    const chosen = state.places[state.destinationIndex];
+    this.text(chosen ? `Destination: ${chosen.name}` : 'No destination set',
+      110, 36, 15, chosen ? '#ffd166' : 'rgba(255,255,255,0.55)', 'left', 600);
+
+    const legend = [['#4ade80', 'home'], ['#a78bfa', 'other house'],
+      ['#fbbf24', 'fuel'], ['#38bdf8', 'shops']];
+    let lx = 28;
+    for (const [col, label] of legend) {
+      ctx.beginPath();
+      ctx.arc(lx, H - 24, 6, 0, TAU);
+      ctx.fillStyle = col;
+      ctx.fill();
+      this.text(label, lx + 12, H - 20, 12, 'rgba(255,255,255,0.75)', 'left', 600);
+      lx += 30 + ctx.measureText(label).width;
+    }
+    this.text(state.mapHint, W - 28, H - 20, 12, 'rgba(255,255,255,0.55)', 'right', 600);
+    ctx.restore();
+  }
+
+  drawDrive(state) {
+    const ctx = this.ctx;
+    const W = this.width, H = this.height;
+    const v = state.player.vehicle;
+
+    if (this.compact) {
+      this.drawDriveCompact(state);
+      return;
+    }
+
+    this.drawTacho(W - 130, H - 110, 78, v.rpm, v.gearLabel, v.speedKmh, v.throttle, v.brake);
+
+    // Speed limit roundel plus the current road.
+    const lx = 60, ly = 66;
+    ctx.beginPath();
+    ctx.arc(lx, ly, 34, 0, TAU);
+    ctx.fillStyle = '#f2f2ef';
+    ctx.fill();
+    ctx.lineWidth = 8;
+    ctx.strokeStyle = state.speeding ? '#ff3b30' : '#c62828';
+    ctx.stroke();
+    this.text(String(state.speedLimit), lx, ly + 11, 30, '#15171c', 'center', 800);
+    this.text(state.roadName, lx + 52, ly - 4, 18, '#fff', 'left', 700);
+    // Which state, on the same line as the distance. Eight of them look alike
+    // from behind the wheel unless something says which one you are in.
+    const st = state.state;
+    this.text(`${(state.distanceRemaining / 1000).toFixed(2)} km to home`, lx + 52, ly + 18, 14, 'rgba(255,255,255,0.7)', 'left', 500);
+    if (st) {
+      this.text(`${st.name}  ·  ${st.abbr}`, lx + 52, ly + 36, 12,
+        'rgba(255,255,255,0.52)', 'left', 600);
+    }
+
+    if (state.speeding) {
+      this.text('SLOW DOWN', lx, ly + 62, 15, '#ff6b60', 'center', 700);
+    }
+
+    // Navigation arrow. Off the route it becomes a compass needle pointing at
+    // the house, because there is no turn-by-turn to give.
+    this.drawNavArrow(W / 2, 92, state.turnAngle, state.turnDistance, state.instruction);
+    if (state.roaming) {
+      this.text('FREE ROAM', W / 2, 140, 12, '#ffd166', 'center', 700);
+    }
+
+    // Somewhere to stop, if you fancy it.
+    if (state.shopPrompt) {
+      const bw = 300, bx = (W - bw) / 2;
+      this.panel(bx, H - 132, bw, 44, 0.55);
+      this.text(state.shopPrompt, W / 2, H - 104, 15, '#ffd166', 'center', 700);
+    }
+
+    // Minimap with the route and the destination.
+    this.drawMinimap(W - 214, 24, 190, state.routeSpline, state.cars, state.player, {
+      destination: state.destination,
+      lights: state.lights,
+      roads: state.roads,
+    });
+
+    // Driving score. Frozen while exploring, and it says so.
+    this.panel(24, H - 96, 220, 72);
+    this.text(state.roaming ? 'DRIVE RATING — PAUSED' : 'DRIVE RATING',
+      40, H - 72, 11, state.roaming ? 'rgba(255,209,102,0.75)' : 'rgba(255,255,255,0.5)', 'left', 600);
+    const grade = state.rating;
+    this.text(`${Math.round(grade)}`, 40, H - 38, 30, grade > 80 ? '#8ef2a0' : (grade > 55 ? '#ffd166' : '#ff6b60'), 'left', 700);
+    this.text('/100', 82, H - 38, 14, 'rgba(255,255,255,0.5)', 'left', 500);
+    if (state.penaltyText) this.text(state.penaltyText, 120, H - 38, 13, '#ff8a80', 'left', 600);
+
+    // Indicator tell-tales.
+    if (state.player.indicator !== 0 && Math.sin(state.player.indicatorPhase * Math.PI) > 0) {
+      const ix = W / 2 + (state.player.indicator > 0 ? 60 : -60);
+      ctx.save();
+      ctx.translate(ix, H - 40);
+      ctx.rotate(state.player.indicator > 0 ? 0 : Math.PI);
+      ctx.beginPath();
+      ctx.moveTo(12, 0); ctx.lineTo(-4, -10); ctx.lineTo(-4, -4);
+      ctx.lineTo(-12, -4); ctx.lineTo(-12, 4); ctx.lineTo(-4, 4); ctx.lineTo(-4, 10);
+      ctx.closePath();
+      ctx.fillStyle = '#4ade80';
+      ctx.fill();
+      ctx.restore();
+    }
+
+    this.drawMessages();
+  }
+
+  drawDriveCompact(state) {
+    const ctx = this.ctx;
+    const W = this.width, H = this.height;
+    const v = state.player.vehicle;
+
+    // Speed limit roundel, kept large enough to read at a glance.
+    const lx = 36, ly = 36;
+    ctx.beginPath();
+    ctx.arc(lx, ly, 22, 0, TAU);
+    ctx.fillStyle = '#f2f2ef';
+    ctx.fill();
+    ctx.lineWidth = 5.5;
+    ctx.strokeStyle = state.speeding ? '#ff3b30' : '#c62828';
+    ctx.stroke();
+    this.text(String(state.speedLimit), lx, ly + 7, 19, '#15171c', 'center', 800);
+    this.text(state.roadName, lx + 32, ly - 2, 13, '#fff', 'left', 700);
+    this.text(`${(state.distanceRemaining / 1000).toFixed(2)} km`, lx + 32, ly + 14, 11,
+      'rgba(255,255,255,0.7)', 'left', 500);
+    if (state.state) {
+      // After the road name, measured rather than guessed - the names run from
+      // "Avenue" to "Circuit access road" and a fixed offset collides with the
+      // long ones.
+      ctx.font = `700 13px ${this.font}`;
+      const w = ctx.measureText(state.roadName).width;
+      this.text(state.state.abbr, lx + 32 + w + 9, ly - 2, 11,
+        'rgba(255,255,255,0.5)', 'left', 700);
+    }
+    if (state.speeding) this.text('SLOW DOWN', lx + 32, ly + 30, 11, '#ff6b60', 'left', 700);
+
+    // Turn instruction, centred but kept shallow so it clears the road ahead.
+    const nx = W / 2, ny = 30;
+    this.panel(nx - 104, ny - 22, 208, 46, 0.45);
+    ctx.save();
+    ctx.translate(nx - 80, ny + 1);
+    ctx.rotate(clamp(state.turnAngle, -1.4, 1.4));
+    ctx.beginPath();
+    ctx.moveTo(0, -14); ctx.lineTo(10, 3); ctx.lineTo(4, 3);
+    ctx.lineTo(4, 14); ctx.lineTo(-4, 14); ctx.lineTo(-4, 3); ctx.lineTo(-10, 3);
+    ctx.closePath();
+    ctx.fillStyle = '#4ade80';
+    ctx.fill();
+    ctx.restore();
+    this.text(state.instruction, nx - 62, ny - 2, 13, '#fff', 'left', 700);
+    this.text(state.turnDistance > 0 ? `in ${Math.round(state.turnDistance)} m` : 'now',
+      nx - 62, ny + 14, 10, 'rgba(255,255,255,0.7)', 'left', 500);
+
+    const mm = Math.min(124, W * 0.22);
+    this.drawMinimap(W - mm - 10, 10, mm, state.routeSpline, state.cars, state.player, {
+      destination: state.destination,
+      lights: state.lights,
+    });
+
+    // Rating only earns space when it is moving.
+    if (state.penaltyText) {
+      this.text(state.penaltyText, W / 2, 74, 13, '#ff8a80', 'center', 700);
+    }
+    this.text(`${Math.round(state.rating)}`, 14, H - 14, 15,
+      state.rating > 80 ? '#8ef2a0' : (state.rating > 55 ? '#ffd166' : '#ff6b60'), 'left', 700);
+
+    this.drawCompactGauge(W / 2, H - 8, v.rpm, v.gearLabel, v.speedKmh);
+
+    if (state.player.indicator !== 0 && Math.sin(state.player.indicatorPhase * Math.PI) > 0) {
+      const ix = W / 2 + (state.player.indicator > 0 ? 96 : -96);
+      ctx.save();
+      ctx.translate(ix, H - 30);
+      ctx.rotate(state.player.indicator > 0 ? 0 : Math.PI);
+      ctx.beginPath();
+      ctx.moveTo(9, 0); ctx.lineTo(-3, -8); ctx.lineTo(-3, -3);
+      ctx.lineTo(-9, -3); ctx.lineTo(-9, 3); ctx.lineTo(-3, 3); ctx.lineTo(-3, 8);
+      ctx.closePath();
+      ctx.fillStyle = '#4ade80';
+      ctx.fill();
+      ctx.restore();
+    }
+
+    this.drawMessages();
+  }
+
+  drawNavArrow(cx, cy, angle, distance, instruction) {
+    const ctx = this.ctx;
+    this.panel(cx - 130, cy - 44, 260, 88, 0.42);
+    ctx.save();
+    ctx.translate(cx - 84, cy);
+    ctx.rotate(clamp(angle, -1.4, 1.4));
+    ctx.beginPath();
+    ctx.moveTo(0, -22);
+    ctx.lineTo(16, 4);
+    ctx.lineTo(6, 4);
+    ctx.lineTo(6, 22);
+    ctx.lineTo(-6, 22);
+    ctx.lineTo(-6, 4);
+    ctx.lineTo(-16, 4);
+    ctx.closePath();
+    ctx.fillStyle = '#4ade80';
+    ctx.fill();
+    ctx.restore();
+    this.text(instruction, cx - 52, cy - 4, 19, '#fff', 'left', 700);
+    this.text(distance > 0 ? `in ${Math.round(distance)} m` : 'now', cx - 52, cy + 18, 14, 'rgba(255,255,255,0.7)', 'left', 500);
+  }
+
+  // --- messages -------------------------------------------------------------
+
+  drawMessages() {
+    const W = this.width, H = this.height;
+    let y = H * 0.32;
+    for (const m of this.messages) {
+      const fade = Math.min(1, (m.duration - m.time) * 2.5) * Math.min(1, m.time * 6);
+      const ctx = this.ctx;
+      ctx.save();
+      ctx.globalAlpha = clamp(fade, 0, 1);
+      const color = m.kind === 'bad' ? '#ff6b60' : (m.kind === 'good' ? '#8ef2a0' : '#ffffff');
+      const base = m.kind === 'big' ? 46 : 24;
+      const size = this.compact ? base * 0.62 : base;
+      ctx.shadowColor = 'rgba(0,0,0,0.8)';
+      ctx.shadowBlur = 14;
+      this.text(m.text, W / 2, y, size, color, 'center', 700);
+      ctx.restore();
+      y += this.compact ? 24 : 34;
+    }
+  }
+}
