@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Landmark Rush — photo check</title>
+<style>
+  :root{color-scheme:dark}
+  body{margin:0;background:#0b1020;color:#eef2ff;
+       font:15px/1.5 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif;
+       padding:20px 16px calc(env(safe-area-inset-bottom,0px) + 40px)}
+  .wrap{max-width:760px;margin:0 auto}
+  h1{font-size:22px;margin:0 0 6px}
+  p.lede{margin:0 0 16px;color:#a3aec9;font-size:14px}
+  .bar{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px}
+  button{font:inherit;font-weight:700;border:0;border-radius:12px;padding:12px 16px;cursor:pointer;
+         background:linear-gradient(135deg,#4cc2ff,#7c5cff);color:#06101f;min-height:46px}
+  button.ghost{background:rgba(255,255,255,.08);color:#eef2ff;border:1px solid rgba(255,255,255,.16)}
+  button:disabled{opacity:.5;cursor:not-allowed}
+  .summary{background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.14);
+           border-radius:14px;padding:14px;margin-bottom:16px;font-variant-numeric:tabular-nums}
+  .summary b{font-size:19px}
+  .progress{height:8px;border-radius:99px;background:rgba(255,255,255,.12);overflow:hidden;margin:10px 0 0}
+  .progress i{display:block;height:100%;width:0;background:linear-gradient(90deg,#4cc2ff,#7c5cff)}
+  table{width:100%;border-collapse:collapse;font-size:13.5px}
+  th,td{text-align:left;padding:8px 6px;border-bottom:1px solid rgba(255,255,255,.1);vertical-align:top}
+  th{color:#a3aec9;font-size:12px;text-transform:uppercase;letter-spacing:.06em}
+  td.ok{color:#37d399;font-weight:700;white-space:nowrap}
+  td.bad{color:#ff6b6b;font-weight:700;white-space:nowrap}
+  .why{color:#a3aec9;font-size:12px;word-break:break-word}
+  textarea{width:100%;height:180px;margin-top:14px;background:rgba(0,0,0,.35);color:#eef2ff;
+           border:1px solid rgba(255,255,255,.16);border-radius:12px;padding:12px;font:12px/1.5 ui-monospace,monospace}
+  img.thumb{width:54px;height:40px;object-fit:cover;border-radius:6px;background:#1a2450;display:block}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>Photo check</h1>
+  <p class="lede">Runs every landmark through the real photo pipeline in this browser and reports
+     which ones resolve, from which source, and why the rest fail. Nothing is cached during the run.</p>
+
+  <div class="bar">
+    <button id="run">Run the check</button>
+    <button id="copy" class="ghost" disabled>Copy summary</button>
+    <button id="clear" class="ghost">Clear photo cache</button>
+  </div>
+
+  <div class="summary" id="summary">Not run yet.</div>
+  <div class="progress"><i id="bar"></i></div>
+
+  <table id="table" hidden>
+    <thead><tr><th></th><th>Landmark</th><th>Status</th><th>Source / reason</th></tr></thead>
+    <tbody id="rows"></tbody>
+  </table>
+
+  <textarea id="out" hidden readonly></textarea>
+</div>
+
+<script src="js/util.js"></script>
+<script src="js/landmarks.js"></script>
+<script src="js/photos.js"></script>
+<script>
+(function () {
+  'use strict';
+  var CONCURRENCY = 4;
+  var results = [];
+
+  var runBtn = document.getElementById('run');
+  var copyBtn = document.getElementById('copy');
+  var rows = document.getElementById('rows');
+  var table = document.getElementById('table');
+  var summary = document.getElementById('summary');
+  var bar = document.getElementById('bar');
+  var out = document.getElementById('out');
+
+  document.getElementById('clear').addEventListener('click', function () {
+    Object.keys(localStorage).forEach(function (k) {
+      if (k.indexOf('landmark-rush:photos') === 0) localStorage.removeItem(k);
+    });
+    summary.textContent = 'Photo cache cleared.';
+  });
+
+  runBtn.addEventListener('click', function () {
+    runBtn.disabled = true;
+    copyBtn.disabled = true;
+    rows.innerHTML = '';
+    results = [];
+    table.hidden = false;
+    out.hidden = true;
+
+    var queue = LANDMARKS.slice();
+    var total = queue.length;
+    var done = 0;
+
+    function next() {
+      var landmark = queue.shift();
+      if (!landmark) return Promise.resolve();
+      return Photos.diagnose(landmark).then(function (r) {
+        r.landmark = landmark;
+        results.push(r);
+        addRow(r);
+        done += 1;
+        bar.style.width = (done / total * 100) + '%';
+        render();
+        return next();
+      });
+    }
+
+    var workers = [];
+    for (var i = 0; i < CONCURRENCY; i++) workers.push(next());
+    Promise.all(workers).then(function () {
+      runBtn.disabled = false;
+      copyBtn.disabled = false;
+      runBtn.textContent = 'Run again';
+    });
+  });
+
+  function addRow(r) {
+    var tr = document.createElement('tr');
+    var thumb = r.ok
+      ? '<img class="thumb" src="' + esc(r.src) + '" alt="" loading="lazy">'
+      : '<div class="thumb"></div>';
+    tr.innerHTML =
+      '<td>' + thumb + '</td>' +
+      '<td>' + esc(r.landmark.name) + '<br><span class="why">' + esc(r.landmark.city) + '</span></td>' +
+      '<td class="' + (r.ok ? 'ok">ok' : 'bad">missing') + '</td>' +
+      '<td class="why">' + (r.ok
+        ? esc(r.source) + ' · ' + r.ms + 'ms'
+        : esc((r.tried || []).join(' | ') || r.error)) + '</td>';
+    rows.appendChild(tr);
+  }
+
+  function render() {
+    var ok = results.filter(function (r) { return r.ok; });
+    var bySource = {};
+    ok.forEach(function (r) { bySource[r.source] = (bySource[r.source] || 0) + 1; });
+    summary.innerHTML =
+      '<b>' + ok.length + ' / ' + results.length + '</b> photos resolved' +
+      (results.length ? ' · ' + Object.keys(bySource).map(function (s) {
+        return bySource[s] + ' via ' + esc(s);
+      }).join(' · ') : '');
+  }
+
+  copyBtn.addEventListener('click', function () {
+    var failed = results.filter(function (r) { return !r.ok; });
+    var lines = [];
+    lines.push('Landmark Rush photo check — ' + results.filter(function (r) { return r.ok; }).length +
+               '/' + results.length + ' resolved');
+    lines.push('user agent: ' + navigator.userAgent);
+    lines.push('');
+    var bySource = {};
+    results.forEach(function (r) { if (r.ok) bySource[r.source] = (bySource[r.source] || 0) + 1; });
+    Object.keys(bySource).forEach(function (s) { lines.push('  ' + bySource[s] + ' via ' + s); });
+    lines.push('');
+    lines.push('FAILURES (' + failed.length + '):');
+    failed.forEach(function (r) {
+      lines.push('  ' + r.landmark.id + ' (' + r.landmark.wiki + ') — ' + ((r.tried || []).join(' | ') || r.error));
+    });
+    var text = lines.join('\n');
+    out.value = text;
+    out.hidden = false;
+    out.select();
+    if (navigator.clipboard) navigator.clipboard.writeText(text).catch(function () {});
+  });
+
+  function esc(s) {
+    return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+  }
+})();
+</script>
+</body>
+</html>

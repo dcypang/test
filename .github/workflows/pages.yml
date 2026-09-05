@@ -1,0 +1,67 @@
+# Publishes the game to GitHub Pages.
+#
+# Pages has to be switched on by hand once — Settings → Pages → Source:
+# "GitHub Actions" — because a workflow token is not allowed to create the
+# Pages site itself. Until that is done this workflow reports what to do and
+# exits green rather than failing every push.
+name: Deploy to GitHub Pages
+
+on:
+  push:
+    branches:
+      - master
+      - claude/geo-landmark-game-u7jki3
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# Let a running deploy finish rather than cancelling it mid-publish.
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+
+      # Deploying is only valid when Pages is set to build from Actions. If it
+      # is off, or set to "deploy from a branch", there is nothing for this
+      # workflow to do and failing would just paint the PR red.
+      - id: pages
+        name: Check how Pages is configured
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          info=$(gh api "repos/$GITHUB_REPOSITORY/pages" 2>/dev/null || true)
+          build_type=$(printf '%s' "$info" | jq -r '.build_type // empty')
+          if [ "$build_type" = "workflow" ]; then
+            echo "ready=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "ready=false" >> "$GITHUB_OUTPUT"
+            if [ -z "$info" ]; then
+              echo "::notice::GitHub Pages is not enabled. Turn it on at Settings -> Pages -> Source: GitHub Actions, then re-run this workflow to publish the game."
+            else
+              echo "::notice::Pages is serving from a branch, not from Actions, so this workflow has nothing to publish. That is a fine setup — the site updates on every push to the chosen branch."
+            fi
+          fi
+
+      - if: steps.pages.outputs.ready == 'true'
+        uses: actions/configure-pages@v5
+
+      # The whole repository is the site: it is static files, no build step.
+      - if: steps.pages.outputs.ready == 'true'
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: .
+
+      - id: deployment
+        if: steps.pages.outputs.ready == 'true'
+        uses: actions/deploy-pages@v4
