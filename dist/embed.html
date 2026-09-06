@@ -11010,18 +11010,49 @@ class Game {
           driverAids: false,
         });
         car.isTraffic = true;
-        // Registered where it is driving: local plates on local traffic.
-        const mid = path.spline.points[Math.floor(path.spline.count / 2)];
-        this.fitPlate(car, scene.stateAt ? scene.stateAt(mid[0], mid[2]) : null, rng);
         const lane = dir > 0 ? 2.1 : -2.1;
         const driver = new TrafficDriver(car, path, dir, lane, limit);
         const idx = Math.floor(rnd2(rng, 6, path.spline.count - 6));
         driver.placeAt(idx, scene.world);
+        // Registered where it actually is, not where the middle of its road is.
+        // An interstate crosses the whole country, so taking the state from the
+        // path's midpoint put local plates on cars a thousand miles from home.
+        this.fitPlate(car,
+          scene.stateAt ? scene.stateAt(car.pos[0], car.pos[2]) : null, rng);
         this.traffic.push(driver);
       }
     };
     addOn(scene.route, 16, 52);
     for (const s of scene.sideStreets) addOn(s, 2, 40);
+
+    // And the rest of the country. Without this every state outside Idaho is a
+    // ghost town: streets, shops, petrol stations, and nobody on the road.
+    //
+    // What matters is how thick the traffic is where the player happens to be,
+    // not how many cars exist: anything more than 320 m away is frozen and
+    // anything past 340 m is not drawn. So this spreads a little everywhere
+    // rather than concentrating it.
+    {
+      const byTown = new Map();
+      for (const p of scene.world.paths) {
+        if (/^Interstate/.test(p.name || '')) {
+          addOn(p, 8, 110);            // long roads, so eight is still sparse
+          continue;
+        }
+        if (!p.town) continue;
+        let list = byTown.get(p.town);
+        if (!list) { list = []; byTown.set(p.town, list); }
+        list.push(p);
+      }
+      for (const [town, streets] of byTown) {
+        // Ashcombe is a city and can carry more; a four block town with a car
+        // on every street is a traffic jam.
+        const lanes = town === 'Ashcombe' ? 6 : 2;
+        for (let i = 0; i < Math.min(lanes, streets.length); i++) {
+          addOn(streets[Math.floor((i * streets.length) / lanes)], 2, 40);
+        }
+      }
+    }
     if (clearOf) {
       this.traffic = this.traffic.filter((t) =>
         Math.hypot(t.car.pos[0] - clearOf[0], t.car.pos[2] - clearOf[2]) > 50);
@@ -11683,6 +11714,11 @@ class Game {
   registerPenalty(reason, amount) {
     const ds = this.driveState;
     if (!ds) return;
+    // Free roam is not scored, and that has to include collisions. Speeding
+    // was already exempt, but hitting something was not - so a scrape a mile
+    // off the route still docked a rating for a drive you were not on. It went
+    // unnoticed while there was nothing out there to hit.
+    if (ds.roaming) return;
     ds.rating = clamp(ds.rating - amount, 0, 100);
     ds.penaltyText = `-${Math.round(amount)} ${reason}`;
     ds.penaltyTimer = 2.4;
@@ -11715,11 +11751,26 @@ class Game {
     this.audio.horn(this.input.held('KeyH') || this.touch.hornHeld());
 
     // Traffic: only simulate what is nearby.
+    //
+    // The obstacle list is built once for the whole frame and holds only what
+    // is close enough to be an obstacle. It used to be rebuilt inside the loop,
+    // for every car, from every car - which was fine for the two dozen on the
+    // road home and quadratic for the several hundred now spread across the
+    // country. A car in Florida is not something a car in Oregon has to avoid.
+    const nearby = this._nearbyCars || (this._nearbyCars = []);
+    nearby.length = 0;
+    nearby.push(car);
+    for (const t of this.traffic) {
+      if (Math.hypot(t.car.pos[0] - car.pos[0], t.car.pos[2] - car.pos[2]) < 400) {
+        nearby.push(t.car);
+      }
+    }
+
     const alive = [];
     for (const t of this.traffic) {
       const d = Math.hypot(t.car.pos[0] - car.pos[0], t.car.pos[2] - car.pos[2]);
       if (d < 320) {
-        t.update(dt, world, [car, ...this.traffic.map((o) => o.car)], scene.trafficLights || []);
+        t.update(dt, world, nearby, scene.trafficLights || []);
         t.car.update(dt, world, d < 110 ? this.renderer : null);
       }
       if (!t.done) alive.push(t);

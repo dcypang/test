@@ -98,6 +98,29 @@ Come back to the route and the turn-by-turn picks up where it left off.
 The minimap draws the whole network, not just the route. Free roam without a map
 is just getting lost.
 
+## Traffic, everywhere
+
+There are **346 cars** on the road, and every one of the fifty-six states has
+some. Eight per interstate, a pair on two streets of every town, six through
+Ashcombe, plus the sixteen on the route home. Each carries its own number
+plate, registered in the state it is actually driving through rather than
+wherever the middle of its road happens to be — an interstate crosses the
+whole country, and taking the state from the path's midpoint put Rhode Island
+plates on cars in Nevada.
+
+What matters is how thick the traffic is where you are, not how many exist:
+anything more than 320 m away is frozen and anything past 340 m is not drawn.
+The obstacle list each driver steers around is built once per frame and holds
+only what is close enough to matter — it used to be rebuilt inside the loop,
+for every car, from every car, which was fine for two dozen and quadratic for
+several hundred. A country full of cars costs about a millisecond a frame.
+
+Filling the country also turned up a scoring bug that had been there all along:
+free roam is not meant to be scored, and speeding was exempt, but **hitting
+something was not** — so a scrape a mile off the route still docked the rating
+for a drive you were not on. Nobody noticed while there was nothing out there
+to hit.
+
 ## The GPS
 
 `Tab` — or the map button on a phone — puts the whole country on screen: every

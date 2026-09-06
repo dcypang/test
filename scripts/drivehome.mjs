@@ -555,6 +555,45 @@ check('the interstate reaches every state, and the game knows which one',
 check('the country is bigger than the old single town',
   country.span[0] >= 4000 && country.span[1] >= 2000, `${country.span[0]} x ${country.span[1]} m`);
 
+// --- traffic everywhere -------------------------------------------------------
+const traffic = await page.evaluate(() => {
+  const g = window.__game;
+  g.startDriveHome();
+  while (g.legIndex < g.legs.length - 1) g.advanceLeg();
+  g.update(1 / 60);
+  const byState = {};
+  for (const t of g.traffic) {
+    const st = g.scene.stateAt(t.car.pos[0], t.car.pos[2]);
+    const k = st ? st.abbr : 'off-map';
+    byState[k] = (byState[k] || 0) + 1;
+  }
+  const empty = g.scene.states.filter((s) => !byState[s.abbr]).map((s) => s.abbr);
+  // On the interstates as well as in the towns, or the country between the
+  // towns is dead.
+  let onHighway = 0;
+  for (const t of g.traffic) {
+    if (/^Interstate/.test((t.path && t.path.name) || '')) onHighway++;
+  }
+  // And the frame cost of having them, with the whole country populated.
+  const t0 = performance.now();
+  for (let k = 0; k < 60; k++) g.update(1 / 60);
+  return {
+    cars: g.traffic.length,
+    states: Object.keys(byState).filter((k) => k !== 'off-map').length,
+    empty, onHighway,
+    msPerUpdate: +((performance.now() - t0) / 60).toFixed(2),
+  };
+});
+console.log('   ', JSON.stringify(traffic));
+check('there are cars in every state',
+  traffic.empty.length === 0,
+  traffic.empty.length ? `no traffic in ${traffic.empty.join(' ')}`
+    : `${traffic.cars} cars across ${traffic.states} states`);
+check('the interstates carry traffic too', traffic.onHighway >= 50,
+  `${traffic.onHighway} on the highways`);
+check('a country full of cars still steps in time',
+  traffic.msPerUpdate < 8, `${traffic.msPerUpdate} ms per update`);
+
 // --- number plates -------------------------------------------------------------
 const plates = await page.evaluate(() => {
   const g = window.__game;
