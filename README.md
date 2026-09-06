@@ -39,19 +39,29 @@ in roughly the order they sit on a real map. The Pacific north-west at the top
 left, New England down the right, the south along the bottom, the islands in
 the corners. Driving east really does take you east.
 
-**9,450 by 7,200 metres — about 68 km²** of continuous ground. Ground colour
+**13,975 by 10,650 metres — about 149 km²** of continuous ground. Ground colour
 and tree cover come from the kind of country each one is rather than fifty-six
 hand-picked palettes: Nevada, Utah, Arizona and New Mexico are bare desert;
 Washington, Oregon, Maine and the lake states are evergreen; the Dakotas and
 the plains are gold stubble; Hawaii and the territories are tropical.
 
-Each state is **1,150 by 1,000 metres**, with a town of three or four blocks
-in the middle and open country around it. The grid is deliberately **not
-uniform**: Idaho holds Ashcombe, the circuit road and the house, and needs
-1,400 by 1,200. Sizing all fifty-six cells for Idaho pushed the country to
-94 km² — most of it ground nobody would ever drive across — and cost 6.7
-million triangles and a twenty-two second build, so Idaho's column and row are
-wide and the rest are merely large.
+Each state is **1,725 by 1,500 metres**, with a town of three or four blocks
+and a great deal of open country around it. The grid is deliberately **not
+uniform**: Idaho holds Ashcombe, the circuit road and the house, and gets 1,900
+by 1,650.
+
+**Each state is also its own shape.** The outlines are polygons in each cell —
+Texas with its panhandle, Florida's peninsula, Michigan's mitten, Louisiana's
+boot, Oklahoma's handle, California's diagonal coast, Nevada's wedge. Forty-four
+have a real silhouette; the rest are rectangles, which for Colorado, Wyoming and
+Kansas is the right answer. They are low resolution on purpose — silhouettes to
+be read from a moving car and on a map of a whole country, not survey data — and
+the ground between them stays neutral, so you can see a border go past. Idaho is
+the one exception and fills its cell corner to corner, because Ashcombe and the
+road home already do.
+
+Gameplay boundaries are still the cell, so the HUD names a state the moment you
+enter its square; the polygon is what you see, on the ground and on the map.
 
 They are not separate places you get taken to. It is one world with one road
 network, so a state line is just a sign you drive past — the ground colour
@@ -79,6 +89,10 @@ overlaps and floods out from the drive.
 
 Ashcombe, in Idaho, is much the biggest town: **twelve avenues and ten cross
 streets** over about 1,150 by 840 metres, with buildings lining every frontage.
+It is the reason Idaho's cell is bigger than the rest, and the reason the
+country is not bigger still: sizing all fifty-six cells for Idaho once put the
+world at 94 km² of mostly empty ground, 6.7 million triangles and a twenty-two
+second build.
 The other fifty-five carry a town of three or four blocks each, which is the
 point — fifty-six copies of the same grid would be fifty-six of the same
 place.
@@ -100,26 +114,55 @@ is just getting lost.
 
 ## Traffic, everywhere
 
-There are **346 cars** on the road, and every one of the fifty-six states has
-some. Eight per interstate, a pair on two streets of every town, six through
-Ashcombe, plus the sixteen on the route home. Each carries its own number
-plate, registered in the state it is actually driving through rather than
-wherever the middle of its road happens to be — an interstate crosses the
-whole country, and taking the state from the path's midpoint put Rhode Island
-plates on cars in Nevada.
+There are **10,100 cars** on the road — one every 21 m of street and every 45 m
+of interstate — and every one of the fifty-six states has its share. Each is
+registered in the state it is actually driving through.
 
-What matters is how thick the traffic is where you are, not how many exist:
-anything more than 320 m away is frozen and anything past 340 m is not drawn.
-The obstacle list each driver steers around is built once per frame and holds
-only what is close enough to matter — it used to be rebuilt inside the loop,
-for every car, from every car, which was fine for two dozen and quadratic for
-several hundred. A country full of cars costs about a millisecond a frame.
+Frame time was never the hard part: ten thousand cars step in about 2.5 ms.
+Three things had to be true first.
+
+**Nothing may be quadratic in the size of the country.** The car-to-car
+collision loop was fed every car that exists, which at five thousand cars is
+eleven million pair tests a frame and a quarter of a second of nothing useful.
+Only cars close enough to be moving can collide, so only those are passed —
+and the same list serves the traffic drivers' obstacle checks and the minimap,
+worked out once a frame.
+
+**The traffic has to be able to get out of its own way.** It has no give-way
+rule, so two cars meeting in a junction hold each other there for ever and the
+jam spreads back down every road feeding it. At one car per twenty metres an
+autopilot driven home from the circuit never got within 470 m of the house; at
+one per forty it still stopped 410 m short. A car that has not moved for a few
+seconds is now quietly taken off and put back somewhere clear on its own route
+— much later if the player is close enough to watch — and the same density gets
+home in five minutes.
+
+**Plates cannot be unique.** Each distinct number is its own mesh, so ten
+thousand of them would be eleven million triangles of number plate, more
+geometry than the entire country. Traffic draws from sixteen per state instead,
+and a pass over a coarse grid re-plates any two that landed within seventy
+metres of each other. Practically every pair sharing a number is now hundreds of
+metres apart; a handful at the busiest junctions are not, because sixteen
+numbers shared by two hundred cars is a pigeonhole and no amount of shuffling
+changes that.
 
 Filling the country also turned up a scoring bug that had been there all along:
 free roam is not meant to be scored, and speeding was exempt, but **hitting
 something was not** — so a scrape a mile off the route still docked the rating
 for a drive you were not on. Nobody noticed while there was nothing out there
 to hit.
+
+## Fire
+
+A hard enough hit sets a car alight — over a certain impact, or a smaller one if
+it has already taken a beating, which is why a long race ends in flames more
+often than a clean lap does. Flame comes up off the engine bay, black smoke
+above it, and the fire casts its own flickering light, which is the part that
+sells it in a mirror or at dusk. It burns down over about twenty seconds,
+thinner and smokier as it goes.
+
+It is not the player's privilege. Any car can catch fire, and both cars in a
+shunt take the damage, so the field and the traffic burn on the same terms.
 
 ## The GPS
 
@@ -149,8 +192,8 @@ Two ways to get there: take the chequered flag and press **Drive home** on the
 results screen, or **Skip to the drive home** on the title screen.
 
 The circuit and the country are two separate worlds — together they are under
-three million triangles, and their coordinates overlap — so the handover
-happens as you pass under the gate. The car keeps its speed, gear and
+3.6 million triangles, and their coordinates overlap — so the handover happens
+as you pass under the gate. The car keeps its speed, gear and
 revs across it, and both sides of the gate carry the same stonework and the same
 avenue of trees, so there is nothing in shot when the world changes.
 
@@ -224,12 +267,12 @@ particles, capped resolution.
 
 The world is solid. Tree trunks, lamp posts, sign posts, traffic light poles,
 gate piers, hedges and the walls of every building carry a collider — about
-41,000 of them across the country, bucketed into a grid so testing them all
+42,000 of them across the country, bucketed into a grid so testing them all
 every frame costs nothing. Hedges and fences are soft and mostly just drag at you; a lamp
 post is not.
 
 Two test scripts cover this from opposite ends. `scripts/solid.mjs` is
-geometric rather than behavioural: it walks the perimeter of all 1,550-odd
+geometric rather than behavioural: it walks the perimeter of all 1,560-odd
 buildings looking for a gap wider than the car, walks every road checking the
 lane is not pinched by scenery, checks the collider index returns what it is
 asked for, and checks home can actually be parked at. `scripts/drivehome.mjs`

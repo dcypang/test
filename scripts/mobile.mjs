@@ -54,7 +54,7 @@ check('auto-selected the light render preset',
   await page.evaluate(() => window.__game.settings.quality === 'fast'
     && window.__game.renderer.settings.shadows === false));
 
-await page.screenshot({ path: join(shots, 'm1-menu.png') });
+await page.screenshot({ path: join(shots, 'm1-menu.png'), timeout: 180000 });
 
 // --- race with touch --------------------------------------------------------
 await page.evaluate(() => { window.__game.startRace(); });
@@ -66,7 +66,7 @@ check('touch overlay is showing', await page.evaluate(
 check('HUD switched to the compact layout', await page.evaluate(() => window.__game.hud.compact));
 await page.evaluate(() => { window.__game.raceState.countdown = 0.1; });
 await page.waitForTimeout(700);
-await page.screenshot({ path: join(shots, 'm2-race.png') });
+await page.screenshot({ path: join(shots, 'm2-race.png'), timeout: 180000 });
 
 // Hold the GO pedal.
 const gas = await page.locator('.touch-pedal.gas').boundingBox();
@@ -125,7 +125,7 @@ await page.mouse.up();
 await page.evaluate(() => { window.__game.touch.invertSteer = false; });
 await pump(0.2);
 check('inverted stick reverses the direction', inverted < -0.5, `steer=${inverted.toFixed(2)}`);
-await page.screenshot({ path: join(shots, 'm3-driving.png') });
+await page.screenshot({ path: join(shots, 'm3-driving.png'), timeout: 180000 });
 
 // Brake pedal.
 const brake = await page.locator('.touch-pedal.brake').boundingBox();
@@ -181,7 +181,7 @@ check('the stick cannot drive the car from behind the map', await page.evaluate(
   window.__game.touch.driving(out);
   return out.steer === 0;
 }));
-await page.screenshot({ path: join(shots, 'm7-gps.png') });
+await page.screenshot({ path: join(shots, 'm7-gps.png'), timeout: 180000 });
 
 const picked = await page.evaluate(() => {
   const g = window.__game;
@@ -208,7 +208,7 @@ await pump(0.2);
 await page.locator('.touch-btn[data-tap="map"]').dispatchEvent('pointerdown');
 await pump(0.2);
 check('map button closes the GPS again', await page.evaluate(() => !window.__game.mapOpen));
-await page.screenshot({ path: join(shots, 'm4-drive.png') });
+await page.screenshot({ path: join(shots, 'm4-drive.png'), timeout: 180000 });
 
 // --- portrait ---------------------------------------------------------------
 await page.setViewportSize({ width: 380, height: 760 });
@@ -217,7 +217,7 @@ check('portrait shows the rotate prompt',
   await page.evaluate(() => getComputedStyle(document.getElementById('rotate')).display !== 'none'));
 check('driving input is held while portrait',
   await page.evaluate(() => window.__game.orientationBlocked === true));
-await page.screenshot({ path: join(shots, 'm5-portrait.png') });
+await page.screenshot({ path: join(shots, 'm5-portrait.png'), timeout: 180000 });
 // The prompt must not be a dead end: an embedded frame can be portrait-shaped
 // however the phone is held.
 await page.locator('#rotateAnyway').click();

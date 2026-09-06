@@ -622,10 +622,10 @@ const HOME_ZONES = [
 const STATE_COLS = 8, STATE_ROWS = 7;
 const HOME_COL = 1, HOME_ROW = 1;
 const COL_W = [], ROW_D = [];
-for (let c = 0; c < STATE_COLS; c++) COL_W.push(c === HOME_COL ? 1400 : 1150);
-for (let r = 0; r < STATE_ROWS; r++) ROW_D.push(r === HOME_ROW ? 1200 : 1000);
+for (let c = 0; c < STATE_COLS; c++) COL_W.push(c === HOME_COL ? 1900 : 1725);
+for (let r = 0; r < STATE_ROWS; r++) ROW_D.push(r === HOME_ROW ? 1650 : 1500);
 // Anchored so Idaho's cell lands over the content that is already there.
-const COL_X = [-1250], ROW_Z = [-1090];
+const COL_X = [-1875], ROW_Z = [-1680];
 for (let c = 0; c < STATE_COLS; c++) COL_X.push(COL_X[c] + COL_W[c]);
 for (let r = 0; r < STATE_ROWS; r++) ROW_Z.push(ROW_Z[r] + ROW_D[r]);
 const STATE_X0 = COL_X[0], STATE_Z0 = ROW_Z[0];
@@ -648,6 +648,88 @@ const BIOMES = {
 
 // Row by row, west to east. Every cell is filled, so the grid lookup is plain
 // arithmetic rather than a search.
+// The outline of each state, as a polygon in its own cell: (0,0) is the cell's
+// north-west corner and (1,1) its south-east. Low resolution on purpose - these
+// are silhouettes to be read at a glance from a moving car and on a map of a
+// whole country, not survey data. Anything without its own entry gets a
+// rectangle, which for Colorado and Wyoming is the right answer anyway.
+//
+// Idaho is the exception and is the full cell: it holds Ashcombe, the circuit
+// road and the house, and they fill it corner to corner.
+const STATE_SHAPES = {
+  default: [[0.08, 0.10], [0.92, 0.10], [0.92, 0.90], [0.08, 0.90]],
+  small: [[0.24, 0.26], [0.76, 0.26], [0.76, 0.74], [0.24, 0.74]],
+  island: [[0.34, 0.38], [0.56, 0.30], [0.70, 0.44], [0.66, 0.64], [0.44, 0.70], [0.30, 0.56]],
+  CA: [[0.22, 0.06], [0.66, 0.06], [0.66, 0.34], [0.90, 0.88], [0.66, 0.95], [0.42, 0.58], [0.22, 0.30]],
+  TX: [[0.16, 0.08], [0.42, 0.08], [0.42, 0.30], [0.86, 0.30], [0.90, 0.54], [0.70, 0.80], [0.50, 0.94], [0.38, 0.72], [0.14, 0.60], [0.09, 0.34]],
+  FL: [[0.05, 0.30], [0.54, 0.28], [0.63, 0.40], [0.79, 0.58], [0.86, 0.88], [0.71, 0.94], [0.62, 0.66], [0.46, 0.50], [0.05, 0.47]],
+  MI: [[0.30, 0.28], [0.52, 0.20], [0.68, 0.36], [0.71, 0.66], [0.56, 0.92], [0.40, 0.86], [0.37, 0.60], [0.24, 0.50]],
+  LA: [[0.10, 0.22], [0.60, 0.22], [0.60, 0.50], [0.86, 0.62], [0.83, 0.82], [0.60, 0.87], [0.43, 0.70], [0.10, 0.66]],
+  OK: [[0.04, 0.32], [0.33, 0.32], [0.33, 0.22], [0.93, 0.22], [0.93, 0.60], [0.74, 0.80], [0.52, 0.68], [0.33, 0.72], [0.04, 0.48]],
+  NV: [[0.20, 0.06], [0.62, 0.06], [0.62, 0.30], [0.86, 0.90], [0.32, 0.90], [0.20, 0.40]],
+  WV: [[0.14, 0.32], [0.40, 0.14], [0.56, 0.28], [0.80, 0.32], [0.86, 0.56], [0.62, 0.88], [0.44, 0.70], [0.30, 0.78], [0.20, 0.56]],
+  AK: [[0.05, 0.26], [0.38, 0.14], [0.60, 0.24], [0.73, 0.16], [0.85, 0.34], [0.94, 0.62], [0.75, 0.60], [0.56, 0.74], [0.32, 0.66], [0.13, 0.52]],
+  MN: [[0.14, 0.10], [0.52, 0.10], [0.56, 0.24], [0.86, 0.32], [0.86, 0.88], [0.16, 0.88]],
+  WI: [[0.20, 0.16], [0.44, 0.10], [0.62, 0.26], [0.84, 0.42], [0.80, 0.88], [0.26, 0.88], [0.18, 0.52]],
+  NY: [[0.08, 0.34], [0.30, 0.20], [0.62, 0.16], [0.84, 0.30], [0.90, 0.52], [0.66, 0.60], [0.52, 0.84], [0.30, 0.72], [0.10, 0.58]],
+  ME: [[0.28, 0.10], [0.62, 0.14], [0.78, 0.44], [0.70, 0.86], [0.44, 0.90], [0.30, 0.62], [0.20, 0.36]],
+  VT: [[0.36, 0.12], [0.66, 0.16], [0.60, 0.56], [0.52, 0.88], [0.40, 0.86], [0.34, 0.50]],
+  NH: [[0.38, 0.12], [0.64, 0.16], [0.66, 0.60], [0.56, 0.88], [0.42, 0.86], [0.38, 0.48]],
+  MA: [[0.14, 0.36], [0.66, 0.32], [0.82, 0.40], [0.88, 0.54], [0.70, 0.58], [0.62, 0.66], [0.14, 0.62]],
+  CT: [[0.24, 0.36], [0.76, 0.34], [0.78, 0.62], [0.30, 0.66]],
+  RI: [[0.30, 0.30], [0.68, 0.30], [0.70, 0.72], [0.32, 0.74]],
+  NJ: [[0.36, 0.16], [0.60, 0.22], [0.66, 0.48], [0.56, 0.86], [0.42, 0.84], [0.34, 0.52]],
+  DE: [[0.42, 0.20], [0.62, 0.24], [0.60, 0.60], [0.52, 0.84], [0.44, 0.82]],
+  MD: [[0.10, 0.40], [0.40, 0.32], [0.52, 0.44], [0.62, 0.34], [0.90, 0.36], [0.90, 0.58], [0.56, 0.66], [0.34, 0.60], [0.12, 0.58]],
+  VA: [[0.08, 0.32], [0.44, 0.24], [0.62, 0.34], [0.92, 0.42], [0.84, 0.66], [0.52, 0.72], [0.20, 0.60]],
+  NC: [[0.06, 0.34], [0.52, 0.28], [0.88, 0.36], [0.92, 0.56], [0.60, 0.68], [0.22, 0.64], [0.06, 0.52]],
+  SC: [[0.16, 0.28], [0.72, 0.26], [0.84, 0.56], [0.56, 0.82], [0.28, 0.66]],
+  GA: [[0.18, 0.18], [0.72, 0.18], [0.80, 0.44], [0.70, 0.84], [0.44, 0.88], [0.30, 0.70], [0.16, 0.44]],
+  AL: [[0.24, 0.14], [0.70, 0.14], [0.72, 0.80], [0.60, 0.90], [0.34, 0.88], [0.26, 0.62]],
+  MS: [[0.26, 0.14], [0.68, 0.14], [0.70, 0.72], [0.58, 0.90], [0.34, 0.86], [0.26, 0.60]],
+  TN: [[0.06, 0.36], [0.90, 0.30], [0.92, 0.60], [0.30, 0.68], [0.06, 0.58]],
+  KY: [[0.06, 0.44], [0.30, 0.30], [0.62, 0.28], [0.90, 0.40], [0.84, 0.62], [0.44, 0.70], [0.14, 0.62]],
+  AR: [[0.18, 0.22], [0.76, 0.22], [0.78, 0.72], [0.54, 0.84], [0.24, 0.76]],
+  MO: [[0.14, 0.20], [0.62, 0.20], [0.68, 0.36], [0.84, 0.46], [0.78, 0.76], [0.50, 0.86], [0.22, 0.72], [0.14, 0.46]],
+  IA: [[0.10, 0.28], [0.82, 0.24], [0.90, 0.50], [0.80, 0.74], [0.20, 0.76], [0.10, 0.52]],
+  IL: [[0.30, 0.14], [0.56, 0.12], [0.66, 0.44], [0.62, 0.78], [0.46, 0.92], [0.32, 0.72], [0.28, 0.40]],
+  IN: [[0.32, 0.16], [0.64, 0.14], [0.68, 0.60], [0.60, 0.86], [0.38, 0.84], [0.32, 0.52]],
+  OH: [[0.26, 0.20], [0.62, 0.16], [0.76, 0.34], [0.74, 0.72], [0.52, 0.86], [0.30, 0.74], [0.24, 0.44]],
+  PA: [[0.10, 0.26], [0.60, 0.20], [0.88, 0.30], [0.88, 0.66], [0.30, 0.74], [0.10, 0.62]],
+  WA: [[0.10, 0.22], [0.44, 0.14], [0.62, 0.22], [0.88, 0.24], [0.88, 0.70], [0.16, 0.72]],
+  OR: [[0.10, 0.22], [0.86, 0.22], [0.88, 0.72], [0.30, 0.76], [0.12, 0.56]],
+  AZ: [[0.16, 0.14], [0.76, 0.14], [0.76, 0.62], [0.88, 0.78], [0.70, 0.90], [0.16, 0.90]],
+  NM: [[0.14, 0.12], [0.84, 0.12], [0.84, 0.84], [0.60, 0.84], [0.60, 0.92], [0.14, 0.92]],
+  UT: [[0.14, 0.10], [0.62, 0.10], [0.62, 0.34], [0.88, 0.34], [0.88, 0.90], [0.14, 0.90]],
+  ID: [[0.00, 0.00], [1.00, 0.00], [1.00, 1.00], [0.00, 1.00]],
+  HI: 'island',
+  GU: 'island',
+  AS: 'island',
+  MP: 'island',
+  PR: [[0.20, 0.40], [0.78, 0.38], [0.80, 0.60], [0.22, 0.62]],
+  VI: 'island',
+  DC: [[0.30, 0.32], [0.70, 0.30], [0.72, 0.70], [0.32, 0.72]],
+};
+
+function shapeFor(abbr) {
+  const s = STATE_SHAPES[abbr];
+  if (typeof s === 'string') return STATE_SHAPES[s];
+  return s || STATE_SHAPES.default;
+}
+
+// Standard crossing-number test. Called for every terrain vertex in the
+// country, so it stays a plain loop over a short array.
+function pointInPoly(x, z, poly) {
+  let inside = false;
+  for (let i = 0, j = poly.length - 1; i < poly.length; j = i++) {
+    const xi = poly[i][0], zi = poly[i][1];
+    const xj = poly[j][0], zj = poly[j][1];
+    if ((zi > z) !== (zj > z)
+      && x < ((xj - xi) * (z - zi)) / (zj - zi) + xi) inside = !inside;
+  }
+  return inside;
+}
+
 const STATE_TABLE = [
   ['WA', 'Washington', 'Spokane', 'forest'],
   ['MT', 'Montana', 'Bozeman', 'plains'],
@@ -727,6 +809,12 @@ const STATES = STATE_TABLE.map(([abbr, name, capital, biome], i) => {
       : { cols: 3 + (h > 1 ? 1 : 0), rows: 3, gap: 96 + h * 6 },
     x0, z0, x1: COL_X[col + 1], z1: ROW_Z[row + 1],
     cx: (x0 + COL_X[col + 1]) / 2, cz: (z0 + ROW_Z[row + 1]) / 2,
+    // Its outline in world metres, and the same thing normalised for the map.
+    shape: shapeFor(abbr),
+    poly: shapeFor(abbr).map(([u, w]) => [
+      x0 + u * (COL_X[col + 1] - x0),
+      z0 + w * (ROW_Z[row + 1] - z0),
+    ]),
   };
 });
 
@@ -1005,12 +1093,16 @@ function buildHomeRoute(gl) {
   const terrainMB = buildTerrainMesh(world, {
     minX: STATE_X0 - 120, maxX: STATE_X1 + 120,
     minZ: STATE_Z0 - 120, maxZ: STATE_Z1 + 120,
-    cell: 26,
+    cell: 32,
     // Each state has its own ground colour, so crossing a line looks like
     // crossing a line even before you read the sign.
+    // Tinted by the state's outline, not its cell. The ground between the
+    // shapes stays neutral, which is what makes a state read as a shape rather
+    // than a tile: you can see the border go past.
     tintAt: (x, z) => {
       const st = stateAt(x, z);
-      return st ? st.tint : [1, 1, 1];
+      if (!st) return [1, 1, 1];
+      return pointInPoly(x, z, st.poly) ? st.tint : [1, 1, 1];
     },
   });
   const roadMB = new MeshBuilder();
@@ -1440,7 +1532,7 @@ function buildHomeRoute(gl) {
   // Pinecrest is
   // forest, Redrock is nearly bare, and you can tell which one you are in from
   // the driver's seat.
-  for (let i = 0; i < 8000; i++) {
+  for (let i = 0; i < 10000; i++) {
     const x = rnd2(rng, STATE_X0, STATE_X1);
     const z = rnd2(rng, STATE_Z0, STATE_Z1);
     const st = stateAt(x, z);

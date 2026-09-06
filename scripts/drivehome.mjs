@@ -86,7 +86,7 @@ check('the results screen offers the drive home', await page.evaluate(() => {
   const b = document.getElementById('resultsDrive');
   return !!b && b.offsetParent !== null;
 }));
-await page.screenshot({ path: join(shots, 'h1-results.png') });
+await page.screenshot({ path: join(shots, 'h1-results.png'), timeout: 180000 });
 
 // --- the road home, taken by the button on the results screen ----------------
 if (raced.state === 'results') await page.locator('#resultsDrive').click();
@@ -111,7 +111,7 @@ check('the car starts on the road', startInfo.onRoad,
   `legs ${startInfo.legs.join(' + ')} m, ${startInfo.remaining} m to go`);
 check('the satnav counts the whole journey from the pit lane',
   startInfo.remaining > 2200, `${startInfo.remaining} m`);
-await page.screenshot({ path: join(shots, 'h2-road.png') });
+await page.screenshot({ path: join(shots, 'h2-road.png'), timeout: 180000 });
 
 // Drive the whole way with a traffic driver at the wheel of the player's car.
 const home = await page.evaluate(() => {
@@ -274,7 +274,7 @@ check('the road leaves the circuit and reaches the town',
 check('the car keeps its momentum through the gate',
   home.handover.length === 2 && home.handover[1].kmh > 25,
   `${home.handover.length === 2 ? home.handover[1].kmh : '?'} km/h crossing into the town`);
-await page.screenshot({ path: join(shots, 'h3-arrived.png') });
+await page.screenshot({ path: join(shots, 'h3-arrived.png'), timeout: 180000 });
 
 // --- the shop, and hitting things -------------------------------------------
 // Both are checked on a fresh drive: the run above parks the car for good.
@@ -555,6 +555,65 @@ check('the interstate reaches every state, and the game knows which one',
 check('the country is bigger than the old single town',
   country.span[0] >= 4000 && country.span[1] >= 2000, `${country.span[0]} x ${country.span[1]} m`);
 
+// --- fire ---------------------------------------------------------------------
+const fire = await page.evaluate(() => {
+  const g = window.__game;
+  g.startDriveHome();
+  while (g.legIndex < g.legs.length - 1) g.advanceLeg();
+  g.renderer.settings.particles = true;
+
+  // `gap` is how far back to start and `throttle` whether to accelerate into
+  // it: starting 40 m out with the throttle pinned arrives fast however slowly
+  // it set off, which is not a gentle bump however it was labelled.
+  const hitAt = (kmh, gap, throttle) => {
+    const fp = g.scene.world.footprints.find((f) =>
+      Math.hypot(f.x - g.player.pos[0], f.z - g.player.pos[2]) > 60);
+    const reach = Math.max(fp.halfW, fp.halfD) + gap;
+    const sx = fp.x, sz = fp.z - reach;
+    const yaw = Math.atan2(fp.x - sx, fp.z - sz);
+    g.player.setPose(sx, sz, yaw, g.scene.world);
+    g.player.fire = 0;
+    g.player.damage = 0;
+    g.player.vehicle.vel[0] = Math.sin(yaw) * (kmh / 3.6);
+    g.player.vehicle.vel[2] = Math.cos(yaw) * (kmh / 3.6);
+    g.player.vehicle.gear = 6;
+    g.input.driving = () => ({ throttle, brake: 0, steer: 0, handbrake: 0, shiftUp: false, shiftDown: false });
+    let peak = 0, particles = 0;
+    for (let k = 0; k < 60 * 4; k++) {
+      g.update(1 / 60);
+      if (g.player.fire > peak) peak = g.player.fire;
+      particles = Math.max(particles, g.renderer.particles.length);
+    }
+    return { peak: +peak.toFixed(1), particles, burning: +g.player.fire.toFixed(1) };
+  };
+
+  const hard = hitAt(220, 40, 1);
+  const gentle = hitAt(20, 10, 0);   // a nudge must not set the car alight
+
+  // A burning car has to burn out on its own.
+  g.player.fire = 1.2;
+  for (let k = 0; k < 60 * 3; k++) g.update(1 / 60);
+  const burnedOut = g.player.fire === 0;
+
+  // And the field can catch fire too, not just the player.
+  let anyCarCanBurn = false;
+  if (g.traffic.length) {
+    g.traffic[0].car.ignite(5);
+    anyCarCanBurn = g.traffic[0].car.fire > 0;
+    g.traffic[0].car.fire = 0;
+  }
+  return { hard, gentle, burnedOut, anyCarCanBurn };
+});
+console.log('   ', JSON.stringify(fire));
+check('a big crash sets the car on fire', fire.hard.peak > 5,
+  `${fire.hard.peak} s of fire at 220 km/h`);
+check('the fire actually throws flame and smoke', fire.hard.particles > 60,
+  `${fire.hard.particles} particles`);
+check('a gentle bump does not', fire.gentle.peak === 0,
+  `${fire.gentle.peak} s at 22 km/h`);
+check('a burning car burns out', fire.burnedOut);
+check('any car can catch fire, not just the player', fire.anyCarCanBurn);
+
 // --- traffic everywhere -------------------------------------------------------
 const traffic = await page.evaluate(() => {
   const g = window.__game;
@@ -635,6 +694,25 @@ const plates = await page.evaluate(() => {
     playerPlate: g.player.plate,
     unique: new Set(all.map((c) => c.plate)).size,
     total: all.length,
+    ...(() => {
+      // How far apart are two cars carrying the same number?
+      const seen = new Map();
+      const dists = [];
+      for (const t of g.traffic) {
+        const list = seen.get(t.car.plate);
+        if (list) {
+          for (const o of list) {
+            dists.push(Math.hypot(o.pos[0] - t.car.pos[0], o.pos[2] - t.car.pos[2]));
+          }
+          list.push(t.car);
+        } else seen.set(t.car.plate, [t.car]);
+      }
+      dists.sort((a, b) => a - b);
+      return {
+        duplicateP1: Math.round(dists[Math.floor(dists.length * 0.001)] || 0),
+        duplicateMedian: Math.round(dists[Math.floor(dists.length / 2)] || 0),
+      };
+    })(),
     allHaveMesh: all.every((c) => c.mesh),
     wellFormed: all.every((c) => /^[A-Z]{2}[A-Z]{2}[0-9]{3}$/.test(c.plate)
       || c.plate === 'IDAPEX1'),
@@ -647,8 +725,22 @@ check('every car on the grid has a plate', plates.race.every((c) => c.plate && c
   plates.race.map((c) => c.plate).join(' '));
 check('every traffic car has one too', plates.traffic > 0 && plates.allHaveMesh,
   `${plates.traffic} traffic cars`);
-check('no two cars share a number', plates.unique === plates.total,
-  `${plates.unique} of ${plates.total}`);
+// Every car having its own number would mean every car having its own mesh,
+// and at ten thousand cars that is more geometry in number plates than in the
+// entire country. Traffic draws from a pool per state instead, so the test is
+// that there are plenty of them and that you never see the same one twice
+// nearby - not that all ten thousand differ.
+check('there are plenty of different numbers about', plates.unique > 600,
+  `${plates.unique} distinct across ${plates.total} cars`);
+// Not an absolute guarantee, and it cannot be: sixteen numbers a state shared
+// between ten thousand cars is a pigeonhole, and a busy junction can hold more
+// than sixteen cars inside the clearance radius. What is guaranteed is that
+// practically every pair sharing a number is far enough apart never to be seen
+// together - a handful of exceptions at the worst junctions is the price of not
+// spending eleven million triangles on number plates.
+check('cars sharing a number are kept well apart',
+  plates.duplicateP1 > 55 && plates.duplicateMedian > 250,
+  `99.9% of pairs over ${plates.duplicateP1} m apart, median ${plates.duplicateMedian} m`);
 check('the plates are well formed', plates.wellFormed);
 check('the player keeps its own number', plates.playerPlate === 'IDAPEX1',
   plates.playerPlate);

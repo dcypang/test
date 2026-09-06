@@ -16,6 +16,23 @@ const CAR_SHELL = 0.98;
 const CONTACT_SKIN = 0.05;
 // The player's car keeps one number wherever it goes, registered at home.
 const PLAYER_PLATE = 'IDAPEX1';
+// How many distinct plates each state's traffic draws from. Each one is a mesh.
+const PLATE_POOL_PER_STATE = 16;
+// How far apart two cars carrying the same number must be.
+const PLATE_CLEAR_RADIUS = 70;
+// Traffic density: one car per this many metres of road, and a hard ceiling on
+// how many exist at once.
+//
+// These numbers are measured, not chosen. Frame time was never the limit - ten
+// thousand cars step in about five milliseconds. The limit was that this
+// traffic has no give-way rule, so two cars meeting in a junction hold each
+// other there for ever and the jam spreads back down every road feeding it: at
+// one car per twenty metres an autopilot driven home from the circuit never got
+// within 470 m of the house. With the deadlock relief below, the same density
+// gets home in five minutes.
+const STREET_SPACING = 21;
+const HIGHWAY_SPACING = 45;
+const TRAFFIC_MAX = 10000;
 // Most the road boundary may move the car back in one frame.
 const BOUNDARY_EASE = 0.45;
 
@@ -415,6 +432,55 @@ class Game {
     };
   }
 
+  // No two cars within sight of each other carry the same number.
+  //
+  // Sixteen plates a state is deliberate - each distinct number is a mesh, and
+  // ten thousand unique ones would be eleven million triangles of number plate,
+  // more geometry than the entire country. But sixteen numbers shared by two
+  // hundred cars means each is worn by a dozen, and leaving that to chance puts
+  // two of them side by side often enough to be noticed. Rather than a bigger
+  // pool, one pass over a coarse grid re-plates the ones that landed together,
+  // which makes it a guarantee rather than a probability.
+  dedupePlates(scene, radius = PLATE_CLEAR_RADIUS) {
+    const cell = radius;
+    const key = (x, z) => Math.floor(x / cell) * 100003 + Math.floor(z / cell);
+    const grid = new Map();
+    for (const t of this.traffic) {
+      const k = key(t.car.pos[0], t.car.pos[2]);
+      let list = grid.get(k);
+      if (!list) { list = []; grid.set(k, list); }
+      list.push(t.car);
+    }
+    const r2 = radius * radius;
+    // Several passes, because re-plating one car can clash it with another that
+    // was settled a moment ago. Three is enough to leave nothing behind at ten
+    // thousand cars; it is not iterated to a fixed point because it does not
+    // need to be.
+    for (let pass = 0; pass < 3; pass++) {
+    for (const t of this.traffic) {
+      const car = t.car;
+      const cx = Math.floor(car.pos[0] / cell), cz = Math.floor(car.pos[2] / cell);
+      const st = scene.stateAt ? scene.stateAt(car.pos[0], car.pos[2]) : null;
+      for (let attempt = 1; attempt <= PLATE_POOL_PER_STATE; attempt++) {
+        let clash = false;
+        for (let dx = -1; dx <= 1 && !clash; dx++) {
+          for (let dz = -1; dz <= 1 && !clash; dz++) {
+            const list = grid.get((cx + dx) * 100003 + (cz + dz));
+            if (!list) continue;
+            for (const o of list) {
+              if (o === car || o.plate !== car.plate) continue;
+              const ddx = o.pos[0] - car.pos[0], ddz = o.pos[2] - car.pos[2];
+              if (ddx * ddx + ddz * ddz < r2) { clash = true; break; }
+            }
+          }
+        }
+        if (!clash) break;
+        this.fitPlate(car, st, null, null, attempt + pass * PLATE_POOL_PER_STATE);
+      }
+    }
+    }
+  }
+
   // --- lifecycle ------------------------------------------------------------
 
   async boot() {
@@ -599,9 +665,39 @@ class Game {
 
   // Hang a plate on a car: an explicit number, or one drawn for the given
   // state.
-  fitPlate(car, state, rng, text) {
+  // `seq`, when given, picks from the pool by position instead of at random.
+  // Cars are spawned in order along a road, so consecutive numbers mean two
+  // cars nose to tail never carry the same plate - which random selection from
+  // a pool of sixteen does surprisingly often, and it is very visible.
+  fitPlate(car, state, rng, text, seq) {
     const st = state || this.homePlateState();
-    const number = text || makePlateNumber(rng || Math.random, st ? st.abbr : 'ID');
+    let number = text;
+    if (!number) {
+      // Traffic draws from a small pool per state rather than a fresh number
+      // each time. Every car having its own plate means every car having its
+      // own mesh, and at ten thousand cars that is eleven million triangles of
+      // number plate - more geometry than the entire country. Sixteen per state
+      // is enough that you never see the same plate twice in one street.
+      const pool = PLATE_POOL_PER_STATE;
+      const abbr = st ? st.abbr : 'ID';
+      if (!this._plateNumbers) this._plateNumbers = new Map();
+      let list = this._plateNumbers.get(abbr);
+      if (!list) {
+        const r = makeRng(4801 + abbr.charCodeAt(0) * 31 + abbr.charCodeAt(1));
+        list = [];
+        for (let i = 0; i < pool; i++) list.push(makePlateNumber(r, abbr));
+        this._plateNumbers.set(abbr, list);
+      }
+      // Chosen by where the car is, not at random and not by spawn order.
+      // Sixteen plates a state over ten thousand cars means each number is
+      // worn by a dozen of them, and picking at random puts two of those side
+      // by side often enough to notice. Hashing the position means two cars
+      // within a few tens of metres land in different buckets and so carry
+      // different numbers, wherever they came from.
+      const cx = Math.floor(car.pos[0] / 23), cz = Math.floor(car.pos[2] / 23);
+      const h = Math.abs(cx * 7919 + cz * 104729 + (seq || 0) * 31);
+      number = list[h % list.length];
+    }
     // Traffic is a different shaped car, and hangs its plates in different
     // places.
     const mount = car.meshes === this.trafficMeshes ? PLATE_MOUNT_ROAD : PLATE_MOUNT_GT;
@@ -760,7 +856,13 @@ class Game {
       [0.72, 0.72, 0.74], [0.10, 0.11, 0.13], [0.55, 0.09, 0.08], [0.10, 0.22, 0.45],
       [0.82, 0.82, 0.80], [0.25, 0.42, 0.30], [0.40, 0.42, 0.46], [0.68, 0.55, 0.20],
     ];
+    // Cars are spread evenly along the path with a little jitter rather than
+    // dropped at random indices. At a dozen cars random placement is fine; at
+    // several hundred on one interstate it stacks them inside each other and
+    // the physics has to shove them apart before anything can move.
+    let plateSeq = 0;
     const addOn = (path, count, limit) => {
+      const span = Math.max(1, path.spline.count - 12);
       for (let i = 0; i < count; i++) {
         const dir = i % 2 === 0 ? 1 : -1;
         const car = new Car(this.trafficMeshes, {
@@ -776,13 +878,15 @@ class Game {
         car.isTraffic = true;
         const lane = dir > 0 ? 2.1 : -2.1;
         const driver = new TrafficDriver(car, path, dir, lane, limit);
-        const idx = Math.floor(rnd2(rng, 6, path.spline.count - 6));
-        driver.placeAt(idx, scene.world);
+        const idx = Math.floor(6 + ((i + 0.5) / count) * span
+          + rnd2(rng, -span / (count * 4), span / (count * 4)));
+        driver.placeAt(clamp(idx, 2, path.spline.count - 3), scene.world);
         // Registered where it actually is, not where the middle of its road is.
         // An interstate crosses the whole country, so taking the state from the
         // path's midpoint put local plates on cars a thousand miles from home.
         this.fitPlate(car,
-          scene.stateAt ? scene.stateAt(car.pos[0], car.pos[2]) : null, rng);
+          scene.stateAt ? scene.stateAt(car.pos[0], car.pos[2]) : null, rng,
+          null, plateSeq++);
         this.traffic.push(driver);
       }
     };
@@ -797,26 +901,31 @@ class Game {
     // anything past 340 m is not drawn. So this spreads a little everywhere
     // rather than concentrating it.
     {
-      const byTown = new Map();
+      // Everything else is filled to a density rather than a count, so the
+      // traffic is as thick on a street in Maine as on one in Nevada however
+      // many roads each has. Highways get a longer spacing because a car every
+      // forty metres at 110 km/h is not traffic, it is a car park.
+      const candidates = [];
+      let total = 0;
       for (const p of scene.world.paths) {
-        if (/^Interstate/.test(p.name || '')) {
-          addOn(p, 8, 110);            // long roads, so eight is still sparse
-          continue;
-        }
-        if (!p.town) continue;
-        let list = byTown.get(p.town);
-        if (!list) { list = []; byTown.set(p.town, list); }
-        list.push(p);
+        if (p === scene.route || p.type === 'drive' || p.type === 'track') continue;
+        const highway = /^Interstate/.test(p.name || '');
+        if (!highway && !p.town && !scene.sideStreets.includes(p)) continue;
+        const density = (this.settings && this.settings.trafficDensity) || 1;
+        const spacing = (highway ? HIGHWAY_SPACING : STREET_SPACING) / density;
+        const n = Math.max(1, Math.round(p.spline.length / spacing));
+        candidates.push({ path: p, n, limit: highway ? 110 : 40 });
+        total += n;
       }
-      for (const [town, streets] of byTown) {
-        // Ashcombe is a city and can carry more; a four block town with a car
-        // on every street is a traffic jam.
-        const lanes = town === 'Ashcombe' ? 6 : 2;
-        for (let i = 0; i < Math.min(lanes, streets.length); i++) {
-          addOn(streets[Math.floor((i * streets.length) / lanes)], 2, 40);
-        }
+      // Held to a ceiling, because past a point more cars is not more traffic,
+      // it is one long queue that never moves.
+      const scale = total > TRAFFIC_MAX ? TRAFFIC_MAX / total : 1;
+      for (const c of candidates) {
+        const n = Math.max(1, Math.round(c.n * scale));
+        addOn(c.path, n, c.limit);
       }
     }
+    this.dedupePlates(scene);
     if (clearOf) {
       this.traffic = this.traffic.filter((t) =>
         Math.hypot(t.car.pos[0] - clearOf[0], t.car.pos[2] - clearOf[2]) > 50);
@@ -854,6 +963,7 @@ class Game {
 
   update(dt) {
     if (this.state === 'loading') return;
+    this._frameId = (this._frameId || 0) + 1;
 
     if (this.input.tapped('KeyP') || this.input.tapped('Escape')) {
       if (this.state === 'race' || this.state === 'drive') {
@@ -1036,6 +1146,19 @@ class Game {
   // One place for everything a hit throws off: sparks along the contact,
   // debris in the paint colour of whatever you hit, a puff of dust on a heavy
   // one, plus the shake, the flash, the noise and the damage.
+  // What sets a car alight. A big single hit does it outright; a car that has
+  // already taken a beating goes up on a smaller one, which is why a long race
+  // ends in flames more often than a clean lap does.
+  maybeIgnite(car, strength) {
+    if (!car) return false;
+    const worn = car.damage || 0;
+    if (strength > 0.62 || (worn > 0.7 && strength > 0.3)) {
+      car.ignite(9 + strength * 12);
+      return true;
+    }
+    return false;
+  }
+
   impact(x, z, nx, nz, strength, otherPaint) {
     const car = this.player;
     const y = car.pos[1] + 0.55;
@@ -1043,6 +1166,9 @@ class Game {
     this.camera.shake = Math.max(this.camera.shake, strength * 0.75);
     this.renderer.flash = Math.min(0.30, strength * 0.22);
     car.damage = Math.min(1, car.damage + strength * 0.09);
+    if (this.maybeIgnite(car, strength)) {
+      this.hud.message('THE CAR IS ON FIRE', 3.2, 'bad');
+    }
 
     if (!this.renderer.settings.particles) return;
     // Sparks fly along the surface, not out of it, so they are thrown along
@@ -1120,10 +1246,33 @@ class Game {
     }
   }
 
+  // The cars that can actually touch something this frame: the player, and
+  // whatever is close enough to be moving. Anything beyond the simulation
+  // radius is frozen and cannot collide with anything, so feeding the whole
+  // country into a pairwise loop only makes it quadratic in the size of the
+  // country - eleven million pair tests a frame at five thousand cars, which
+  // is a quarter of a second of nothing useful.
+  collidableCars() {
+    if (this.state !== 'drive' || !this.player) return this.cars;
+    const out = this._collidable || (this._collidable = []);
+    // Worked out once a frame. Two callers want the same list and the scan is
+    // over every car in the country, so doing it twice is ten thousand wasted
+    // distance checks a frame.
+    if (this._collidableFrame === this._frameId) return out;
+    this._collidableFrame = this._frameId;
+    out.length = 0;
+    const p = this.player;
+    out.push(p);
+    const r = 400 * 400;
+    for (const t of this.traffic) {
+      const dx = t.car.pos[0] - p.pos[0], dz = t.car.pos[2] - p.pos[2];
+      if (dx * dx + dz * dz < r) out.push(t.car);
+    }
+    return out;
+  }
+
   resolveCollisions(dt, boundaryFn) {
-    const cars = this.state === 'drive'
-      ? [this.player, ...this.traffic.map((t) => t.car)]
-      : this.cars;
+    const cars = this.collidableCars();
 
     // Car versus car, approximated with two circles per car.
     for (let i = 0; i < cars.length; i++) {
@@ -1178,6 +1327,15 @@ class Game {
               if (strength > 0.05 && (a === this.player || b === this.player)) {
                 this.impact((ax + bx) / 2, (az + bz) / 2, nx, nz, strength, other.livery.paint);
                 if (this.driveState) this.registerPenalty('Contact', strength * 12);
+              }
+              // Both cars take the damage and both can catch fire, whoever is
+              // driving them: a shunt that would set the player alight does the
+              // same to the car being shunted.
+              if (strength > 0.12) {
+                a.damage = Math.min(1, (a.damage || 0) + strength * 0.07);
+                b.damage = Math.min(1, (b.damage || 0) + strength * 0.07);
+                if (a !== this.player) this.maybeIgnite(a, strength);
+                if (b !== this.player) this.maybeIgnite(b, strength);
               }
             }
           }
@@ -1521,14 +1679,7 @@ class Game {
     // for every car, from every car - which was fine for the two dozen on the
     // road home and quadratic for the several hundred now spread across the
     // country. A car in Florida is not something a car in Oregon has to avoid.
-    const nearby = this._nearbyCars || (this._nearbyCars = []);
-    nearby.length = 0;
-    nearby.push(car);
-    for (const t of this.traffic) {
-      if (Math.hypot(t.car.pos[0] - car.pos[0], t.car.pos[2] - car.pos[2]) < 400) {
-        nearby.push(t.car);
-      }
-    }
+    const nearby = this.collidableCars();
 
     const alive = [];
     for (const t of this.traffic) {
@@ -1536,6 +1687,16 @@ class Game {
       if (d < 320) {
         t.update(dt, world, nearby, scene.trafficLights || []);
         t.car.update(dt, world, d < 110 ? this.renderer : null);
+        // Deadlock relief. This traffic has no give-way rule, so two cars can
+        // meet in a junction and hold each other there indefinitely - and a jam
+        // like that spreads back down every road feeding it until the country
+        // stops. A car that has not moved for several seconds is taken off and
+        // put back somewhere clear on its own route. Anything close enough for
+        // the player to be watching gets much longer, so it is not seen
+        // vanishing out of a queue it was legitimately sitting in.
+        const still = t.car.vehicle.speed < 0.7 && t.car.fire <= 0;
+        t.stuckFor = still ? (t.stuckFor || 0) + dt : 0;
+        if (t.stuckFor > (d < 90 ? 15 : 5)) { t.done = true; t.stuckFor = 0; }
       }
       if (!t.done) alive.push(t);
       else {
@@ -1560,6 +1721,10 @@ class Game {
           if (clear) break;
         }
         t.placeAt(idx, world);
+        // It has moved, so it is registered somewhere else now.
+        if (scene.stateAt) {
+          this.fitPlate(t.car, scene.stateAt(t.car.pos[0], t.car.pos[2]), Math.random);
+        }
         alive.push(t);
       }
     }
@@ -2038,7 +2203,10 @@ class Game {
       }
       this.hud.drawDrive({
         player: this.player,
-        cars: [this.player, ...this.traffic.map((t) => t.car)],
+        // Only what is near enough to be worth a dot. Handing the minimap every
+        // car in the country meant allocating and plotting ten thousand of them
+        // a frame, for a map two centimetres across.
+        cars: this.collidableCars(),
         routeSpline: (this.legs ? this.leg().route : this.scene.route).spline,
         destination: this.legs ? this.leg().destination : this.scene.destination,
         lights: (this.legs ? this.leg().lights : this.scene.trafficLights) || [],

@@ -78,6 +78,10 @@ class Car {
     this.damage = 0;
     this.headlightsOn = false;
     this.brakeGlow = 0;
+    // Seconds of fire left. A hard enough hit sets a car alight, and it burns
+    // whoever is driving it - the player, the field, or a hatchback in Nevada.
+    this.fire = 0;
+    this.fireSeed = Math.random() * 100;
     this.reverseLight = 0;
     this.indicator = 0;          // -1 left, 0 off, 1 right
     this.indicatorPhase = 0;
@@ -158,9 +162,16 @@ class Car {
     return (w[0].compression + w[1].compression + w[2].compression + w[3].compression) / 4;
   }
 
+  // A hard hit sets the car alight. Repeat hits feed the fire rather than
+  // restarting it, so a car that keeps being shunted keeps burning.
+  ignite(seconds) {
+    this.fire = Math.min(26, Math.max(this.fire, 0) + seconds);
+  }
+
   update(dt, world, renderer) {
     const v = this.vehicle;
     v.update(dt, world);
+    if (this.fire > 0) this.fire = Math.max(0, this.fire - dt);
 
     // Lights.
     this.brakeGlow = lerp(this.brakeGlow, v.brake > 0.04 ? 1 : 0, clamp(dt * 14, 0, 1));
@@ -240,6 +251,38 @@ class Car {
             { life: 0.10, size: 0.16, grow: 1.6, tint: [2.2, 1.1, 0.4], alpha: 0.9, drag: 4, gravity: 0 });
         }
       }
+    }
+
+    // Fire. A burning car throws flame up off the engine bay, black smoke
+    // above that, and casts its own light - which is the part that sells it at
+    // night and in the mirror. It burns down over about twenty seconds, thinner
+    // and smokier as it goes.
+    if (this.fire > 0) {
+      const t = clamp(this.fire / 8, 0, 1);        // fierce at first, then embers
+      const src = this.localToWorld([0, 0.85, -1.25]);
+      const flames = 1 + Math.round(t * 3);
+      for (let i = 0; i < flames; i++) {
+        renderer.spawnParticle(
+          [src[0] + rnd(-0.35, 0.35), src[1] + rnd(-0.1, 0.3), src[2] + rnd(-0.5, 0.5)],
+          [v.vel[0] * 0.2 + rnd(-0.8, 0.8), rnd(2.2, 5.0) * (0.5 + t),
+            v.vel[2] * 0.2 + rnd(-0.8, 0.8)],
+          { life: rnd(0.25, 0.6), size: 0.22, grow: 1.6,
+            tint: [2.6, 0.9 + t * 0.5, 0.18], alpha: 0.85,
+            drag: 1.1, gravity: -1.2, additive: true });
+      }
+      // Smoke keeps going after the flames die back, so a burnt-out car still
+      // reads as one from a distance.
+      for (let i = 0; i < 2; i++) {
+        renderer.spawnParticle(
+          [src[0] + rnd(-0.4, 0.4), src[1] + rnd(0.2, 0.9), src[2] + rnd(-0.6, 0.6)],
+          [v.vel[0] * 0.3 + rnd(-0.7, 0.7), rnd(1.6, 3.4), v.vel[2] * 0.3 + rnd(-0.7, 0.7)],
+          { life: rnd(1.4, 2.8), size: 0.42, grow: 2.6,
+            tint: [0.06, 0.055, 0.05], alpha: 0.34, drag: 0.7, gravity: -0.5 });
+      }
+      // The light it casts, flickering rather than steady.
+      const flicker = 0.75 + 0.25 * Math.sin(this.fireSeed + performance.now() * 0.021);
+      renderer.addGlow([src[0], src[1] + 0.35, src[2]],
+        [1.0, 0.42, 0.10], 0.55 + t * 0.5, (0.5 + t * 0.5) * flicker);
     }
 
     // Brake disc glow under heavy braking.

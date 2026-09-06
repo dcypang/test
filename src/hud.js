@@ -496,12 +496,20 @@ class Hud {
         const [ax, ay] = px(st.x0, st.z0);
         const [bx, by] = px(st.x1, st.z1);
         const t = st.tint;
+        // Drawn as its own outline rather than its cell, so the map is a map of
+        // shapes rather than a chequerboard.
+        ctx.beginPath();
+        for (let i = 0; i < st.poly.length; i++) {
+          const [sx, sy] = px(st.poly[i][0], st.poly[i][1]);
+          if (i === 0) ctx.moveTo(sx, sy); else ctx.lineTo(sx, sy);
+        }
+        ctx.closePath();
         // The tint multiplies a mid grey, the same way it multiplies the ground.
         ctx.fillStyle = `rgba(${Math.round(38 * t[0])}, ${Math.round(42 * t[1])}, ${Math.round(46 * t[2])}, 0.92)`;
-        ctx.fillRect(ax, ay, bx - ax, by - ay);
+        ctx.fill();
         ctx.strokeStyle = st === here ? 'rgba(255, 209, 102, 0.85)' : 'rgba(255,255,255,0.16)';
         ctx.lineWidth = st === here ? 2 : 1;
-        ctx.strokeRect(ax, ay, bx - ax, by - ay);
+        ctx.stroke();
         // Fifty-six cells means some are narrower than their state's name, so
         // anything that will not fit falls back to the postal code rather than
         // running into next door.

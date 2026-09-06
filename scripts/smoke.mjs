@@ -59,25 +59,25 @@ if (booted) {
     window.__game.renderer.settings.particles = false;
   });
   await page.waitForTimeout(1500);
-  await page.screenshot({ path: join(shotDir, '01-menu.png') });
+  await page.screenshot({ path: join(shotDir, '01-menu.png'), timeout: 180000 });
 
   console.log('starting race...');
   await page.evaluate(() => window.__game.startRace());
   await page.waitForTimeout(2000);
-  await page.screenshot({ path: join(shotDir, '02-grid.png') });
+  await page.screenshot({ path: join(shotDir, '02-grid.png'), timeout: 180000 });
 
   // Skip the countdown and drive.
   await page.evaluate(() => { window.__game.raceState.countdown = 0.2; });
   await page.waitForTimeout(1000);
   await page.keyboard.down('w');
   await page.waitForTimeout(6000);
-  await page.screenshot({ path: join(shotDir, '03-racing.png') });
+  await page.screenshot({ path: join(shotDir, '03-racing.png'), timeout: 180000 });
   await page.keyboard.down('d');
   await page.waitForTimeout(1500);
   await page.keyboard.up('d');
   await page.waitForTimeout(2500);
   await page.keyboard.up('w');
-  await page.screenshot({ path: join(shotDir, '04-racing2.png') });
+  await page.screenshot({ path: join(shotDir, '04-racing2.png'), timeout: 180000 });
 
   const telemetry = await page.evaluate(() => {
     const g = window.__game;
@@ -131,17 +131,17 @@ if (booted) {
   // Cockpit view.
   await page.evaluate(() => { window.__game.camera.mode = 3; });
   await page.waitForTimeout(800);
-  await page.screenshot({ path: join(shotDir, '05-cockpit.png') });
+  await page.screenshot({ path: join(shotDir, '05-cockpit.png'), timeout: 180000 });
   await page.evaluate(() => { window.__game.camera.mode = 0; });
 
   console.log('drive home...');
   await page.evaluate(() => window.__game.startDriveHome());
   await page.waitForTimeout(2500);
-  await page.screenshot({ path: join(shotDir, '06-home-start.png') });
+  await page.screenshot({ path: join(shotDir, '06-home-start.png'), timeout: 180000 });
   await page.keyboard.down('w');
   await page.waitForTimeout(8000);
   await page.keyboard.up('w');
-  await page.screenshot({ path: join(shotDir, '07-driving.png') });
+  await page.screenshot({ path: join(shotDir, '07-driving.png'), timeout: 180000 });
 
   const driveTel = await page.evaluate(() => {
     const g = window.__game;
@@ -169,12 +169,12 @@ if (booted) {
     g.driveState.hint = g.scene.route.spline.count - 3;
   });
   await page.waitForTimeout(600);
-  await page.screenshot({ path: join(shotDir, '08-home.png') });
+  await page.screenshot({ path: join(shotDir, '08-home.png'), timeout: 180000 });
   await page.keyboard.down('w');
   await page.waitForTimeout(1400);
   await page.keyboard.up('w');
   await page.waitForTimeout(4500);
-  await page.screenshot({ path: join(shotDir, '09-arrived.png') });
+  await page.screenshot({ path: join(shotDir, '09-arrived.png'), timeout: 180000 });
   const arrived = await page.evaluate(() => window.__game.state);
   console.log('final state:', arrived);
 

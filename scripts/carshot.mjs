@@ -53,6 +53,6 @@ await page.evaluate(() => {
   orbit();
 });
 await page.waitForTimeout(2500);
-await page.screenshot({ path: out });
+await page.screenshot({ path: out, timeout: 180000 });
 console.log('wrote', out, errors.length ? 'ERRORS: ' + errors.slice(0, 5).join(' | ') : '(no errors)');
 await browser.close();
