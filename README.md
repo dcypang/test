@@ -45,20 +45,41 @@ hand-picked palettes: Nevada, Utah, Arizona and New Mexico are bare desert;
 Washington, Oregon, Maine and the lake states are evergreen; the Dakotas and
 the plains are gold stubble; Hawaii and the territories are tropical.
 
-Each state is **1,725 by 1,500 metres**, with a town of three or four blocks
-and a great deal of open country around it. The grid is deliberately **not
-uniform**: Idaho holds Ashcombe, the circuit road and the house, and gets 1,900
-by 1,650.
+Each state is **1,725 by 1,500 metres**, with a town in it and a great deal of
+open country around it. The grid is deliberately **not uniform**: Idaho holds
+Ashcombe, the circuit road and the house, and gets 1,900 by 1,650.
 
-**Each state is also its own shape.** The outlines are polygons in each cell —
-Texas with its panhandle, Florida's peninsula, Michigan's mitten, Louisiana's
-boot, Oklahoma's handle, California's diagonal coast, Nevada's wedge. Forty-four
-have a real silhouette; the rest are rectangles, which for Colorado, Wyoming and
-Kansas is the right answer. They are low resolution on purpose — silhouettes to
-be read from a moving car and on a map of a whole country, not survey data — and
-the ground between them stays neutral, so you can see a border go past. Idaho is
-the one exception and fills its cell corner to corner, because Ashcombe and the
-road home already do.
+**Each state is its real shape.** The outlines are no longer drawn by hand —
+they are built from public boundary data by `scripts/shapes.mjs` and simplified
+to about 36 vertices each, which is the resolution that reads from a moving car
+and on a map of a whole country. **55 of the 56** are real; three things about
+them are true that a hand drawing got wrong:
+
+- **They keep their proportions.** Every shape used to be stretched to fill its
+  cell, which made Tennessee square and Vermont fat. Each is now fitted to its
+  cell with its own aspect ratio intact, so Tennessee is three and a half times
+  as wide as it is deep and Delaware is a third as wide as it is tall.
+- **Islands survive.** A state is a list of rings rather than one loop, so
+  Michigan keeps its Upper Peninsula, Hawaii is a chain of five and Rhode Island
+  keeps Aquidneck.
+- **Size follows area.** Not to true scale — Rhode Island next to Texas at true
+  scale is smaller than one town block, and every state has to hold a town — but
+  through a root, so the order is right and the extremes are livable. The
+  biggest are about 1.6 times the smallest across.
+
+The ground between the shapes stays neutral, and the trees stop at the border
+too, so you can watch one go past. **Idaho is the exception** and fills its cell
+corner to corner. That is measured rather than assumed: Ashcombe, the circuit
+and the road home fill 99% × 99% of its cell, and a real Idaho — tall, narrow,
+0.62 as wide as it is deep — covers 42% of that even when scaled up until it
+spills into Oregon. Half the city would stand on the ground between states with
+the state line down the high street.
+
+Towns are sized to fit the state they stand in, and stand at the point furthest
+from any border rather than at the middle of the cell — which for Michigan is in
+Lake Michigan and for Louisiana is off the end of the boot. Texas gets a
+four-by-three grid, Guam gets four blocks, and `scripts/statefit.mjs` checks all
+25 probe points of every town land on their own state's ground.
 
 Gameplay boundaries are still the cell, so the HUD names a state the moment you
 enter its square; the polygon is what you see, on the ground and on the map.
@@ -160,12 +181,24 @@ paragraph rather than a feature.
 
 **Plates cannot be unique.** Each distinct number is its own mesh, so ten
 thousand of them would be eleven million triangles of number plate, more
-geometry than the entire country. Traffic draws from sixteen per state instead,
-and a pass over a coarse grid re-plates any two that landed within seventy
-metres of each other. Practically every pair sharing a number is now hundreds of
-metres apart; a handful at the busiest junctions are not, because sixteen
-numbers shared by two hundred cars is a pigeonhole and no amount of shuffling
-changes that.
+geometry than the entire country. Traffic draws from **24 per state** instead —
+1,343 numbers across the country — and a pass over a coarse grid re-plates any
+two that landed within seventy metres of each other.
+
+Sixteen was enough while every state had the same four-by-three town. Sizing
+each town to the state it stands in packed the small ones tighter, and the
+pigeonhole bit: a hundred cars ended up beside their own twin. Twenty-four cuts
+that to twenty-eight in a country of ten thousand, for no load time that shows
+above the noise.
+
+| plates per state | distinct numbers | twin within 10 m | within 25 m | within 70 m |
+|---|---|---|---|---|
+| 16 | 896 | 93 | 150 | 155 |
+| 24 | 1,343 | **28** | **38** | **38** |
+
+The twenty-eight are not a failure of the shuffle. It runs once, when the
+traffic is placed, and the traffic then drives: two cars carrying the same
+number are free to meet at a junction afterwards, and nothing re-checks.
 
 Filling the country also turned up a scoring bug that had been there all along:
 free roam is not meant to be scored, and speeding was exempt, but **hitting
@@ -213,7 +246,7 @@ Two ways to get there: take the chequered flag and press **Drive home** on the
 results screen, or **Skip to the drive home** on the title screen.
 
 The circuit and the country are two separate worlds — together they are under
-3.6 million triangles, and their coordinates overlap — so the handover happens
+2.7 million triangles, and their coordinates overlap — so the handover happens
 as you pass under the gate. The car keeps its speed, gear and
 revs across it, and both sides of the gate carry the same stonework and the same
 avenue of trees, so there is nothing in shot when the world changes.
@@ -221,9 +254,11 @@ avenue of trees, so there is nothing in shot when the world changes.
 ## Number plates
 
 Every car carries one on the nose and one on the tail — the eight on the race
-grid, the traffic on the road home, and yours. No two are the same, and each is
-registered in a real state: `WAHM361` out of Washington, `MTTV648` out of
-Montana. Yours is `IDAPEX1` and follows you from the circuit to the driveway.
+grid, the traffic on the road home, and yours. Each is registered in a real
+state: `WAHM361` out of Washington, `MTTV648` out of Montana. Yours is `IDAPEX1`
+and follows you from the circuit to the driveway. The eight on the grid are all
+different; the ten thousand on the road cannot be, for the reason under
+[Traffic, everywhere](#traffic-everywhere).
 
 They cannot be part of the car mesh, because every car on the road shares one,
 so each plate is its own small mesh — a panel, a band in the state's colour,
@@ -419,6 +454,7 @@ out. `scripts/simtest.mjs` asserts all of that.
       car_model.js  the procedural race car
       world.js      terrain, road network, surface queries, racing line
       props.js      barriers, grandstands, buildings, trees, traffic cars
+      state_shapes.js  every state's outline, generated from boundary data
       scenes.js     the circuit and the route home
       renderer.js   shadow cascades, sky, glass, particles, decals, post
       car.js        a drivable car: physics + visuals + effects
@@ -440,15 +476,20 @@ out. `scripts/simtest.mjs` asserts all of that.
     node scripts/mobile.mjs     # emulate a phone and exercise the touch controls
     node scripts/drivehome.mjs  # race to the flag, then drive the whole way home
     node scripts/solid.mjs      # collider audit: nothing can be driven through
+    node scripts/statefit.mjs   # state outlines: shape, size, and towns on them
+    node scripts/mapshot.mjs    # screenshot the GPS, where every shape is visible
+    node scripts/shapes.mjs     # regenerate state_shapes.js from boundary data
     node scripts/polycount.mjs  # triangle budget, scene by scene
     node scripts/steerfeel.mjs  # steering feel scorecard
     node scripts/steerloop.mjs  # tune the steering against it
 
 ## Getting it built
 
-The country takes about **13 seconds of CPU** to generate, and that number is
-the whole reason `MeshBuilder` keeps its vertices in growable typed arrays
-rather than plain ones.
+The country takes seconds of CPU to generate rather than milliseconds, and that
+is the whole reason `MeshBuilder` keeps its vertices in growable typed arrays
+rather than plain ones. Both worlds together build in **6.5 s** of pure geometry
+work measured in Node with the GL calls stubbed out — not the same number as the
+in-browser figures below, which include the upload, but the same work.
 
 Building a world means pushing tens of millions of floats and then copying
 every one of them again: once when a prop is stamped into a batch, once when

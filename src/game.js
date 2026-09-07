@@ -17,7 +17,12 @@ const CONTACT_SKIN = 0.05;
 // The player's car keeps one number wherever it goes, registered at home.
 const PLAYER_PLATE = 'IDAPEX1';
 // How many distinct plates each state's traffic draws from. Each one is a mesh.
-const PLATE_POOL_PER_STATE = 16;
+//
+// Sixteen was enough while every state had the same four-by-three town. Sizing
+// each town to the state it stands in packed the small ones tighter, and at
+// sixteen a hundred cars ended up parked beside their own twin. Twenty-four
+// cuts that to twenty-eight across the country for no measurable load time.
+const PLATE_POOL_PER_STATE = 24;
 // How far apart two cars carrying the same number must be.
 const PLATE_CLEAR_RADIUS = 70;
 // Traffic density: one car per this many metres of road, and a hard ceiling on

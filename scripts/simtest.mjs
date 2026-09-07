@@ -11,7 +11,7 @@ const root = dirname(dirname(fileURLToPath(import.meta.url)));
 const src = join(root, 'src');
 
 const FILES = ['math.js', 'gl.js', 'mesh.js', 'physics.js', 'car_model.js',
-  'world.js', 'props.js', 'scenes.js', 'ai.js'];
+  'world.js', 'props.js', 'state_shapes.js', 'scenes.js', 'ai.js'];
 
 // A WebGL stub: geometry still gets built on the CPU, uploads become no-ops.
 const glStub = new Proxy({}, {

@@ -16,7 +16,7 @@ const root = dirname(dirname(fileURLToPath(import.meta.url)));
 const src = join(root, 'src');
 
 const FILES = ['math.js', 'gl.js', 'mesh.js', 'physics.js', 'car_model.js',
-  'world.js', 'props.js', 'scenes.js', 'ai.js'];
+  'world.js', 'props.js', 'state_shapes.js', 'scenes.js', 'ai.js'];
 
 const glStub = new Proxy({}, {
   get(target, prop) {

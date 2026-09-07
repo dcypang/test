@@ -465,7 +465,9 @@ class Hud {
     const W = this.width, H = this.height;
 
     ctx.save();
-    ctx.fillStyle = 'rgba(8, 10, 14, 0.93)';
+    // Near enough opaque: the state outlines are read against this, and the
+    // live scene showing through put mottling behind every border.
+    ctx.fillStyle = 'rgba(8, 10, 14, 0.985)';
     ctx.fillRect(0, 0, W, H);
 
     // Fit the network to the screen, leaving room for the header and legend.
@@ -493,33 +495,44 @@ class Hud {
       const b = state.stateBounds;
       const here = state.currentState;
       for (const st of state.states) {
-        const [ax, ay] = px(st.x0, st.z0);
-        const [bx, by] = px(st.x1, st.z1);
         const t = st.tint;
         // Drawn as its own outline rather than its cell, so the map is a map of
-        // shapes rather than a chequerboard.
+        // shapes rather than a chequerboard. One path per ring, so the islands
+        // are there: Michigan's Upper Peninsula, the Hawaiian chain, the Cape.
+        let ax = Infinity, ay = Infinity, bx = -Infinity, by = -Infinity;
         ctx.beginPath();
-        for (let i = 0; i < st.poly.length; i++) {
-          const [sx, sy] = px(st.poly[i][0], st.poly[i][1]);
-          if (i === 0) ctx.moveTo(sx, sy); else ctx.lineTo(sx, sy);
+        for (const ring of st.polys) {
+          for (let i = 0; i < ring.length; i++) {
+            const [sx, sy] = px(ring[i][0], ring[i][1]);
+            if (sx < ax) ax = sx; if (sx > bx) bx = sx;
+            if (sy < ay) ay = sy; if (sy > by) by = sy;
+            if (i === 0) ctx.moveTo(sx, sy); else ctx.lineTo(sx, sy);
+          }
+          ctx.closePath();
         }
-        ctx.closePath();
         // The tint multiplies a mid grey, the same way it multiplies the ground.
-        ctx.fillStyle = `rgba(${Math.round(38 * t[0])}, ${Math.round(42 * t[1])}, ${Math.round(46 * t[2])}, 0.92)`;
+        // Brighter than it was, because the states used to be tiles that met
+        // edge to edge - the border was where one shade stopped and the next
+        // began, and any fill at all was enough to see it. Now they are shapes
+        // with open ground between them, so each one has to carry its own
+        // silhouette against the background rather than against its neighbour.
+        ctx.fillStyle = `rgba(${Math.round(60 * t[0])}, ${Math.round(66 * t[1])}, ${Math.round(72 * t[2])}, 0.95)`;
         ctx.fill();
-        ctx.strokeStyle = st === here ? 'rgba(255, 209, 102, 0.85)' : 'rgba(255,255,255,0.16)';
+        ctx.strokeStyle = st === here ? 'rgba(255, 209, 102, 0.9)' : 'rgba(255,255,255,0.34)';
         ctx.lineWidth = st === here ? 2 : 1;
         ctx.stroke();
-        // Fifty-six cells means some are narrower than their state's name, so
-        // anything that will not fit falls back to the postal code rather than
-        // running into next door.
+        // Some states are narrower than their own name, so anything that will
+        // not fit falls back to the postal code rather than running into next
+        // door. The name sits over the state's own outline, not its cell -
+        // otherwise Tennessee's label floats in the gap above Tennessee.
         const size = 13;
         ctx.font = `700 ${size}px ${this.font}`;
         const full = st.name.toUpperCase();
-        const room = (bx - ax) - 10;
+        const room = (bx - ax) - 6;
         const label = ctx.measureText(full).width <= room ? full : st.abbr;
         const half = ctx.measureText(label).width / 2;
-        const lx = (ax + bx) / 2, ly = ay + 20;
+        const lx = (ax + bx) / 2;
+        const ly = Math.min(ay + size + 3, (ay + by) / 2 + size / 2);
         this.text(label, lx, ly, size,
           st === here ? 'rgba(255, 209, 102, 0.9)' : 'rgba(255,255,255,0.30)',
           'center', 700);

@@ -646,75 +646,12 @@ const BIOMES = {
   tropical:  { tint: [0.72, 0.98, 0.70], trees: 1.8 },
 };
 
-// Row by row, west to east. Every cell is filled, so the grid lookup is plain
-// arithmetic rather than a search.
-// The outline of each state, as a polygon in its own cell: (0,0) is the cell's
-// north-west corner and (1,1) its south-east. Low resolution on purpose - these
-// are silhouettes to be read at a glance from a moving car and on a map of a
-// whole country, not survey data. Anything without its own entry gets a
-// rectangle, which for Colorado and Wyoming is the right answer anyway.
-//
-// Idaho is the exception and is the full cell: it holds Ashcombe, the circuit
-// road and the house, and they fill it corner to corner.
-const STATE_SHAPES = {
-  default: [[0.08, 0.10], [0.92, 0.10], [0.92, 0.90], [0.08, 0.90]],
-  small: [[0.24, 0.26], [0.76, 0.26], [0.76, 0.74], [0.24, 0.74]],
-  island: [[0.34, 0.38], [0.56, 0.30], [0.70, 0.44], [0.66, 0.64], [0.44, 0.70], [0.30, 0.56]],
-  CA: [[0.22, 0.06], [0.66, 0.06], [0.66, 0.34], [0.90, 0.88], [0.66, 0.95], [0.42, 0.58], [0.22, 0.30]],
-  TX: [[0.16, 0.08], [0.42, 0.08], [0.42, 0.30], [0.86, 0.30], [0.90, 0.54], [0.70, 0.80], [0.50, 0.94], [0.38, 0.72], [0.14, 0.60], [0.09, 0.34]],
-  FL: [[0.05, 0.30], [0.54, 0.28], [0.63, 0.40], [0.79, 0.58], [0.86, 0.88], [0.71, 0.94], [0.62, 0.66], [0.46, 0.50], [0.05, 0.47]],
-  MI: [[0.30, 0.28], [0.52, 0.20], [0.68, 0.36], [0.71, 0.66], [0.56, 0.92], [0.40, 0.86], [0.37, 0.60], [0.24, 0.50]],
-  LA: [[0.10, 0.22], [0.60, 0.22], [0.60, 0.50], [0.86, 0.62], [0.83, 0.82], [0.60, 0.87], [0.43, 0.70], [0.10, 0.66]],
-  OK: [[0.04, 0.32], [0.33, 0.32], [0.33, 0.22], [0.93, 0.22], [0.93, 0.60], [0.74, 0.80], [0.52, 0.68], [0.33, 0.72], [0.04, 0.48]],
-  NV: [[0.20, 0.06], [0.62, 0.06], [0.62, 0.30], [0.86, 0.90], [0.32, 0.90], [0.20, 0.40]],
-  WV: [[0.14, 0.32], [0.40, 0.14], [0.56, 0.28], [0.80, 0.32], [0.86, 0.56], [0.62, 0.88], [0.44, 0.70], [0.30, 0.78], [0.20, 0.56]],
-  AK: [[0.05, 0.26], [0.38, 0.14], [0.60, 0.24], [0.73, 0.16], [0.85, 0.34], [0.94, 0.62], [0.75, 0.60], [0.56, 0.74], [0.32, 0.66], [0.13, 0.52]],
-  MN: [[0.14, 0.10], [0.52, 0.10], [0.56, 0.24], [0.86, 0.32], [0.86, 0.88], [0.16, 0.88]],
-  WI: [[0.20, 0.16], [0.44, 0.10], [0.62, 0.26], [0.84, 0.42], [0.80, 0.88], [0.26, 0.88], [0.18, 0.52]],
-  NY: [[0.08, 0.34], [0.30, 0.20], [0.62, 0.16], [0.84, 0.30], [0.90, 0.52], [0.66, 0.60], [0.52, 0.84], [0.30, 0.72], [0.10, 0.58]],
-  ME: [[0.28, 0.10], [0.62, 0.14], [0.78, 0.44], [0.70, 0.86], [0.44, 0.90], [0.30, 0.62], [0.20, 0.36]],
-  VT: [[0.36, 0.12], [0.66, 0.16], [0.60, 0.56], [0.52, 0.88], [0.40, 0.86], [0.34, 0.50]],
-  NH: [[0.38, 0.12], [0.64, 0.16], [0.66, 0.60], [0.56, 0.88], [0.42, 0.86], [0.38, 0.48]],
-  MA: [[0.14, 0.36], [0.66, 0.32], [0.82, 0.40], [0.88, 0.54], [0.70, 0.58], [0.62, 0.66], [0.14, 0.62]],
-  CT: [[0.24, 0.36], [0.76, 0.34], [0.78, 0.62], [0.30, 0.66]],
-  RI: [[0.30, 0.30], [0.68, 0.30], [0.70, 0.72], [0.32, 0.74]],
-  NJ: [[0.36, 0.16], [0.60, 0.22], [0.66, 0.48], [0.56, 0.86], [0.42, 0.84], [0.34, 0.52]],
-  DE: [[0.42, 0.20], [0.62, 0.24], [0.60, 0.60], [0.52, 0.84], [0.44, 0.82]],
-  MD: [[0.10, 0.40], [0.40, 0.32], [0.52, 0.44], [0.62, 0.34], [0.90, 0.36], [0.90, 0.58], [0.56, 0.66], [0.34, 0.60], [0.12, 0.58]],
-  VA: [[0.08, 0.32], [0.44, 0.24], [0.62, 0.34], [0.92, 0.42], [0.84, 0.66], [0.52, 0.72], [0.20, 0.60]],
-  NC: [[0.06, 0.34], [0.52, 0.28], [0.88, 0.36], [0.92, 0.56], [0.60, 0.68], [0.22, 0.64], [0.06, 0.52]],
-  SC: [[0.16, 0.28], [0.72, 0.26], [0.84, 0.56], [0.56, 0.82], [0.28, 0.66]],
-  GA: [[0.18, 0.18], [0.72, 0.18], [0.80, 0.44], [0.70, 0.84], [0.44, 0.88], [0.30, 0.70], [0.16, 0.44]],
-  AL: [[0.24, 0.14], [0.70, 0.14], [0.72, 0.80], [0.60, 0.90], [0.34, 0.88], [0.26, 0.62]],
-  MS: [[0.26, 0.14], [0.68, 0.14], [0.70, 0.72], [0.58, 0.90], [0.34, 0.86], [0.26, 0.60]],
-  TN: [[0.06, 0.36], [0.90, 0.30], [0.92, 0.60], [0.30, 0.68], [0.06, 0.58]],
-  KY: [[0.06, 0.44], [0.30, 0.30], [0.62, 0.28], [0.90, 0.40], [0.84, 0.62], [0.44, 0.70], [0.14, 0.62]],
-  AR: [[0.18, 0.22], [0.76, 0.22], [0.78, 0.72], [0.54, 0.84], [0.24, 0.76]],
-  MO: [[0.14, 0.20], [0.62, 0.20], [0.68, 0.36], [0.84, 0.46], [0.78, 0.76], [0.50, 0.86], [0.22, 0.72], [0.14, 0.46]],
-  IA: [[0.10, 0.28], [0.82, 0.24], [0.90, 0.50], [0.80, 0.74], [0.20, 0.76], [0.10, 0.52]],
-  IL: [[0.30, 0.14], [0.56, 0.12], [0.66, 0.44], [0.62, 0.78], [0.46, 0.92], [0.32, 0.72], [0.28, 0.40]],
-  IN: [[0.32, 0.16], [0.64, 0.14], [0.68, 0.60], [0.60, 0.86], [0.38, 0.84], [0.32, 0.52]],
-  OH: [[0.26, 0.20], [0.62, 0.16], [0.76, 0.34], [0.74, 0.72], [0.52, 0.86], [0.30, 0.74], [0.24, 0.44]],
-  PA: [[0.10, 0.26], [0.60, 0.20], [0.88, 0.30], [0.88, 0.66], [0.30, 0.74], [0.10, 0.62]],
-  WA: [[0.10, 0.22], [0.44, 0.14], [0.62, 0.22], [0.88, 0.24], [0.88, 0.70], [0.16, 0.72]],
-  OR: [[0.10, 0.22], [0.86, 0.22], [0.88, 0.72], [0.30, 0.76], [0.12, 0.56]],
-  AZ: [[0.16, 0.14], [0.76, 0.14], [0.76, 0.62], [0.88, 0.78], [0.70, 0.90], [0.16, 0.90]],
-  NM: [[0.14, 0.12], [0.84, 0.12], [0.84, 0.84], [0.60, 0.84], [0.60, 0.92], [0.14, 0.92]],
-  UT: [[0.14, 0.10], [0.62, 0.10], [0.62, 0.34], [0.88, 0.34], [0.88, 0.90], [0.14, 0.90]],
-  ID: [[0.00, 0.00], [1.00, 0.00], [1.00, 1.00], [0.00, 1.00]],
-  HI: 'island',
-  GU: 'island',
-  AS: 'island',
-  MP: 'island',
-  PR: [[0.20, 0.40], [0.78, 0.38], [0.80, 0.60], [0.22, 0.62]],
-  VI: 'island',
-  DC: [[0.30, 0.32], [0.70, 0.30], [0.72, 0.70], [0.32, 0.72]],
-};
-
+// The outlines themselves live in state_shapes.js, generated by
+// scripts/shapes.mjs from real boundary data. Everything below turns one of
+// those into a state: where its ground is tinted, where its town stands, and
+// how big that town can be.
 function shapeFor(abbr) {
-  const s = STATE_SHAPES[abbr];
-  if (typeof s === 'string') return STATE_SHAPES[s];
-  return s || STATE_SHAPES.default;
+  return STATE_SHAPES[abbr] || STATE_SHAPES.ID;
 }
 
 // Standard crossing-number test. Called for every terrain vertex in the
@@ -728,6 +665,86 @@ function pointInPoly(x, z, poly) {
       && x < ((xj - xi) * (z - zi)) / (zj - zi) + xi) inside = !inside;
   }
   return inside;
+}
+
+// A state is a list of rings, not one loop, so that its islands survive. The
+// rings are separate land, never holes, so a point on any of them is in the
+// state.
+//
+// This runs for every terrain vertex in the country and every tree considered,
+// which is a few hundred thousand calls against outlines fifty points long, so
+// each ring carries a bounding box and almost every test ends on the box.
+function pointInShape(x, z, rings, boxes) {
+  for (let i = 0; i < rings.length; i++) {
+    const b = boxes[i];
+    if (x < b[0] || x > b[2] || z < b[1] || z > b[3]) continue;
+    if (pointInPoly(x, z, rings[i])) return true;
+  }
+  return false;
+}
+
+function bboxOf(ring) {
+  let x0 = Infinity, z0 = Infinity, x1 = -Infinity, z1 = -Infinity;
+  for (const [x, z] of ring) {
+    if (x < x0) x0 = x; if (x > x1) x1 = x;
+    if (z < z0) z0 = z; if (z > z1) z1 = z;
+  }
+  return [x0, z0, x1, z1];
+}
+
+const ringArea = (r) => {
+  let a = 0;
+  for (let i = 0, j = r.length - 1; i < r.length; j = i++) {
+    a += (r[j][0] + r[i][0]) * (r[j][1] - r[i][1]);
+  }
+  return Math.abs(a / 2);
+};
+
+// Distance from a point to a ring's nearest edge - the radius of the largest
+// circle centred there that stays off the border.
+function clearanceTo(x, z, ring) {
+  let best = Infinity;
+  for (let i = 0, j = ring.length - 1; i < ring.length; j = i++) {
+    const ax = ring[j][0], az = ring[j][1];
+    const bx = ring[i][0], bz = ring[i][1];
+    const dx = bx - ax, dz = bz - az;
+    const len2 = dx * dx + dz * dz;
+    const t = len2 ? Math.max(0, Math.min(1, ((x - ax) * dx + (z - az) * dz) / len2)) : 0;
+    const d = Math.hypot(x - (ax + dx * t), z - (az + dz * t));
+    if (d < best) best = d;
+  }
+  return best;
+}
+
+// Somewhere in the state to put its town.
+//
+// The cell's centre will not do once the states are real shapes: Michigan's is
+// in Lake Michigan, Louisiana's is off the end of the boot, and a town built
+// there stands on the neutral ground between states with the state line running
+// through the high street. This finds the point on the state's largest piece of
+// land that is furthest from any coast or border - the spot on the map you
+// would put your thumb - and says how much room there is around it.
+function townSite(rings) {
+  let main = rings[0], area = ringArea(rings[0]);
+  for (const r of rings) { const a = ringArea(r); if (a > area) { area = a; main = r; } }
+  const [x0, z0, x1, z1] = bboxOf(main);
+  const box = [bboxOf(main)];
+  let bx = (x0 + x1) / 2, bz = (z0 + z1) / 2, br = -1;
+  // Coarse sweep then a local refinement: enough for a town site, and far
+  // cheaper than the proper pole-of-inaccessibility search.
+  for (let pass = 0, step = Math.max(x1 - x0, z1 - z0) / 24; pass < 3; pass++, step /= 5) {
+    const rx = pass === 0 ? (x1 - x0) / 2 : step * 5;
+    const rz = pass === 0 ? (z1 - z0) / 2 : step * 5;
+    const cx = bx, cz = bz;
+    for (let x = cx - rx; x <= cx + rx; x += step) {
+      for (let z = cz - rz; z <= cz + rz; z += step) {
+        if (!pointInShape(x, z, [main], box)) continue;
+        const r = clearanceTo(x, z, main);
+        if (r > br) { br = r; bx = x; bz = z; }
+      }
+    }
+  }
+  return { x: bx, z: bz, room: Math.max(0, br) };
 }
 
 const STATE_TABLE = [
@@ -795,26 +812,50 @@ const STATE_TABLE = [
   ['FL', 'Florida', 'Ocala', 'tropical'],
 ];
 
+// The town plans a state can be given, largest first. Whichever is the biggest
+// that fits inside the state's own outline is the one it gets, so Texas has a
+// proper grid and Guam has four blocks - which is the right answer for both.
+const TOWN_PLANS = [];
+for (const gap of [108, 102, 96, 84, 72, 60, 50, 40]) {
+  TOWN_PLANS.push({ cols: 4, rows: 3, gap }, { cols: 3, rows: 3, gap },
+    { cols: 3, rows: 2, gap }, { cols: 2, rows: 2, gap });
+}
+TOWN_PLANS.sort((a, b) => (b.cols * b.gap) * (b.rows * b.gap) - (a.cols * a.gap) * (a.rows * a.gap));
+
 const STATES = STATE_TABLE.map(([abbr, name, capital, biome], i) => {
   const col = i % STATE_COLS, row = Math.floor(i / STATE_COLS);
   const b = BIOMES[biome];
   const x0 = COL_X[col], z0 = ROW_Z[row];
-  // Town size varies with the code so no two neighbours come out the same
-  // shape. Idaho has Ashcombe, which is built separately and far larger.
+  const w = COL_X[col + 1] - x0, d = ROW_Z[row + 1] - z0;
+  const shape = shapeFor(abbr);
+  // Its outline in world metres, ring by ring, plus a box round each for the
+  // containment test to reject on.
+  const polys = shape.map((ring) => ring.map(([u, v]) => [x0 + u * w, z0 + v * d]));
+  const boxes = polys.map(bboxOf);
+  const site = townSite(polys);
+  // A slice of variety so neighbouring states of the same size are not the
+  // same town twice over. Applied to the plan before it is measured, not after:
+  // widening the blocks by up to eight metres once the plan was chosen made the
+  // town bigger than the one that had been checked, and West Virginia's corner
+  // ended up over the state line.
   const h = (abbr.charCodeAt(0) * 31 + abbr.charCodeAt(1)) % 3;
+  // The town has to stand on the state's own ground. Its corner is what has to
+  // clear the border, so a plan fits if its half-diagonal is inside the room
+  // there is at the site.
+  const plan = TOWN_PLANS.map((p) => ({ ...p, gap: p.gap + h * 4 })).find((p) => {
+    const tw = p.cols * p.gap, td = p.rows * p.gap * 0.86;
+    return Math.hypot(tw, td) / 2 < site.room - 14;
+  });
   return {
     abbr, name, capital, biome, col, row,
     tint: b.tint, trees: b.trees,
-    town: abbr === 'ID' ? null
-      : { cols: 3 + (h > 1 ? 1 : 0), rows: 3, gap: 96 + h * 6 },
+    town: abbr === 'ID' || !plan ? null
+      : { cols: plan.cols, rows: plan.rows, gap: plan.gap },
     x0, z0, x1: COL_X[col + 1], z1: ROW_Z[row + 1],
-    cx: (x0 + COL_X[col + 1]) / 2, cz: (z0 + ROW_Z[row + 1]) / 2,
-    // Its outline in world metres, and the same thing normalised for the map.
-    shape: shapeFor(abbr),
-    poly: shapeFor(abbr).map(([u, w]) => [
-      x0 + u * (COL_X[col + 1] - x0),
-      z0 + w * (ROW_Z[row + 1] - z0),
-    ]),
+    // Where the town goes: the middle of the state's largest piece of land,
+    // not the middle of its cell.
+    cx: site.x, cz: site.z, room: site.room,
+    shape, polys, boxes,
   };
 });
 
@@ -1102,7 +1143,7 @@ function buildHomeRoute(gl) {
     tintAt: (x, z) => {
       const st = stateAt(x, z);
       if (!st) return [1, 1, 1];
-      return pointInPoly(x, z, st.poly) ? st.tint : [1, 1, 1];
+      return pointInShape(x, z, st.polys, st.boxes) ? st.tint : [1, 1, 1];
     },
   });
   const roadMB = new MeshBuilder();
@@ -1539,7 +1580,13 @@ function buildHomeRoute(gl) {
     if (!st) continue;
     const hit = world.query(x, z);
     if (hit && Math.abs(hit.lateral) < hit.path.halfWidth + 14) continue;
-    if (rng() > 0.35 * st.trees) continue;
+    // Trees follow the state line the same way the ground colour does. Plant
+    // them by the cell instead and a forest state's woods carry on past its
+    // border across bare neutral ground, which reads as a bug in the tint. The
+    // land between states gets a thin scatter of its own so it is open country
+    // rather than a shaved corridor.
+    const inState = pointInShape(x, z, st.polys, st.boxes);
+    if (rng() > 0.35 * (inState ? st.trees : 0.30)) continue;
     placeProp(propMB, world, lib.trees[Math.floor(rng() * lib.trees.length)], x, z, rng() * TAU, 0, rnd2(rng, 0.75, 1.4), 0.34);
   }
 

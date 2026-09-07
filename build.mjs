@@ -17,6 +17,7 @@ const FILES = [
   'car_model.js',
   'world.js',
   'props.js',
+  'state_shapes.js',
   'scenes.js',
   'renderer.js',
   'car.js',
