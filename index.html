@@ -1201,8 +1201,15 @@ function createFullscreenQuad(gl) {
 
 class MeshBuilder {
   constructor() {
-    this.verts = [];
-    this.indices = [];
+    // Vertices and indices live in growable typed arrays rather than plain
+    // ones. Building a country means pushing tens of millions of floats and
+    // then copying every one of them again on the way to the GPU; with plain
+    // arrays that copying - append, chunk and the final upload - was half the
+    // entire scene build. Typed arrays turn all three into memcpy.
+    this.vbuf = new Float32Array(1024 * VERTEX_FLOATS);
+    this.vlen = 0;
+    this.ibuf = new Uint32Array(2048);
+    this.ilen = 0;
     this.stack = [];
     this.matrix = m4.create();
     this.material = { color: [0.8, 0.8, 0.8], rough: 0.7, metal: 0.0, emissive: 0.0, flag: FLAG_DEFAULT };
@@ -1253,14 +1260,55 @@ class MeshBuilder {
     const l = Math.hypot(nx, ny, nz) || 1;
     nx /= l; ny /= l; nz /= l;
     const mt = this.material, c = mt.color;
-    const idx = this.verts.length / VERTEX_FLOATS;
-    this.verts.push(wx, wy, wz, nx, ny, nz, c[0], c[1], c[2], mt.rough, mt.metal, mt.emissive, mt.flag);
+    const idx = this.vlen / VERTEX_FLOATS;
+    this._roomForVerts(VERTEX_FLOATS);
+    const v = this.vbuf;
+    let o = this.vlen;
+    v[o++] = wx; v[o++] = wy; v[o++] = wz;
+    v[o++] = nx; v[o++] = ny; v[o++] = nz;
+    v[o++] = c[0]; v[o++] = c[1]; v[o++] = c[2];
+    v[o++] = mt.rough; v[o++] = mt.metal; v[o++] = mt.emissive; v[o++] = mt.flag;
+    this.vlen = o;
     return idx;
   }
 
-  tri(a, b, c) { this.indices.push(a, b, c); return this; }
+  // Views over the used part, so everything that reads `verts` and `indices`
+  // as flat arrays keeps working unchanged.
+  get verts() { return this.vbuf.subarray(0, this.vlen); }
+  get indices() { return this.ibuf.subarray(0, this.ilen); }
 
-  quadIdx(a, b, c, d) { this.indices.push(a, b, c, a, c, d); return this; }
+  _roomForVerts(floats) {
+    if (this.vlen + floats <= this.vbuf.length) return;
+    let cap = this.vbuf.length * 2;
+    while (cap < this.vlen + floats) cap *= 2;
+    const next = new Float32Array(cap);
+    next.set(this.vbuf.subarray(0, this.vlen));
+    this.vbuf = next;
+  }
+
+  _roomForIndices(count) {
+    if (this.ilen + count <= this.ibuf.length) return;
+    let cap = this.ibuf.length * 2;
+    while (cap < this.ilen + count) cap *= 2;
+    const next = new Uint32Array(cap);
+    next.set(this.ibuf.subarray(0, this.ilen));
+    this.ibuf = next;
+  }
+
+  tri(a, b, c) {
+    this._roomForIndices(3);
+    const i = this.ibuf;
+    i[this.ilen++] = a; i[this.ilen++] = b; i[this.ilen++] = c;
+    return this;
+  }
+
+  quadIdx(a, b, c, d) {
+    this._roomForIndices(6);
+    const i = this.ibuf;
+    i[this.ilen++] = a; i[this.ilen++] = b; i[this.ilen++] = c;
+    i[this.ilen++] = a; i[this.ilen++] = c; i[this.ilen++] = d;
+    return this;
+  }
 
   // Four corner points in winding order; normal derived from the corners.
   quad(p0, p1, p2, p3, normal) {
@@ -1481,7 +1529,7 @@ class MeshBuilder {
 
   // --- utilities ------------------------------------------------------------
 
-  get vertexCount() { return this.verts.length / VERTEX_FLOATS; }
+  get vertexCount() { return this.vlen / VERTEX_FLOATS; }
 
   // Recolour vertices in place; `fn(pos, color, flag)` may mutate `color`.
   recolor(fn) {
@@ -1539,17 +1587,19 @@ class MeshBuilder {
         buckets.push(new MeshBuilder());
       }
       const out = buckets[bi];
-      const ov = out.verts, oi = out.indices;
+      out._roomForVerts(3 * VERTEX_FLOATS);
+      out._roomForIndices(3);
       for (let n = 0; n < 3; n++) {
         const src = idx[t + n];
         if (stamp[src] !== bi) {
           stamp[src] = bi;
-          remap[src] = ov.length / VERTEX_FLOATS;
-          const o = src * VERTEX_FLOATS;
-          ov.push(v[o], v[o + 1], v[o + 2], v[o + 3], v[o + 4], v[o + 5],
-            v[o + 6], v[o + 7], v[o + 8], v[o + 9], v[o + 10], v[o + 11], v[o + 12]);
+          remap[src] = out.vlen / VERTEX_FLOATS;
+          // One block copy of the whole vertex rather than thirteen writes.
+          out.vbuf.set(v.subarray(src * VERTEX_FLOATS, src * VERTEX_FLOATS + VERTEX_FLOATS),
+            out.vlen);
+          out.vlen += VERTEX_FLOATS;
         }
-        oi.push(remap[src]);
+        out.ibuf[out.ilen++] = remap[src];
       }
     }
     return buckets;
@@ -1569,31 +1619,54 @@ class MeshBuilder {
 
   append(other, matrix) {
     const base = this.vertexCount;
-    const v = other.verts;
-    const nm = new Float32Array(9);
-    if (matrix) m4.normalMatrix(nm, matrix);
-    for (let i = 0; i < v.length; i += VERTEX_FLOATS) {
-      if (matrix) {
-        const p = m4.transformPoint([0, 0, 0], matrix, [v[i], v[i + 1], v[i + 2]]);
-        const nx = nm[0] * v[i + 3] + nm[3] * v[i + 4] + nm[6] * v[i + 5];
-        const ny = nm[1] * v[i + 3] + nm[4] * v[i + 4] + nm[7] * v[i + 5];
-        const nz = nm[2] * v[i + 3] + nm[5] * v[i + 4] + nm[8] * v[i + 5];
+    const src = other.vbuf, srcLen = other.vlen;
+    this._roomForVerts(srcLen);
+    const dst = this.vbuf;
+    let o = this.vlen;
+    if (!matrix) {
+      // Nothing to transform, so it is one block copy.
+      dst.set(src.subarray(0, srcLen), o);
+      o += srcLen;
+    } else {
+      const nm = new Float32Array(9);
+      m4.normalMatrix(nm, matrix);
+      const m = matrix;
+      for (let i = 0; i < srcLen; i += VERTEX_FLOATS) {
+        const x = src[i], y = src[i + 1], z = src[i + 2];
+        // Inlined rather than through m4.transformPoint: this runs once per
+        // vertex of every prop in the country and allocated a throwaway array
+        // each time.
+        dst[o++] = m[0] * x + m[4] * y + m[8] * z + m[12];
+        dst[o++] = m[1] * x + m[5] * y + m[9] * z + m[13];
+        dst[o++] = m[2] * x + m[6] * y + m[10] * z + m[14];
+        const ax = src[i + 3], ay = src[i + 4], az = src[i + 5];
+        const nx = nm[0] * ax + nm[3] * ay + nm[6] * az;
+        const ny = nm[1] * ax + nm[4] * ay + nm[7] * az;
+        const nz = nm[2] * ax + nm[5] * ay + nm[8] * az;
         const l = Math.hypot(nx, ny, nz) || 1;
-        this.verts.push(p[0], p[1], p[2], nx / l, ny / l, nz / l);
-      } else {
-        this.verts.push(v[i], v[i + 1], v[i + 2], v[i + 3], v[i + 4], v[i + 5]);
+        dst[o++] = nx / l; dst[o++] = ny / l; dst[o++] = nz / l;
+        for (let k = 6; k < VERTEX_FLOATS; k++) dst[o++] = src[i + k];
       }
-      for (let k = 6; k < VERTEX_FLOATS; k++) this.verts.push(v[i + k]);
     }
-    for (const idx of other.indices) this.indices.push(base + idx);
+    this.vlen = o;
+
+    const si = other.ibuf, siLen = other.ilen;
+    this._roomForIndices(siLen);
+    const di = this.ibuf;
+    let p = this.ilen;
+    for (let i = 0; i < siLen; i++) di[p++] = base + si[i];
+    this.ilen = p;
     return this;
   }
 
-  vertexArray() { return new Float32Array(this.verts); }
+  // Copies, because the buffers keep growing underneath and a view onto them
+  // would go stale.
+  vertexArray() { return this.vbuf.slice(0, this.vlen); }
 
   indexArray() {
     const n = this.vertexCount;
-    return n > 65535 ? new Uint32Array(this.indices) : new Uint16Array(this.indices);
+    const src = this.ibuf.subarray(0, this.ilen);
+    return n > 65535 ? src.slice() : new Uint16Array(src);
   }
 }
 
@@ -4546,27 +4619,37 @@ function buildPathMesh(world, path, mb, options = {}) {
   const vergeColor = path.type === 'track' ? [0.30, 0.29, 0.24] : [0.26, 0.28, 0.16];
   for (const side of [-1, 1]) {
     const inner = path.halfWidth + (path.kerbs ? path.kerbWidth : 0.35);
-    const rows = [];
+    // One flat buffer rather than an array of rows of little arrays. Every
+    // road in the country comes through here, and the throwaway three-element
+    // arrays - hundreds of thousands of them - cost more than the geometry.
     const steps = 4;
+    const nRows = last + 1, perRow = (steps + 1) * 3;
+    const grid = new Float64Array(nRows * perRow);
     for (let k = 0; k <= last; k++) {
       const i = k % count;
       const p = sp.points[i], n = sp.normals[i];
-      const row = [];
-      for (let s = 0; s <= steps; s++) {
-        const t = s / steps;
+      let o = k * perRow;
+      for (let st = 0; st <= steps; st++) {
+        const t = st / steps;
         const lat = inner + t * VERGE_WIDTH;
         const x = p[0] + n[0] * lat * side;
         const z = p[2] + n[2] * lat * side;
-        const y = lerp(p[1], world.terrain(x, z), smoothstep(0, 1, t));
-        row.push([x, y, z]);
+        grid[o++] = x;
+        grid[o++] = lerp(p[1], world.terrain(x, z), smoothstep(0, 1, t));
+        grid[o++] = z;
       }
-      rows.push(row);
     }
     mb.mat(vergeColor, 0.93, 0.0, 0.0, FLAG_DEFAULT);
-    for (let r = 0; r < rows.length - 1; r++) {
-      for (let s = 0; s < steps; s++) {
-        const a = rows[r][s], b = rows[r + 1][s], c = rows[r + 1][s + 1], d = rows[r][s + 1];
-        mb.quad(a, b, c, d);
+    const qa = [0, 0, 0], qb = [0, 0, 0], qc = [0, 0, 0], qd = [0, 0, 0];
+    const at = (row, st, out) => {
+      const o = row * perRow + st * 3;
+      out[0] = grid[o]; out[1] = grid[o + 1]; out[2] = grid[o + 2];
+      return out;
+    };
+    for (let r = 0; r < nRows - 1; r++) {
+      for (let st = 0; st < steps; st++) {
+        mb.quad(at(r, st, qa), at(r + 1, st, qb),
+          at(r + 1, st + 1, qc), at(r, st + 1, qd));
       }
     }
   }

@@ -423,6 +423,20 @@ out. `scripts/simtest.mjs` asserts all of that.
     node scripts/steerfeel.mjs  # steering feel scorecard
     node scripts/steerloop.mjs  # tune the steering against it
 
+## Getting it built
+
+The country takes about **13 seconds of CPU** to generate, and that number is
+the whole reason `MeshBuilder` keeps its vertices in growable typed arrays
+rather than plain ones.
+
+Building a world means pushing tens of millions of floats and then copying
+every one of them again: once when a prop is stamped into a batch, once when
+the batch is split into chunks, once on the way to the GPU. With plain arrays
+those three copies - `append`, `chunk` and the upload - were **half the entire
+build**. Typed arrays turn all three into `memcpy`: append fell from 4.6 s to
+0.7 s, the upload from 5.5 s to 0.2 s, and the build as a whole from 26.8 s to
+12.7 s with the triangle count unchanged to the digit.
+
 `simtest.mjs` runs the simulation in plain Node with a stubbed WebGL object, so
 handling and AI regressions get caught in seconds without a GPU. It seeds
 `Math.random` first: the AI makes deliberate mistakes, and unseeded, one run to

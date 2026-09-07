@@ -419,27 +419,37 @@ function buildPathMesh(world, path, mb, options = {}) {
   const vergeColor = path.type === 'track' ? [0.30, 0.29, 0.24] : [0.26, 0.28, 0.16];
   for (const side of [-1, 1]) {
     const inner = path.halfWidth + (path.kerbs ? path.kerbWidth : 0.35);
-    const rows = [];
+    // One flat buffer rather than an array of rows of little arrays. Every
+    // road in the country comes through here, and the throwaway three-element
+    // arrays - hundreds of thousands of them - cost more than the geometry.
     const steps = 4;
+    const nRows = last + 1, perRow = (steps + 1) * 3;
+    const grid = new Float64Array(nRows * perRow);
     for (let k = 0; k <= last; k++) {
       const i = k % count;
       const p = sp.points[i], n = sp.normals[i];
-      const row = [];
-      for (let s = 0; s <= steps; s++) {
-        const t = s / steps;
+      let o = k * perRow;
+      for (let st = 0; st <= steps; st++) {
+        const t = st / steps;
         const lat = inner + t * VERGE_WIDTH;
         const x = p[0] + n[0] * lat * side;
         const z = p[2] + n[2] * lat * side;
-        const y = lerp(p[1], world.terrain(x, z), smoothstep(0, 1, t));
-        row.push([x, y, z]);
+        grid[o++] = x;
+        grid[o++] = lerp(p[1], world.terrain(x, z), smoothstep(0, 1, t));
+        grid[o++] = z;
       }
-      rows.push(row);
     }
     mb.mat(vergeColor, 0.93, 0.0, 0.0, FLAG_DEFAULT);
-    for (let r = 0; r < rows.length - 1; r++) {
-      for (let s = 0; s < steps; s++) {
-        const a = rows[r][s], b = rows[r + 1][s], c = rows[r + 1][s + 1], d = rows[r][s + 1];
-        mb.quad(a, b, c, d);
+    const qa = [0, 0, 0], qb = [0, 0, 0], qc = [0, 0, 0], qd = [0, 0, 0];
+    const at = (row, st, out) => {
+      const o = row * perRow + st * 3;
+      out[0] = grid[o]; out[1] = grid[o + 1]; out[2] = grid[o + 2];
+      return out;
+    };
+    for (let r = 0; r < nRows - 1; r++) {
+      for (let st = 0; st < steps; st++) {
+        mb.quad(at(r, st, qa), at(r + 1, st, qb),
+          at(r + 1, st + 1, qc), at(r, st + 1, qd));
       }
     }
   }
