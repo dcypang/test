@@ -137,6 +137,27 @@ seconds is now quietly taken off and put back somewhere clear on its own route
 — much later if the player is close enough to watch — and the same density gets
 home in five minutes.
 
+That last one is a safety net standing in for a rule, and the obvious fix is to
+write the rule: find the junctions, tell a car inside one to clear it rather
+than stop in it, and tell a car approaching one not to enter unless there is
+somewhere to come out. It was built — 1,544 junctions, both rules, a per-frame
+reservation so only one car is in a box at a time — and it was **worse**, so it
+is not in the game:
+
+| | gets home | time | cars recycled | traffic moving nearby |
+|---|---|---|---|---|
+| safety net only | **yes**, 1.4 m from the door | 5.1 min | 9 | 70% |
+| keep the box clear | no, 32.7 m short | timed out at 15 min | 88 | 76% |
+| keep clear + reservation | no, 32.7 m short | timed out at 15 min | 88 | 76% |
+
+The rule improved the number I had been watching — more of the surrounding
+traffic was moving — while breaking the only one that matters, which is whether
+you can drive home. Telling a car in a junction to ignore what is in front of it
+is what does the damage: it stops braking for the queue on the far side and
+wedges into the back of it, ten times as often as before. Optimising the flow
+metric optimised the wrong thing, and the honest result of the attempt is this
+paragraph rather than a feature.
+
 **Plates cannot be unique.** Each distinct number is its own mesh, so ten
 thousand of them would be eleven million triangles of number plate, more
 geometry than the entire country. Traffic draws from sixteen per state instead,

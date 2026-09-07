@@ -12167,7 +12167,14 @@ class Game {
         // vanishing out of a queue it was legitimately sitting in.
         const still = t.car.vehicle.speed < 0.7 && t.car.fire <= 0;
         t.stuckFor = still ? (t.stuckFor || 0) + dt : 0;
-        if (t.stuckFor > (d < 90 ? 15 : 5)) { t.done = true; t.stuckFor = 0; }
+        // Counted, because this is the number that says how hard the relief is
+        // working. A build that quietly doubles it has jammed the traffic
+        // somewhere, whatever its average speed looks like.
+        if (t.stuckFor > (d < 90 ? 15 : 5)) {
+          t.done = true;
+          t.stuckFor = 0;
+          this.stuckRecycles = (this.stuckRecycles || 0) + 1;
+        }
       }
       if (!t.done) alive.push(t);
       else {

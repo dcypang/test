@@ -2,7 +2,7 @@
 // follows the results screen through to the road, then drives the player's own
 // car the whole route and checks it arrives on the driveway.
 //   node scripts/drivehome.mjs
-import { chromium } from 'playwright';
+import { launch } from './browser.mjs';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 import { mkdirSync } from 'node:fs';
@@ -11,9 +11,7 @@ const root = dirname(dirname(fileURLToPath(import.meta.url)));
 const shots = join(root, 'shots');
 mkdirSync(shots, { recursive: true });
 
-const browser = await chromium.launch({
-  args: ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader'],
-});
+const browser = await launch();
 const page = await (await browser.newContext({ viewport: { width: 900, height: 560 } })).newPage();
 const errors = [];
 page.on('pageerror', (e) => errors.push('pageerror: ' + e.message));

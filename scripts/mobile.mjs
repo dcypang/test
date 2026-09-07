@@ -1,6 +1,6 @@
 // Emulates a phone and checks the touch controls actually drive the car.
 //   node scripts/mobile.mjs
-import { chromium } from 'playwright';
+import { launch } from './browser.mjs';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 import { mkdirSync } from 'node:fs';
@@ -9,9 +9,7 @@ const root = dirname(dirname(fileURLToPath(import.meta.url)));
 const shots = join(root, 'shots');
 mkdirSync(shots, { recursive: true });
 
-const browser = await chromium.launch({
-  args: ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader'],
-});
+const browser = await launch();
 const ctx = await browser.newContext({
   viewport: { width: 760, height: 380 },   // a phone held sideways
   deviceScaleFactor: 1,

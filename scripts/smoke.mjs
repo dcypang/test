@@ -1,7 +1,7 @@
 // Headless smoke test: loads the game in Chromium, drives it through the race
 // and the drive home, and reports console errors plus screenshots.
 //   node scripts/smoke.mjs [--shots dir]
-import { chromium } from 'playwright';
+import { launch } from './browser.mjs';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 import { mkdirSync } from 'node:fs';
@@ -15,15 +15,7 @@ mkdirSync(shotDir, { recursive: true });
 const errors = [];
 const logs = [];
 
-const browser = await chromium.launch({
-  args: [
-    '--use-gl=angle',
-    '--use-angle=swiftshader',
-    '--enable-unsafe-swiftshader',
-    '--ignore-gpu-blocklist',
-    '--enable-webgl',
-  ],
-});
+const browser = await launch();
 const page = await browser.newPage({ viewport: { width: 1280, height: 720 }, deviceScaleFactor: 1 });
 // A 1280x720 frame of a million triangles through SwiftShader can take the
 // better part of a minute. That is a property of the test rig, not the game.

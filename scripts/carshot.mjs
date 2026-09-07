@@ -1,16 +1,14 @@
 // Fast single screenshot of the player's car, for checking the model and the
 // paint shader without running the whole smoke test.
 //   node scripts/carshot.mjs out.png
-import { chromium } from 'playwright';
+import { launch } from './browser.mjs';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 
 const root = dirname(dirname(fileURLToPath(import.meta.url)));
 const out = process.argv[2] || join(root, 'shots', 'car.png');
 
-const browser = await chromium.launch({
-  args: ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader'],
-});
+const browser = await launch();
 const page = await browser.newPage({ viewport: { width: 900, height: 620 }, deviceScaleFactor: 1 });
 const errors = [];
 page.on('pageerror', (e) => errors.push(e.message));

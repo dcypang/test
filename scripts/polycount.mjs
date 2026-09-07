@@ -1,7 +1,7 @@
 // Reports the triangle budget of everything the game builds.
 //   node scripts/polycount.mjs
-import { chromium } from 'playwright';
-const b = await chromium.launch({ args: ['--use-gl=angle','--use-angle=swiftshader','--enable-unsafe-swiftshader'] });
+import { launch } from './browser.mjs';
+const b = await launch();
 const p = await (await b.newContext({ viewport:{width:640,height:400} })).newPage();
 await p.goto('file:///home/user/test/index.html');
 const t0=Date.now();
