@@ -1,1 +1,587 @@
-# test
+# Apex & Home
+
+A racing game that doesn't end at the chequered flag: win the race, then drive
+the car home through the countryside, a village and your own street — and park
+it in the garage.
+
+**[Play it here](https://claude.ai/code/artifact/9aeff0d7-8647-42c4-a15c-09d67a286fa2)**,
+or clone the repo and open **`index.html`** in a browser. That's it: no build
+step, no server, no dependencies, no network access. Everything — the car, the
+circuit, the town, the engine note — is generated procedurally at load time.
+
+Click the page once before driving, so it can hear the keyboard.
+
+## The two halves
+
+**The race.** A 2.4 km road course with eight cars, a standing start behind the
+five red lights, kerbs, gravel traps, armco, grandstands and a pit complex.
+Three laps by default, live timing, positions and a lap chart.
+
+**The drive home.** One continuous 2.7 km road, driven in one go. You start
+parked in the pit lane, roll down past the garages, and instead of rejoining the
+circuit the pit exit carries straight on: through the paddock, out under the
+circuit gate, and onto the public road. Then a country lane, a village with
+working traffic lights and oncoming traffic, a suburban street, and finally the
+turn into your own driveway.
+
+The same car, now dusty from the race. There is a satnav, there are speed
+limits, and there is a rating out of 100 that notices if you ignore either.
+Halfway through the village there is a layby outside the shop — pull in, come
+to a stop, and the shopping is on the passenger seat when you get home. It costs
+nothing but time. The drive ends when the car is stopped in front of the garage
+with the light on.
+
+## Fifty-six states, and going wherever you like
+
+The world is the whole country: **all fifty states, the District of Columbia
+and the five territories** — 56 in total, laid out eight across and seven down
+in roughly the order they sit on a real map. The Pacific north-west at the top
+left, New England down the right, the south along the bottom, the islands in
+the corners. Driving east really does take you east.
+
+**13,975 by 10,650 metres — about 149 km²** of continuous ground. Ground colour
+and tree cover come from the kind of country each one is rather than fifty-six
+hand-picked palettes: Nevada, Utah, Arizona and New Mexico are bare desert;
+Washington, Oregon, Maine and the lake states are evergreen; the Dakotas and
+the plains are gold stubble; Hawaii and the territories are tropical.
+
+Each state is **1,725 by 1,500 metres**, with a town in it and a great deal of
+open country around it. The grid is deliberately **not uniform**: Idaho holds
+Ashcombe, the circuit road and the house, and gets 1,900 by 1,650.
+
+**Each state is its real shape.** The outlines are no longer drawn by hand —
+they are built from public boundary data by `scripts/shapes.mjs` and simplified
+to about 36 vertices each, which is the resolution that reads from a moving car
+and on a map of a whole country. **55 of the 56** are real; three things about
+them are true that a hand drawing got wrong:
+
+- **They keep their proportions.** Every shape used to be stretched to fill its
+  cell, which made Tennessee square and Vermont fat. Each is now fitted to its
+  cell with its own aspect ratio intact, so Tennessee is three and a half times
+  as wide as it is deep and Delaware is a third as wide as it is tall.
+- **Islands survive.** A state is a list of rings rather than one loop, so
+  Michigan keeps its Upper Peninsula, Hawaii is a chain of five and Rhode Island
+  keeps Aquidneck.
+- **Size follows area.** Not to true scale — Rhode Island next to Texas at true
+  scale is smaller than one town block, and every state has to hold a town — but
+  through a root, so the order is right and the extremes are livable. The
+  biggest are about 1.6 times the smallest across.
+
+The ground between the shapes stays neutral, and the trees stop at the border
+too, so you can watch one go past. **Idaho is the exception** and fills its cell
+corner to corner. That is measured rather than assumed: Ashcombe, the circuit
+and the road home fill 99% × 99% of its cell, and a real Idaho — tall, narrow,
+0.62 as wide as it is deep — covers 42% of that even when scaled up until it
+spills into Oregon. Half the city would stand on the ground between states with
+the state line down the high street.
+
+Towns are sized to fit the state they stand in, and stand at the point furthest
+from any border rather than at the middle of the cell — which for Michigan is in
+Lake Michigan and for Louisiana is off the end of the boot. Texas gets a
+four-by-three grid, Guam gets four blocks, and `scripts/statefit.mjs` checks all
+25 probe points of every town land on their own state's ground.
+
+Gameplay boundaries are still the cell, so the HUD names a state the moment you
+enter its square; the polygon is what you see, on the ground and on the map.
+
+They are not separate places you get taken to. It is one world with one road
+network, so a state line is just a sign you drive past — the ground colour
+changes, the HUD names the new state, and nothing loads.
+
+**Eleven interstates** carry you between them, numbered the way the real ones
+are, because a number you recognise tells you where you are before the sign
+does:
+
+| | |
+|---|---|
+| **I-94, I-90, I-80, I-70, I-40, I-20, I-10** | east–west, one along each row, north to south |
+| **I-5** | north–south down the west coast |
+| **I-15** | north–south through the mountain west |
+| **I-35** | north–south up the middle |
+| **I-95** | north–south down the east coast |
+
+Every town has two slip roads onto the nearest one, anchored to a real junction
+of its grid rather than to the midpoint of its edge — that lands between two
+streets as often as not, and a slip road touching nothing leaves a whole town
+stranded, which is exactly what happened first. **All 615 roads in the country
+are reachable from your own driveway** without leaving the tarmac. That is not
+a claim, it is a test: `solid.mjs` unions every pair of roads whose tarmac
+overlaps and floods out from the drive.
+
+Ashcombe, in Idaho, is much the biggest town: **twelve avenues and ten cross
+streets** over about 1,150 by 840 metres, with buildings lining every frontage.
+It is the reason Idaho's cell is bigger than the rest, and the reason the
+country is not bigger still: sizing all fifty-six cells for Idaho once put the
+world at 94 km² of mostly empty ground, 6.7 million triangles and a twenty-two
+second build.
+The other fifty-five carry a town of three or four blocks each, which is the
+point — fifty-six copies of the same grid would be fifty-six of the same
+place.
+
+No grid is a lattice: streets bow by a few metres and the spacing varies block
+to block, because a perfect grid reads as a spreadsheet from inside the car and
+every junction looks like the last one.
+
+**You do not have to follow the satnav.** Every street connects, so you can turn
+off the route wherever you like, drive around, and rejoin anywhere. While you
+are away the game says **FREE ROAM** and stops scoring you — off the route its
+zone is not the road you are on, its centreline is not your lane, and the
+distance left along it is not how far you are from home, so none of that
+bookkeeping means anything. The satnav becomes a compass pointing at the house.
+Come back to the route and the turn-by-turn picks up where it left off.
+
+The minimap draws the whole network, not just the route. Free roam without a map
+is just getting lost.
+
+## Traffic, everywhere
+
+There are **10,100 cars** on the road — one every 21 m of street and every 45 m
+of interstate — and every one of the fifty-six states has its share. Each is
+registered in the state it is actually driving through.
+
+Frame time was never the hard part: ten thousand cars step in about 2.5 ms.
+Three things had to be true first.
+
+**Nothing may be quadratic in the size of the country.** The car-to-car
+collision loop was fed every car that exists, which at five thousand cars is
+eleven million pair tests a frame and a quarter of a second of nothing useful.
+Only cars close enough to be moving can collide, so only those are passed —
+and the same list serves the traffic drivers' obstacle checks and the minimap,
+worked out once a frame.
+
+**The traffic has to be able to get out of its own way.** It has no give-way
+rule, so two cars meeting in a junction hold each other there for ever and the
+jam spreads back down every road feeding it. At one car per twenty metres an
+autopilot driven home from the circuit never got within 470 m of the house; at
+one per forty it still stopped 410 m short. A car that has not moved for a few
+seconds is now quietly taken off and put back somewhere clear on its own route
+— much later if the player is close enough to watch — and the same density gets
+home in five minutes.
+
+That last one is a safety net standing in for a rule, and the obvious fix is to
+write the rule: find the junctions, tell a car inside one to clear it rather
+than stop in it, and tell a car approaching one not to enter unless there is
+somewhere to come out. It was built — 1,544 junctions, both rules, a per-frame
+reservation so only one car is in a box at a time — and it was **worse**, so it
+is not in the game:
+
+| | gets home | time | cars recycled | traffic moving nearby |
+|---|---|---|---|---|
+| safety net only | **yes**, 1.4 m from the door | 5.1 min | 9 | 70% |
+| keep the box clear | no, 32.7 m short | timed out at 15 min | 88 | 76% |
+| keep clear + reservation | no, 32.7 m short | timed out at 15 min | 88 | 76% |
+
+The rule improved the number I had been watching — more of the surrounding
+traffic was moving — while breaking the only one that matters, which is whether
+you can drive home. Telling a car in a junction to ignore what is in front of it
+is what does the damage: it stops braking for the queue on the far side and
+wedges into the back of it, ten times as often as before. Optimising the flow
+metric optimised the wrong thing, and the honest result of the attempt is this
+paragraph rather than a feature.
+
+**Plates cannot be unique.** Each distinct number is its own mesh, so ten
+thousand of them would be eleven million triangles of number plate, more
+geometry than the entire country. Traffic draws from **24 per state** instead —
+1,343 numbers across the country — and a pass over a coarse grid re-plates any
+two that landed within seventy metres of each other.
+
+Sixteen was enough while every state had the same four-by-three town. Sizing
+each town to the state it stands in packed the small ones tighter, and the
+pigeonhole bit: a hundred cars ended up beside their own twin. Twenty-four cuts
+that to twenty-eight in a country of ten thousand, for no load time that shows
+above the noise.
+
+| plates per state | distinct numbers | twin within 10 m | within 25 m | within 70 m |
+|---|---|---|---|---|
+| 16 | 896 | 93 | 150 | 155 |
+| 24 | 1,343 | **28** | **38** | **38** |
+
+The twenty-eight are not a failure of the shuffle. It runs once, when the
+traffic is placed, and the traffic then drives: two cars carrying the same
+number are free to meet at a junction afterwards, and nothing re-checks.
+
+Filling the country also turned up a scoring bug that had been there all along:
+free roam is not meant to be scored, and speeding was exempt, but **hitting
+something was not** — so a scrape a mile off the route still docked the rating
+for a drive you were not on. Nobody noticed while there was nothing out there
+to hit.
+
+## Fire
+
+A hard enough hit sets a car alight — over a certain impact, or a smaller one if
+it has already taken a beating, which is why a long race ends in flames more
+often than a clean lap does. Flame comes up off the engine bay, black smoke
+above it, and the fire casts its own flickering light, which is the part that
+sells it in a mirror or at dusk. It burns down over about twenty seconds,
+thinner and smokier as it goes.
+
+It is not the player's privilege. Any car can catch fire, and both cars in a
+shunt take the damage, so the field and the traffic burn on the same terms.
+
+## The GPS
+
+`Tab` — or the map button on a phone — puts the whole country on screen: every
+state as a block in its own colour with its name across it, the one you are in
+picked out, the whole road network, and all **120 destinations** — **home**, the
+**other house**, and a named **shop** and **petrol station** in every one of
+the fifty-six. A state whose name is too wide for its cell falls back to its
+postal code, and destination labels keep off the state names.
+
+Pick one with `A` / `D` and `Enter`, or by tapping the pin, and the satnav switches from
+turn-by-turn to a bearing and a distance — there is no sensible instruction to
+give for an arbitrary corner of a street grid, and a compass is what a car has
+always had. Stop inside the arrival radius and it says so; stop on a forecourt
+and the tank is full. Choosing home puts the drive back the way it was.
+
+Destinations are not placed by hand. Each one scans candidate frontages around
+its own town and takes the first that clears everything already placed, home and
+the village shop included, so nothing lands on top of anything else. The
+labels are then laid out against measured boxes: each name tries a ring of
+positions and takes the first clear of every pin and label already down, with a
+leader line back to its pin when it had to move sideways. Two pins a street
+apart are one pin at map scale, and a map where half the names sit on top of
+each other is no better than no map.
+
+Two ways to get there: take the chequered flag and press **Drive home** on the
+results screen, or **Skip to the drive home** on the title screen.
+
+The circuit and the country are two separate worlds — together they are under
+2.6 million triangles, and their coordinates overlap — so the handover happens
+as you pass under the gate. The car keeps its speed, gear and
+revs across it, and both sides of the gate carry the same stonework and the same
+avenue of trees, so there is nothing in shot when the world changes.
+
+## Number plates
+
+Every car carries one on the nose and one on the tail — the eight on the race
+grid, the traffic on the road home, and yours. Each is registered in a real
+state: `WAHM361` out of Washington, `MTTV648` out of Montana. Yours is `IDAPEX1`
+and follows you from the circuit to the driveway. The eight on the grid are all
+different; the ten thousand on the road cannot be, for the reason under
+[Traffic, everywhere](#traffic-everywhere).
+
+They cannot be part of the car mesh, because every car on the road shares one,
+so each plate is its own small mesh — a panel, a band in the state's colour,
+and one box per run of lit pixels in a 3×5 bar font. That comes to about 1,100
+triangles a car and one extra draw call, and it is cached by number so a
+recycled car does not rebuild one.
+
+The two faces are not the same mesh turned round. Rotating a face 180° reverses
+the order its characters appear in, which is exactly what the rear plate did
+until it was caught reading backwards, so each face lays its text out in the
+direction its own viewer will read it, mirroring the glyphs as well as their
+order. The two body shapes hang them in different places: the race car's shell
+runs to 2.42 m at the nose, the road car's to 2.16 m, and mounting both at the
+same numbers left the traffic's plates hanging in mid-air.
+
+## From the driver's seat
+
+The game opens in the cockpit, and the cockpit is the point. You sit behind a
+flat-bottomed suede-rimmed wheel with a screen and a shift-light strip in the
+hub; the lights come up green, amber, red as the revs climb and flash at the
+limiter. Your hands are on the rim at quarter to three and stay there — they
+ride round with the wheel, and the forearms are solved back to the elbows each
+frame rather than being frozen in one pose.
+
+Around it: a binnacle hood, air vents, a switch panel with flip guards and a
+master cut-off, the rear-view mirror, a window net on the driver's door, a
+six-point harness, the pedal box and a dead pedal for your left foot.
+
+Your head is not bolted to the chassis. It leans away from the cornering force,
+dips under braking, and looks a little way into a corner before the car gets
+there. `C` cycles through cockpit, bonnet, chase, far chase and bumper; **View**
+on the title screen picks which one you start in.
+
+## On a phone
+
+It plays on a touchscreen. Turn the phone sideways and the game swaps to an
+on-screen layout: a round thumbstick for steering under your left thumb, BRAKE
+and GO pedals under your right, and a compact HUD that keeps the corners your
+thumbs need clear.
+
+Steering is a **360° thumbstick rather than arrow buttons**, deliberately. The
+car has speed-sensitive steering and needs small, precise inputs at racing
+speed; buttons can only ask for full lock, which just makes the front tyres
+slide. The stick floats: put your thumb down anywhere in the bottom-left
+quadrant and the ring appears there, so you never have to find a target without
+looking. Push it as far left or right as you want lock — the knob is free to
+move anywhere in the circle, but it is the sideways component that steers — and
+lift off to straighten up.
+
+If pushing right feels like it should turn left, **Stick direction → Inverted**
+on the title screen flips it.
+
+On the drive home the right-hand column adds indicators, horn, lights and the
+GPS. Opening the map clears the stick and pedals out of the way but keeps the
+map button on screen — a map you cannot close is a map that has taken the car
+off you — and picking a destination closes it for you.
+
+Touch devices also get a lighter render preset automatically — no shadows, no
+particles, capped resolution.
+
+## Hitting things
+
+The world is solid. Tree trunks, lamp posts, sign posts, traffic light poles,
+gate piers, hedges and the walls of every building carry a collider — about
+42,000 of them across the country, bucketed into a grid so testing them all
+every frame costs nothing. Hedges and fences are soft and mostly just drag at you; a lamp
+post is not.
+
+Two test scripts cover this from opposite ends. `scripts/solid.mjs` is
+geometric rather than behavioural: it walks the perimeter of all 1,560-odd
+buildings looking for a gap wider than the car, walks every road checking the
+lane is not pinched by scenery, checks the collider index returns what it is
+asked for, and checks home can actually be parked at. `scripts/drivehome.mjs`
+then rams 25 buildings from 8 headings each at 200 km/h and 60/20/10 fps, which
+is the part that proves the resolver uses what the audit found.
+
+A building is not one collider at its centre. Each one is ringed with colliders
+around its actual footprint, taken from the mesh bounds and rotated with it, so
+a house is solid from every side rather than only head-on — driving at a shop
+from the side used to put you through the wall and out the back.
+
+Contact is swept, not sampled. At 270 km/h and a bad frame rate the car moves
+several metres between updates, which is enough to pass clean through a lamp
+post if you only test where it ended up; instead the step is solved for first
+contact against each collider — a quadratic in how far along the step the
+swept circle first touches — and the car is put back to that point. Tested
+clean up to 271 km/h at 10 fps.
+
+Car-to-car contact is mass weighted with a tangential friction term, and the
+yaw it imparts comes from the real lever arm, so a corner hit spins you and a
+square one does not. Every impact throws sparks along the contact, debris in
+the colour of whatever you hit, a puff of dust if it was a big one, and adds
+to the car's damage.
+
+No collider is ever left on a drivable surface. Scenery is laid out relative to
+one road at a time, so a fence beside the main route or a wall behind a house
+will happily cross a side street — and a wall across a side street is a wall
+across a road.
+
+## Drawing a city
+
+The static world is split into spatial chunks with bounding spheres, and only
+what the camera can see is submitted. One mesh for a whole city is one draw call
+that cannot be culled: every building behind you is transformed, twice, before
+the depth test discovers it was never visible. Chunked, a typical frame in
+Ashcombe draws about a third of the props. There is a distance cut as well —
+beyond the fog there is nothing to see, so there is nothing to draw, and touch
+devices cut it closer still.
+
+    node scripts/polycount.mjs    triangle budget and chunk count, scene by scene
+
+## Two surfaces in the same place
+
+The world used to shimmer, and junctions looked wrong. Both were the same fault
+wearing two hats: **geometry drawn where other geometry already is.** The depth
+buffer cannot choose between two surfaces at the same depth, so which one you
+see is decided per pixel and changes as you move.
+
+A still frame cannot show a flicker, so `scripts/flicker.mjs` finds the
+ambiguity instead of the symptom. Nudging the camera does not work — a
+millimetre of movement is far below the depth buffer's own quantum at the
+distances that fight. Instead it perturbs the **depth mapping**: the near and
+far planes touch only the z row of a perspective matrix, so moving the far
+plane by a twentieth of a percent leaves every pixel exactly where it is on
+screen and changes only how depth is quantised. Anything that changes between
+the two renders is two surfaces disagreeing about which is in front.
+
+| view | before | after |
+|---|---|---|
+| a town crossroads, low | 0.33% | **0.02%** |
+| a town crossroads, above | 0.03% | **0.00%** |
+| roads running together | 0.19% | **0.00%** |
+| a long straight | 0.03% | **0.00%** |
+| the country from height | 0.38% | **0.08%** |
+
+Four separate faults, each measured before it was touched:
+
+**Junctions.** 17.2% of the country's tarmac — 56.7 km of it — is covered by
+more than one road. Roads are built one at a time as independent ribbons, so
+where two cross, both lay down a surface, both lay down a grass shoulder, and
+both paint their lane lines, all at the same height. The shoulder was the
+visible one: at a crossroads the side road's verge ran straight over the main
+road as a pale stripe. Now a road leaves out its shoulder, its kerbs and its
+markings wherever another road covers the ground — which is also what a real
+junction looks like, the lines stopping at the mouth. The tarmac itself still
+overlaps, because two roads paving the same square metre of the same asphalt is
+invisible; it was only ever the paint and the grass on top that showed.
+
+**Depth range.** The near plane was 0.15 m and the far plane 2,600 m. Resolution
+falls off with the square of the distance, so at 200 m the buffer could not
+separate two surfaces 16 mm apart, and the road's own markings sit 8 mm above
+it. The far plane was also spending two thirds of its range past the point where
+the chunk cull stops drawing anything. At 0.4 m and 1,050 m the same 200 m
+resolves to 2 mm. `scripts/cockpit.mjs` photographs all five camera views and
+checks nothing has been clipped: the nearest thing in the cockpit is 0.62 m away.
+
+**Buildings inside other buildings.** Placement checked that a building cleared
+the roads and never that it cleared its neighbours, so 52 pairs intersected —
+one by 14.7 m, a whole house standing inside another. Two walls in the same
+plane is the worst case there is. Now zero.
+
+**Decoration flat against walls.** Shopfronts stood 5 cm off their wall and
+windows 6 cm, which is below what the buffer resolves at the far end of the
+draw distance — so at 600 m whole panels blinked. They stand 16 cm and 14 cm
+off now. The parapet was worse: its underside sat at exactly roof height, which
+no amount of precision can resolve, and it drew a crawling line along the top
+of every building in town. It sinks into the roof instead.
+
+The isolation that found the last two is worth keeping: with the props left out
+of the frame entirely, ambiguity fell from 0.205% to 0.008%, which said the
+remaining fight was buildings and not roads, terrain or glass — after two wrong
+guesses about which it was.
+
+## How the steering feels
+
+The steering is tuned as an arcade mobile racer's, not a simulator's, and the
+targets that define that are written down in `scripts/steerlib.mjs` rather than
+carried around in someone's head. On a phone you have one thumb, no force
+feedback, and no way to feel the rear stepping out until it has gone — so the
+car turns in promptly, answers in proportion to how far you push, holds on
+rather than snaps, and straightens itself when you let go.
+
+The single change that mattered most: **full lock is sized against the grip
+available at the current speed** rather than being a fixed angle that tapers.
+Past the grip limit more steering only scrubs, so a fixed rack throws away most
+of the stick's travel as speed rises. At 120 km/h the car had nine times more
+lock than the front tyres could use, which meant a quarter of a stick was
+already at the limit and the rest did nothing:
+
+| stick | old car | now |
+|---|---|---|
+| 25% | 84% of full turn | 25% |
+| 50% | 98% | 54% |
+| 75% | 104% | 79% |
+| 100% | 100% | 100% |
+
+Two aids sit on top, and they are for the player only — the AI reads the whole
+state vector every frame and they just fight its controller. Yaw damping takes
+the dart out of turn-in; grip assist bends the direction of travel back toward
+where the car is pointing, which is what makes a mobile racer feel like it goes
+where you point instead of washing wide.
+
+    node scripts/steerfeel.mjs    the scorecard for the current car
+    node scripts/steerloop.mjs    ten iterations of tuning against it
+
+## Controls
+
+| | |
+|---|---|
+| `W` / `↑` | throttle |
+| `S` / `↓` | brake, hold at a standstill for reverse |
+| `A` `D` / `←` `→` | steer |
+| `Space` | handbrake |
+| `Q` / `E` | shift down / up |
+| `G` | automatic / manual gearbox |
+| `C` | camera (chase, far chase, bonnet, cockpit, bumper) |
+| `B` | look behind |
+| `L` | headlights |
+| `Z` / `X` | indicators |
+| `H` | horn |
+| `Tab` | GPS — `A` / `D` to choose a destination, `Enter` to set it |
+| `R` | recover to the road |
+| `P` / `Esc` | pause |
+| `M` | mute |
+
+A gamepad works too: left stick to steer, triggers for throttle and brake,
+shoulder buttons to shift.
+
+## How the car is simulated
+
+Not a fudge — a real four-wheel vehicle model, stepped at 240 Hz:
+
+- A simplified Pacejka tyre per wheel, with slip ratio integrated through wheel
+  inertia and slip angle from the contact-patch velocity, combined through a
+  friction ellipse.
+- Longitudinal and lateral load transfer, plus aerodynamic downforce that grows
+  with speed, so the car has far more grip at 200 km/h than at 50.
+- Load-sensitive grip, so the heavily loaded outside tyre gives up first.
+- A real gearbox: torque curve, six ratios, final drive, rev limiter, engine
+  braking, and a torque cut on upshifts.
+- Optional ABS, traction control and stability control, all switchable.
+
+It behaves the way the numbers say it should: 0–100 km/h in 4.0 s, 100–0 in
+27 m, 1.5 g of lateral grip at low speed rising with downforce, 271 km/h flat
+out. `scripts/simtest.mjs` asserts all of that.
+
+## Repository layout
+
+    src/            the game, one concern per file
+      math.js       vectors, matrices, splines
+      gl.js         WebGL2 wrapper: programs, meshes, MSAA render targets
+      mesh.js       CPU geometry builder (lofts, primitives, transform stack)
+      shaders.js    all GLSL
+      physics.js    the vehicle model
+      car_model.js  the procedural race car
+      world.js      terrain, road network, surface queries, racing line
+      props.js      barriers, grandstands, buildings, trees, traffic cars
+      state_shapes.js  every state's outline, generated from boundary data
+      scenes.js     the circuit and the route home
+      renderer.js   shadow cascades, sky, glass, particles, decals, post
+      car.js        a drivable car: physics + visuals + effects
+      ai.js         the racing driver and the traffic driver
+      audio.js      synthesised engine, tyres, wind — no samples
+      hud.js        the canvas overlay, desktop and compact layouts
+      touch.js      on-screen driving controls for phones
+      ui.js         menus and results
+      game.js       input, camera, race logic, the drive home
+    build.mjs       bundles src/ into index.html, plus dist/embed.html for
+                    hosts that supply their own document shell
+    scripts/        headless test harnesses
+
+## Working on it
+
+    node build.mjs              # rebuild index.html from src/
+    node scripts/simtest.mjs    # physics + AI assertions, no browser
+    node scripts/smoke.mjs      # drive it in headless Chromium, capture shots
+    node scripts/mobile.mjs     # emulate a phone and exercise the touch controls
+    node scripts/drivehome.mjs  # race to the flag, then drive the whole way home
+    node scripts/solid.mjs      # collider audit: nothing can be driven through
+    node scripts/statefit.mjs   # state outlines: shape, size, and towns on them
+    node scripts/flicker.mjs    # z-fighting: what is drawn where something already is
+    node scripts/overlap.mjs    # tarmac covered by more than one road
+    node scripts/cockpit.mjs    # every camera view, and what the near plane clips
+    node scripts/mapshot.mjs    # screenshot the GPS, where every shape is visible
+    node scripts/shapes.mjs     # regenerate state_shapes.js from boundary data
+    node scripts/polycount.mjs  # triangle budget, scene by scene
+    node scripts/steerfeel.mjs  # steering feel scorecard
+    node scripts/steerloop.mjs  # tune the steering against it
+
+## Getting it built
+
+The country takes seconds of CPU to generate rather than milliseconds, and that
+is the whole reason `MeshBuilder` keeps its vertices in growable typed arrays
+rather than plain ones. Both worlds together build in **6.5 s** of pure geometry
+work measured in Node with the GL calls stubbed out — not the same number as the
+in-browser figures below, which include the upload, but the same work.
+
+Building a world means pushing tens of millions of floats and then copying
+every one of them again: once when a prop is stamped into a batch, once when
+the batch is split into chunks, once on the way to the GPU. With plain arrays
+those three copies - `append`, `chunk` and the upload - were **half the entire
+build**. Typed arrays turn all three into `memcpy`: append fell from 4.6 s to
+0.7 s, the upload from 5.5 s to 0.2 s, and the build as a whole from 26.8 s to
+12.7 s with the triangle count unchanged to the digit.
+
+`simtest.mjs` runs the simulation in plain Node with a stubbed WebGL object, so
+handling and AI regressions get caught in seconds without a GPU. It seeds
+`Math.random` first: the AI makes deliberate mistakes, and unseeded, one run to
+the next varies by ten seconds a lap — far more than most changes to the driver
+are worth, so tuning against it measures noise. Seeded, the corner-speed ceiling
+could be swept properly: 0.79 of the theoretical limit is the last value that
+gains, and by 0.82 the field is 23% off track and four seconds a lap slower.
+
+Both browser suites step the game themselves and switch off its animation loop
+while they do it. Left running, that loop advances the simulation between the
+harness's evaluate blocks by however long a screenshot happened to take, and the
+same build gives a different answer every run — which it did, until the AI's
+skill spread was also seeded before the race rather than after it.
+
+`drivehome.mjs` is the end-to-end one: it puts an AI driver in the player's seat,
+takes the race to the chequered flag, clicks through the results screen, then
+drives every leg of the way home — pit lane, paddock exit, across the world
+handover at the gate, the full public route, and up the driveway to park. It
+exists because the satnav used to count down to zero 35 m short of the house —
+the route spline ended at the kerb and the driveway is a separate path — which
+left you stranded in the street with the game insisting you had arrived.
