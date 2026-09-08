@@ -246,7 +246,7 @@ Two ways to get there: take the chequered flag and press **Drive home** on the
 results screen, or **Skip to the drive home** on the title screen.
 
 The circuit and the country are two separate worlds — together they are under
-2.7 million triangles, and their coordinates overlap — so the handover happens
+2.6 million triangles, and their coordinates overlap — so the handover happens
 as you pass under the gate. The car keeps its speed, gear and
 revs across it, and both sides of the gate carry the same stonework and the same
 avenue of trees, so there is nothing in shot when the world changes.
@@ -370,6 +370,68 @@ devices cut it closer still.
 
     node scripts/polycount.mjs    triangle budget and chunk count, scene by scene
 
+## Two surfaces in the same place
+
+The world used to shimmer, and junctions looked wrong. Both were the same fault
+wearing two hats: **geometry drawn where other geometry already is.** The depth
+buffer cannot choose between two surfaces at the same depth, so which one you
+see is decided per pixel and changes as you move.
+
+A still frame cannot show a flicker, so `scripts/flicker.mjs` finds the
+ambiguity instead of the symptom. Nudging the camera does not work — a
+millimetre of movement is far below the depth buffer's own quantum at the
+distances that fight. Instead it perturbs the **depth mapping**: the near and
+far planes touch only the z row of a perspective matrix, so moving the far
+plane by a twentieth of a percent leaves every pixel exactly where it is on
+screen and changes only how depth is quantised. Anything that changes between
+the two renders is two surfaces disagreeing about which is in front.
+
+| view | before | after |
+|---|---|---|
+| a town crossroads, low | 0.33% | **0.02%** |
+| a town crossroads, above | 0.03% | **0.00%** |
+| roads running together | 0.19% | **0.00%** |
+| a long straight | 0.03% | **0.00%** |
+| the country from height | 0.38% | **0.08%** |
+
+Four separate faults, each measured before it was touched:
+
+**Junctions.** 17.2% of the country's tarmac — 56.7 km of it — is covered by
+more than one road. Roads are built one at a time as independent ribbons, so
+where two cross, both lay down a surface, both lay down a grass shoulder, and
+both paint their lane lines, all at the same height. The shoulder was the
+visible one: at a crossroads the side road's verge ran straight over the main
+road as a pale stripe. Now a road leaves out its shoulder, its kerbs and its
+markings wherever another road covers the ground — which is also what a real
+junction looks like, the lines stopping at the mouth. The tarmac itself still
+overlaps, because two roads paving the same square metre of the same asphalt is
+invisible; it was only ever the paint and the grass on top that showed.
+
+**Depth range.** The near plane was 0.15 m and the far plane 2,600 m. Resolution
+falls off with the square of the distance, so at 200 m the buffer could not
+separate two surfaces 16 mm apart, and the road's own markings sit 8 mm above
+it. The far plane was also spending two thirds of its range past the point where
+the chunk cull stops drawing anything. At 0.4 m and 1,050 m the same 200 m
+resolves to 2 mm. `scripts/cockpit.mjs` photographs all five camera views and
+checks nothing has been clipped: the nearest thing in the cockpit is 0.62 m away.
+
+**Buildings inside other buildings.** Placement checked that a building cleared
+the roads and never that it cleared its neighbours, so 52 pairs intersected —
+one by 14.7 m, a whole house standing inside another. Two walls in the same
+plane is the worst case there is. Now zero.
+
+**Decoration flat against walls.** Shopfronts stood 5 cm off their wall and
+windows 6 cm, which is below what the buffer resolves at the far end of the
+draw distance — so at 600 m whole panels blinked. They stand 16 cm and 14 cm
+off now. The parapet was worse: its underside sat at exactly roof height, which
+no amount of precision can resolve, and it drew a crawling line along the top
+of every building in town. It sinks into the roof instead.
+
+The isolation that found the last two is worth keeping: with the props left out
+of the frame entirely, ambiguity fell from 0.205% to 0.008%, which said the
+remaining fight was buildings and not roads, terrain or glass — after two wrong
+guesses about which it was.
+
 ## How the steering feels
 
 The steering is tuned as an arcade mobile racer's, not a simulator's, and the
@@ -477,6 +539,9 @@ out. `scripts/simtest.mjs` asserts all of that.
     node scripts/drivehome.mjs  # race to the flag, then drive the whole way home
     node scripts/solid.mjs      # collider audit: nothing can be driven through
     node scripts/statefit.mjs   # state outlines: shape, size, and towns on them
+    node scripts/flicker.mjs    # z-fighting: what is drawn where something already is
+    node scripts/overlap.mjs    # tarmac covered by more than one road
+    node scripts/cockpit.mjs    # every camera view, and what the near plane clips
     node scripts/mapshot.mjs    # screenshot the GPS, where every shape is visible
     node scripts/shapes.mjs     # regenerate state_shapes.js from boundary data
     node scripts/polycount.mjs  # triangle budget, scene by scene

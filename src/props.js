@@ -302,7 +302,10 @@ function buildWindowGrid(mb, width, height, cols, rows, depth, lit, rng) {
       else pm(mb, PROP_MAT.glassDark);
       mb.push();
       mb.translate(x, y, depth);
-      mb.box(width / cols * 0.55, height / (rows + 0.4) * 0.52, 0.08);
+      // Deep enough that the pane is still clearly in front of its wall at the
+      // far end of the draw distance, where the depth buffer's resolution is
+      // measured in tens of centimetres rather than millimetres.
+      mb.box(width / cols * 0.55, height / (rows + 0.4) * 0.52, 0.22);
       mb.pop();
     }
   }
@@ -319,11 +322,14 @@ function buildTownBuilding(mb, rng, opts = {}) {
   mb.mat(wall, 0.90, 0, 0, FLAG_DEFAULT);
   mb.push(); mb.translate(0, h / 2, 0); mb.chamferBox(w, h, d, 0.16); mb.pop();
 
-  // Shopfront on the ground floor facing +Z.
+  // Shopfront on the ground floor facing +Z. Everything mounted on a wall
+  // stands well clear of it - a shopfront proud by five centimetres is below
+  // what the depth buffer can resolve at the far end of the view, and the panel
+  // blinks in and out as you drive.
   pm(mb, PROP_MAT.glassDark);
-  mb.push(); mb.translate(0, 1.5, d / 2 + 0.05); mb.box(w * 0.78, 2.4, 0.12); mb.pop();
+  mb.push(); mb.translate(0, 1.5, d / 2 + 0.16); mb.box(w * 0.78, 2.4, 0.22); mb.pop();
   mb.mat([0.20 + rng() * 0.5, 0.18 + rng() * 0.4, 0.20 + rng() * 0.4], 0.7, 0, 0.10, FLAG_DEFAULT);
-  mb.push(); mb.translate(0, 3.1, d / 2 + 0.12); mb.box(w * 0.86, 0.55, 0.16); mb.pop();
+  mb.push(); mb.translate(0, 3.1, d / 2 + 0.24); mb.box(w * 0.86, 0.55, 0.26); mb.pop();
   // Awning.
   if (rng() < 0.5) {
     mb.mat([0.55, 0.14, 0.12], 0.8, 0, 0, FLAG_DEFAULT);
@@ -333,12 +339,15 @@ function buildTownBuilding(mb, rng, opts = {}) {
   for (let f = 1; f < floors; f++) {
     mb.push();
     mb.translate(0, f * floorH, 0);
-    buildWindowGrid(mb, w * 0.82, floorH, Math.max(2, Math.round(w / 3.4)), 1, d / 2 + 0.06, true, rng);
+    buildWindowGrid(mb, w * 0.82, floorH, Math.max(2, Math.round(w / 3.4)), 1, d / 2 + 0.14, true, rng);
     mb.pop();
   }
-  // Parapet and roof clutter.
+  // Parapet and roof clutter. The parapet sinks into the roof rather than
+  // sitting on it: bottom face and roof face at exactly the same height is the
+  // one arrangement the depth buffer cannot resolve at any distance, and it
+  // drew a crawling line along the top of every building in the town.
   mb.mat(v3.scale([0, 0, 0], wall, 0.82), 0.9, 0, 0, FLAG_DEFAULT);
-  mb.push(); mb.translate(0, h + 0.25, 0); mb.box(w + 0.4, 0.5, d + 0.4); mb.pop();
+  mb.push(); mb.translate(0, h + 0.15, 0); mb.box(w + 0.4, 0.5, d + 0.4); mb.pop();
   pm(mb, PROP_MAT.steelDark);
   for (let i = 0; i < 2; i++) {
     mb.push();

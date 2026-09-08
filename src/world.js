@@ -193,6 +193,45 @@ class World {
     }
   }
 
+  // Is this point on the tarmac of some road other than `self`?
+  //
+  // Roads are built one at a time as independent ribbons, so where two of them
+  // cross, both lay down a surface, both lay down a shoulder, and both paint
+  // their lane lines - all at the same height. The depth buffer cannot choose
+  // between two surfaces at the same depth, so the junction crawls, and the
+  // minor road's grass shoulder is painted straight across the major road's
+  // tarmac. This is what lets the builder leave those pieces out.
+  //
+  // `query` cannot answer it: it returns the nearest road, which for a point on
+  // a road is that road itself.
+  coveredByOther(x, z, self, slack = 0) {
+    const cs = this.cellSize;
+    const list = this.grid.get(this.key(Math.floor(x / cs), Math.floor(z / cs)));
+    if (!list) return null;
+    for (let n = 0; n < list.length; n += 2) {
+      const path = this.paths[list[n]];
+      if (path === self) continue;
+      const sp = path.spline, count = sp.count, i = list[n + 1];
+      const reach = path.halfWidth + slack;
+      // Against the two segments either side of the sample, not the sample
+      // itself: samples are six metres apart and a road is only four wide, so
+      // point-to-point would miss the tarmac between two of them.
+      for (let d = -1; d <= 0; d++) {
+        const i0 = ((i + d) % count + count) % count;
+        const i1 = (i0 + 1) % count;
+        if (!path.closed && (i + d < 0 || i0 + 1 >= count)) continue;
+        const a = sp.points[i0], b = sp.points[i1];
+        const abx = b[0] - a[0], abz = b[2] - a[2];
+        const len2 = abx * abx + abz * abz;
+        let t = len2 > 1e-9 ? ((x - a[0]) * abx + (z - a[2]) * abz) / len2 : 0;
+        t = t < 0 ? 0 : t > 1 ? 1 : t;
+        const px = x - (a[0] + abx * t), pz = z - (a[2] + abz * t);
+        if (px * px + pz * pz < reach * reach) return path;
+      }
+    }
+    return null;
+  }
+
   // Nearest point on any road. Returns null when far from every road.
   query(x, z) {
     const cs = this.cellSize;
@@ -395,15 +434,40 @@ const KERB_WHITE = [0.80, 0.80, 0.78];
 const LINE_WHITE = [0.86, 0.86, 0.82];
 const LINE_YELLOW = [0.80, 0.68, 0.12];
 
+// How far the tarmac stands off the terrain, and the paint off the tarmac.
+//
+// These were 20 mm and 8 mm, which sounds ample and is not: depth resolution
+// falls off with the square of the distance, and 8 mm of separation stops being
+// resolvable at a couple of hundred metres. Every road in the middle distance
+// shimmered between its own surface and its own markings.
+//
+// The tarmac still only rises 20 mm, because the car's ride height is sampled
+// from the road spline rather than from this mesh and the two would drift
+// apart. The paint is free to stand proud - nothing drives on the paint.
+const ROAD_LIFT = 0.02;
+const MARKING_LIFT = 0.035;
+
 // Emit the tarmac, verges, kerbs and lane markings for one path.
 function buildPathMesh(world, path, mb, options = {}) {
   const sp = path.spline;
   const count = sp.count;
   const closed = path.closed;
   const last = closed ? count : count - 1;
-  const lift = 0.02;
+  const lift = ROAD_LIFT;
 
   const heightOffset = (i) => 0;
+
+  // Where another road crosses this one, everything this road would lay down
+  // over the junction is left out: its shoulder, its kerbs and its lane lines.
+  // A real junction looks like that - the markings stop at the mouth and the
+  // grass verge does not carry on across the carriageway - and it is also the
+  // only way to be rid of the flicker, because two surfaces at the same height
+  // fight however much depth precision they are given.
+  //
+  // The tarmac itself is not skipped. Both roads paving the same square metre
+  // is invisible, being the same asphalt; it is the paint and the grass on top
+  // of it that show.
+  const crossed = (x, z, slack = 0) => !!world.coveredByOther(x, z, path, slack);
 
   // Tarmac.
   mb.mat(ASPHALT_DARK, 0.72, 0.0, 0.0, FLAG_ROAD);
@@ -412,7 +476,7 @@ function buildPathMesh(world, path, mb, options = {}) {
   // Slightly lighter worn strip where the cars actually run.
   if (path.type === 'track') {
     mb.mat(ASPHALT_LIGHT, 0.66, 0.0, 0.0, FLAG_ROAD);
-    mb.ribbon(sp, () => -path.halfWidth * 0.55, () => path.halfWidth * 0.55, () => lift + 0.004, { closed });
+    mb.ribbon(sp, () => -path.halfWidth * 0.55, () => path.halfWidth * 0.55, () => lift + MARKING_LIFT * 0.5, { closed });
   }
 
   // Verge: blends the tarmac edge down onto the terrain.
@@ -448,7 +512,12 @@ function buildPathMesh(world, path, mb, options = {}) {
     };
     for (let r = 0; r < nRows - 1; r++) {
       for (let st = 0; st < steps; st++) {
-        mb.quad(at(r, st, qa), at(r + 1, st, qb),
+        at(r, st, qa);
+        // Verge quads are the worst offender: at a crossroads the side road's
+        // grass shoulder runs straight over the main road's tarmac, and it is
+        // a pale stripe across a black surface rather than a subtle flicker.
+        if (crossed(qa[0], qa[2], 0.4)) continue;
+        mb.quad(qa, at(r + 1, st, qb),
           at(r + 1, st + 1, qc), at(r, st + 1, qd));
       }
     }
@@ -495,7 +564,7 @@ function buildPathMesh(world, path, mb, options = {}) {
         mb.mat(LINE_WHITE, 0.55, 0.0, 0.0, FLAG_DEFAULT);
         const inner = (path.halfWidth - 0.28) * side;
         const outer = (path.halfWidth - 0.10) * side;
-        mb.ribbon(sp, () => Math.min(inner, outer), () => Math.max(inner, outer), () => lift + 0.008, { closed });
+        mb.ribbon(sp, () => Math.min(inner, outer), () => Math.max(inner, outer), () => lift + MARKING_LIFT, { closed });
       }
     } else {
       // Centre line: dashed, or solid double through bends.
@@ -504,20 +573,27 @@ function buildPathMesh(world, path, mb, options = {}) {
         const i = k % count;
         const i1 = (i + 3) % count;
         if (!closed && i + 3 >= count) break;
+        if (crossed(sp.points[i][0], sp.points[i][2], 1.5)) continue;
         const p0 = sp.points[i], p1 = sp.points[i1];
         const n0 = sp.normals[i], n1 = sp.normals[i1];
         const w = 0.09;
-        const a = [p0[0] - n0[0] * w, p0[1] + lift + 0.008, p0[2] - n0[2] * w];
-        const b = [p1[0] - n1[0] * w, p1[1] + lift + 0.008, p1[2] - n1[2] * w];
-        const c = [p1[0] + n1[0] * w, p1[1] + lift + 0.008, p1[2] + n1[2] * w];
-        const d = [p0[0] + n0[0] * w, p0[1] + lift + 0.008, p0[2] + n0[2] * w];
+        const a = [p0[0] - n0[0] * w, p0[1] + lift + MARKING_LIFT, p0[2] - n0[2] * w];
+        const b = [p1[0] - n1[0] * w, p1[1] + lift + MARKING_LIFT, p1[2] - n1[2] * w];
+        const c = [p1[0] + n1[0] * w, p1[1] + lift + MARKING_LIFT, p1[2] + n1[2] * w];
+        const d = [p0[0] + n0[0] * w, p0[1] + lift + MARKING_LIFT, p0[2] + n0[2] * w];
         mb.quad(a, b, c, d);
       }
       // Edge lines.
       for (const side of [-1, 1]) {
         const inner = (path.halfWidth - 0.30) * side;
         const outer = (path.halfWidth - 0.15) * side;
-        mb.ribbon(sp, () => Math.min(inner, outer), () => Math.max(inner, outer), () => lift + 0.008, { closed });
+        const edge = (path.halfWidth - 0.22) * side;
+        mb.ribbon(sp, () => Math.min(inner, outer), () => Math.max(inner, outer),
+          () => lift + MARKING_LIFT, {
+            closed,
+            skipFn: (i) => crossed(sp.points[i][0] + sp.normals[i][0] * edge,
+              sp.points[i][2] + sp.normals[i][2] * edge, 1.0),
+          });
       }
     }
   }

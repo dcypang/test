@@ -121,6 +121,18 @@ class Camera {
     this.right = [1, 0, 0];
     this.forward = [0, 0, 1];
     this.fov = 62 * DEG;
+    // The depth buffer's whole precision budget is spent between these two, and
+    // it is spent very unevenly: resolution falls off with the square of the
+    // distance, so the near plane matters far more than it looks. At 0.15 m the
+    // buffer could not separate a road from the ground it sits on past about
+    // 220 m, and everything at middle distance shimmered.
+    //
+    // 0.4 m is as close as anything gets: the nearest cockpit geometry is the
+    // wheel rim, and the bumper camera sits ahead of the bodywork. Nothing is
+    // drawn past the fog either, and the chunk cull already stops at 900 m, so
+    // a far plane of 2600 was spending two thirds of the range on empty air.
+    this.nearPlane = 0.4;
+    this.farPlane = 1050;
     this.view = m4.create();
     this.proj = m4.create();
     this.viewProj = m4.create();
@@ -247,7 +259,7 @@ class Camera {
     this.speedBlur = lerp(this.speedBlur, clamp((speed - 24) / 200, 0, 0.16), clamp(dt * 3, 0, 1));
   }
 
-  applyProjection(aspect, near = 0.15, far = 2600) {
+  applyProjection(aspect, near = this.nearPlane, far = this.farPlane) {
     m4.perspective(this.proj, this.fov, aspect, near, far);
     m4.lookAt(this.view, this.pos, this.target, [0, 1, 0]);
     m4.multiply(this.viewProj, this.proj, this.view);

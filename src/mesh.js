@@ -310,13 +310,20 @@ class MeshBuilder {
 
   // A flat ribbon along a spline: used for road surfaces, kerbs and markings.
   // `leftFn(i)` / `rightFn(i)` return lateral offsets in metres.
+  // `skipFn(i, k)` leaves a gap in the strip, which is how lane markings stop
+  // at a junction instead of being painted across the road that crosses them.
   ribbon(spline, leftFn, rightFn, heightFn, options = {}) {
-    const { closed = spline.closed, from = 0, to = spline.count, step = 1 } = options;
+    const { closed = spline.closed, from = 0, to = spline.count, step = 1,
+      skipFn = null } = options;
     const rowsIdx = [];
     const limit = closed ? spline.count : to;
     for (let k = from; k <= limit; k += step) {
       const i = ((k % spline.count) + spline.count) % spline.count;
       if (!closed && k >= to) break;
+      // A skipped row still takes its place in the strip, as a hole rather than
+      // a missing row - otherwise the quad simply spans the gap and paints the
+      // junction anyway, only crookedly.
+      if (skipFn && skipFn(i, k)) { rowsIdx.push(null); continue; }
       const p = spline.points[i];
       const nrm = spline.normals[i];
       const l = leftFn(i, k), r = rightFn(i, k);
@@ -327,7 +334,9 @@ class MeshBuilder {
     }
     if (closed) rowsIdx.push(rowsIdx[0]);
     for (let i = 0; i < rowsIdx.length - 1; i++) {
-      this.quadIdx(rowsIdx[i][0], rowsIdx[i + 1][0], rowsIdx[i + 1][1], rowsIdx[i][1]);
+      const a = rowsIdx[i], b = rowsIdx[i + 1];
+      if (!a || !b) continue;
+      this.quadIdx(a[0], b[0], b[1], a[1]);
     }
     return this;
   }

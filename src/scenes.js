@@ -85,6 +85,30 @@ function footprintClearOfRoads(world, x, z, yaw, halfW, halfD, margin = 1.2) {
   return true;
 }
 
+// Would this building stand inside one that is already there?
+//
+// Nothing used to ask. Roads were checked and neighbours were not, so fifty-two
+// pairs of buildings in the country intersected each other - one of them by
+// 14.7 m, which is a whole house standing inside another one. Two walls in the
+// same plane is the worst case the depth buffer has: neither is in front, so
+// which one is drawn is decided per pixel and changes with the camera, and the
+// wall crawls with colour as you drive past it.
+//
+// The test is against an axis-aligned box around each footprint rather than the
+// rotated rectangle. That rejects a few near misses that would in fact have
+// fitted, which is the right way to be wrong here: the cost is a building
+// moving a couple of metres down the street.
+function footprintClearOfBuildings(world, x, z, yaw, halfW, halfD, gap = 0.5) {
+  const cs = Math.abs(Math.cos(yaw)), sn = Math.abs(Math.sin(yaw));
+  const hw = halfW * cs + halfD * sn, hd = halfW * sn + halfD * cs;
+  for (const f of world.footprints) {
+    const fc = Math.abs(Math.cos(f.yaw)), fs = Math.abs(Math.sin(f.yaw));
+    const fw = f.halfW * fc + f.halfD * fs, fd = f.halfW * fs + f.halfD * fc;
+    if (Math.abs(f.x - x) < hw + fw + gap && Math.abs(f.z - z) < hd + fd + gap) return false;
+  }
+  return true;
+}
+
 // Place a building only if it clears every road, mesh and colliders together.
 // Returns whether it went down, so callers can try somewhere else.
 function tryPlaceBuilding(target, world, builder, x, z, yaw, r = 1.6, margin = 1.2) {
@@ -92,6 +116,7 @@ function tryPlaceBuilding(target, world, builder, x, z, yaw, r = 1.6, margin = 1
   const halfW = Math.max(1, (max[0] - min[0]) / 2);
   const halfD = Math.max(1, (max[2] - min[2]) / 2);
   if (!footprintClearOfRoads(world, x, z, yaw, halfW, halfD, margin)) return false;
+  if (!footprintClearOfBuildings(world, x, z, yaw, halfW, halfD)) return false;
   placeProp(target, world, builder, x, z, yaw);
   placeBuildingSolids(world, builder, x, z, yaw, r);
   return true;
