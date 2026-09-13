@@ -1,19 +1,37 @@
 # Explorer's Passport
 
-An 18-stop quiz for 7-year-olds: twelve stops around the world, then six
-olympiad-style puzzles up the summit.
+A quiz for 7-year-olds. Every trip draws **18 stops from a bank of 100 questions**,
+so the same child can play again and again without repeats.
 
-- **Numbers** — adding, grouping, taking away, halving, counting in fives, and a first taste of fractions. Each question is drawn with counters, a number track or a sliced pizza so it can be worked out visually.
-- **Where in the world** — oceans, capitals, continents and animals. Every stop is plotted on a world map at its real coordinates, with an X on the spot.
+- **Numbers (40)** — adding, doubles and halves, arrays and sharing, counting in
+  2s/5s/10s, telling the time, money, fractions, shapes, patterns, measuring and
+  reading a pictogram.
+- **Where in the world (40)** — continents and oceans, capital cities, twelve
+  flags, eight famous landmarks, six animals and their habitats, and the compass.
+- **Summit puzzles (20)** — olympiad-style thinking at the right level for a
+  7-year-old: counting hidden squares, cuts versus pieces, growing sequences,
+  handshakes, balance scales, sum-and-difference pairs.
 
-- **Summit puzzles** — olympiad-style thinking at the right level for a 7-year-old:
-  counting the squares hidden in a 2×2 grid, how many cuts make four pieces,
-  the growing sequence 1, 2, 4, 7, 11, …, handshakes between four friends, a
-  balance of apples and plums, and two numbers that add to 10 but differ by 4.
-  Each comes with a diagram to think with, and a worked reason once answered.
+Twelve stops go round the world, alternating numbers and places; six summit
+puzzles follow. A right answer wins a stamp, and the trip ends with a rank from
+Packing Bags up to Grand Explorer.
 
-Get a stop right and you win a stamp in the passport strip at the top. Finish all
-eighteen to get a rank, from Packing Bags up to Grand Explorer.
+## How it fits together
 
-Open `index.html` in any browser — one file, no build step, works on phones and
-in both light and dark themes.
+| File | What it holds |
+| --- | --- |
+| `index.html` | The page, its styling, and the engine that draws and runs a trip |
+| `bank.js` | All 100 questions — text, choices, answer, picture spec, and the fact or reasoning shown afterwards |
+| `art.js` | The illustration kit: 24 renderers that draw every picture as SVG |
+
+Every question names a renderer and its arguments (`art:['clock',7,30]`), so the
+pictures are drawn to fit the question rather than picked from a fixed set.
+Diagrams — counters, ten-frames, number tracks, bar models — follow the page
+theme. Postcards — landmarks, animals, flags — sit on a fixed light panel with
+their own palette, so a camel stays sand-coloured in dark mode.
+
+The browser remembers the last 40 questions it showed and prefers fresh ones, so
+back-to-back trips rarely overlap. Numeric choices are sorted, word choices are
+shuffled, so the right answer never sits in a predictable place.
+
+Open `index.html` in any browser — no build step, works on phones, light and dark.
