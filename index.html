@@ -92,12 +92,28 @@
   .mast p{margin:0;color:var(--ink-soft);max-width:42ch;font-size:15px}
 
   /* ---------- stamp strip ---------- */
-  .strip{
-    display:grid;grid-template-columns:repeat(12,1fr);gap:6px;
+  .legs{
+    display:flex;gap:14px;
     background:var(--card-2);border:2px solid var(--line);
     border-radius:14px;padding:10px;
   }
+  .leg{display:flex;flex-direction:column;gap:7px;min-width:0}
+  .leg.trip{flex:12 1 0}
+  .leg.peak{flex:6 1 0}
+  .leglabel{
+    font-family:"Courier Prime","Courier New",monospace;
+    font-size:10.5px;letter-spacing:.16em;text-transform:uppercase;color:var(--ink-soft);
+  }
+  .leg.peak .leglabel{color:var(--marigold)}
+  .slots{display:grid;gap:6px;justify-items:center}
+  .leg.trip .slots{grid-template-columns:repeat(12,1fr)}
+  .leg.peak .slots{grid-template-columns:repeat(6,1fr)}
+  @media (max-width:560px){
+    .legs{flex-direction:column;gap:12px}
+    .leg.peak .slots{grid-template-columns:repeat(12,1fr)}
+  }
   .slot{
+    width:100%;max-width:38px;
     aspect-ratio:1;border-radius:50%;
     border:2px dashed var(--line);
     display:grid;place-items:center;
@@ -109,6 +125,7 @@
   .slot.miss{border:2px solid var(--tomato);color:var(--tomato);border-style:solid;opacity:.75}
   .slot.now{border:3px solid var(--marigold);color:var(--marigold);border-style:solid;animation:pulse 1.6s ease-in-out infinite}
   @keyframes pulse{0%,100%{transform:scale(1)}50%{transform:scale(1.14)}}
+  .slot.peak{border-radius:8px}
 
   /* ---------- question card ---------- */
   .card{
@@ -132,6 +149,19 @@
   }
   .tag.math{color:var(--tomato)}
   .tag.geo{color:var(--sea)}
+  .tag.peak{color:var(--marigold)}
+  .ribbon{
+    display:flex;gap:10px;align-items:flex-start;
+    background:var(--marigold);color:#17323E;
+    border-radius:12px;padding:11px 14px;font-size:15px;line-height:1.4;
+  }
+  .ribbon strong{font-family:"Fredoka","Trebuchet MS",sans-serif;font-weight:600}
+  .tally{
+    display:flex;gap:10px;flex-wrap:wrap;justify-content:center;
+    font-family:"Courier Prime","Courier New",monospace;
+    font-size:13px;letter-spacing:.08em;color:var(--ink-soft);
+  }
+  .tally span{border:2px solid var(--line);border-radius:999px;padding:5px 12px}
   h2{
     font-family:"Fredoka","Trebuchet MS",sans-serif;
     font-weight:600;font-size:clamp(23px,5.4vw,31px);line-height:1.2;
@@ -228,16 +258,25 @@
 
 <div class="wrap">
   <header class="mast">
-    <div class="eyebrow">12 stops · ages 7 and up</div>
+    <div class="eyebrow">18 stops · ages 7 and up</div>
     <h1>Explorer's Passport</h1>
-    <p>Travel the world and solve the numbers. Get a stop right and you win a stamp.</p>
+    <p>Twelve stops around the world, then six puzzles up the summit. Every stop you get right wins a stamp.</p>
   </header>
 
-  <div class="strip" id="strip" aria-label="Stamps collected"></div>
+  <div class="legs" aria-label="Stamps collected">
+    <div class="leg trip">
+      <span class="leglabel">World trip</span>
+      <div class="slots" id="stripA"></div>
+    </div>
+    <div class="leg peak">
+      <span class="leglabel">Summit</span>
+      <div class="slots" id="stripB"></div>
+    </div>
+  </div>
 
   <main id="stage" aria-live="polite"></main>
 
-  <p class="foot">Every stop is a real place at real coordinates.</p>
+  <p class="foot">Real coordinates on every map · a worked reason on every summit puzzle</p>
 </div>
 
 <script>
@@ -310,19 +349,22 @@ function artHalves(per){
   return svg(w, h, body);
 }
 
-/* a counting-in-fives number track */
-function artTrack(values){
-  const step = 74, pad = 22, w = values.length * step, h = 96, y = 42;
+/* a number track; each jump carries its own label */
+function artTrack(values, steps){
+  const n = values.length;
+  const step = n > 5 ? 64 : 74, r = n > 5 ? 18 : 20;
+  const pad = 22, w = n * step, h = 96, y = 42;
+  const span = (w - pad * 2) / (n - 1);
   let body = '<path d="M' + pad + ' ' + y + ' H' + (w - pad) + '" stroke="var(--line)" stroke-width="3" stroke-linecap="round"/>';
   values.forEach(function(v, i){
-    const x = pad + i * ((w - pad * 2) / (values.length - 1));
+    const x = pad + i * span;
     const unknown = v === '?';
-    body += '<circle cx="' + x + '" cy="' + y + '" r="20" fill="' + (unknown ? 'var(--marigold)' : 'var(--card)') + '" stroke="' + (unknown ? 'var(--marigold)' : 'var(--sea)') + '" stroke-width="3"/>';
-    body += '<text x="' + x + '" y="' + (y + 7) + '" text-anchor="middle" font-family="Fredoka, sans-serif" font-size="19" font-weight="600" fill="' + (unknown ? '#17323E' : 'var(--ink)') + '">' + v + '</text>';
-    if (i < values.length - 1){
-      const mid = x + ((w - pad * 2) / (values.length - 1)) / 2;
-      body += '<text x="' + mid + '" y="' + (y - 30) + '" text-anchor="middle" font-family="Courier Prime, monospace" font-size="13" fill="var(--ink-soft)">+5</text>';
-      body += '<path d="M' + (x + 24) + ' ' + (y - 18) + ' Q' + mid + ' ' + (y - 40) + ' ' + (x + ((w - pad * 2) / (values.length - 1)) - 24) + ' ' + (y - 18) + '" fill="none" stroke="var(--line)" stroke-width="2"/>';
+    body += '<circle cx="' + x + '" cy="' + y + '" r="' + r + '" fill="' + (unknown ? 'var(--marigold)' : 'var(--card)') + '" stroke="' + (unknown ? 'var(--marigold)' : 'var(--sea)') + '" stroke-width="3"/>';
+    body += '<text x="' + x + '" y="' + (y + 7) + '" text-anchor="middle" font-family="Fredoka, sans-serif" font-size="' + (n > 5 ? 17 : 19) + '" font-weight="600" fill="' + (unknown ? '#17323E' : 'var(--ink)') + '">' + v + '</text>';
+    if (i < n - 1){
+      const mid = x + span / 2;
+      body += '<text x="' + mid + '" y="' + (y - 30) + '" text-anchor="middle" font-family="Courier Prime, monospace" font-size="13" fill="var(--ink-soft)">' + steps[i] + '</text>';
+      body += '<path d="M' + (x + r + 4) + ' ' + (y - 18) + ' Q' + mid + ' ' + (y - 40) + ' ' + (x + span - r - 4) + ' ' + (y - 18) + '" fill="none" stroke="var(--line)" stroke-width="2"/>';
     }
   });
   return svg(w, h, body);
@@ -409,7 +451,75 @@ function coords(lat, lon){
   return Math.abs(lat).toFixed(1) + '° ' + ns + '  ·  ' + Math.abs(lon).toFixed(1) + '° ' + ew;
 }
 
-/* ---------------- the twelve stops ---------------- */
+/* four friends, one handshake shown as the example */
+function artFriends(){
+  const w = 260, h = 176, pts = [[70,48],[190,48],[70,128],[190,128]];
+  let body = '<path d="M' + pts[0][0] + ' ' + pts[0][1] + ' L' + pts[1][0] + ' ' + pts[1][1] + '" stroke="var(--marigold)" stroke-width="3" stroke-dasharray="7 6"/>';
+  body += '<text x="130" y="30" text-anchor="middle" font-family="Courier Prime, monospace" font-size="12" fill="var(--marigold)">1 handshake</text>';
+  pts.forEach(function(p, i){
+    body += '<circle cx="' + p[0] + '" cy="' + p[1] + '" r="24" fill="' + (i % 2 ? 'var(--marigold)' : 'var(--sea)') + '"/>';
+    body += '<circle cx="' + (p[0] - 7) + '" cy="' + (p[1] - 4) + '" r="3" fill="var(--card)"/>';
+    body += '<circle cx="' + (p[0] + 7) + '" cy="' + (p[1] - 4) + '" r="3" fill="var(--card)"/>';
+    body += '<path d="M' + (p[0] - 8) + ' ' + (p[1] + 7) + ' Q' + p[0] + ' ' + (p[1] + 14) + ' ' + (p[0] + 8) + ' ' + (p[1] + 7) + '" fill="none" stroke="var(--card)" stroke-width="2.5" stroke-linecap="round"/>';
+  });
+  return svg(w, h, body);
+}
+
+/* one uncut rope, with the goal written under it */
+function artRope(pieces){
+  const w = 320, h = 130, y = 52, x1 = 24, x2 = 296;
+  let body = '<path d="M' + x1 + ' ' + y + ' H' + x2 + '" stroke="var(--sea)" stroke-width="14" stroke-linecap="round"/>';
+  body += '<path d="M' + x1 + ' ' + (y + 26) + ' V' + (y + 34) + ' H' + x2 + ' V' + (y + 26) + '" fill="none" stroke="var(--line)" stroke-width="2"/>';
+  body += '<path d="M' + ((x1 + x2) / 2) + ' ' + (y + 34) + ' V' + (y + 44) + '" stroke="var(--line)" stroke-width="2"/>';
+  body += '<text x="' + ((x1 + x2) / 2) + '" y="' + (y + 62) + '" text-anchor="middle" font-family="Courier Prime, monospace" font-size="13" fill="var(--ink-soft)">into ' + pieces + ' pieces</text>';
+  return svg(w, h, body);
+}
+
+/* a plain 2 by 2 grid - the counting is the puzzle */
+function artGrid(n){
+  const cell = 62, pad = 12, side = n * cell;
+  const w = side + pad * 2, h = side + pad * 2;
+  let body = '<rect x="' + pad + '" y="' + pad + '" width="' + side + '" height="' + side + '" rx="4" fill="var(--card)" stroke="var(--sea)" stroke-width="3"/>';
+  for (let i = 1; i < n; i++){
+    body += '<path d="M' + (pad + i * cell) + ' ' + pad + ' V' + (pad + side) + '" stroke="var(--sea)" stroke-width="3"/>';
+    body += '<path d="M' + pad + ' ' + (pad + i * cell) + ' H' + (pad + side) + '" stroke="var(--sea)" stroke-width="3"/>';
+  }
+  return svg(w, h, body);
+}
+
+/* a bar model: one bar longer than the other by a known amount */
+function artBars(diff, total){
+  const w = 330, h = 150, x = 26, bar = 26, shortLen = 130;
+  let body = '<rect x="' + x + '" y="30" width="' + shortLen + '" height="' + bar + '" rx="6" fill="var(--sea)"/>';
+  body += '<rect x="' + x + '" y="74" width="' + shortLen + '" height="' + bar + '" rx="6" fill="var(--sea)"/>';
+  body += '<rect x="' + (x + shortLen + 4) + '" y="74" width="60" height="' + bar + '" rx="6" fill="var(--marigold)"/>';
+  body += '<text x="' + (x + shortLen + 34) + '" y="' + (74 + 18) + '" text-anchor="middle" font-family="Fredoka, sans-serif" font-size="16" font-weight="600" fill="#17323E">' + diff + '</text>';
+  const bx = x + shortLen + 78;
+  body += '<path d="M' + bx + ' 30 H' + (bx + 10) + ' V' + (74 + bar) + ' H' + bx + '" fill="none" stroke="var(--line)" stroke-width="2"/>';
+  body += '<text x="' + (bx + 16) + '" y="' + (30 + bar + 14) + '" font-family="Courier Prime, monospace" font-size="13" fill="var(--ink-soft)">both = ' + total + '</text>';
+  return svg(w, h, body);
+}
+
+/* a balance scale, heavy fruit on the left, small fruit on the right */
+function artScale(big, small){
+  const w = 320, h = 178, beamY = 112;
+  let body = '';
+  for (let i = 0; i < big; i++){
+    const cx = 62 + i * 46;
+    body += '<circle cx="' + cx + '" cy="' + (beamY - 24) + '" r="19" fill="var(--tomato)"/>';
+    body += '<path d="M' + cx + ' ' + (beamY - 42) + ' q6 -10 14 -12" fill="none" stroke="var(--moss)" stroke-width="3.5" stroke-linecap="round"/>';
+  }
+  for (let i = 0; i < small; i++){
+    const cx = 205 + (i % 3) * 40, cy = beamY - 44 + Math.floor(i / 3) * 34;
+    body += '<circle cx="' + cx + '" cy="' + cy + '" r="13" fill="var(--sea)"/>';
+  }
+  body += '<path d="M20 ' + beamY + ' H300" stroke="var(--ink-soft)" stroke-width="7" stroke-linecap="round"/>';
+  body += '<path d="M160 ' + beamY + ' L134 168 H186 Z" fill="var(--ink-soft)"/>';
+  body += '<path d="M104 168 H216" stroke="var(--ink-soft)" stroke-width="5" stroke-linecap="round"/>';
+  return svg(w, h, body);
+}
+
+/* ---------------- the trip: twelve stops, then six summit puzzles ---------------- */
 const STOPS = [
   { kind:'math', q:'7 + 5 = ?', choices:['10','11','12','13'], answer:2,
     art:artGroups([7,5]), caption:'7 blue  +  5 yellow',
@@ -444,7 +554,7 @@ const STOPS = [
     fact:'Antarctica is a desert. It is freezing cold, but it almost never rains or snows there.' },
 
   { kind:'math', q:'What comes next? 5, 10, 15, 20, …', choices:['21','24','25','30'], answer:2,
-    art:artTrack([5,10,15,20,'?']), caption:'counting in fives',
+    art:artTrack([5,10,15,20,'?'], ['+5','+5','+5','+5']), caption:'counting in fives',
     fact:'When you count in fives, every number ends in a 5 or a 0.' },
 
   { kind:'geo', q:'Which country is shaped like a boot?', choices:['Italy','Japan','Brazil','Norway'], answer:0,
@@ -457,39 +567,85 @@ const STOPS = [
 
   { kind:'geo', q:'Kangaroos hop wild in only one country. Which one?', choices:['India','Australia','Kenya','Canada'], answer:1,
     art:artMap(-25,133), caption:coords(-25,133),
-    fact:'A red kangaroo can hop nearly 9 metres in one jump — about as long as a bus.' }
+    fact:'A red kangaroo can hop nearly 9 metres in one jump — about as long as a bus.' },
+
+  /* --- summit: olympiad-style puzzles. Every one needs a think, not a sum. --- */
+  { kind:'peak', q:'How many squares can you find in this picture?', choices:['4','5','6','8'], answer:1,
+    art:artGrid(2), caption:'look for every size',
+    why:'Four little squares — and the big square drawn around them all. Counting the shape you are standing inside is the trick.' },
+
+  { kind:'peak', q:'You want to cut this rope into 4 pieces. How many cuts do you make?', choices:['2 cuts','3 cuts','4 cuts','5 cuts'], answer:1,
+    art:artRope(4), caption:'one whole rope',
+    why:'You start with 1 piece already. Every cut adds one more piece, so 3 cuts turn 1 piece into 4.' },
+
+  { kind:'peak', q:'What number comes next? 1, 2, 4, 7, 11, …', choices:['14','15','16','17'], answer:2,
+    art:artTrack([1,2,4,7,11,'?'], ['+1','+2','+3','+4','+?']),
+    caption:'the jumps are growing',
+    why:'The jumps go +1, +2, +3, +4 — each one bigger. The next jump must be +5, and 11 + 5 = 16.' },
+
+  { kind:'peak', q:'4 friends meet. Every pair shakes hands once. How many handshakes?', choices:['4','6','8','12'], answer:1,
+    art:artFriends(), caption:'4 friends · every pair once',
+    why:'Each friend shakes 3 hands, so that is 4 × 3 = 12. But every handshake was counted twice — once by each person — so halve it: 6.' },
+
+  { kind:'peak', q:'2 apples balance 6 plums. How many plums balance just 1 apple?', choices:['2 plums','3 plums','4 plums','12 plums'], answer:1,
+    art:artScale(2,6), caption:'the scale is level',
+    why:'Take away one apple from the left and half the plums from the right. The scale stays level: 1 apple balances 3 plums.' },
+
+  { kind:'peak', q:'Two numbers add up to 10. One is 4 bigger than the other. What are they?', choices:['7 and 3','6 and 4','8 and 2','5 and 5'], answer:0,
+    art:artBars(4,10), caption:'one bar is 4 longer than the other',
+    why:'Hide the extra 4 and you have 10 − 4 = 6 left, which splits fairly into 3 and 3. Hand the 4 back to one of them: 7 and 3.' }
 ];
 
 const RANKS = [
-  { min:12, title:'Grand Explorer', line:'A perfect trip. Every stamp in the passport, every stop solved.' },
-  { min:10, title:'World Explorer', line:'You could find your way home from almost anywhere.' },
-  { min:7,  title:'Trail Blazer',   line:'Strong travelling. A couple of stops got away — go back for them.' },
+  { min:18, title:'Grand Explorer', line:'Every stamp in the passport and every summit puzzle solved. Nothing left to conquer.' },
+  { min:15, title:'Summit Climber', line:'You made it up the hard side. Those puzzles beat most grown-ups.' },
+  { min:11, title:'World Explorer', line:'Strong all the way round the world. The summit is waiting for another go.' },
+  { min:7,  title:'Trail Blazer',   line:'Good travelling. Head back for the stops that got away.' },
   { min:4,  title:'Map Reader',     line:'You are getting the hang of the map. Try the trip again.' },
   { min:0,  title:'Packing Bags',   line:'Every explorer starts somewhere. Set off again!' }
 ];
 
 /* ---------------- game ---------------- */
-const strip = document.getElementById('strip');
+const TRIP = 12, PEAKS = 6;
+const stripA = document.getElementById('stripA');
+const stripB = document.getElementById('stripB');
 const stage = document.getElementById('stage');
 let index = 0, score = 0, marks = [];
 
-function drawStrip(){
-  strip.innerHTML = STOPS.map(function(_, i){
-    let cls = 'slot';
-    if (marks[i] === true) cls += ' hit';
-    else if (marks[i] === false) cls += ' miss';
-    else if (i === index) cls += ' now';
-    return '<div class="' + cls + '">' + (i + 1) + '</div>';
-  }).join('');
+function slotHTML(i, peak){
+  let cls = 'slot' + (peak ? ' peak' : '');
+  if (marks[i] === true) cls += ' hit';
+  else if (marks[i] === false) cls += ' miss';
+  else if (i === index) cls += ' now';
+  return '<div class="' + cls + '">' + (peak ? i - TRIP + 1 : i + 1) + '</div>';
 }
+
+function drawStrip(){
+  let a = '', b = '';
+  for (let i = 0; i < TRIP; i++) a += slotHTML(i, false);
+  for (let i = TRIP; i < STOPS.length; i++) b += slotHTML(i, true);
+  stripA.innerHTML = a;
+  stripB.innerHTML = b;
+}
+
+function heading(i){
+  return i < TRIP
+    ? 'Stop ' + String(i + 1).padStart(2, '0') + ' of ' + TRIP
+    : 'Summit puzzle ' + (i - TRIP + 1) + ' of ' + PEAKS;
+}
+const TAGS = { math:'Numbers', geo:'Where in the world', peak:'Summit puzzle' };
 
 function drawStop(){
   const s = STOPS[index];
+  const tagClass = s.kind === 'peak' ? 'peak' : s.kind;
   stage.innerHTML =
     '<section class="card">' +
+      (index === TRIP
+        ? '<div class="ribbon"><span><strong>You reached the Summit.</strong> These six are puzzles, not sums. Read twice, then think — there is no rush.</span></div>'
+        : '') +
       '<div class="cardhead">' +
-        '<span class="stop">Stop ' + String(index + 1).padStart(2, '0') + ' of 12</span>' +
-        '<span class="tag ' + s.kind + '">' + (s.kind === 'math' ? 'Numbers' : 'Where in the world') + '</span>' +
+        '<span class="stop">' + heading(index) + '</span>' +
+        '<span class="tag ' + tagClass + '">' + TAGS[s.kind] + '</span>' +
       '</div>' +
       '<h2>' + s.q + '</h2>' +
       '<figure class="plate" style="margin:0">' + s.art + '<figcaption>' + s.caption + '</figcaption></figure>' +
@@ -521,14 +677,22 @@ function answer(pick){
     else b.classList.add('dim');
   });
 
+  const peak = s.kind === 'peak';
   const last = index === STOPS.length - 1;
   document.getElementById('feedback').innerHTML =
     '<div class="feedback">' +
       '<p class="verdict ' + (right ? 'good' : 'oops') + '">' +
-        (right ? 'Stamped! That is right.' : 'Not this time — the answer is ' + s.choices[s.answer] + '.') +
+        (right
+          ? (peak ? 'Solved it! That is the one.' : 'Stamped! That is right.')
+          : 'Not this time — the answer is ' + s.choices[s.answer] + '.') +
       '</p>' +
-      '<div class="fact"><span class="label">Did you know</span><p>' + s.fact + '</p></div>' +
-      '<button class="next" id="next">' + (last ? 'See my passport' : 'Next stop') + '</button>' +
+      '<div class="fact">' +
+        '<span class="label">' + (peak ? 'How to see it' : 'Did you know') + '</span>' +
+        '<p>' + (peak ? s.why : s.fact) + '</p>' +
+      '</div>' +
+      '<button class="next" id="next">' +
+        (last ? 'See my passport' : (index === TRIP - 1 ? 'Start the Summit' : 'Next stop')) +
+      '</button>' +
     '</div>';
 
   document.getElementById('next').addEventListener('click', function(){
@@ -540,11 +704,18 @@ function answer(pick){
 
 function finish(){
   const rank = RANKS.find(function(r){ return score >= r.min; });
+  const tally = function(from, to){
+    return marks.slice(from, to).filter(Boolean).length;
+  };
   stage.innerHTML =
     '<section class="card finish">' +
       '<span class="stop">Trip complete</span>' +
-      '<div class="score">' + score + '<span style="font-size:26px;color:var(--ink-soft)"> / 12</span></div>' +
+      '<div class="score">' + score + '<span style="font-size:26px;color:var(--ink-soft)"> / ' + STOPS.length + '</span></div>' +
       '<h2 class="rank">' + rank.title + '</h2>' +
+      '<div class="tally">' +
+        '<span>World trip ' + tally(0, TRIP) + '/' + TRIP + '</span>' +
+        '<span>Summit ' + tally(TRIP, STOPS.length) + '/' + PEAKS + '</span>' +
+      '</div>' +
       '<p>' + rank.line + '</p>' +
       '<button class="again" id="again">Travel again</button>' +
     '</section>';
