@@ -1,0 +1,572 @@
+<title>Explorer's Passport</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&family=Lexend:wght@400;500;600&family=Courier+Prime:wght@400;700&display=swap">
+<style>
+  :root{
+    --ground:#F4EDDB;
+    --card:#FFFCF3;
+    --card-2:#FBF4E3;
+    --ink:#17323E;
+    --ink-soft:#5B7581;
+    --line:#D7C8A6;
+    --line-soft:#E7DCC2;
+    --sea:#0E7C93;
+    --marigold:#E29A0C;
+    --tomato:#D94C33;
+    --moss:#3C8B4E;
+    --shadow:rgba(23,50,62,.14);
+    --on-accent:#FFFCF3;
+    --land:#CBDEBB;
+    --land-line:#9DBD86;
+    --radius:18px;
+  }
+  @media (prefers-color-scheme: dark){
+    :root:not([data-theme="light"]){
+      --ground:#0D1C25;
+      --card:#152B36;
+      --card-2:#1B3441;
+      --ink:#EDF5F3;
+      --ink-soft:#9DB6BF;
+      --line:#2B4654;
+      --line-soft:#223B48;
+      --sea:#48BED3;
+      --marigold:#F4BC4C;
+      --tomato:#F0775C;
+      --moss:#5FC177;
+      --shadow:rgba(0,0,0,.45);
+      --on-accent:#0D1C25;
+      --land:#2C4C47;
+      --land-line:#3E6B60;
+    }
+  }
+  :root[data-theme="dark"]{
+    --ground:#0D1C25;
+    --card:#152B36;
+    --card-2:#1B3441;
+    --ink:#EDF5F3;
+    --ink-soft:#9DB6BF;
+    --line:#2B4654;
+    --line-soft:#223B48;
+    --sea:#48BED3;
+    --marigold:#F4BC4C;
+    --tomato:#F0775C;
+    --moss:#5FC177;
+    --shadow:rgba(0,0,0,.45);
+    --on-accent:#0D1C25;
+    --land:#2C4C47;
+    --land-line:#3E6B60;
+  }
+
+  *{box-sizing:border-box}
+  body{
+    background:var(--ground);
+    color:var(--ink);
+    font-family:"Lexend","Trebuchet MS",system-ui,sans-serif;
+    font-size:17px;
+    line-height:1.5;
+    padding-inline:18px;
+    padding-block:26px 44px;
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    gap:22px;
+    min-height:100vh;
+  }
+  .wrap{width:100%;max-width:680px;display:flex;flex-direction:column;gap:22px}
+
+  /* ---------- masthead ---------- */
+  .mast{display:flex;flex-direction:column;gap:6px;align-items:center;text-align:center}
+  .eyebrow{
+    font-family:"Courier Prime","Courier New",monospace;
+    font-size:12px;letter-spacing:.18em;text-transform:uppercase;
+    color:var(--ink-soft);
+  }
+  h1{
+    font-family:"Fredoka","Trebuchet MS",sans-serif;
+    font-weight:700;font-size:clamp(34px,8vw,52px);
+    line-height:1.02;margin:0;text-wrap:balance;
+    color:var(--sea);
+    letter-spacing:-.01em;
+  }
+  .mast p{margin:0;color:var(--ink-soft);max-width:42ch;font-size:15px}
+
+  /* ---------- stamp strip ---------- */
+  .strip{
+    display:grid;grid-template-columns:repeat(12,1fr);gap:6px;
+    background:var(--card-2);border:2px solid var(--line);
+    border-radius:14px;padding:10px;
+  }
+  .slot{
+    aspect-ratio:1;border-radius:50%;
+    border:2px dashed var(--line);
+    display:grid;place-items:center;
+    font-family:"Courier Prime","Courier New",monospace;
+    font-size:11px;font-weight:700;color:var(--ink-soft);
+    background:transparent;
+  }
+  .slot.hit{border:2px solid var(--moss);background:var(--moss);color:var(--on-accent);border-style:solid}
+  .slot.miss{border:2px solid var(--tomato);color:var(--tomato);border-style:solid;opacity:.75}
+  .slot.now{border:3px solid var(--marigold);color:var(--marigold);border-style:solid;animation:pulse 1.6s ease-in-out infinite}
+  @keyframes pulse{0%,100%{transform:scale(1)}50%{transform:scale(1.14)}}
+
+  /* ---------- question card ---------- */
+  .card{
+    background:var(--card);
+    border:2px solid var(--line);
+    border-radius:var(--radius);
+    box-shadow:0 10px 0 -4px var(--shadow);
+    padding:20px;
+    display:flex;flex-direction:column;gap:18px;
+  }
+  .cardhead{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
+  .stop{
+    font-family:"Courier Prime","Courier New",monospace;
+    font-size:12px;letter-spacing:.16em;text-transform:uppercase;color:var(--ink-soft);
+    font-variant-numeric:tabular-nums;
+  }
+  .tag{
+    font-family:"Courier Prime","Courier New",monospace;
+    font-size:11px;letter-spacing:.14em;text-transform:uppercase;
+    padding:4px 10px;border-radius:999px;border:2px solid currentColor;
+  }
+  .tag.math{color:var(--tomato)}
+  .tag.geo{color:var(--sea)}
+  h2{
+    font-family:"Fredoka","Trebuchet MS",sans-serif;
+    font-weight:600;font-size:clamp(23px,5.4vw,31px);line-height:1.2;
+    margin:0;text-wrap:balance;
+  }
+
+  .plate{
+    background:var(--card-2);
+    border:2px solid var(--line-soft);
+    border-radius:12px;
+    padding:14px 12px 10px;
+    display:flex;flex-direction:column;align-items:center;gap:8px;
+    overflow-x:auto;
+  }
+  .plate svg{display:block;max-width:100%;height:auto}
+  .plate figcaption{
+    font-family:"Courier Prime","Courier New",monospace;
+    font-size:12px;letter-spacing:.08em;color:var(--ink-soft);text-align:center;
+  }
+
+  .choices{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+  @media (max-width:430px){.choices{grid-template-columns:1fr}}
+  .choice{
+    font-family:"Fredoka","Trebuchet MS",sans-serif;
+    font-size:21px;font-weight:500;color:var(--ink);
+    background:var(--card);
+    border:3px solid var(--line);
+    border-radius:14px;
+    min-height:66px;padding:10px 14px;
+    cursor:pointer;text-align:center;
+    transition:transform .12s ease, background .12s ease, border-color .12s ease;
+  }
+  .choice:hover:not(:disabled){transform:translateY(-2px);border-color:var(--marigold)}
+  .choice:focus-visible{outline:3px solid var(--marigold);outline-offset:3px}
+  .choice:disabled{cursor:default}
+  .choice.right{background:var(--moss);border-color:var(--moss);color:var(--on-accent)}
+  .choice.wrong{background:var(--tomato);border-color:var(--tomato);color:var(--on-accent)}
+  .choice.dim{opacity:.45}
+
+  .feedback{display:flex;flex-direction:column;gap:12px}
+  .verdict{
+    font-family:"Fredoka","Trebuchet MS",sans-serif;
+    font-size:22px;font-weight:600;margin:0;
+  }
+  .verdict.good{color:var(--moss)}
+  .verdict.oops{color:var(--tomato)}
+  .fact{
+    border-left:5px solid var(--marigold);
+    background:var(--card-2);
+    border-radius:0 12px 12px 0;
+    padding:12px 14px;
+    display:flex;flex-direction:column;gap:4px;
+  }
+  .fact .label{
+    font-family:"Courier Prime","Courier New",monospace;
+    font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:var(--marigold);
+  }
+  .fact p{margin:0;font-size:15.5px}
+  .next{
+    align-self:flex-start;
+    font-family:"Fredoka","Trebuchet MS",sans-serif;font-size:19px;font-weight:600;
+    background:var(--sea);color:var(--on-accent);border:none;border-radius:999px;
+    padding:12px 26px;cursor:pointer;
+    transition:transform .12s ease;
+  }
+  .next:hover{transform:translateY(-2px)}
+  .next:focus-visible{outline:3px solid var(--marigold);outline-offset:3px}
+
+  /* ---------- finish ---------- */
+  .finish{align-items:center;text-align:center;gap:16px}
+  .score{
+    font-family:"Fredoka","Trebuchet MS",sans-serif;
+    font-size:64px;font-weight:700;line-height:1;color:var(--marigold);
+    font-variant-numeric:tabular-nums;
+  }
+  .rank{
+    font-family:"Fredoka","Trebuchet MS",sans-serif;font-size:29px;font-weight:600;margin:0;color:var(--sea);
+  }
+  .finish p{margin:0;max-width:44ch;color:var(--ink-soft)}
+  .again{
+    font-family:"Fredoka","Trebuchet MS",sans-serif;font-size:19px;font-weight:600;
+    background:var(--marigold);color:#17323E;border:none;border-radius:999px;
+    padding:12px 28px;cursor:pointer;
+  }
+  .again:focus-visible{outline:3px solid var(--sea);outline-offset:3px}
+  .foot{
+    font-family:"Courier Prime","Courier New",monospace;
+    font-size:11.5px;letter-spacing:.1em;color:var(--ink-soft);text-align:center;
+  }
+  @media (prefers-reduced-motion: reduce){
+    *{animation:none !important;transition:none !important}
+  }
+</style>
+
+<div class="wrap">
+  <header class="mast">
+    <div class="eyebrow">12 stops · ages 7 and up</div>
+    <h1>Explorer's Passport</h1>
+    <p>Travel the world and solve the numbers. Get a stop right and you win a stamp.</p>
+  </header>
+
+  <div class="strip" id="strip" aria-label="Stamps collected"></div>
+
+  <main id="stage" aria-live="polite"></main>
+
+  <p class="foot">Every stop is a real place at real coordinates.</p>
+</div>
+
+<script>
+/* ---------------- drawing kit ---------------- */
+const DOT = 26, R = 10;
+
+function svg(w, h, body){
+  return '<svg viewBox="0 0 ' + w + ' ' + h + '" width="' + w + '" height="' + h + '" role="img">' + body + '</svg>';
+}
+function dot(x, y, fill, extra){
+  return '<circle cx="' + x + '" cy="' + y + '" r="' + R + '" fill="' + fill + '"' + (extra || '') + '/>';
+}
+function boxOf(n){
+  const cols = Math.min(n, 5), rows = Math.ceil(n / 5);
+  return { w: cols * DOT + 14, h: rows * DOT + 14, cols: cols, rows: rows };
+}
+function dotsIn(n, ox, oy, fill){
+  let s = '';
+  for (let i = 0; i < n; i++){
+    const c = i % 5, r = Math.floor(i / 5);
+    s += dot(ox + 20 + c * DOT, oy + 20 + r * DOT, fill);
+  }
+  return s;
+}
+
+/* groups of counters joined by plus signs: 7 + 5, or 5 + 5 + 5 */
+function artGroups(groups){
+  const boxes = groups.map(boxOf);
+  const gapW = 40, pad = 6;
+  const h = Math.max.apply(null, boxes.map(b => b.h)) + pad * 2;
+  const w = boxes.reduce((a, b) => a + b.w, 0) + gapW * (groups.length - 1) + pad * 2;
+  let x = pad, body = '';
+  groups.forEach(function(n, i){
+    const b = boxes[i], y = (h - b.h) / 2;
+    body += '<rect x="' + x + '" y="' + y + '" width="' + b.w + '" height="' + b.h + '" rx="12" fill="none" stroke="var(--line)" stroke-width="2" stroke-dasharray="7 6"/>';
+    body += dotsIn(n, x, y, i % 2 ? 'var(--marigold)' : 'var(--sea)');
+    x += b.w;
+    if (i < groups.length - 1){
+      body += '<text x="' + (x + gapW / 2) + '" y="' + (h / 2 + 10) + '" text-anchor="middle" font-family="Fredoka, sans-serif" font-size="28" font-weight="600" fill="var(--ink-soft)">+</text>';
+      x += gapW;
+    }
+  });
+  return svg(w, h, body);
+}
+
+/* 20 counters with the last 8 crossed out */
+function artTakeAway(total, gone){
+  const b = boxOf(total), pad = 6;
+  const w = b.w + pad * 2, h = b.h + pad * 2;
+  let body = dotsIn(total, pad, pad, 'var(--sea)');
+  for (let i = total - gone; i < total; i++){
+    const c = i % 5, r = Math.floor(i / 5);
+    const cx = pad + 20 + c * DOT, cy = pad + 20 + r * DOT, k = 7;
+    body += '<circle cx="' + cx + '" cy="' + cy + '" r="' + R + '" fill="var(--card-2)" stroke="var(--tomato)" stroke-width="2"/>';
+    body += '<path d="M' + (cx - k) + ' ' + (cy - k) + ' L' + (cx + k) + ' ' + (cy + k) + ' M' + (cx + k) + ' ' + (cy - k) + ' L' + (cx - k) + ' ' + (cy + k) + '" stroke="var(--tomato)" stroke-width="3" stroke-linecap="round"/>';
+  }
+  return svg(w, h, body);
+}
+
+/* two equal rows, split by a fold line */
+function artHalves(per){
+  const pad = 8, w = per * DOT + pad * 2, h = DOT * 2 + pad * 2 + 14;
+  let body = '';
+  for (let r = 0; r < 2; r++){
+    for (let c = 0; c < per; c++){
+      body += dot(pad + 13 + c * DOT, pad + 13 + r * (DOT + 14), r ? 'var(--marigold)' : 'var(--sea)');
+    }
+  }
+  body += '<path d="M' + pad + ' ' + (h / 2) + ' H' + (w - pad) + '" stroke="var(--tomato)" stroke-width="2.5" stroke-dasharray="8 7" stroke-linecap="round"/>';
+  return svg(w, h, body);
+}
+
+/* a counting-in-fives number track */
+function artTrack(values){
+  const step = 74, pad = 22, w = values.length * step, h = 96, y = 42;
+  let body = '<path d="M' + pad + ' ' + y + ' H' + (w - pad) + '" stroke="var(--line)" stroke-width="3" stroke-linecap="round"/>';
+  values.forEach(function(v, i){
+    const x = pad + i * ((w - pad * 2) / (values.length - 1));
+    const unknown = v === '?';
+    body += '<circle cx="' + x + '" cy="' + y + '" r="20" fill="' + (unknown ? 'var(--marigold)' : 'var(--card)') + '" stroke="' + (unknown ? 'var(--marigold)' : 'var(--sea)') + '" stroke-width="3"/>';
+    body += '<text x="' + x + '" y="' + (y + 7) + '" text-anchor="middle" font-family="Fredoka, sans-serif" font-size="19" font-weight="600" fill="' + (unknown ? '#17323E' : 'var(--ink)') + '">' + v + '</text>';
+    if (i < values.length - 1){
+      const mid = x + ((w - pad * 2) / (values.length - 1)) / 2;
+      body += '<text x="' + mid + '" y="' + (y - 30) + '" text-anchor="middle" font-family="Courier Prime, monospace" font-size="13" fill="var(--ink-soft)">+5</text>';
+      body += '<path d="M' + (x + 24) + ' ' + (y - 18) + ' Q' + mid + ' ' + (y - 40) + ' ' + (x + ((w - pad * 2) / (values.length - 1)) - 24) + ' ' + (y - 18) + '" fill="none" stroke="var(--line)" stroke-width="2"/>';
+    }
+  });
+  return svg(w, h, body);
+}
+
+/* a pizza cut into equal slices, with some eaten */
+function artSlices(parts, eaten){
+  const w = 210, h = 190, cx = 105, cy = 96, r = 78;
+  let body = '';
+  for (let i = 0; i < parts; i++){
+    const a1 = (i / parts) * Math.PI * 2 - Math.PI / 2;
+    const a2 = ((i + 1) / parts) * Math.PI * 2 - Math.PI / 2;
+    const x1 = cx + r * Math.cos(a1), y1 = cy + r * Math.sin(a1);
+    const x2 = cx + r * Math.cos(a2), y2 = cy + r * Math.sin(a2);
+    const on = i < parts - eaten;
+    body += '<path d="M' + cx + ' ' + cy + ' L' + x1.toFixed(1) + ' ' + y1.toFixed(1) + ' A' + r + ' ' + r + ' 0 0 1 ' + x2.toFixed(1) + ' ' + y2.toFixed(1) + ' Z" fill="' + (on ? 'var(--marigold)' : 'none') + '" stroke="' + (on ? 'var(--tomato)' : 'var(--line)') + '" stroke-width="3" stroke-dasharray="' + (on ? 'none' : '8 7') + '"/>';
+  }
+  return svg(w, h, body);
+}
+
+/* Coarse coastlines, [lon, lat] degrees. Low detail on purpose: a 7-year-old
+   needs to see which continent the X sits on, not every bay. */
+const LAND = [
+  /* Eurasia */
+  [[-9,43],[-4,48],[0,51],[4,52],[8,55],[12,55],[18,59],[25,60],[30,65],[40,68],[55,70],[70,72],[80,75],[105,78],[130,73],[160,70],[179,66],[170,60],[163,58],[155,52],[140,46],[130,43],[122,39],[120,32],[110,21],[100,13],[105,10],[100,5],[95,17],[90,21],[80,8],[72,20],[60,25],[50,29],[57,25],[52,13],[43,13],[38,22],[34,29],[35,36],[31,36],[26,38],[23,36],[19,41],[13,45],[16,41],[16,38],[11,42],[9,44],[5,43],[3,42],[-5,36],[-9,37]],
+  /* Africa */
+  [[-6,36],[11,37],[20,33],[32,31],[36,22],[43,12],[51,11],[41,-2],[40,-16],[32,-26],[20,-35],[15,-23],[12,-6],[9,4],[3,6],[-8,4],[-17,15],[-16,22],[-10,30]],
+  /* North America */
+  [[-168,66],[-160,71],[-140,70],[-125,70],[-95,68],[-85,70],[-78,73],[-65,60],[-55,52],[-65,44],[-74,40],[-81,32],[-80,25],[-90,29],[-97,26],[-95,18],[-92,15],[-84,10],[-79,9],[-87,13],[-95,16],[-105,20],[-113,27],[-117,32],[-122,37],[-124,46],[-131,55],[-150,59],[-163,55]],
+  /* South America */
+  [[-77,8],[-72,12],[-60,8],[-50,0],[-44,-3],[-35,-7],[-39,-16],[-48,-25],[-58,-35],[-62,-40],[-65,-47],[-68,-55],[-75,-50],[-73,-40],[-71,-30],[-70,-18],[-77,-12],[-81,-5],[-80,2]],
+  /* Australia */
+  [[114,-22],[113,-26],[115,-34],[129,-32],[138,-35],[145,-38],[150,-37],[153,-28],[146,-19],[143,-11],[136,-12],[129,-15],[122,-17]],
+  /* Antarctica */
+  [[-180,-72],[-150,-75],[-120,-73],[-90,-72],[-60,-66],[-45,-72],[0,-70],[45,-67],[90,-66],[135,-66],[180,-72],[180,-89],[-180,-89]],
+  /* Greenland */
+  [[-45,60],[-20,70],[-20,82],[-45,83],[-58,82],[-55,68]],
+  /* Madagascar */
+  [[43,-12],[50,-16],[47,-25],[44,-20]],
+  /* British Isles */
+  [[-5,50],[1,51],[-1,58],[-6,58]],
+  /* Japan */
+  [[130,31],[136,34],[141,41],[145,44],[140,38],[132,34]],
+  /* New Zealand */
+  [[173,-35],[178,-38],[174,-41],[170,-46],[166,-45],[171,-39]]
+];
+
+/* a world map card with X marking the spot */
+let mapSeq = 0;
+function artMap(lat, lon){
+  const cid = 'cw' + (++mapSeq);
+  const w = 380, h = 210, pad = 16;
+  const iw = w - pad * 2, ih = h - pad * 2;
+  const px = function(lo){ return pad + ((lo + 180) / 360) * iw; };
+  const py = function(la){ return pad + ((90 - la) / 180) * ih; };
+
+  let body = '<defs><clipPath id="' + cid + '"><rect x="' + pad + '" y="' + pad + '" width="' + iw + '" height="' + ih + '" rx="8"/></clipPath></defs>';
+  body += '<rect x="' + pad + '" y="' + pad + '" width="' + iw + '" height="' + ih + '" rx="8" fill="var(--card)" stroke="var(--line)" stroke-width="2"/>';
+  body += '<g clip-path="url(#' + cid + ')">';
+
+  LAND.forEach(function(poly){
+    const d = poly.map(function(p, i){
+      return (i ? 'L' : 'M') + px(p[0]).toFixed(1) + ' ' + py(p[1]).toFixed(1);
+    }).join(' ') + ' Z';
+    body += '<path d="' + d + '" fill="var(--land)" stroke="var(--land-line)" stroke-width="1.5" stroke-linejoin="round"/>';
+  });
+
+  for (let d = -150; d <= 150; d += 30){
+    body += '<path d="M' + px(d).toFixed(1) + ' ' + pad + ' V' + (pad + ih) + '" stroke="var(--line-soft)" stroke-width="1" opacity=".7"/>';
+  }
+  for (let d = -60; d <= 60; d += 30){
+    body += '<path d="M' + pad + ' ' + py(d).toFixed(1) + ' H' + (pad + iw) + '" stroke="' + (d === 0 ? 'var(--sea)' : 'var(--line-soft)') + '" stroke-width="' + (d === 0 ? 2 : 1) + '" opacity="' + (d === 0 ? 1 : .7) + '"/>';
+  }
+  body += '<text x="' + (pad + 6) + '" y="' + (py(0) - 6) + '" font-family="Courier Prime, monospace" font-size="10" letter-spacing="1.5" fill="var(--sea)">EQUATOR</text>';
+
+  const x = px(lon), y = py(lat), k = 13;
+  body += '<circle cx="' + x.toFixed(1) + '" cy="' + y.toFixed(1) + '" r="21" fill="none" stroke="var(--tomato)" stroke-width="2.5" stroke-dasharray="5 6"/>';
+  body += '<path d="M' + (x - k) + ' ' + (y - k) + ' L' + (x + k) + ' ' + (y + k) + ' M' + (x + k) + ' ' + (y - k) + ' L' + (x - k) + ' ' + (y + k) + '" stroke="var(--tomato)" stroke-width="5" stroke-linecap="round"/>';
+  body += '</g>';
+  return svg(w, h, body);
+}
+function coords(lat, lon){
+  const ns = lat >= 0 ? 'N' : 'S', ew = lon >= 0 ? 'E' : 'W';
+  return Math.abs(lat).toFixed(1) + '° ' + ns + '  ·  ' + Math.abs(lon).toFixed(1) + '° ' + ew;
+}
+
+/* ---------------- the twelve stops ---------------- */
+const STOPS = [
+  { kind:'math', q:'7 + 5 = ?', choices:['10','11','12','13'], answer:2,
+    art:artGroups([7,5]), caption:'7 blue  +  5 yellow',
+    fact:'12 is called a dozen — it is how many eggs come in a box.' },
+
+  { kind:'geo', q:'Which is the biggest ocean on Earth?', choices:['Atlantic','Pacific','Indian','Arctic'], answer:1,
+    art:artMap(0,-160), caption:coords(0,-160),
+    fact:'The Pacific is so huge that all the land on Earth could fit inside it.' },
+
+  { kind:'math', q:'3 bags. 5 marbles in each bag. How many marbles?', choices:['8','12','15','20'], answer:2,
+    art:artGroups([5,5,5]), caption:'3 groups of 5',
+    fact:'3 groups of 5 and 5 groups of 3 both make 15. Swapping them never changes the answer.' },
+
+  { kind:'geo', q:'What is the capital city of France?', choices:['Rome','Madrid','Paris','Berlin'], answer:2,
+    art:artMap(48.9,2.3), caption:coords(48.9,2.3),
+    fact:'On hot days the Eiffel Tower grows about 15 cm taller, because metal stretches in the heat.' },
+
+  { kind:'math', q:'You had 20 stickers and gave away 8. How many are left?', choices:['12','10','14','8'], answer:0,
+    art:artTakeAway(20,8), caption:'8 crossed out',
+    fact:'Taking away is adding backwards: 12 + 8 makes 20 again.' },
+
+  { kind:'geo', q:'The pyramids are in Egypt. Which continent is that?', choices:['Asia','Africa','Europe','South America'], answer:1,
+    art:artMap(30,31.1), caption:coords(30,31.1),
+    fact:'The Great Pyramid is about 4,500 years old and was the tallest building on Earth for nearly 4,000 years.' },
+
+  { kind:'math', q:'What is half of 16?', choices:['6','7','8','9'], answer:2,
+    art:artHalves(8), caption:'16 split into 2 fair rows',
+    fact:'You can halve 16 three times in a row: 16, then 8, then 4, then 2.' },
+
+  { kind:'geo', q:'Penguins live at the South Pole. What is that place called?', choices:['Iceland','Greenland','The Arctic','Antarctica'], answer:3,
+    art:artMap(-75,0), caption:coords(-75,0),
+    fact:'Antarctica is a desert. It is freezing cold, but it almost never rains or snows there.' },
+
+  { kind:'math', q:'What comes next? 5, 10, 15, 20, …', choices:['21','24','25','30'], answer:2,
+    art:artTrack([5,10,15,20,'?']), caption:'counting in fives',
+    fact:'When you count in fives, every number ends in a 5 or a 0.' },
+
+  { kind:'geo', q:'Which country is shaped like a boot?', choices:['Italy','Japan','Brazil','Norway'], answer:0,
+    art:artMap(41.9,12.5), caption:coords(41.9,12.5),
+    fact:'The toe of the boot almost kicks the island of Sicily, where the volcano Mount Etna erupts.' },
+
+  { kind:'math', q:'A pizza is cut into 4 equal slices. You eat 1. How much is left?', choices:['1 out of 4','2 out of 4','3 out of 4','4 out of 4'], answer:2,
+    art:artSlices(4,1), caption:'1 slice gone',
+    fact:'Two of those slices make exactly one half of the pizza.' },
+
+  { kind:'geo', q:'Kangaroos hop wild in only one country. Which one?', choices:['India','Australia','Kenya','Canada'], answer:1,
+    art:artMap(-25,133), caption:coords(-25,133),
+    fact:'A red kangaroo can hop nearly 9 metres in one jump — about as long as a bus.' }
+];
+
+const RANKS = [
+  { min:12, title:'Grand Explorer', line:'A perfect trip. Every stamp in the passport, every stop solved.' },
+  { min:10, title:'World Explorer', line:'You could find your way home from almost anywhere.' },
+  { min:7,  title:'Trail Blazer',   line:'Strong travelling. A couple of stops got away — go back for them.' },
+  { min:4,  title:'Map Reader',     line:'You are getting the hang of the map. Try the trip again.' },
+  { min:0,  title:'Packing Bags',   line:'Every explorer starts somewhere. Set off again!' }
+];
+
+/* ---------------- game ---------------- */
+const strip = document.getElementById('strip');
+const stage = document.getElementById('stage');
+let index = 0, score = 0, marks = [];
+
+function drawStrip(){
+  strip.innerHTML = STOPS.map(function(_, i){
+    let cls = 'slot';
+    if (marks[i] === true) cls += ' hit';
+    else if (marks[i] === false) cls += ' miss';
+    else if (i === index) cls += ' now';
+    return '<div class="' + cls + '">' + (i + 1) + '</div>';
+  }).join('');
+}
+
+function drawStop(){
+  const s = STOPS[index];
+  stage.innerHTML =
+    '<section class="card">' +
+      '<div class="cardhead">' +
+        '<span class="stop">Stop ' + String(index + 1).padStart(2, '0') + ' of 12</span>' +
+        '<span class="tag ' + s.kind + '">' + (s.kind === 'math' ? 'Numbers' : 'Where in the world') + '</span>' +
+      '</div>' +
+      '<h2>' + s.q + '</h2>' +
+      '<figure class="plate" style="margin:0">' + s.art + '<figcaption>' + s.caption + '</figcaption></figure>' +
+      '<div class="choices" id="choices">' +
+        s.choices.map(function(c, i){
+          return '<button class="choice" id="choice-' + i + '" data-i="' + i + '">' + c + '</button>';
+        }).join('') +
+      '</div>' +
+      '<div id="feedback"></div>' +
+    '</section>';
+
+  document.querySelectorAll('.choice').forEach(function(b){
+    b.addEventListener('click', function(){ answer(Number(b.dataset.i)); });
+  });
+  drawStrip();
+}
+
+function answer(pick){
+  const s = STOPS[index];
+  const right = pick === s.answer;
+  marks[index] = right;
+  if (right) score++;
+
+  document.querySelectorAll('.choice').forEach(function(b){
+    const i = Number(b.dataset.i);
+    b.disabled = true;
+    if (i === s.answer) b.classList.add('right');
+    else if (i === pick) b.classList.add('wrong');
+    else b.classList.add('dim');
+  });
+
+  const last = index === STOPS.length - 1;
+  document.getElementById('feedback').innerHTML =
+    '<div class="feedback">' +
+      '<p class="verdict ' + (right ? 'good' : 'oops') + '">' +
+        (right ? 'Stamped! That is right.' : 'Not this time — the answer is ' + s.choices[s.answer] + '.') +
+      '</p>' +
+      '<div class="fact"><span class="label">Did you know</span><p>' + s.fact + '</p></div>' +
+      '<button class="next" id="next">' + (last ? 'See my passport' : 'Next stop') + '</button>' +
+    '</div>';
+
+  document.getElementById('next').addEventListener('click', function(){
+    if (last){ index = STOPS.length; drawStrip(); finish(); }
+    else { index++; drawStop(); document.querySelector('h2').scrollIntoView({ block:'nearest' }); }
+  });
+  drawStrip();
+}
+
+function finish(){
+  const rank = RANKS.find(function(r){ return score >= r.min; });
+  stage.innerHTML =
+    '<section class="card finish">' +
+      '<span class="stop">Trip complete</span>' +
+      '<div class="score">' + score + '<span style="font-size:26px;color:var(--ink-soft)"> / 12</span></div>' +
+      '<h2 class="rank">' + rank.title + '</h2>' +
+      '<p>' + rank.line + '</p>' +
+      '<button class="again" id="again">Travel again</button>' +
+    '</section>';
+  document.getElementById('again').addEventListener('click', function(){
+    index = 0; score = 0; marks = []; drawStop();
+  });
+}
+
+function start(state){
+  index = state && state.index || 0;
+  score = state && state.score || 0;
+  marks = state && state.marks || [];
+  if (index >= STOPS.length) finish(); else drawStop();
+  drawStrip();
+}
+
+if (window.claude && window.claude.hot && window.claude.hot.snapshot){
+  window.claude.hot.snapshot(function(){ return { index: index, score: score, marks: marks }; });
+}
+if (window.claude && window.claude.hot && window.claude.hot.ready){
+  window.claude.hot.ready(start);
+} else {
+  start((window.claude && window.claude.hot && window.claude.hot.data) || {});
+}
+</script>
