@@ -72,6 +72,76 @@ function buildTree(mb, rng, style = 0) {
   }
 }
 
+// A saguaro: one fluted column and an arm or two, elbowed upward. Nothing else
+// reads "desert" from a moving car as immediately.
+function buildCactus(mb, rng) {
+  const h = rnd2(rng, 3.4, 6.2);
+  const r = rnd2(rng, 0.20, 0.30);
+  pm(mb, PROP_MAT.leaf, [0.16, 0.30, 0.16]);
+  mb.push(); mb.translate(0, h / 2, 0); mb.cylinder(r * 0.86, r, h, 9); mb.pop();
+  mb.push(); mb.translate(0, h, 0); mb.sphere(r * 0.86, 9, 6, 0.8); mb.pop();
+  const arms = rng() < 0.25 ? 0 : (rng() < 0.6 ? 1 : 2);
+  for (let i = 0; i < arms; i++) {
+    const side = i === 0 ? (rng() < 0.5 ? -1 : 1) : (rng() < 0.5 ? 1 : -1);
+    const at = h * rnd2(rng, 0.42, 0.62);
+    const out = rnd2(rng, 0.5, 0.85);
+    const up = rnd2(rng, 0.9, 1.7);
+    const ar = r * 0.66;
+    // Out, then up: the elbow is the whole silhouette.
+    mb.push(); mb.translate(side * out / 2, at, 0); mb.rotateZ(Math.PI / 2);
+    mb.cylinder(ar, ar, out, 8); mb.pop();
+    mb.push(); mb.translate(side * out, at + up / 2, 0);
+    mb.cylinder(ar * 0.9, ar, up, 8); mb.pop();
+    mb.push(); mb.translate(side * out, at + up, 0); mb.sphere(ar * 0.9, 8, 6, 0.8); mb.pop();
+  }
+}
+
+// Desert scrub: a couple of low grey-green humps, for the ground between the
+// cacti. Bare sand all the way to the horizon reads as unfinished, not as arid.
+function buildScrub(mb, rng) {
+  pm(mb, PROP_MAT.leaf, [0.26, 0.28, 0.16]);
+  const humps = 1 + Math.floor(rng() * 3);
+  for (let i = 0; i < humps; i++) {
+    const r = rnd2(rng, 0.5, 1.15);
+    mb.push();
+    mb.translate(rnd2(rng, -1.1, 1.1), r * 0.42, rnd2(rng, -1.1, 1.1));
+    mb.sphere(r, 8, 5, 0.5);
+    mb.pop();
+  }
+}
+
+// A palm: bare leaning trunk, a crown of drooping fronds.
+function buildPalm(mb, rng) {
+  const h = rnd2(rng, 7.0, 13.0);
+  const lean = rnd2(rng, -0.16, 0.16);
+  pm(mb, PROP_MAT.bark, [0.32, 0.26, 0.18]);
+  const segs = 6;
+  for (let i = 0; i < segs; i++) {
+    const t = i / segs;
+    const r = lerp(0.24, 0.13, t);
+    mb.push();
+    mb.translate(lean * h * t * t, h * (t + 0.5 / segs), 0);
+    mb.rotateZ(lean * t * 1.4);
+    mb.cylinder(r * 0.94, r, h / segs + 0.06, 8);
+    mb.pop();
+  }
+  pm(mb, PROP_MAT.leaf, [0.14, 0.34, 0.12]);
+  const top = [lean * h, h, 0];
+  const fronds = 7 + Math.floor(rng() * 4);
+  for (let i = 0; i < fronds; i++) {
+    const a = (i / fronds) * TAU + rng() * 0.3;
+    const len = rnd2(rng, 2.2, 3.4);
+    mb.push();
+    mb.translate(top[0], top[1], top[2]);
+    mb.rotateY(a);
+    // Drooping: out and slightly down, tapering to a point.
+    mb.rotateZ(rnd2(rng, 0.35, 0.75));
+    mb.translate(len / 2, 0, 0);
+    mb.box(len, 0.07, rnd2(rng, 0.45, 0.75));
+    mb.pop();
+  }
+}
+
 function rnd2(rng, a, b) { return a + rng() * (b - a); }
 
 // A clipped hedge: one continuous lofted mass with a slightly uneven top,
@@ -311,13 +381,40 @@ function buildWindowGrid(mb, width, height, cols, rows, depth, lit, rng) {
   }
 }
 
+// What the buildings are made of, by the kind of country they stand in. Every
+// town in all fifty-six states used to draw from one set of five greys and
+// browns, so a street in Santa Fe and a street in Vermont were the same street.
+//
+// Walls only - the shapes stay shared. Colour and material carry most of the
+// regional read at the distance you see a town from, and a per-region roofline
+// would be a far larger job for less of the difference.
+const REGION_WALLS = {
+  // Adobe and sun-bleached stucco.
+  desert: [[0.80, 0.60, 0.44], [0.72, 0.52, 0.38], [0.84, 0.70, 0.55], [0.66, 0.46, 0.34]],
+  // Painted clapboard, white and slate.
+  temperate: [[0.86, 0.86, 0.84], [0.72, 0.76, 0.78], [0.62, 0.66, 0.68], [0.80, 0.78, 0.72]],
+  // Dark stained timber against the trees.
+  forest: [[0.46, 0.40, 0.34], [0.56, 0.50, 0.42], [0.38, 0.36, 0.32], [0.64, 0.58, 0.48]],
+  // Grain-country brick and painted board.
+  plains: [[0.68, 0.46, 0.38], [0.78, 0.72, 0.60], [0.58, 0.44, 0.36], [0.82, 0.78, 0.68]],
+  // Pale render that throws the heat off.
+  golden: [[0.88, 0.82, 0.68], [0.80, 0.72, 0.56], [0.76, 0.70, 0.62], [0.90, 0.86, 0.76]],
+  // Southern white and warm brick.
+  south: [[0.90, 0.88, 0.80], [0.74, 0.52, 0.44], [0.82, 0.78, 0.70], [0.66, 0.58, 0.50]],
+  // Dark timber and steep painted walls.
+  cold: [[0.52, 0.50, 0.52], [0.66, 0.66, 0.70], [0.42, 0.44, 0.48], [0.74, 0.74, 0.76]],
+  // Bright coastal paint.
+  tropical: [[0.92, 0.86, 0.66], [0.70, 0.86, 0.82], [0.88, 0.72, 0.64], [0.78, 0.84, 0.72]],
+};
+
 function buildTownBuilding(mb, rng, opts = {}) {
   const w = opts.width || rnd2(rng, 9, 16);
   const d = opts.depth || rnd2(rng, 9, 14);
   const floors = opts.floors || (2 + Math.floor(rng() * 2));
   const floorH = 3.2;
   const h = floors * floorH;
-  const wallTints = [[0.70, 0.66, 0.60], [0.60, 0.48, 0.42], [0.76, 0.74, 0.70], [0.48, 0.40, 0.36], [0.66, 0.60, 0.52]];
+  const wallTints = opts.walls
+    || [[0.70, 0.66, 0.60], [0.60, 0.48, 0.42], [0.76, 0.74, 0.70], [0.48, 0.40, 0.36], [0.66, 0.60, 0.52]];
   const wall = wallTints[Math.floor(rng() * wallTints.length)];
   mb.mat(wall, 0.90, 0, 0, FLAG_DEFAULT);
   mb.push(); mb.translate(0, h / 2, 0); mb.chamferBox(w, h, d, 0.16); mb.pop();
@@ -362,9 +459,11 @@ function buildHouse(mb, rng, opts = {}) {
   const d = opts.depth || rnd2(rng, 8.0, 11.0);
   const wallH = opts.wallHeight || rnd2(rng, 4.6, 6.2);
   const brick = rng() < 0.45;
-  const wall = brick
-    ? [0.42 + rng() * 0.14, 0.24 + rng() * 0.08, 0.19 + rng() * 0.06]
-    : [0.62 + rng() * 0.22, 0.60 + rng() * 0.20, 0.55 + rng() * 0.18];
+  const wall = opts.walls
+    ? opts.walls[Math.floor(rng() * opts.walls.length)]
+    : (brick
+      ? [0.42 + rng() * 0.14, 0.24 + rng() * 0.08, 0.19 + rng() * 0.06]
+      : [0.62 + rng() * 0.22, 0.60 + rng() * 0.20, 0.55 + rng() * 0.18]);
   mb.mat(wall, 0.90, 0, 0, FLAG_DEFAULT);
   mb.push(); mb.translate(0, wallH / 2, 0); mb.box(w, wallH, d); mb.pop();
 

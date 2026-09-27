@@ -133,6 +133,61 @@ Come back to the route and the turn-by-turn picks up where it left off.
 The minimap draws the whole network, not just the route. Free roam without a map
 is just getting lost.
 
+## What a state looks like from the car
+
+The outlines above are the map. From the driver's seat you never see one, so
+"does this state look real" is a different question, and for a long time the
+honest answer was no: **the only things that changed as you crossed the country
+were the colour of the grass and how many trees there were.** The terrain was
+one noise function at one amplitude in all fifty-six, the eight tree meshes
+were shared, and every town in the country was built from the same five greys.
+
+Four things differ now.
+
+**Relief.** How hilly a state is, as a multiplier on the terrain, blurred into a
+smooth field so a border is a change of country and not a cliff. It is listed
+per state rather than per biome because the two do not line up — Colorado is
+plains by vegetation and the most mountainous place in the country. Utah has
+**23 m** of height in it and Delaware **1.2 m**, a spread of **19x**, and the
+steepest road anywhere is 13.7% with a median of 1%.
+
+**Vegetation.** Each kind of country plants its own: saguaro and scrub in the
+desert, palms in the tropics, spruce in the cold and the forest states, shelter
+belts and a lot of sky on the plains. More importantly it is planted *where you
+can see it* — the old scatter covered 149 km² at one candidate per 15,000 m²
+and explicitly refused to plant within fourteen metres of a road, so the one
+thing that tells Arizona from Maine was kept away from everywhere the player
+goes. It now follows the roads.
+
+**Architecture.** Adobe and bleached stucco in the south-west, painted clapboard
+in New England, dark stained timber in the forest states, grain-country brick,
+bright coastal paint in the tropics.
+
+**A town that fits.** Small states get houses rather than a four-block street of
+shopfronts, which read as a model village.
+
+### The ground was not being drawn at all
+
+Chasing this turned up why no amount of tinting had ever helped: **the country
+had no ground.** Two bugs, stacked so that the first hid the second.
+
+The terrain quads were wound backwards and their normals pointed straight down,
+so every triangle of ground in both worlds was back-face culled before it was
+ever shaded. What you were driving through was a road network and some buildings
+standing on the sky. It survived because roads, verges and gravel traps are
+their own meshes and they were fine, so the scene looked furnished.
+
+Fixing that revealed the second: `v3.lerp` takes `(out, a, b, t)` and the ground
+colour called it with three arguments, so `t` was `undefined`, every channel
+came out `NaN`, and the ground shaded black. It had been that way as long as the
+terrain had been invisible, which is exactly why nobody had seen it.
+
+With both fixed the ground renders, and the states are measurably different
+places: `scripts/tour.mjs` stands the car in ten of them and samples what the
+ground actually comes out as. Arizona rgb(121,105,70), Vermont rgb(77,92,55),
+New Mexico rgb(114,95,53), Maine rgb(87,102,59). The closest pair is Colorado
+and Kansas, 5/765 apart — both plains, which is the right answer.
+
 ## Traffic, everywhere
 
 There are **10,100 cars** on the road — one every 21 m of street and every 45 m
@@ -542,6 +597,8 @@ out. `scripts/simtest.mjs` asserts all of that.
     node scripts/flicker.mjs    # z-fighting: what is drawn where something already is
     node scripts/overlap.mjs    # tarmac covered by more than one road
     node scripts/cockpit.mjs    # every camera view, and what the near plane clips
+    node scripts/tour.mjs       # stand in ten states and photograph the ground
+    node scripts/relief.mjs     # how hilly each state is, and are the roads drivable
     node scripts/mapshot.mjs    # screenshot the GPS, where every shape is visible
     node scripts/shapes.mjs     # regenerate state_shapes.js from boundary data
     node scripts/polycount.mjs  # triangle budget, scene by scene

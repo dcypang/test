@@ -4373,7 +4373,14 @@ class World {
     return out;
   }
 
-  terrain(x, z) { return this.terrainHeightRaw(x, z) * this.terrainScale; }
+  // `relief` is an optional (x, z) -> multiplier the scene can install to make
+  // one part of the country hillier than another. The noise is zero-mean, so
+  // scaling it scales the hills without moving sea level. It has to be smooth:
+  // a step in the multiplier is a cliff in the ground.
+  terrain(x, z) {
+    const h = this.terrainHeightRaw(x, z) * this.terrainScale;
+    return this.relief ? h * this.relief(x, z) : h;
+  }
 
   addPath(path) { this.paths.push(path); return path; }
 
@@ -4603,7 +4610,13 @@ function buildTerrainMesh(world, opts = {}) {
     const n = (Math.sin(x * 0.037) + Math.cos(z * 0.041) + Math.sin((x + z) * 0.013)) / 3;
     const dry = clamp(0.5 + n * 0.9, 0, 1);
     const c = v3.lerp([0, 0, 0], GRASS_A, GRASS_B, dry);
-    const out = v3.lerp(c, DRY_GRASS, clamp((y + 2) * 0.05, 0, 0.35) * dry);
+    // v3.lerp is (out, a, b, t). This was called with three arguments, so `t`
+    // was undefined, every channel came out NaN, and the entire ground of both
+    // worlds shaded black. It went unseen because the other bug above was
+    // hiding it: the ground was being back-face culled before anything got as
+    // far as shading it.
+    const out = v3.lerp([0, 0, 0], c, DRY_GRASS,
+      clamp((y + 2) * 0.05, 0, 0.35) * dry);
     if (!tintAt) return out;
     const t = tintAt(x, z);
     return [clamp(out[0] * t[0], 0, 1), clamp(out[1] * t[1], 0, 1), clamp(out[2] * t[2], 0, 1)];
@@ -4624,10 +4637,23 @@ function buildTerrainMesh(world, opts = {}) {
       const p2 = [x1, h[i2], z1];
       const p3 = [x0, h[i3], z1];
       mb.mat(colorAt((x0 + x1) / 2, (z0 + z1) / 2, (h[i0] + h[i2]) / 2), 0.94, 0, 0, FLAG_DEFAULT);
-      // Split along the shorter diagonal so slopes look natural.
-      const n0 = v3.norm([0, 0, 0], v3.cross([0, 0, 0], v3.sub([0, 0, 0], p1, p0), v3.sub([0, 0, 0], p3, p0)));
+      // Wound so the ground faces the sky.
+      //
+      // It did not. The quad went round p0, p1, p2, p3 - which is the back face
+      // once the projection has negated clip X - and the normal came out of
+      // cross(p1 - p0, p3 - p0), which points straight down. So every triangle
+      // of ground in the country was inside out and lit from underneath, and
+      // the whole lot was thrown away by back-face culling before it was ever
+      // shaded.
+      //
+      // Nothing looked obviously broken, which is why it survived: roads and
+      // verges are their own meshes and they were fine, so what you saw was a
+      // road network and some buildings standing on the sky. It also made every
+      // state look identical, since the ground is what carries a state's
+      // colour, and there was none.
+      const n0 = v3.norm([0, 0, 0], v3.cross([0, 0, 0], v3.sub([0, 0, 0], p3, p0), v3.sub([0, 0, 0], p1, p0)));
       const a = mb.vertex(p0, n0), b = mb.vertex(p1, n0), c = mb.vertex(p2, n0), d = mb.vertex(p3, n0);
-      mb.quadIdx(a, b, c, d);
+      mb.quadIdx(a, d, c, b);
       if (rng() < 0.0) { /* reserved for scatter hooks */ }
     }
   }
@@ -4977,6 +5003,76 @@ function buildTree(mb, rng, style = 0) {
   }
 }
 
+// A saguaro: one fluted column and an arm or two, elbowed upward. Nothing else
+// reads "desert" from a moving car as immediately.
+function buildCactus(mb, rng) {
+  const h = rnd2(rng, 3.4, 6.2);
+  const r = rnd2(rng, 0.20, 0.30);
+  pm(mb, PROP_MAT.leaf, [0.16, 0.30, 0.16]);
+  mb.push(); mb.translate(0, h / 2, 0); mb.cylinder(r * 0.86, r, h, 9); mb.pop();
+  mb.push(); mb.translate(0, h, 0); mb.sphere(r * 0.86, 9, 6, 0.8); mb.pop();
+  const arms = rng() < 0.25 ? 0 : (rng() < 0.6 ? 1 : 2);
+  for (let i = 0; i < arms; i++) {
+    const side = i === 0 ? (rng() < 0.5 ? -1 : 1) : (rng() < 0.5 ? 1 : -1);
+    const at = h * rnd2(rng, 0.42, 0.62);
+    const out = rnd2(rng, 0.5, 0.85);
+    const up = rnd2(rng, 0.9, 1.7);
+    const ar = r * 0.66;
+    // Out, then up: the elbow is the whole silhouette.
+    mb.push(); mb.translate(side * out / 2, at, 0); mb.rotateZ(Math.PI / 2);
+    mb.cylinder(ar, ar, out, 8); mb.pop();
+    mb.push(); mb.translate(side * out, at + up / 2, 0);
+    mb.cylinder(ar * 0.9, ar, up, 8); mb.pop();
+    mb.push(); mb.translate(side * out, at + up, 0); mb.sphere(ar * 0.9, 8, 6, 0.8); mb.pop();
+  }
+}
+
+// Desert scrub: a couple of low grey-green humps, for the ground between the
+// cacti. Bare sand all the way to the horizon reads as unfinished, not as arid.
+function buildScrub(mb, rng) {
+  pm(mb, PROP_MAT.leaf, [0.26, 0.28, 0.16]);
+  const humps = 1 + Math.floor(rng() * 3);
+  for (let i = 0; i < humps; i++) {
+    const r = rnd2(rng, 0.5, 1.15);
+    mb.push();
+    mb.translate(rnd2(rng, -1.1, 1.1), r * 0.42, rnd2(rng, -1.1, 1.1));
+    mb.sphere(r, 8, 5, 0.5);
+    mb.pop();
+  }
+}
+
+// A palm: bare leaning trunk, a crown of drooping fronds.
+function buildPalm(mb, rng) {
+  const h = rnd2(rng, 7.0, 13.0);
+  const lean = rnd2(rng, -0.16, 0.16);
+  pm(mb, PROP_MAT.bark, [0.32, 0.26, 0.18]);
+  const segs = 6;
+  for (let i = 0; i < segs; i++) {
+    const t = i / segs;
+    const r = lerp(0.24, 0.13, t);
+    mb.push();
+    mb.translate(lean * h * t * t, h * (t + 0.5 / segs), 0);
+    mb.rotateZ(lean * t * 1.4);
+    mb.cylinder(r * 0.94, r, h / segs + 0.06, 8);
+    mb.pop();
+  }
+  pm(mb, PROP_MAT.leaf, [0.14, 0.34, 0.12]);
+  const top = [lean * h, h, 0];
+  const fronds = 7 + Math.floor(rng() * 4);
+  for (let i = 0; i < fronds; i++) {
+    const a = (i / fronds) * TAU + rng() * 0.3;
+    const len = rnd2(rng, 2.2, 3.4);
+    mb.push();
+    mb.translate(top[0], top[1], top[2]);
+    mb.rotateY(a);
+    // Drooping: out and slightly down, tapering to a point.
+    mb.rotateZ(rnd2(rng, 0.35, 0.75));
+    mb.translate(len / 2, 0, 0);
+    mb.box(len, 0.07, rnd2(rng, 0.45, 0.75));
+    mb.pop();
+  }
+}
+
 function rnd2(rng, a, b) { return a + rng() * (b - a); }
 
 // A clipped hedge: one continuous lofted mass with a slightly uneven top,
@@ -5216,13 +5312,40 @@ function buildWindowGrid(mb, width, height, cols, rows, depth, lit, rng) {
   }
 }
 
+// What the buildings are made of, by the kind of country they stand in. Every
+// town in all fifty-six states used to draw from one set of five greys and
+// browns, so a street in Santa Fe and a street in Vermont were the same street.
+//
+// Walls only - the shapes stay shared. Colour and material carry most of the
+// regional read at the distance you see a town from, and a per-region roofline
+// would be a far larger job for less of the difference.
+const REGION_WALLS = {
+  // Adobe and sun-bleached stucco.
+  desert: [[0.80, 0.60, 0.44], [0.72, 0.52, 0.38], [0.84, 0.70, 0.55], [0.66, 0.46, 0.34]],
+  // Painted clapboard, white and slate.
+  temperate: [[0.86, 0.86, 0.84], [0.72, 0.76, 0.78], [0.62, 0.66, 0.68], [0.80, 0.78, 0.72]],
+  // Dark stained timber against the trees.
+  forest: [[0.46, 0.40, 0.34], [0.56, 0.50, 0.42], [0.38, 0.36, 0.32], [0.64, 0.58, 0.48]],
+  // Grain-country brick and painted board.
+  plains: [[0.68, 0.46, 0.38], [0.78, 0.72, 0.60], [0.58, 0.44, 0.36], [0.82, 0.78, 0.68]],
+  // Pale render that throws the heat off.
+  golden: [[0.88, 0.82, 0.68], [0.80, 0.72, 0.56], [0.76, 0.70, 0.62], [0.90, 0.86, 0.76]],
+  // Southern white and warm brick.
+  south: [[0.90, 0.88, 0.80], [0.74, 0.52, 0.44], [0.82, 0.78, 0.70], [0.66, 0.58, 0.50]],
+  // Dark timber and steep painted walls.
+  cold: [[0.52, 0.50, 0.52], [0.66, 0.66, 0.70], [0.42, 0.44, 0.48], [0.74, 0.74, 0.76]],
+  // Bright coastal paint.
+  tropical: [[0.92, 0.86, 0.66], [0.70, 0.86, 0.82], [0.88, 0.72, 0.64], [0.78, 0.84, 0.72]],
+};
+
 function buildTownBuilding(mb, rng, opts = {}) {
   const w = opts.width || rnd2(rng, 9, 16);
   const d = opts.depth || rnd2(rng, 9, 14);
   const floors = opts.floors || (2 + Math.floor(rng() * 2));
   const floorH = 3.2;
   const h = floors * floorH;
-  const wallTints = [[0.70, 0.66, 0.60], [0.60, 0.48, 0.42], [0.76, 0.74, 0.70], [0.48, 0.40, 0.36], [0.66, 0.60, 0.52]];
+  const wallTints = opts.walls
+    || [[0.70, 0.66, 0.60], [0.60, 0.48, 0.42], [0.76, 0.74, 0.70], [0.48, 0.40, 0.36], [0.66, 0.60, 0.52]];
   const wall = wallTints[Math.floor(rng() * wallTints.length)];
   mb.mat(wall, 0.90, 0, 0, FLAG_DEFAULT);
   mb.push(); mb.translate(0, h / 2, 0); mb.chamferBox(w, h, d, 0.16); mb.pop();
@@ -5267,9 +5390,11 @@ function buildHouse(mb, rng, opts = {}) {
   const d = opts.depth || rnd2(rng, 8.0, 11.0);
   const wallH = opts.wallHeight || rnd2(rng, 4.6, 6.2);
   const brick = rng() < 0.45;
-  const wall = brick
-    ? [0.42 + rng() * 0.14, 0.24 + rng() * 0.08, 0.19 + rng() * 0.06]
-    : [0.62 + rng() * 0.22, 0.60 + rng() * 0.20, 0.55 + rng() * 0.18];
+  const wall = opts.walls
+    ? opts.walls[Math.floor(rng() * opts.walls.length)]
+    : (brick
+      ? [0.42 + rng() * 0.14, 0.24 + rng() * 0.08, 0.19 + rng() * 0.06]
+      : [0.62 + rng() * 0.22, 0.60 + rng() * 0.20, 0.55 + rng() * 0.18]);
   mb.mat(wall, 0.90, 0, 0, FLAG_DEFAULT);
   mb.push(); mb.translate(0, wallH / 2, 0); mb.box(w, wallH, d); mb.pop();
 
@@ -6118,6 +6243,38 @@ function makePropLibrary(rng) {
     const style = i < 4 ? 0 : (i < 6 ? 1 : 2);
     lib.trees.push(make((mb) => buildTree(mb, rng, style)));
   }
+
+  // What grows where. Every state used to plant from the same eight trees, so
+  // the only thing that changed as you crossed the country was the colour of
+  // the grass - Arizona had the same oaks as Vermont, and neither looked like
+  // anywhere. Each kind of country now has its own planting, and the mix
+  // matters as much as the species: plains are mostly empty with a windbreak
+  // here and there, desert is scrub with the occasional saguaro standing in it.
+  const broadleaf = () => make((mb) => buildTree(mb, rng, 0));
+  const conifer = () => make((mb) => buildTree(mb, rng, 1));
+  const poplar = () => make((mb) => buildTree(mb, rng, 2));
+  const cactus = () => make((mb) => buildCactus(mb, rng));
+  const scrub = () => make((mb) => buildScrub(mb, rng));
+  const palm = () => make((mb) => buildPalm(mb, rng));
+  const set = (...fns) => fns.map((f) => f());
+  lib.flora = {
+    // Conifers with a few broadleaves through them.
+    forest: set(conifer, conifer, conifer, conifer, broadleaf, poplar),
+    // Mixed woodland, the eastern default.
+    temperate: set(broadleaf, broadleaf, broadleaf, poplar, conifer),
+    // Shelter belts and a lot of sky.
+    plains: set(poplar, poplar, broadleaf, scrub),
+    // Scrub, mostly, with saguaros standing out of it.
+    desert: set(scrub, scrub, scrub, scrub, cactus, cactus),
+    // Dry oak country.
+    golden: set(broadleaf, broadleaf, scrub, poplar),
+    // Heavy broadleaf with palms creeping in along the coast.
+    south: set(broadleaf, broadleaf, broadleaf, palm, poplar),
+    // Spruce, and not much of it.
+    cold: set(conifer, conifer, conifer, poplar),
+    // Palms.
+    tropical: set(palm, palm, palm, broadleaf),
+  };
   lib.streetLightL = make((mb) => buildStreetLight(mb, -1));
   lib.streetLightR = make((mb) => buildStreetLight(mb, 1));
   lib.trafficLight = make((mb) => buildTrafficLightPole(mb));
@@ -6136,6 +6293,20 @@ function makePropLibrary(rng) {
   for (let i = 0; i < 3; i++) lib.garages.push(make((mb) => buildGarage(mb, rng)));
   lib.shops = [];
   for (let i = 0; i < 7; i++) lib.shops.push(make((mb) => buildTownBuilding(mb, rng)));
+  // The same houses and shops in each region's own materials. Four of each is
+  // enough variety at the distance a town is read from, and eight regions of
+  // eight buildings would be a lot of geometry for a difference nobody sees.
+  lib.regionHouses = {};
+  lib.regionShops = {};
+  for (const region of Object.keys(REGION_WALLS)) {
+    const walls = REGION_WALLS[region];
+    lib.regionHouses[region] = [];
+    lib.regionShops[region] = [];
+    for (let i = 0; i < 4; i++) {
+      lib.regionHouses[region].push(make((mb) => buildHouse(mb, rng, { walls })));
+      lib.regionShops[region].push(make((mb) => buildTownBuilding(mb, rng, { walls })));
+    }
+  }
   lib.hedge = make((mb) => buildHedge(mb, 8, 1.2, 0.8, rng));
   lib.fence = make((mb) => buildFence(mb, 8, rng));
   return lib;
@@ -6591,6 +6762,36 @@ const BIOMES = {
   tropical:  { tint: [0.72, 0.98, 0.70], trees: 1.8 },
 };
 
+// How hilly each state is, as a multiplier on the terrain noise.
+//
+// The country used to be one noise function at one amplitude everywhere, which
+// meant Kansas and Colorado had identical hills and the horizon looked the same
+// in all fifty-six. Relief is the thing you see most of from a car - it is on
+// every horizon, all the time - so it is the single biggest difference between
+// one state and the next.
+//
+// Listed by state rather than by biome because the two do not line up: Colorado
+// is plains by vegetation and the most mountainous place in the country, and
+// Nevada is desert and corrugated with ranges.
+const STATE_RELIEF = {
+  // The mountain west, and the eastern states that earn it.
+  CO: 5.0, UT: 4.6, WY: 4.2, MT: 4.4, ID: 2.6, AK: 4.8, NV: 4.2, CA: 3.8,
+  WV: 3.4, VT: 3.0, NH: 3.2,
+  // Hill country.
+  OR: 2.9, WA: 2.9, AZ: 2.7, NM: 2.7, PA: 2.5, NY: 2.3, TN: 2.5, KY: 2.1,
+  ME: 2.3, VA: 2.5, AR: 2.3, MO: 1.9, SD: 1.5, HI: 3.6, PR: 3.0, AS: 3.6,
+  GU: 2.1, VI: 2.5, MP: 2.7,
+  // Flat. The plains are flat, and the coastal south is flatter.
+  KS: 0.35, NE: 0.4, ND: 0.45, IA: 0.5, IL: 0.4, IN: 0.45, OH: 0.6,
+  DE: 0.3, FL: 0.2, LA: 0.25, MS: 0.5, TX: 0.7, OK: 0.6, MI: 0.5, WI: 0.6,
+  MN: 0.5, NJ: 0.5, MD: 0.7, NC: 0.9, SC: 0.7, GA: 0.8, AL: 0.8, CT: 0.8,
+  RI: 0.5, MA: 0.7, DC: 0.4,
+};
+// Idaho is capped whatever the table says: Ashcombe, the circuit and the whole
+// road home are built on it, and hills that would be scenery anywhere else are
+// a hill the race track goes up.
+const HOME_RELIEF_CAP = 1.5;
+
 // The outlines themselves live in state_shapes.js, generated by
 // scripts/shapes.mjs from real boundary data. Everything below turns one of
 // those into a state: where its ground is tinted, where its town stands, and
@@ -6804,6 +7005,64 @@ const STATES = STATE_TABLE.map(([abbr, name, capital, biome], i) => {
   };
 });
 
+// A smooth field of "how hilly is it here", sampled by the terrain.
+//
+// Built once as a coarse grid over the country, then blurred. The blur is the
+// whole point: relief has to change gradually or the multiplier steps at a
+// state line and the ground tears. Blurring over a few cells of a 200 m grid
+// spreads each change across roughly a kilometre, so Kansas flattens out of
+// Colorado over a believable distance rather than at a fence post.
+function makeReliefField() {
+  const CELL = 200, PAD = 2;
+  const w = Math.ceil((STATE_X1 - STATE_X0) / CELL) + PAD * 2;
+  const d = Math.ceil((STATE_Z1 - STATE_Z0) / CELL) + PAD * 2;
+  const x0 = STATE_X0 - PAD * CELL, z0 = STATE_Z0 - PAD * CELL;
+  let g = new Float32Array(w * d);
+  for (let j = 0; j < d; j++) {
+    for (let i = 0; i < w; i++) {
+      const x = x0 + i * CELL, z = z0 + j * CELL;
+      const st = stateAt(x, z);
+      let r = st ? (STATE_RELIEF[st.abbr] !== undefined ? STATE_RELIEF[st.abbr] : 1.0) : 0.8;
+      if (st && st.abbr === 'ID') r = Math.min(r, HOME_RELIEF_CAP);
+      g[j * w + i] = r;
+    }
+  }
+  // Separable box blur, a few passes, which is close enough to a gaussian and
+  // far cheaper to read six months from now.
+  for (let pass = 0; pass < 4; pass++) {
+    const out = new Float32Array(w * d);
+    for (let j = 0; j < d; j++) {
+      for (let i = 0; i < w; i++) {
+        let s = 0, n = 0;
+        for (let k = -2; k <= 2; k++) {
+          const ii = Math.min(w - 1, Math.max(0, i + k));
+          s += g[j * w + ii]; n++;
+        }
+        out[j * w + i] = s / n;
+      }
+    }
+    for (let i = 0; i < w; i++) {
+      for (let j = 0; j < d; j++) {
+        let s = 0, n = 0;
+        for (let k = -2; k <= 2; k++) {
+          const jj = Math.min(d - 1, Math.max(0, j + k));
+          s += out[jj * w + i]; n++;
+        }
+        g[j * w + i] = s / n;
+      }
+    }
+  }
+  return (x, z) => {
+    const fx = (x - x0) / CELL, fz = (z - z0) / CELL;
+    const i = Math.min(w - 2, Math.max(0, Math.floor(fx)));
+    const j = Math.min(d - 2, Math.max(0, Math.floor(fz)));
+    const tx = Math.min(1, Math.max(0, fx - i)), tz = Math.min(1, Math.max(0, fz - j));
+    const a = g[j * w + i], b = g[j * w + i + 1];
+    const c = g[(j + 1) * w + i], e = g[(j + 1) * w + i + 1];
+    return lerp(lerp(a, b, tx), lerp(c, e, tx), tz);
+  };
+}
+
 function stateAt(x, z) {
   if (x < STATE_X0 || x >= STATE_X1 || z < STATE_Z0 || z >= STATE_Z1) return null;
   let col = 0; while (col < STATE_COLS - 1 && x >= COL_X[col + 1]) col++;
@@ -6900,6 +7159,10 @@ function fillTownBlocks(world, streets, propMB, roadMB, opts) {
 function buildHomeRoute(gl) {
   const rng = makeRng(4242);
   const world = new World({ seed: 3313, terrainScale: 0.7 });
+  // Installed before anything reads the ground: the roads are conformed to the
+  // terrain and the towns are built on it, so relief has to be in place first
+  // or half the country is laid out against a landscape that then moves.
+  world.relief = makeReliefField();
 
   const route = world.addPath(new Path(xz(HOME_ROUTE), {
     closed: false, halfWidth: 4.4, surface: SURFACES.asphalt, kerbs: false,
@@ -7469,8 +7732,15 @@ function buildHomeRoute(gl) {
   STATES.forEach((st, i) => {
     const g = stateTowns[i];
     if (!g) return;
+    // Built from the region's own materials, and mostly houses out in the
+    // country with shops only where the town is big enough to have a street of
+    // them. A four-block stop on the interstate that is all shopfronts looks
+    // like a model village.
+    const houses = lib.regionHouses[st.biome] || lib.houses;
+    const shops = lib.regionShops[st.biome] || townShops;
+    const mix = st.town && st.town.cols >= 3 ? shops.concat(houses) : houses;
     fillTownBlocks(world, g.streets, propMB, roadMB, {
-      rng: makeRng(9000 + i * 131), shops: townShops, lib,
+      rng: makeRng(9000 + i * 131), shops: mix, lib,
       gapChance: 0.58, step: 8,
     });
   });
@@ -7532,7 +7802,48 @@ function buildHomeRoute(gl) {
     // rather than a shaved corridor.
     const inState = pointInShape(x, z, st.polys, st.boxes);
     if (rng() > 0.35 * (inState ? st.trees : 0.30)) continue;
-    placeProp(propMB, world, lib.trees[Math.floor(rng() * lib.trees.length)], x, z, rng() * TAU, 0, rnd2(rng, 0.75, 1.4), 0.34);
+    // Planted from the state's own flora inside its borders, and from plain
+    // scrubby broadleaf on the ground between states, which belongs to nobody.
+    const flora = inState ? (lib.flora[st.biome] || lib.trees) : lib.flora.plains;
+    placeProp(propMB, world, flora[Math.floor(rng() * flora.length)],
+      x, z, rng() * TAU, 0, rnd2(rng, 0.75, 1.4), 0.34);
+  }
+
+  // And again, along the roads - which is where it counts.
+  //
+  // The scatter above covers 149 km² at one candidate per 15,000 m², a tree
+  // every hundred and twenty metres, and it explicitly refuses to plant within
+  // fourteen metres of a road. So the one thing that tells Arizona from Maine
+  // was kept away from the only places the player ever goes, and the whole
+  // country looked bare and identical from the driver's seat.
+  //
+  // Same idea, aimed properly: walk every road and plant a band down each side,
+  // near enough to be seen and far enough back to be off the carriageway. The
+  // roadside is a strip rather than a plane, so this buys the look of a wooded
+  // state for a few thousand trees instead of a few hundred thousand.
+  for (const path of world.paths) {
+    if (path.type === 'drive') continue;
+    const sp = path.spline;
+    const spacing = Math.max(1, Math.round(28 / (sp.length / sp.count)));
+    for (let i = 2; i < sp.count - 2; i += spacing) {
+      const p = sp.points[i], n = sp.normals[i];
+      for (const side of [-1, 1]) {
+        const off = path.halfWidth + rnd2(rng, 9, 44);
+        const x = p[0] + n[0] * off * side + rnd2(rng, -7, 7);
+        const z = p[2] + n[2] * off * side + rnd2(rng, -7, 7);
+        const st = stateAt(x, z);
+        if (!st) continue;
+        const inState = pointInShape(x, z, st.polys, st.boxes);
+        if (rng() > 0.26 * (inState ? st.trees : 0.30)) continue;
+        // Not on another road, and not through somebody's front wall.
+        const hit = world.query(x, z);
+        if (hit && Math.abs(hit.lateral) < hit.path.halfWidth + 7) continue;
+        if (!footprintClearOfBuildings(world, x, z, 0, 2.5, 2.5, 0.5)) continue;
+        const flora = inState ? (lib.flora[st.biome] || lib.trees) : lib.flora.plains;
+        placeProp(propMB, world, flora[Math.floor(rng() * flora.length)],
+          x, z, rng() * TAU, 0, rnd2(rng, 0.75, 1.4), 0.34);
+      }
+    }
   }
 
   // --- speed limit signs at each zone change --------------------------------

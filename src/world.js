@@ -164,7 +164,14 @@ class World {
     return out;
   }
 
-  terrain(x, z) { return this.terrainHeightRaw(x, z) * this.terrainScale; }
+  // `relief` is an optional (x, z) -> multiplier the scene can install to make
+  // one part of the country hillier than another. The noise is zero-mean, so
+  // scaling it scales the hills without moving sea level. It has to be smooth:
+  // a step in the multiplier is a cliff in the ground.
+  terrain(x, z) {
+    const h = this.terrainHeightRaw(x, z) * this.terrainScale;
+    return this.relief ? h * this.relief(x, z) : h;
+  }
 
   addPath(path) { this.paths.push(path); return path; }
 
@@ -394,7 +401,13 @@ function buildTerrainMesh(world, opts = {}) {
     const n = (Math.sin(x * 0.037) + Math.cos(z * 0.041) + Math.sin((x + z) * 0.013)) / 3;
     const dry = clamp(0.5 + n * 0.9, 0, 1);
     const c = v3.lerp([0, 0, 0], GRASS_A, GRASS_B, dry);
-    const out = v3.lerp(c, DRY_GRASS, clamp((y + 2) * 0.05, 0, 0.35) * dry);
+    // v3.lerp is (out, a, b, t). This was called with three arguments, so `t`
+    // was undefined, every channel came out NaN, and the entire ground of both
+    // worlds shaded black. It went unseen because the other bug above was
+    // hiding it: the ground was being back-face culled before anything got as
+    // far as shading it.
+    const out = v3.lerp([0, 0, 0], c, DRY_GRASS,
+      clamp((y + 2) * 0.05, 0, 0.35) * dry);
     if (!tintAt) return out;
     const t = tintAt(x, z);
     return [clamp(out[0] * t[0], 0, 1), clamp(out[1] * t[1], 0, 1), clamp(out[2] * t[2], 0, 1)];
@@ -415,10 +428,23 @@ function buildTerrainMesh(world, opts = {}) {
       const p2 = [x1, h[i2], z1];
       const p3 = [x0, h[i3], z1];
       mb.mat(colorAt((x0 + x1) / 2, (z0 + z1) / 2, (h[i0] + h[i2]) / 2), 0.94, 0, 0, FLAG_DEFAULT);
-      // Split along the shorter diagonal so slopes look natural.
-      const n0 = v3.norm([0, 0, 0], v3.cross([0, 0, 0], v3.sub([0, 0, 0], p1, p0), v3.sub([0, 0, 0], p3, p0)));
+      // Wound so the ground faces the sky.
+      //
+      // It did not. The quad went round p0, p1, p2, p3 - which is the back face
+      // once the projection has negated clip X - and the normal came out of
+      // cross(p1 - p0, p3 - p0), which points straight down. So every triangle
+      // of ground in the country was inside out and lit from underneath, and
+      // the whole lot was thrown away by back-face culling before it was ever
+      // shaded.
+      //
+      // Nothing looked obviously broken, which is why it survived: roads and
+      // verges are their own meshes and they were fine, so what you saw was a
+      // road network and some buildings standing on the sky. It also made every
+      // state look identical, since the ground is what carries a state's
+      // colour, and there was none.
+      const n0 = v3.norm([0, 0, 0], v3.cross([0, 0, 0], v3.sub([0, 0, 0], p3, p0), v3.sub([0, 0, 0], p1, p0)));
       const a = mb.vertex(p0, n0), b = mb.vertex(p1, n0), c = mb.vertex(p2, n0), d = mb.vertex(p3, n0);
-      mb.quadIdx(a, b, c, d);
+      mb.quadIdx(a, d, c, b);
       if (rng() < 0.0) { /* reserved for scatter hooks */ }
     }
   }
