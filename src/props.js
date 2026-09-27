@@ -693,104 +693,205 @@ function buildCone(mb) {
 // A compact road car for traffic and parked cars. Same lofted approach as the
 // race car but much cheaper, and the paint is per-vertex so one mesh can be
 // re-tinted per instance through the paint uniform.
-const CIVIC_STATIONS = [
-  [2.10, 0.30, 0.28, 0.52],
-  [2.02, 0.56, 0.22, 0.60],
-  [1.86, 0.72, 0.18, 0.68],
-  [1.55, 0.82, 0.16, 0.76],
-  [1.10, 0.86, 0.16, 0.82],
-  [0.55, 0.88, 0.17, 0.85],
-  [0.00, 0.88, 0.17, 0.86],
-  [-0.60, 0.88, 0.17, 0.86],
-  [-1.15, 0.86, 0.18, 0.85],
-  [-1.60, 0.82, 0.20, 0.82],
-  [-1.92, 0.72, 0.24, 0.76],
-  [-2.08, 0.54, 0.32, 0.66],
-  [-2.15, 0.32, 0.40, 0.56],
+// --- the vehicles on the road ------------------------------------------------
+//
+// One shape used to serve for every car in the country. These are built from
+// the same loft, driven by a table per vehicle: a body section list of
+// [z, halfWidth, floorY, deckY] and a cabin list of [z, halfWidth, roofY,
+// waistY], both in metres about the centre of the car.
+//
+// The proportions are taken from the real vehicles - overall length, width,
+// height, wheelbase and wheel diameter - so a big three-row SUV towers over a
+// hatchback the way it does in a car park, and the physics gets the same
+// numbers so it drives like it looks.
+const VEHICLES = {
+  suvLarge: {
+    label: 'Grand Sierra 7', kind: 'suv',
+    length: 5.18, width: 2.00, wheelR: 0.395, wheelbase: 3.11, mass: 2545,
+    power: 0.74, front: 'tallGrille',
+    stations: [
+      [2.59, 0.56, 0.42, 0.98], [2.44, 0.84, 0.34, 1.08], [2.20, 0.95, 0.30, 1.13],
+      [1.80, 1.00, 0.28, 1.15], [1.20, 1.00, 0.27, 1.16], [0.50, 1.00, 0.27, 1.17],
+      [-0.30, 1.00, 0.27, 1.17], [-1.10, 1.00, 0.28, 1.16], [-1.80, 0.99, 0.30, 1.15],
+      [-2.25, 0.95, 0.34, 1.12], [-2.48, 0.84, 0.40, 1.04], [-2.59, 0.62, 0.50, 0.94],
+    ],
+    cabin: [
+      [1.52, 0.82, 1.24, 1.14], [1.22, 0.89, 1.62, 1.14], [0.80, 0.93, 1.78, 1.15],
+      [0.10, 0.94, 1.81, 1.16], [-0.70, 0.94, 1.81, 1.16], [-1.35, 0.93, 1.79, 1.15],
+      [-1.90, 0.89, 1.74, 1.14], [-2.18, 0.82, 1.56, 1.12],
+    ],
+  },
+  crossoverEV: {
+    label: 'Meridian Y', kind: 'crossover',
+    length: 4.75, width: 1.92, wheelR: 0.360, wheelbase: 2.89, mass: 2003,
+    power: 1.0, front: 'smooth',
+    stations: [
+      [2.37, 0.58, 0.30, 0.78], [2.22, 0.82, 0.25, 0.86], [1.96, 0.92, 0.23, 0.92],
+      [1.50, 0.96, 0.22, 0.95], [0.90, 0.96, 0.22, 0.96], [0.20, 0.96, 0.22, 0.96],
+      [-0.55, 0.96, 0.22, 0.96], [-1.25, 0.95, 0.23, 0.95], [-1.80, 0.92, 0.26, 0.93],
+      [-2.12, 0.85, 0.31, 0.88], [-2.30, 0.70, 0.38, 0.82], [-2.38, 0.52, 0.46, 0.74],
+    ],
+    cabin: [
+      [1.30, 0.78, 1.04, 0.94], [0.96, 0.85, 1.36, 0.94], [0.46, 0.89, 1.56, 0.95],
+      [-0.14, 0.90, 1.61, 0.95], [-0.74, 0.89, 1.58, 0.95], [-1.28, 0.85, 1.44, 0.94],
+      [-1.72, 0.78, 1.22, 0.92], [-2.02, 0.68, 1.00, 0.88],
+    ],
+  },
+  saloon: {
+    label: 'Corsair 300', kind: 'saloon',
+    length: 4.72, width: 1.83, wheelR: 0.330, wheelbase: 2.82, mass: 1620,
+    power: 0.82, front: 'slimGrille',
+    stations: [
+      [2.36, 0.52, 0.22, 0.72], [2.20, 0.78, 0.17, 0.80], [1.90, 0.88, 0.16, 0.85],
+      [1.40, 0.91, 0.16, 0.87], [0.70, 0.92, 0.16, 0.88], [0.00, 0.92, 0.17, 0.88],
+      [-0.70, 0.92, 0.17, 0.88], [-1.35, 0.90, 0.18, 0.87], [-1.90, 0.86, 0.20, 0.84],
+      [-2.18, 0.76, 0.26, 0.78], [-2.36, 0.56, 0.34, 0.68],
+    ],
+    cabin: [
+      [1.05, 0.74, 0.96, 0.86], [0.80, 0.80, 1.14, 0.86], [0.40, 0.84, 1.30, 0.87],
+      [-0.10, 0.85, 1.34, 0.88], [-0.65, 0.84, 1.32, 0.88], [-1.10, 0.80, 1.22, 0.87],
+      [-1.50, 0.72, 1.02, 0.85], [-1.72, 0.62, 0.92, 0.84],
+    ],
+  },
+  hatch: {
+    label: 'Lark', kind: 'hatch',
+    length: 4.05, width: 1.75, wheelR: 0.305, wheelbase: 2.56, mass: 1290,
+    power: 0.62, front: 'slimGrille',
+    stations: [
+      [2.02, 0.50, 0.21, 0.70], [1.88, 0.74, 0.17, 0.78], [1.62, 0.84, 0.16, 0.83],
+      [1.15, 0.87, 0.16, 0.85], [0.50, 0.88, 0.16, 0.86], [-0.20, 0.88, 0.17, 0.86],
+      [-0.90, 0.87, 0.17, 0.85], [-1.45, 0.85, 0.19, 0.84], [-1.82, 0.78, 0.23, 0.80],
+      [-2.02, 0.62, 0.30, 0.72],
+    ],
+    cabin: [
+      [0.92, 0.70, 0.94, 0.84], [0.68, 0.76, 1.14, 0.84], [0.28, 0.80, 1.28, 0.85],
+      [-0.25, 0.81, 1.32, 0.86], [-0.80, 0.80, 1.30, 0.86], [-1.30, 0.76, 1.22, 0.85],
+      [-1.68, 0.68, 1.02, 0.83],
+    ],
+  },
+  pickup: {
+    label: 'Ridgeline 250', kind: 'pickup',
+    length: 5.60, width: 2.03, wheelR: 0.405, wheelbase: 3.34, mass: 2440,
+    power: 0.78, front: 'tallGrille',
+    stations: [
+      [2.80, 0.62, 0.46, 1.16], [2.64, 0.90, 0.38, 1.24], [2.36, 1.00, 0.34, 1.30],
+      [1.90, 1.02, 0.32, 1.32], [1.20, 1.02, 0.32, 1.32], [0.40, 1.02, 0.32, 1.18],
+      [-0.40, 1.02, 0.32, 1.10], [-1.40, 1.02, 0.32, 1.10], [-2.30, 1.02, 0.34, 1.10],
+      [-2.70, 0.96, 0.40, 1.08], [-2.80, 0.80, 0.48, 1.02],
+    ],
+    cabin: [
+      [1.50, 0.86, 1.36, 1.30], [1.22, 0.92, 1.66, 1.30], [0.85, 0.96, 1.80, 1.31],
+      [0.35, 0.97, 1.82, 1.32], [-0.10, 0.96, 1.80, 1.32], [-0.45, 0.92, 1.70, 1.31],
+      [-0.62, 0.86, 1.44, 1.30],
+    ],
+  },
+  van: {
+    label: 'Carrier L2', kind: 'van',
+    length: 5.40, width: 2.04, wheelR: 0.360, wheelbase: 3.45, mass: 2210,
+    power: 0.55, front: 'slimGrille',
+    stations: [
+      [2.70, 0.70, 0.36, 1.10], [2.56, 0.94, 0.30, 1.30], [2.34, 1.01, 0.28, 1.52],
+      [1.90, 1.02, 0.27, 1.62], [1.00, 1.02, 0.27, 1.66], [0.00, 1.02, 0.27, 1.68],
+      [-1.00, 1.02, 0.27, 1.68], [-1.90, 1.02, 0.28, 1.66], [-2.45, 1.01, 0.30, 1.62],
+      [-2.66, 0.94, 0.34, 1.52], [-2.70, 0.84, 0.40, 1.40],
+    ],
+    cabin: [
+      [1.72, 0.88, 1.66, 1.58], [1.46, 0.94, 1.96, 1.58], [1.00, 0.98, 2.06, 1.60],
+      [0.20, 0.99, 2.08, 1.62], [-0.80, 0.99, 2.08, 1.62], [-1.80, 0.98, 2.06, 1.60],
+      [-2.40, 0.94, 1.98, 1.58],
+    ],
+  },
+};
+
+// Derived once from each table rather than typed in beside it: the nose, the
+// tail and the height the lamps sit at are facts about the shape, and writing
+// them out by hand is how they end up describing the car it used to be.
+for (const v of Object.values(VEHICLES)) {
+  const first = v.stations[0], last = v.stations[v.stations.length - 1];
+  v.noseZ = first[0] - 0.06;
+  v.tailZ = last[0] + 0.06;
+  // Level with the top of the wing, which is where a headlamp goes on all of
+  // these whatever their height.
+  let deck = 0;
+  for (const st of v.stations) deck = Math.max(deck, st[3]);
+  v.lampY = deck - 0.16;
+}
+
+const VEHICLE_PAINTS = [
+  [0.72, 0.73, 0.76], [0.13, 0.14, 0.16], [0.62, 0.64, 0.68], [0.09, 0.20, 0.38],
+  [0.55, 0.13, 0.12], [0.20, 0.30, 0.24], [0.85, 0.85, 0.86], [0.36, 0.38, 0.42],
 ];
 
-const CIVIC_CABIN = [
-  [0.95, 0.74, 0.86, 0.84],
-  [0.72, 0.74, 1.02, 0.84],
-  [0.40, 0.73, 1.20, 0.85],
-  [0.00, 0.72, 1.30, 0.86],
-  [-0.50, 0.71, 1.32, 0.86],
-  [-0.95, 0.69, 1.26, 0.85],
-  [-1.30, 0.65, 1.08, 0.84],
-  [-1.55, 0.58, 0.90, 0.83],
-];
+// The body and glasshouse of a road car, lofted from its own table.
+function buildRoadCar(mb, glassMB, rng, spec) {
+  const v = spec || VEHICLES.saloon;
+  const ST = v.stations, CB = v.cabin;
+  const wheelR = v.wheelR;
+  const paint = v.paint || VEHICLE_PAINTS[Math.floor(rng() * VEHICLE_PAINTS.length)];
+  const nose = ST[0][0], tail = ST[ST.length - 1][0];
 
-function buildCivilianCar(mb, glassMB, rng) {
-  const wheelR = 0.32;
-  // Body.
+  // --- body ---
   const rings = [];
   const rows = 26;
-  for (let i = 0; i < rows; i++) {
-    const t = i / (rows - 1);
-    const z = lerp(CIVIC_STATIONS[0][0], CIVIC_STATIONS[CIVIC_STATIONS.length - 1][0], t);
+  const sampleAt = (table, z) => {
     let a = 0;
-    while (a < CIVIC_STATIONS.length - 2 && CIVIC_STATIONS[a + 1][0] > z) a++;
-    const s0 = CIVIC_STATIONS[a], s1 = CIVIC_STATIONS[a + 1];
+    while (a < table.length - 2 && table[a + 1][0] > z) a++;
+    const s0 = table[a], s1 = table[a + 1];
     const k = clamp((s0[0] - z) / (s0[0] - s1[0] || 1), 0, 1);
     const ks = k * k * (3 - 2 * k);
-    const w = lerp(s0[1], s1[1], ks);
-    const fy = lerp(s0[2], s1[2], ks);
-    const dy = lerp(s0[3], s1[3], ks);
-    // Wheel arch lift.
+    return [lerp(s0[1], s1[1], ks), lerp(s0[2], s1[2], ks), lerp(s0[3], s1[3], ks)];
+  };
+  let kinds = null;
+  for (let i = 0; i < rows; i++) {
+    const z = lerp(nose, tail, i / (rows - 1));
+    const [w, fy, dy] = sampleAt(ST, z);
+    // Wheel arches, at this vehicle's own axles.
     let lift = 0;
-    for (const c of [1.30, -1.30]) {
-      const tt = clamp(1 - Math.abs(z - c) / 0.62, 0, 1);
-      lift = Math.max(lift, Math.sin(tt * Math.PI * 0.5) * 0.46);
+    for (const c of [v.wheelbase / 2, -v.wheelbase / 2]) {
+      const tt = clamp(1 - Math.abs(z - c) / (wheelR * 1.95), 0, 1);
+      lift = Math.max(lift, Math.sin(tt * Math.PI * 0.5) * wheelR * 1.44);
     }
-    const pts = [], kinds = [];
+    const pts = [], kk2 = [];
     const N = 11;
     for (let kk = 0; kk < N; kk++) {
       const x = Math.cos((kk / (N - 1)) * Math.PI) * w;
-      const tt = Math.abs(x) / w;
-      pts.push([x, dy + 0.02 * (1 - tt * tt) - 0.07 * Math.pow(tt, 6), z]); kinds.push(0);
+      const tt = Math.abs(x) / (w || 1);
+      pts.push([x, dy + 0.02 * (1 - tt * tt) - 0.07 * Math.pow(tt, 6), z]); kk2.push(0);
     }
     for (let kk = 1; kk <= 2; kk++) {
-      pts.push([-w, lerp(dy - 0.07, fy + lift, kk / 3), z]); kinds.push(1);
+      pts.push([-w, lerp(dy - 0.07, fy + lift, kk / 3), z]); kk2.push(1);
     }
     for (let kk = 0; kk < N; kk++) {
       const x = -Math.cos((kk / (N - 1)) * Math.PI) * w;
-      const tt = Math.abs(x) / w;
+      const tt = Math.abs(x) / (w || 1);
       const top = dy + 0.02 * (1 - tt * tt) - 0.07 * Math.pow(tt, 6);
       const bottom = fy + lift * smoothstep(0.52, 0.96, tt) + 0.05 * Math.pow(tt, 6);
-      // Never let the underside climb above the deck - that inverts the
-      // section and folds the lofted surface over itself.
-      pts.push([x, Math.min(bottom, top - 0.02), z]); kinds.push(2);
+      pts.push([x, Math.min(bottom, top - 0.02), z]); kk2.push(2);
     }
     for (let kk = 1; kk <= 2; kk++) {
-      pts.push([w, lerp(fy + lift, dy - 0.07, kk / 3), z]); kinds.push(1);
+      pts.push([w, lerp(fy + lift, dy - 0.07, kk / 3), z]); kk2.push(1);
     }
     rings.push(pts);
-    if (i === 0) mb._civicKinds = kinds;
+    if (i === 0) kinds = kk2;
   }
-  const kinds = mb._civicKinds;
   mb.loft(rings, true, true, true, (i, j) => {
     if (kinds[j] === 2) mb.mat([0.07, 0.07, 0.08], 0.8, 0.0, 0, FLAG_DEFAULT);
-    else mb.mat([0.55, 0.55, 0.58], 0.32, 0.25, 0, FLAG_PAINT);
+    else mb.mat(paint, 0.30, 0.25, 0, FLAG_PAINT);
   });
 
-  // Cabin: solid pillars with tinted glass panels, same trick as the race car.
+  // --- glasshouse ---
   const cabinRows = 20;
+  const cNose = CB[0][0], cTail = CB[CB.length - 1][0];
   const cabinRings = [];
   for (let i = 0; i < cabinRows; i++) {
-    const t = i / (cabinRows - 1);
-    const z = lerp(CIVIC_CABIN[0][0], CIVIC_CABIN[CIVIC_CABIN.length - 1][0], t);
-    let a = 0;
-    while (a < CIVIC_CABIN.length - 2 && CIVIC_CABIN[a + 1][0] > z) a++;
-    const s0 = CIVIC_CABIN[a], s1 = CIVIC_CABIN[a + 1];
-    const k = clamp((s0[0] - z) / (s0[0] - s1[0] || 1), 0, 1);
-    const ks = k * k * (3 - 2 * k);
-    const w = lerp(s0[1], s1[1], ks), roofY = lerp(s0[2], s1[2], ks), waistY = lerp(s0[3], s1[3], ks);
+    const z = lerp(cNose, cTail, i / (cabinRows - 1));
+    const [w, roofY, waistY] = sampleAt(CB, z);
     const arc = [];
     const M = 15;
     for (let kk = 0; kk < M; kk++) {
       const u = kk / (M - 1);
       const th = u * Math.PI;
-      const n = 3.2;
+      const n = v.kind === 'van' || v.kind === 'pickup' ? 4.4 : 3.2;
       const x = Math.sign(Math.cos(th)) * Math.pow(Math.abs(Math.cos(th)), 2 / n) * w;
       const y = waistY + Math.pow(Math.abs(Math.sin(th)), 2 / n) * (roofY - waistY);
       arc.push([x, y, z]);
@@ -798,17 +899,20 @@ function buildCivilianCar(mb, glassMB, rng) {
     cabinRings.push(arc);
   }
   const M = 15;
+  // Where the glass is, expressed along the cabin rather than at fixed metres,
+  // so the same rule gives a hatchback and a van each their own windows.
   const isGlass = (z, u) => {
     if (u < 0.05 || u > 0.95) return false;
-    if (z > 0.78) return false;
-    if (z > 0.30) return u > 0.15 && u < 0.85;      // windscreen
-    if (z > 0.18) return false;                      // header
-    if (z > -1.02) {
-      if (z < -0.42 && z > -0.54) return false;      // B pillar
+    const t = clamp((z - cTail) / ((cNose - cTail) || 1), 0, 1);
+    if (t > 0.94) return false;
+    if (t > 0.78) return u > 0.15 && u < 0.85;        // windscreen
+    if (t > 0.72) return false;                        // header
+    if (t > 0.17) {
+      if (t > 0.46 && t < 0.52) return false;          // B pillar
       return (u > 0.06 && u < 0.22) || (u > 0.78 && u < 0.94);
     }
-    if (z > -1.14) return false;
-    if (z > -1.48) return u > 0.24 && u < 0.76;      // rear screen
+    if (t > 0.12) return false;
+    if (t > 0.02) return u > 0.24 && u < 0.76;         // rear screen
     return false;
   };
   for (let i = 0; i < cabinRows - 1; i++) {
@@ -818,7 +922,7 @@ function buildCivilianCar(mb, glassMB, rng) {
       const glass = isGlass(zMid, uMid);
       const target = glass ? glassMB : mb;
       if (glass) target.mat([0.04, 0.05, 0.06], 0.06, 0, 0, FLAG_GLASS);
-      else target.mat([0.55, 0.55, 0.58], 0.32, 0.25, 0, FLAG_PAINT);
+      else target.mat(paint, 0.32, 0.25, 0, FLAG_PAINT);
       const nAt = (ii, jj) => {
         const iP = Math.max(0, ii - 1), iN = Math.min(cabinRows - 1, ii + 1);
         const jP = Math.max(0, jj - 1), jN = Math.min(M - 1, jj + 1);
@@ -838,28 +942,65 @@ function buildCivilianCar(mb, glassMB, rng) {
     }
   }
 
-  // Bumpers, lights, mirrors, plates.
+  // --- the bits that say which car it is ---
+  const [noseW, noseFloor, noseDeck] = sampleAt(ST, nose * 0.92);
+  const [tailW, tailFloor, tailDeck] = sampleAt(ST, tail * 0.92);
   mb.mat([0.10, 0.10, 0.11], 0.7, 0, 0, FLAG_DEFAULT);
-  mb.push(); mb.translate(0, 0.34, 2.06); mb.chamferBox(1.66, 0.34, 0.20, 0.08); mb.pop();
-  mb.push(); mb.translate(0, 0.36, -2.10); mb.chamferBox(1.62, 0.36, 0.20, 0.08); mb.pop();
+  mb.push(); mb.translate(0, noseFloor + 0.10, nose - 0.10); mb.chamferBox(noseW * 1.72, 0.34, 0.20, 0.08); mb.pop();
+  mb.push(); mb.translate(0, tailFloor + 0.10, tail + 0.10); mb.chamferBox(tailW * 1.68, 0.36, 0.20, 0.08); mb.pop();
+
+  // The face. A tall SUV grille, a slim saloon one, or the smooth blanked nose
+  // an electric car has because it needs far less air through it.
+  const grilleY = lerp(noseFloor, noseDeck, 0.52);
+  if (v.front === 'tallGrille') {
+    mb.mat([0.06, 0.06, 0.07], 0.45, 0.35, 0, FLAG_DEFAULT);
+    for (const s of [-1, 1]) {
+      mb.push(); mb.translate(s * 0.20, grilleY + 0.10, nose - 0.06);
+      mb.chamferBox(0.34, (noseDeck - noseFloor) * 0.74, 0.10, 0.03); mb.pop();
+    }
+    mb.mat([0.62, 0.63, 0.66], 0.22, 0.85, 0, FLAG_DEFAULT);
+    mb.push(); mb.translate(0, grilleY + 0.10, nose - 0.02);
+    mb.chamferBox(0.80, (noseDeck - noseFloor) * 0.80, 0.05, 0.02); mb.pop();
+  } else if (v.front === 'slimGrille') {
+    mb.mat([0.07, 0.07, 0.08], 0.5, 0.3, 0, FLAG_DEFAULT);
+    mb.push(); mb.translate(0, grilleY, nose - 0.05);
+    mb.chamferBox(noseW * 1.30, 0.16, 0.10, 0.03); mb.pop();
+  } else {
+    // Smooth: a body-coloured panel where the grille would be.
+    mb.mat(paint, 0.30, 0.25, 0, FLAG_PAINT);
+    mb.push(); mb.translate(0, grilleY, nose - 0.05);
+    mb.chamferBox(noseW * 1.20, 0.22, 0.08, 0.04); mb.pop();
+  }
+
+  // Lights, plates, mirrors, and a pipe for the ones that burn something.
   mb.mat([0.88, 0.90, 0.96], 0.08, 0.0, 0.0, FLAG_GLASS);
   for (const s of [-1, 1]) {
-    mb.push(); mb.translate(s * 0.58, 0.63, 2.04); mb.rotateY(s * 0.2); mb.chamferBox(0.42, 0.18, 0.14, 0.05); mb.pop();
+    mb.push(); mb.translate(s * noseW * 0.62, noseDeck - 0.14, nose - 0.08);
+    mb.rotateY(s * 0.2); mb.chamferBox(0.42, 0.16, 0.14, 0.05); mb.pop();
   }
   mb.mat([0.58, 0.04, 0.04], 0.15, 0, 0.30, FLAG_UNLIT);
   for (const s of [-1, 1]) {
-    mb.push(); mb.translate(s * 0.62, 0.70, -2.12); mb.rotateY(s * -0.12); mb.chamferBox(0.34, 0.24, 0.12, 0.05); mb.pop();
+    mb.push(); mb.translate(s * tailW * 0.64, tailDeck - 0.18, tail + 0.06);
+    mb.rotateY(s * -0.12); mb.chamferBox(0.34, 0.22, 0.12, 0.05); mb.pop();
   }
   mb.mat([0.88, 0.88, 0.84], 0.5, 0, 0, FLAG_DEFAULT);
-  mb.push(); mb.translate(0, 0.40, 2.14); mb.box(0.52, 0.12, 0.03); mb.pop();
-  mb.push(); mb.translate(0, 0.42, -2.19); mb.box(0.52, 0.12, 0.03); mb.pop();
+  mb.push(); mb.translate(0, noseFloor + 0.16, nose - 0.02); mb.box(0.52, 0.12, 0.03); mb.pop();
+  mb.push(); mb.translate(0, tailFloor + 0.18, tail + 0.05); mb.box(0.52, 0.12, 0.03); mb.pop();
   mb.mat([0.14, 0.14, 0.15], 0.5, 0.2, 0, FLAG_DEFAULT);
   for (const s of [-1, 1]) {
-    mb.push(); mb.translate(s * 0.94, 0.96, 0.62); mb.rotateY(s * 0.2); mb.chamferBox(0.16, 0.09, 0.22, 0.04); mb.pop();
+    mb.push(); mb.translate(s * (noseW + 0.10), CB[0][2] - 0.22, CB[0][0] - 0.30);
+    mb.rotateY(s * 0.2); mb.chamferBox(0.16, 0.09, 0.22, 0.04); mb.pop();
   }
-  // Exhaust.
-  mb.mat([0.4, 0.4, 0.42], 0.3, 0.8, 0, FLAG_DEFAULT);
-  mb.push(); mb.translate(-0.55, 0.28, -2.16); mb.rotateX(Math.PI / 2); mb.cylinder(0.045, 0.045, 0.12, 8); mb.pop();
+  if (v.front !== 'smooth') {
+    mb.mat([0.4, 0.4, 0.42], 0.3, 0.8, 0, FLAG_DEFAULT);
+    mb.push(); mb.translate(-0.55, tailFloor + 0.04, tail + 0.06);
+    mb.rotateX(Math.PI / 2); mb.cylinder(0.045, 0.045, 0.12, 8); mb.pop();
+  }
+}
+
+// The original town car, still the default shape, now one entry in the table.
+function buildCivilianCar(mb, glassMB, rng) {
+  return buildRoadCar(mb, glassMB, rng, VEHICLES.saloon);
 }
 
 function buildSimpleWheel(mb, radius, width) {

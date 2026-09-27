@@ -39,6 +39,7 @@ function startGame() {
   // The bundle is one closure, so nothing inside it is reachable from a test
   // harness. These are the two the headless drivers need to take the wheel.
   window.__drivers = { RacingDriver, TrafficDriver };
+  window.__vehicles = VEHICLES;
 
   // The audio context can only start from a gesture.
   const resume = () => {

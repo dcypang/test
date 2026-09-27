@@ -10,6 +10,7 @@ class UI {
     for (const id of ['loading', 'loadingText', 'title', 'results', 'arrived', 'pause',
       'resultsBody', 'resultsHeadline', 'arrivedBody', 'liveryRow', 'lapsRow',
       'difficultyRow', 'assistRow', 'cameraRow', 'qualityRow', 'steerInvertRow', 'steerInvertBlock',
+      'carRow',
       'startBtn', 'driveBtn', 'resultsDrive',
       'resultsRestart', 'arrivedRestart', 'arrivedDrive', 'resumeBtn', 'quitBtn']) {
       this.el[id] = document.getElementById(id);
@@ -61,6 +62,16 @@ class UI {
       });
       this.el.liveryRow.appendChild(b);
     });
+
+    // Which car you drive home in. The race is always the GT car; this is the
+    // one waiting for you at the circuit exit.
+    this.makeOptions(this.el.carRow, [
+      ['GT racer', 'gt'],
+      [VEHICLES.suvLarge.label, 'suvLarge'],
+      [VEHICLES.crossoverEV.label, 'crossoverEV'],
+      [VEHICLES.saloon.label, 'saloon'],
+      [VEHICLES.pickup.label, 'pickup'],
+    ], (v) => { this.game.settings.playerCar = v; }, () => this.game.settings.playerCar);
 
     this.makeOptions(this.el.lapsRow, [['2', 2], ['3', 3], ['5', 5], ['8', 8]],
       (v) => { this.game.settings.laps = v; }, () => this.game.settings.laps);
@@ -119,7 +130,7 @@ class UI {
 
   refreshSelection() {
     for (const row of [this.el.lapsRow, this.el.difficultyRow, this.el.assistRow,
-      this.el.cameraRow, this.el.qualityRow, this.el.steerInvertRow]) {
+      this.el.cameraRow, this.el.qualityRow, this.el.steerInvertRow, this.el.carRow]) {
       const current = row._getter();
       for (const b of row.children) b.classList.toggle('active', b._value === current);
     }

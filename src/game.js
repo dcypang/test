@@ -324,6 +324,8 @@ class Game {
       assists: true,
       quality: this.isTouch ? 'fast' : 'high',
       playerLivery: 0,
+      // Which car you drive home. 'gt' is the race car you finished in.
+      playerCar: 'gt',
       volume: 0.7,
       tiltSteer: false,
       invertSteer: false,
@@ -435,18 +437,63 @@ class Game {
     check();
   }
 
-  buildTrafficMeshes() {
+  // The fleet. One shape for every car in the country read as a toy town; each
+  // of these is lofted from its own table of real proportions, so a full-size
+  // SUV stands a head above a hatchback in the same queue and a van blocks the
+  // view behind it.
+  //
+  // Two paints per shape rather than one, because the paint is baked into the
+  // mesh and the shapes are what cost geometry - it doubles the apparent
+  // variety for nothing.
+  // A road car the player can actually get into. The body, glass and wheels are
+  // its own; the cockpit, driver and brakes are the ones already built, because
+  // an interior is a lot of geometry and from the driver's seat one dark cabin
+  // is much like another. It means the wheel you hold in an SUV is a racing
+  // wheel, which is the honest cost of not modelling six more interiors.
+  buildPlayerCarMeshes(key) {
+    if (!key || key === 'gt' || !VEHICLES[key]) return this.carMeshes;
+    if (!this._playerCarCache) this._playerCarCache = {};
+    if (this._playerCarCache[key]) return this._playerCarCache[key];
     const gl = this.renderer.gl;
+    const spec = VEHICLES[key];
     const body = new MeshBuilder();
     const glass = new MeshBuilder();
-    buildCivilianCar(body, glass, makeRng(12345));
+    buildRoadCar(body, glass, makeRng(4242), Object.assign({}, spec, { paint: null }));
     const wheel = new MeshBuilder();
-    buildSimpleWheel(wheel, 0.32, 0.22);
-    return {
+    buildSimpleWheel(wheel, spec.wheelR, spec.wheelR * 0.62);
+    const meshes = Object.assign({}, this.carMeshes, {
+      spec,
       body: meshFromBuilder(gl, body),
       glass: meshFromBuilder(gl, glass),
-      wheel: meshFromBuilder(gl, wheel),
-    };
+      wheelFront: meshFromBuilder(gl, wheel),
+      wheelRear: meshFromBuilder(gl, wheel),
+    });
+    this._playerCarCache[key] = meshes;
+    return meshes;
+  }
+
+  buildTrafficMeshes() {
+    const gl = this.renderer.gl;
+    const rng = makeRng(12345);
+    const fleet = [];
+    const order = ['saloon', 'hatch', 'crossoverEV', 'suvLarge', 'van', 'pickup', 'saloon', 'hatch'];
+    for (let i = 0; i < order.length; i++) {
+      const spec = VEHICLES[order[i]];
+      const body = new MeshBuilder();
+      const glass = new MeshBuilder();
+      buildRoadCar(body, glass, rng, spec);
+      const wheel = new MeshBuilder();
+      buildSimpleWheel(wheel, spec.wheelR, spec.wheelR * 0.62);
+      fleet.push({
+        spec,
+        body: meshFromBuilder(gl, body),
+        glass: meshFromBuilder(gl, glass),
+        wheel: meshFromBuilder(gl, wheel),
+      });
+    }
+    // The first entry stays the default so anything that has not been taught
+    // about the fleet still gets a car rather than nothing.
+    return Object.assign({}, fleet[0], { fleet });
   }
 
   // No two cars within sight of each other carry the same number.
@@ -815,7 +862,9 @@ class Game {
     this.applyAmbience(this.scene.ambience);
     this.renderer.clearDecals();
 
-    const car = new Car(this.carMeshes, {
+    // The drive home is where the choice of car applies: the race is a race,
+    // and it is run in the GT car the game is built around.
+    const car = new Car(this.buildPlayerCarMeshes(this.settings.playerCar), {
       isPlayer: true,
       livery: LIVERY_PRESETS[this.settings.playerLivery],
       assists: this.settings.assists,
@@ -893,6 +942,17 @@ class Game {
           driverAids: false,
         });
         car.isTraffic = true;
+        // Which of the fleet this one is. Kept on the car so the renderer draws
+        // the right body, the right wheels at the right radius, and puts the
+        // lamps where that shape actually has them.
+        // Hashed from the spawn index rather than drawn from `rng`. Taking a
+        // number off the shared generator for a purely cosmetic choice shifts
+        // every draw after it, which moved all ten thousand cars a little and
+        // parked one where a test had been dropping the player - a cosmetic
+        // change is not allowed to move the traffic.
+        const fleet = this.trafficMeshes.fleet;
+        car.fleetIndex = fleet
+          ? (Math.imul(plateSeq + 1, 2654435761) >>> 0) % fleet.length : 0;
         const lane = dir > 0 ? 2.1 : -2.1;
         const driver = new TrafficDriver(car, path, dir, lane, limit);
         const idx = Math.floor(6 + ((i + 0.5) / count) * span
@@ -2135,8 +2195,14 @@ class Game {
   renderTrafficCar(car, distance) {
     const v = car.vehicle;
     const drop = car.bodyDrop();
+    // Whichever of the fleet this car is. Everything below is measured off its
+    // own spec rather than off one set of numbers that happened to suit a
+    // saloon - wheels at their own radius, lamps at their own corners.
+    const fleet = this.trafficMeshes.fleet;
+    const kit = (fleet && fleet[car.fleetIndex || 0]) || this.trafficMeshes;
+    const spec = kit.spec || VEHICLES.saloon;
     m4.compose(car.bodyMatrix, [v.pos[0], v.pos[1] - drop, v.pos[2]], v.yaw, v.pitch, v.roll);
-    this.renderer.submit(this.trafficMeshes.body, car.bodyMatrix, {
+    this.renderer.submit(kit.body, car.bodyMatrix, {
       paint: car.livery.paint,
       stripe: car.livery.stripe,
       livery: car.livery.style,
@@ -2144,7 +2210,7 @@ class Game {
       dirt: 0.25,
       noShadow: distance > 130,
     });
-    this.renderer.submit(this.trafficMeshes.glass, car.bodyMatrix, { transparent: true, alpha: 0.9 });
+    this.renderer.submit(kit.glass, car.bodyMatrix, { transparent: true, alpha: 0.9 });
     // Traffic is drawn here rather than through Car.render, so its plates have
     // to be submitted here too - they were being built and assigned and then
     // silently never drawn. Close range only: at a hundred metres a number
@@ -2155,23 +2221,24 @@ class Game {
     if (distance < 170) {
       for (let i = 0; i < 4; i++) {
         const w = v.wheels[i];
-        const wm = m4.compose(m4.create(), [w.x * 0.94, 0.32 - w.compression + drop, w.z * 0.92], w.steer, 0, 0);
+        const wm = m4.compose(m4.create(),
+          [w.x * 0.94, spec.wheelR - w.compression + drop, w.z * 0.92], w.steer, 0, 0);
         m4.multiply(wm, car.bodyMatrix, wm);
         const spin = m4.rotationX(m4.create(), w.spin);
         m4.multiply(wm, wm, spin);
-        this.renderer.submit(this.trafficMeshes.wheel, wm, { noShadow: distance > 90 });
+        this.renderer.submit(kit.wheel, wm, { noShadow: distance > 90 });
       }
     }
     // Lights.
     const night = this.renderer.ambience.night;
     if (night > 0.15) {
       for (const sx of [-0.58, 0.58]) {
-        const p = car.localToWorld([sx, 0.63, 2.06]);
+        const p = car.localToWorld([sx * spec.width * 0.58, spec.lampY, spec.noseZ]);
         this.renderer.addGlow(p, [1.0, 0.94, 0.80], 0.30, 0.5);
       }
     }
     for (const sx of [-0.62, 0.62]) {
-      const p = car.localToWorld([sx, 0.70, -2.14]);
+      const p = car.localToWorld([sx * spec.width * 0.58, spec.lampY, spec.tailZ]);
       const on = Math.max(car.brakeGlow, night * 0.5);
       if (on > 0.05) this.renderer.addGlow(p, [1.0, 0.10, 0.05], 0.22, 0.3 * on + car.brakeGlow * 0.3);
     }

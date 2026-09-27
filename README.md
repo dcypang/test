@@ -306,6 +306,40 @@ as you pass under the gate. The car keeps its speed, gear and
 revs across it, and both sides of the gate carry the same stonework and the same
 avenue of trees, so there is nothing in shot when the world changes.
 
+## The cars on the road
+
+One shape used to serve for every vehicle in the country: a saloon, repainted.
+There are now six, all lofted from the same code but each driven by its own
+table of body sections and glasshouse sections, and each carrying its real
+proportions through to the physics.
+
+| | length | width | wheelbase | mass | wheel |
+|---|---|---|---|---|---|
+| **Grand Sierra 7** — three-row luxury SUV | 5.18 m | 2.00 m | 3.11 m | 2,545 kg | r 0.395 |
+| **Meridian Y** — performance electric crossover | 4.75 m | 1.92 m | 2.89 m | 2,003 kg | r 0.360 |
+| **Corsair 300** — saloon | 4.72 m | 1.83 m | 2.82 m | 1,620 kg | r 0.330 |
+| **Lark** — hatchback | 4.05 m | 1.75 m | 2.56 m | 1,290 kg | r 0.305 |
+| **Ridgeline 250** — pickup | 5.60 m | 2.03 m | 3.34 m | 2,440 kg | r 0.405 |
+| **Carrier L2** — panel van | 5.40 m | 2.04 m | 3.45 m | 2,210 kg | r 0.360 |
+
+The differences are the ones you notice from another car: the SUV stands a head
+above the hatchback in the same queue, the van blocks the view behind it, the
+electric crossover has a blanked smooth nose where the others have a grille and
+no exhaust behind it. Where the glass goes is worked out along each cabin rather
+than at fixed distances, so one rule gives a hatchback its tailgate and a van
+its slab sides.
+
+**Drive home in** on the title screen picks yours. The race is still run in the
+GT car the game is built around; the chooser sets the car waiting for you at the
+circuit exit. Road cars borrow the GT cockpit, because an interior is a great
+deal of geometry and from the driver's seat one dark cabin is much like another
+— which does mean the wheel you hold in the SUV is a racing wheel.
+
+`scripts/fleet.mjs` photographs every one in side elevation on open ground. It
+had to: the first pass framed them in three-quarter view from above, which
+flattens a tall car into a low one, and every shape looked the same until the
+camera came down to waist height.
+
 ## Number plates
 
 Every car carries one on the nose and one on the tail — the eight on the race
@@ -599,6 +633,8 @@ out. `scripts/simtest.mjs` asserts all of that.
     node scripts/cockpit.mjs    # every camera view, and what the near plane clips
     node scripts/tour.mjs       # stand in ten states and photograph the ground
     node scripts/relief.mjs     # how hilly each state is, and are the roads drivable
+    node scripts/fleet.mjs      # every vehicle in side elevation
+    node scripts/noise.mjs      # does a still scene render still
     node scripts/mapshot.mjs    # screenshot the GPS, where every shape is visible
     node scripts/shapes.mjs     # regenerate state_shapes.js from boundary data
     node scripts/polycount.mjs  # triangle budget, scene by scene
