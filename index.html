@@ -1,61 +1,79 @@
 <title>Explorer's Passport</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&family=Lexend:wght@400;500;600&family=Courier+Prime:wght@400;700&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,600;12..96,700&family=Lexend:wght@300;400;500;600&family=Courier+Prime:wght@400;700&display=swap">
 <style>
   :root{
-    --ground:#F4EDDB;
+    --ground:#F2EBD8;
     --card:#FFFCF3;
-    --card-2:#FBF4E3;
-    --ink:#17323E;
-    --ink-soft:#5B7581;
-    --line:#D7C8A6;
-    --line-soft:#E7DCC2;
+    --card-2:#FAF2E0;
+    --ink:#15303C;
+    --ink-soft:#56707C;
+    --line:#D5C5A2;
+    --line-soft:#E6DAC0;
     --sea:#0E7C93;
-    --marigold:#E29A0C;
-    --tomato:#D94C33;
+    --marigold:#D9900B;
+    --tomato:#C94630;
     --moss:#3C8B4E;
-    --shadow:rgba(23,50,62,.14);
-    --on-accent:#FFFCF3;
     --land:#CBDEBB;
     --land-line:#9DBD86;
-    --radius:18px;
+    --on-accent:#FFFCF3;
+    --shadow:rgba(21,48,60,.14);
+    --su-math:#A8620F;
+    --su-sci:#0E7C93;
+    --su-hist:#A3422A;
+    --su-geo:#3C7A4A;
+    --su-eng:#73467F;
+    --su-soc:#355385;
+    --radius:16px;
   }
   @media (prefers-color-scheme: dark){
     :root:not([data-theme="light"]){
-      --ground:#0D1C25;
-      --card:#152B36;
-      --card-2:#1B3441;
-      --ink:#EDF5F3;
-      --ink-soft:#9DB6BF;
-      --line:#2B4654;
-      --line-soft:#223B48;
+      --ground:#0C1B23;
+      --card:#142833;
+      --card-2:#1A323F;
+      --ink:#ECF4F2;
+      --ink-soft:#9BB4BD;
+      --line:#2A4452;
+      --line-soft:#213845;
       --sea:#48BED3;
-      --marigold:#F4BC4C;
-      --tomato:#F0775C;
+      --marigold:#F0B848;
+      --tomato:#F07459;
       --moss:#5FC177;
-      --shadow:rgba(0,0,0,.45);
-      --on-accent:#0D1C25;
       --land:#2C4C47;
       --land-line:#3E6B60;
+      --on-accent:#0C1B23;
+      --shadow:rgba(0,0,0,.45);
+      --su-math:#E7A845;
+      --su-sci:#48BED3;
+      --su-hist:#E8886A;
+      --su-geo:#6FC185;
+      --su-eng:#C294D0;
+      --su-soc:#8FAEE0;
     }
   }
   :root[data-theme="dark"]{
-    --ground:#0D1C25;
-    --card:#152B36;
-    --card-2:#1B3441;
-    --ink:#EDF5F3;
-    --ink-soft:#9DB6BF;
-    --line:#2B4654;
-    --line-soft:#223B48;
+    --ground:#0C1B23;
+    --card:#142833;
+    --card-2:#1A323F;
+    --ink:#ECF4F2;
+    --ink-soft:#9BB4BD;
+    --line:#2A4452;
+    --line-soft:#213845;
     --sea:#48BED3;
-    --marigold:#F4BC4C;
-    --tomato:#F0775C;
+    --marigold:#F0B848;
+    --tomato:#F07459;
     --moss:#5FC177;
-    --shadow:rgba(0,0,0,.45);
-    --on-accent:#0D1C25;
     --land:#2C4C47;
     --land-line:#3E6B60;
+    --on-accent:#0C1B23;
+    --shadow:rgba(0,0,0,.45);
+    --su-math:#E7A845;
+    --su-sci:#48BED3;
+    --su-hist:#E8886A;
+    --su-geo:#6FC185;
+    --su-eng:#C294D0;
+    --su-soc:#8FAEE0;
   }
 
   *{box-sizing:border-box}
@@ -63,228 +81,219 @@
     background:var(--ground);
     color:var(--ink);
     font-family:"Lexend","Trebuchet MS",system-ui,sans-serif;
-    font-size:17px;
-    line-height:1.5;
-    padding-inline:18px;
-    padding-block:26px 44px;
-    display:flex;
-    flex-direction:column;
-    align-items:center;
-    gap:22px;
-    min-height:100vh;
+    font-size:16.5px;line-height:1.55;font-weight:300;
+    padding-inline:18px;padding-block:26px 48px;
+    display:flex;flex-direction:column;align-items:center;gap:20px;
   }
-  .wrap{width:100%;max-width:680px;display:flex;flex-direction:column;gap:22px}
+  .wrap{width:100%;max-width:700px;display:flex;flex-direction:column;gap:20px}
 
-  /* ---------- masthead ---------- */
-  .mast{display:flex;flex-direction:column;gap:6px;align-items:center;text-align:center}
+  .mast{display:flex;flex-direction:column;gap:5px;align-items:center;text-align:center}
   .eyebrow{
     font-family:"Courier Prime","Courier New",monospace;
-    font-size:12px;letter-spacing:.18em;text-transform:uppercase;
-    color:var(--ink-soft);
+    font-size:11.5px;letter-spacing:.2em;text-transform:uppercase;color:var(--ink-soft);
   }
   h1{
-    font-family:"Fredoka","Trebuchet MS",sans-serif;
-    font-weight:700;font-size:clamp(34px,8vw,52px);
-    line-height:1.02;margin:0;text-wrap:balance;
-    color:var(--sea);
-    letter-spacing:-.01em;
+    font-family:"Bricolage Grotesque","Trebuchet MS",sans-serif;
+    font-weight:700;font-size:clamp(32px,7.2vw,46px);line-height:1;margin:0;
+    letter-spacing:-.02em;color:var(--sea);text-wrap:balance;
   }
-  .mast p{margin:0;color:var(--ink-soft);max-width:42ch;font-size:15px}
+  .mast p{margin:0;color:var(--ink-soft);max-width:48ch;font-size:14.5px}
 
-  /* ---------- stamp strip ---------- */
-  .legs{
-    display:flex;gap:14px;
-    background:var(--card-2);border:2px solid var(--line);
-    border-radius:14px;padding:10px;
+  /* ---------- the stamp grid: subjects across, rounds down ---------- */
+  .board{
+    background:var(--card-2);border:2px solid var(--line);border-radius:14px;
+    padding:12px 12px 10px;display:flex;flex-direction:column;gap:7px;
   }
-  .leg{display:flex;flex-direction:column;gap:7px;min-width:0}
-  .leg.trip{flex:12 1 0}
-  .leg.peak{flex:6 1 0}
-  .leglabel{
+  .brow{display:grid;grid-template-columns:30px repeat(6,1fr);gap:6px;align-items:center}
+  .bhead{
     font-family:"Courier Prime","Courier New",monospace;
-    font-size:10.5px;letter-spacing:.16em;text-transform:uppercase;color:var(--ink-soft);
+    font-size:10px;letter-spacing:.1em;text-transform:uppercase;text-align:center;color:var(--ink-soft);
   }
-  .leg.peak .leglabel{color:var(--marigold)}
-  .slots{display:grid;gap:6px;justify-items:center}
-  .leg.trip .slots{grid-template-columns:repeat(12,1fr)}
-  .leg.peak .slots{grid-template-columns:repeat(6,1fr)}
-  @media (max-width:560px){
-    .legs{flex-direction:column;gap:12px}
-    .leg.peak .slots{grid-template-columns:repeat(12,1fr)}
+  .rlab{
+    font-family:"Courier Prime","Courier New",monospace;
+    font-size:11px;color:var(--ink-soft);text-align:center;
   }
-  .slot{
-    width:100%;max-width:38px;
-    aspect-ratio:1;border-radius:50%;
-    border:2px dashed var(--line);
+  .cell{
+    aspect-ratio:1;max-width:40px;width:100%;margin-inline:auto;border-radius:9px;
+    border:2px dashed var(--line);background:transparent;
     display:grid;place-items:center;
-    font-family:"Courier Prime","Courier New",monospace;
-    font-size:11px;font-weight:700;color:var(--ink-soft);
-    background:transparent;
+    font-family:"Courier Prime","Courier New",monospace;font-size:10px;font-weight:700;
+    color:var(--ink-soft);
   }
-  .slot.hit{border:2px solid var(--moss);background:var(--moss);color:var(--on-accent);border-style:solid}
-  .slot.miss{border:2px solid var(--tomato);color:var(--tomato);border-style:solid;opacity:.75}
-  .slot.now{border:3px solid var(--marigold);color:var(--marigold);border-style:solid;animation:pulse 1.6s ease-in-out infinite}
-  @keyframes pulse{0%,100%{transform:scale(1)}50%{transform:scale(1.14)}}
-  .slot.peak{border-radius:8px}
+  .cell.hit{border-style:solid;border-color:var(--c);background:var(--c);color:var(--on-accent)}
+  .cell.miss{border-style:solid;border-color:var(--tomato);color:var(--tomato)}
+  .cell.now{border-style:solid;border-width:3px;border-color:var(--c);color:var(--c);animation:pulse 1.7s ease-in-out infinite}
+  @keyframes pulse{0%,100%{transform:scale(1)}50%{transform:scale(1.13)}}
 
   /* ---------- question card ---------- */
   .card{
-    background:var(--card);
-    border:2px solid var(--line);
-    border-radius:var(--radius);
-    box-shadow:0 10px 0 -4px var(--shadow);
-    padding:20px;
-    display:flex;flex-direction:column;gap:18px;
+    background:var(--card);border:2px solid var(--line);border-radius:var(--radius);
+    box-shadow:0 9px 0 -4px var(--shadow);
+    padding:20px;display:flex;flex-direction:column;gap:17px;
+    border-top:5px solid var(--c,var(--sea));
   }
   .cardhead{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
   .stop{
     font-family:"Courier Prime","Courier New",monospace;
-    font-size:12px;letter-spacing:.16em;text-transform:uppercase;color:var(--ink-soft);
-    font-variant-numeric:tabular-nums;
+    font-size:11.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--ink-soft);
   }
   .tag{
     font-family:"Courier Prime","Courier New",monospace;
-    font-size:11px;letter-spacing:.14em;text-transform:uppercase;
-    padding:4px 10px;border-radius:999px;border:2px solid currentColor;
+    font-size:10.5px;letter-spacing:.13em;text-transform:uppercase;
+    padding:4px 11px;border-radius:999px;border:2px solid var(--c);color:var(--c);
   }
-  .tag.math{color:var(--tomato)}
-  .tag.geo{color:var(--sea)}
-  .tag.peak{color:var(--marigold)}
-  .ribbon{
-    display:flex;gap:10px;align-items:flex-start;
-    background:var(--marigold);color:#17323E;
-    border-radius:12px;padding:11px 14px;font-size:15px;line-height:1.4;
-  }
-  .ribbon strong{font-family:"Fredoka","Trebuchet MS",sans-serif;font-weight:600}
-  .tally{
-    display:flex;gap:10px;flex-wrap:wrap;justify-content:center;
-    font-family:"Courier Prime","Courier New",monospace;
-    font-size:13px;letter-spacing:.08em;color:var(--ink-soft);
-  }
-  .tally span{border:2px solid var(--line);border-radius:999px;padding:5px 12px}
   h2{
-    font-family:"Fredoka","Trebuchet MS",sans-serif;
-    font-weight:600;font-size:clamp(23px,5.4vw,31px);line-height:1.2;
-    margin:0;text-wrap:balance;
+    font-family:"Bricolage Grotesque","Trebuchet MS",sans-serif;
+    font-weight:600;font-size:clamp(20px,4.4vw,26px);line-height:1.25;margin:0;text-wrap:balance;
   }
 
   .plate{
-    margin:0;
-    background:var(--card-2);
-    border:2px solid var(--line-soft);
-    border-radius:12px;
-    padding:14px 12px 10px;
-    display:flex;flex-direction:column;align-items:center;gap:8px;
+    margin:0;background:var(--card-2);border:2px solid var(--line-soft);border-radius:12px;
+    padding:14px 12px 10px;display:flex;flex-direction:column;align-items:center;gap:9px;
     overflow-x:auto;
   }
   .plate svg{display:block;max-width:100%;height:auto}
   .plate figcaption{
     font-family:"Courier Prime","Courier New",monospace;
-    font-size:12px;letter-spacing:.08em;color:var(--ink-soft);text-align:center;
+    font-size:11.5px;letter-spacing:.06em;color:var(--ink-soft);text-align:center;
   }
 
-  .choices{display:grid;grid-template-columns:1fr 1fr;gap:10px}
-  @media (max-width:430px){.choices{grid-template-columns:1fr}}
+  .choices{display:grid;grid-template-columns:1fr 1fr;gap:9px}
+  @media (max-width:560px){.choices{grid-template-columns:1fr}}
   .choice{
-    font-family:"Fredoka","Trebuchet MS",sans-serif;
-    font-size:21px;font-weight:500;color:var(--ink);
-    background:var(--card);
-    border:3px solid var(--line);
-    border-radius:14px;
-    min-height:66px;padding:10px 14px;
-    cursor:pointer;text-align:center;
-    transition:transform .12s ease, background .12s ease, border-color .12s ease;
+    font-family:"Lexend",sans-serif;font-size:16px;font-weight:400;color:var(--ink);
+    background:var(--card);border:2.5px solid var(--line);border-radius:12px;
+    min-height:54px;padding:11px 15px;cursor:pointer;text-align:left;
+    transition:transform .12s ease,border-color .12s ease,background .12s ease;
   }
-  .choice:hover:not(:disabled){transform:translateY(-2px);border-color:var(--marigold)}
-  .choice:focus-visible{outline:3px solid var(--marigold);outline-offset:3px}
+  .choice:hover:not(:disabled){transform:translateY(-2px);border-color:var(--c)}
+  .choice:focus-visible{outline:3px solid var(--c);outline-offset:3px}
   .choice:disabled{cursor:default}
   .choice.right{background:var(--moss);border-color:var(--moss);color:var(--on-accent)}
   .choice.wrong{background:var(--tomato);border-color:var(--tomato);color:var(--on-accent)}
-  .choice.dim{opacity:.45}
+  .choice.dim{opacity:.42}
 
   .feedback{display:flex;flex-direction:column;gap:12px}
-  .verdict{
-    font-family:"Fredoka","Trebuchet MS",sans-serif;
-    font-size:22px;font-weight:600;margin:0;
-  }
+  .verdict{font-family:"Bricolage Grotesque",sans-serif;font-size:19px;font-weight:600;margin:0}
   .verdict.good{color:var(--moss)}
   .verdict.oops{color:var(--tomato)}
   .fact{
-    border-left:5px solid var(--marigold);
-    background:var(--card-2);
-    border-radius:0 12px 12px 0;
-    padding:12px 14px;
-    display:flex;flex-direction:column;gap:4px;
+    border-left:5px solid var(--c);background:var(--card-2);border-radius:0 12px 12px 0;
+    padding:12px 14px;display:flex;flex-direction:column;gap:4px;
   }
   .fact .label{
     font-family:"Courier Prime","Courier New",monospace;
-    font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:var(--marigold);
+    font-size:10.5px;letter-spacing:.16em;text-transform:uppercase;color:var(--c);
   }
-  .fact p{margin:0;font-size:15.5px}
+  .fact p{margin:0;font-size:15px}
   .next{
-    align-self:flex-start;
-    font-family:"Fredoka","Trebuchet MS",sans-serif;font-size:19px;font-weight:600;
+    align-self:flex-start;font-family:"Bricolage Grotesque",sans-serif;font-size:17px;font-weight:600;
     background:var(--sea);color:var(--on-accent);border:none;border-radius:999px;
-    padding:12px 26px;cursor:pointer;
-    transition:transform .12s ease;
+    padding:11px 24px;cursor:pointer;transition:transform .12s ease;
   }
   .next:hover{transform:translateY(-2px)}
   .next:focus-visible{outline:3px solid var(--marigold);outline-offset:3px}
+  .roundbar{
+    display:flex;gap:10px;align-items:flex-start;background:var(--marigold);color:#15303C;
+    border-radius:12px;padding:11px 14px;font-size:14.5px;line-height:1.45;
+  }
+  .roundbar strong{font-family:"Bricolage Grotesque",sans-serif;font-weight:700}
+
+  /* ---------- word-work cards, used by the English questions ---------- */
+  .wcard{
+    background:var(--card);border:2px solid var(--line);border-radius:12px;
+    padding:16px 20px;display:flex;flex-direction:column;align-items:center;gap:9px;
+    max-width:100%;
+  }
+  .wcard-label{
+    font-family:"Courier Prime","Courier New",monospace;
+    font-size:10.5px;letter-spacing:.17em;text-transform:uppercase;color:var(--ink-soft);
+  }
+  .wcard-big{
+    font-family:"Bricolage Grotesque",sans-serif;font-size:clamp(24px,5.5vw,34px);
+    font-weight:600;color:var(--ink);text-align:center;line-height:1.15;
+  }
+  .wcard-sub{font-family:"Courier Prime","Courier New",monospace;font-size:12.5px;color:var(--ink-soft)}
+  .sent p{margin:0;font-size:clamp(16px,3.6vw,19px);line-height:1.55;text-align:center;max-width:40ch}
+  .sent b{background:var(--marigold);color:#15303C;padding:1px 7px;border-radius:6px;font-weight:600}
+  .passage{align-items:flex-start}
+  .passage p{margin:0 0 7px;font-size:15px;line-height:1.6;max-width:46ch}
+  .passage p:last-child{margin-bottom:0}
+  .chips{display:flex;align-items:center;gap:8px;flex-wrap:wrap;justify-content:center}
+  .chip{
+    background:var(--sea);color:var(--on-accent);border-radius:9px;padding:8px 14px;
+    font-family:"Bricolage Grotesque",sans-serif;font-size:20px;font-weight:600;
+  }
+  .chip-root{background:var(--tomato)}
+  .chip-suf{background:var(--moss)}
+  .plus{color:var(--ink-soft);font-size:17px}
 
   /* ---------- finish ---------- */
-  .finish{align-items:center;text-align:center;gap:16px}
+  .finish{align-items:center;text-align:center;gap:14px;border-top-color:var(--sea)}
   .score{
-    font-family:"Fredoka","Trebuchet MS",sans-serif;
-    font-size:64px;font-weight:700;line-height:1;color:var(--marigold);
-    font-variant-numeric:tabular-nums;
+    font-family:"Bricolage Grotesque",sans-serif;font-size:58px;font-weight:700;line-height:1;
+    color:var(--marigold);font-variant-numeric:tabular-nums;
   }
-  .rank{
-    font-family:"Fredoka","Trebuchet MS",sans-serif;font-size:29px;font-weight:600;margin:0;color:var(--sea);
+  .rank{font-family:"Bricolage Grotesque",sans-serif;font-size:26px;font-weight:600;margin:0;color:var(--sea)}
+  .finish p{margin:0;max-width:46ch;color:var(--ink-soft);font-size:15px}
+  .bysub{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;width:100%;max-width:440px}
+  @media (max-width:420px){.bysub{grid-template-columns:repeat(2,1fr)}}
+  .sub{
+    border:2px solid var(--c);border-radius:10px;padding:7px 9px;
+    display:flex;flex-direction:column;gap:2px;align-items:center;
   }
-  .finish p{margin:0;max-width:44ch;color:var(--ink-soft)}
+  .sub b{font-family:"Bricolage Grotesque",sans-serif;font-size:19px;font-weight:700;color:var(--c)}
+  .sub span{font-family:"Courier Prime",monospace;font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:var(--ink-soft)}
   .again{
-    font-family:"Fredoka","Trebuchet MS",sans-serif;font-size:19px;font-weight:600;
-    background:var(--marigold);color:#17323E;border:none;border-radius:999px;
-    padding:12px 28px;cursor:pointer;
+    font-family:"Bricolage Grotesque",sans-serif;font-size:17px;font-weight:600;
+    background:var(--marigold);color:#15303C;border:none;border-radius:999px;
+    padding:11px 26px;cursor:pointer;
   }
   .again:focus-visible{outline:3px solid var(--sea);outline-offset:3px}
   .foot{
     font-family:"Courier Prime","Courier New",monospace;
-    font-size:11.5px;letter-spacing:.1em;color:var(--ink-soft);text-align:center;
+    font-size:11px;letter-spacing:.09em;color:var(--ink-soft);text-align:center;
   }
-  @media (prefers-reduced-motion: reduce){
-    *{animation:none !important;transition:none !important}
-  }
+  @media (prefers-reduced-motion: reduce){*{animation:none !important;transition:none !important}}
 </style>
 
 <div class="wrap">
   <header class="mast">
-    <div class="eyebrow">18 stops drawn from 100 · ages 7 and up</div>
+    <div class="eyebrow">18 questions drawn from 500 · ages 10 and up</div>
     <h1>Explorer's Passport</h1>
-    <p>Twelve stops around the world, then six puzzles up the summit. Every stop you get right wins a stamp — and every trip draws a fresh set of questions.</p>
+    <p>Six subjects, three rounds, getting harder each time. Every question you get right stamps its square.</p>
   </header>
 
-  <div class="legs" aria-label="Stamps collected">
-    <div class="leg trip">
-      <span class="leglabel">World trip</span>
-      <div class="slots" id="stripA"></div>
-    </div>
-    <div class="leg peak">
-      <span class="leglabel">Summit</span>
-      <div class="slots" id="stripB"></div>
-    </div>
-  </div>
-
+  <div class="board" id="board" aria-label="Progress by subject and round"></div>
   <main id="stage" aria-live="polite"></main>
-
-  <p class="foot" id="foot">Real coordinates on every map · a worked reason on every summit puzzle</p>
+  <p class="foot" id="foot">Drawn fresh every time you play</p>
 </div>
 
 <script src="art.js"></script>
-<script src="bank.js"></script>
+<script src="art-math.js"></script>
+<script src="art-science.js"></script>
+<script src="art-humanities.js"></script>
+<script src="bank-math.js"></script>
+<script src="bank-science.js"></script>
+<script src="bank-geography.js"></script>
+<script src="bank-history.js"></script>
+<script src="bank-english.js"></script>
+<script src="bank-social.js"></script>
 <script>
-/* ---------------- drawing a trip ---------------- */
-var TRIP = 12, PEAKS = 6, SEEN_KEY = 'passport.seen.v1', SEEN_CAP = 40;
+var SUBJECTS = [
+  { k:'math', name:'Maths',     short:'MA', tag:'Olympiad maths', v:'--su-math' },
+  { k:'sci',  name:'Science',   short:'SC', tag:'Science',        v:'--su-sci'  },
+  { k:'hist', name:'History',   short:'HI', tag:'History',        v:'--su-hist' },
+  { k:'geo',  name:'Geography', short:'GE', tag:'Geography',      v:'--su-geo'  },
+  { k:'eng',  name:'English',   short:'EN', tag:'English',        v:'--su-eng'  },
+  { k:'soc',  name:'Society',   short:'SO', tag:'Social studies', v:'--su-soc'  }
+];
+var ROUNDS = [
+  { n:1, label:'Warm up', blurb:'One question from each subject, to find your feet.' },
+  { n:2, label:'Stretch', blurb:'Round two. These ask you to put two steps together.' },
+  { n:3, label:'Olympiad', blurb:'Last round, hardest questions. Read twice before you answer.' }
+];
+var SEEN_KEY = 'passport10.seen.v1', SEEN_CAP = 60;
 
 function shuffle(a) {
   for (var i = a.length - 1; i > 0; i--) {
@@ -293,156 +302,142 @@ function shuffle(a) {
   }
   return a;
 }
-function poolOf(kind) {
-  var out = [];
-  BANK.forEach(function (q, i) { if (q.k === kind) out.push(i); });
-  return out;
-}
 function readSeen() {
   try { return JSON.parse(localStorage.getItem(SEEN_KEY)) || []; } catch (e) { return []; }
 }
 function writeSeen(ids) {
   try { localStorage.setItem(SEEN_KEY, JSON.stringify(ids.slice(-SEEN_CAP))); } catch (e) { /* fine without it */ }
 }
-/* prefer questions this browser has not had recently, but never run dry */
-function draw(pool, n, seen) {
+/* one question per subject per round, preferring ones this browser has not had lately */
+function pick(subject, difficulty, seen, taken) {
+  var pool = [];
+  BANK.forEach(function (q, i) {
+    if (q.s === subject && q.d === difficulty && taken.indexOf(i) < 0) pool.push(i);
+  });
+  if (!pool.length) {
+    BANK.forEach(function (q, i) { if (q.s === subject && taken.indexOf(i) < 0) pool.push(i); });
+  }
   var fresh = pool.filter(function (i) { return seen.indexOf(i) < 0; });
-  return shuffle(fresh.length >= n ? fresh : pool.slice()).slice(0, n);
+  var bag = fresh.length ? fresh : pool;
+  return bag[Math.floor(Math.random() * bag.length)];
 }
 function newTrip() {
-  var seen = readSeen();
-  var maths = draw(poolOf('math'), 6, seen);
-  var geos = draw(poolOf('geo'), 6, seen);
-  var peaks = draw(poolOf('peak'), PEAKS, seen);
-  var stops = [];
-  for (var i = 0; i < 6; i++) { stops.push(maths[i], geos[i]); }
-  stops = stops.concat(peaks);
-  writeSeen(seen.concat(stops));
-  return stops.map(function (id) {
-    var q = BANK[id], c = q.c.slice();
-    /* numbers read best in order; words get shuffled, so the answer never sits still */
-    var numeric = c.every(function (v) { return /^-?\d+$/.test(v); });
-    if (numeric) c.sort(function (a, b) { return a - b; }); else shuffle(c);
-    return { id: id, q: q, choices: c, answer: c.indexOf(q.a) };
+  var seen = readSeen(), taken = [], trip = [];
+  ROUNDS.forEach(function (r, ri) {
+    var round = [];
+    SUBJECTS.forEach(function (s, si) {
+      var id = pick(s.k, r.n, seen, taken);
+      taken.push(id);
+      var q = BANK[id], c = q.c.slice();
+      var numeric = c.every(function (v) { return /^-?[\d,]+$/.test(v); });
+      if (numeric) c.sort(function (a, b) { return parseFloat(a.replace(/,/g, '')) - parseFloat(b.replace(/,/g, '')); });
+      else shuffle(c);
+      round.push({ id:id, q:q, choices:c, answer:c.indexOf(q.a), cell:ri * 6 + si, round:ri, subj:si });
+    });
+    trip = trip.concat(shuffle(round));
   });
+  writeSeen(seen.concat(taken));
+  return trip;
 }
 
-/* ---------------- state ---------------- */
-var stripA = document.getElementById('stripA'),
-    stripB = document.getElementById('stripB'),
+var board = document.getElementById('board'),
     stage = document.getElementById('stage'),
-    foot = document.getElementById('foot');
+    foot  = document.getElementById('foot');
 var trip = [], index = 0, score = 0, marks = [];
 
-function slotHTML(i, peak) {
-  var cls = 'slot' + (peak ? ' peak' : '');
-  if (marks[i] === true) cls += ' hit';
-  else if (marks[i] === false) cls += ' miss';
-  else if (i === index) cls += ' now';
-  return '<div class="' + cls + '">' + (peak ? i - TRIP + 1 : i + 1) + '</div>';
+function drawBoard() {
+  var here = index < trip.length ? trip[index].cell : -1;
+  var html = '<div class="brow"><span></span>' + SUBJECTS.map(function (s) {
+    return '<span class="bhead" style="color:var(' + s.v + ')">' + s.short + '</span>';
+  }).join('') + '</div>';
+  ROUNDS.forEach(function (r, ri) {
+    html += '<div class="brow"><span class="rlab">' + r.n + '</span>';
+    SUBJECTS.forEach(function (s, si) {
+      var cell = ri * 6 + si, cls = 'cell';
+      if (marks[cell] === true) cls += ' hit';
+      else if (marks[cell] === false) cls += ' miss';
+      else if (cell === here) cls += ' now';
+      html += '<span class="' + cls + '" style="--c:var(' + s.v + ')">' + s.short + '</span>';
+    });
+    html += '</div>';
+  });
+  board.innerHTML = html;
 }
-function drawStrip() {
-  var a = '', b = '', i;
-  for (i = 0; i < TRIP; i++) a += slotHTML(i, false);
-  for (i = TRIP; i < trip.length; i++) b += slotHTML(i, true);
-  stripA.innerHTML = a;
-  stripB.innerHTML = b;
-}
-function heading(i) {
-  return i < TRIP
-    ? 'Stop ' + String(i + 1).padStart(2, '0') + ' of ' + TRIP
-    : 'Summit puzzle ' + (i - TRIP + 1) + ' of ' + PEAKS;
-}
-var TAGS = { math: 'Numbers', geo: 'Where in the world', peak: 'Summit puzzle' };
 
 function drawStop() {
-  var s = trip[index], q = s.q;
+  var item = trip[index], q = item.q, s = SUBJECTS[item.subj], r = ROUNDS[item.round];
+  var first = index % 6 === 0;
   stage.innerHTML =
-    '<section class="card">' +
-      (index === TRIP
-        ? '<div class="ribbon"><span><strong>You reached the Summit.</strong> These six are puzzles, not sums. Read twice, then think — there is no rush.</span></div>'
-        : '') +
+    '<section class="card" style="--c:var(' + s.v + ')">' +
+      (first ? '<div class="roundbar"><span><strong>Round ' + r.n + ' · ' + r.label + '.</strong> ' + r.blurb + '</span></div>' : '') +
       '<div class="cardhead">' +
-        '<span class="stop">' + heading(index) + '</span>' +
-        '<span class="tag ' + q.k + '">' + TAGS[q.k] + '</span>' +
+        '<span class="stop">Question ' + (index + 1) + ' of ' + trip.length + ' · round ' + r.n + '</span>' +
+        '<span class="tag">' + s.tag + '</span>' +
       '</div>' +
       '<h2>' + q.q + '</h2>' +
       '<figure class="plate">' + renderArt(q.art) + '<figcaption>' + q.cap + '</figcaption></figure>' +
       '<div class="choices">' +
-        s.choices.map(function (c, i) {
+        item.choices.map(function (c, i) {
           return '<button class="choice" id="choice-' + i + '" data-i="' + i + '">' + c + '</button>';
         }).join('') +
-      '</div>' +
-      '<div id="feedback"></div>' +
+      '</div><div id="feedback"></div>' +
     '</section>';
-
   Array.prototype.forEach.call(document.querySelectorAll('.choice'), function (b) {
     b.addEventListener('click', function () { answer(Number(b.dataset.i)); });
   });
-  drawStrip();
+  drawBoard();
 }
 
-function answer(pick) {
-  var s = trip[index], q = s.q, right = pick === s.answer;
-  marks[index] = right;
+function answer(picked) {
+  var item = trip[index], q = item.q, right = picked === item.answer;
+  marks[item.cell] = right;
   if (right) score++;
-
   Array.prototype.forEach.call(document.querySelectorAll('.choice'), function (b) {
     var i = Number(b.dataset.i);
     b.disabled = true;
-    if (i === s.answer) b.classList.add('right');
-    else if (i === pick) b.classList.add('wrong');
+    if (i === item.answer) b.classList.add('right');
+    else if (i === picked) b.classList.add('wrong');
     else b.classList.add('dim');
   });
-
-  var peak = q.k === 'peak', last = index === trip.length - 1;
+  var last = index === trip.length - 1;
   document.getElementById('feedback').innerHTML =
     '<div class="feedback">' +
       '<p class="verdict ' + (right ? 'good' : 'oops') + '">' +
-        (right
-          ? (peak ? 'Solved it! That is the one.' : 'Stamped! That is right.')
-          : 'Not this time — the answer is ' + s.choices[s.answer] + '.') +
-      '</p>' +
-      '<div class="fact">' +
-        '<span class="label">' + (peak ? 'How to see it' : 'Did you know') + '</span>' +
-        '<p>' + q.n + '</p>' +
-      '</div>' +
+        (right ? 'Correct.' : 'Not this time — the answer is ' + item.choices[item.answer] + '.') + '</p>' +
+      '<div class="fact"><span class="label">Why</span><p>' + q.n + '</p></div>' +
       '<button class="next" id="next">' +
-        (last ? 'See my passport' : (index === TRIP - 1 ? 'Start the Summit' : 'Next stop')) +
-      '</button>' +
-    '</div>';
-
+        (last ? 'See my passport' : (index % 6 === 5 ? 'Start round ' + (item.round + 2) : 'Next question')) +
+      '</button></div>';
   document.getElementById('next').addEventListener('click', function () {
-    if (last) { index = trip.length; drawStrip(); finish(); }
-    else { index++; drawStop(); document.querySelector('h2').scrollIntoView({ block: 'nearest' }); }
+    if (last) { index = trip.length; drawBoard(); finish(); }
+    else { index++; drawStop(); document.querySelector('h2').scrollIntoView({ block:'nearest' }); }
   });
-  drawStrip();
+  drawBoard();
 }
 
 var RANKS = [
-  { min: 18, title: 'Grand Explorer', line: 'Every stamp in the passport and every summit puzzle solved. Nothing left to conquer.' },
-  { min: 15, title: 'Summit Climber', line: 'You made it up the hard side. Those puzzles beat most grown-ups.' },
-  { min: 11, title: 'World Explorer', line: 'Strong all the way round the world. The summit is waiting for another go.' },
-  { min: 7, title: 'Trail Blazer', line: 'Good travelling. The next trip draws different questions — go again.' },
-  { min: 4, title: 'Map Reader', line: 'You are getting the hang of the map. Try a fresh set of stops.' },
-  { min: 0, title: 'Packing Bags', line: 'Every explorer starts somewhere. Set off again!' }
+  { min:18, title:'Grand Explorer', line:'Eighteen out of eighteen, across six subjects and three rounds. Nothing left to conquer.' },
+  { min:15, title:'Expedition Leader', line:'That is a serious score. The Olympiad round beats most adults.' },
+  { min:12, title:'Field Scientist', line:'Strong work. Look at which columns lost you squares and head back there.' },
+  { min:8,  title:'Cartographer', line:'A good haul. The later rounds are meant to be hard — try a fresh set.' },
+  { min:4,  title:'Trail Blazer', line:'You are finding your way. Every trip draws different questions.' },
+  { min:0,  title:'Packing Bags', line:'Every explorer starts somewhere. Set off again.' }
 ];
 
 function finish() {
   var rank = RANKS.find(function (r) { return score >= r.min; });
-  var tally = function (from, to) { return marks.slice(from, to).filter(Boolean).length; };
   stage.innerHTML =
     '<section class="card finish">' +
-      '<span class="stop">Trip complete</span>' +
-      '<div class="score">' + score + '<span style="font-size:26px;color:var(--ink-soft)"> / ' + trip.length + '</span></div>' +
+      '<span class="stop">Expedition complete</span>' +
+      '<div class="score">' + score + '<span style="font-size:24px;color:var(--ink-soft)"> / ' + trip.length + '</span></div>' +
       '<h2 class="rank">' + rank.title + '</h2>' +
-      '<div class="tally">' +
-        '<span>World trip ' + tally(0, TRIP) + '/' + TRIP + '</span>' +
-        '<span>Summit ' + tally(TRIP, trip.length) + '/' + PEAKS + '</span>' +
-      '</div>' +
+      '<div class="bysub">' + SUBJECTS.map(function (s, si) {
+        var got = [0, 1, 2].filter(function (ri) { return marks[ri * 6 + si] === true; }).length;
+        return '<div class="sub" style="--c:var(' + s.v + ')"><b>' + got + '/3</b><span>' + s.name + '</span></div>';
+      }).join('') + '</div>' +
       '<p>' + rank.line + '</p>' +
-      '<button class="again" id="again">Pack for a new trip</button>' +
-      '<p class="foot">A new trip draws 18 different questions from the 100 in the bank.</p>' +
+      '<button class="again" id="again">Draw a new expedition</button>' +
+      '<p class="foot">18 fresh questions from the ' + BANK.length + ' in the bank.</p>' +
     '</section>';
   document.getElementById('again').addEventListener('click', function () { start({}); });
 }
@@ -452,19 +447,16 @@ function start(state) {
   index = (state && state.index) || 0;
   score = (state && state.score) || 0;
   marks = (state && state.marks) || [];
-  foot.textContent = 'Trip drawn from ' + BANK.length + ' questions · real coordinates on every map';
+  foot.textContent = 'Drawn from ' + BANK.length + ' questions · six subjects · three rounds';
   if (index >= trip.length) finish(); else drawStop();
-  drawStrip();
+  drawBoard();
 }
 
 if (window.claude && window.claude.hot && window.claude.hot.snapshot) {
   window.claude.hot.snapshot(function () {
-    return { trip: trip, index: index, score: score, marks: marks };
+    return { trip:trip, index:index, score:score, marks:marks };
   });
 }
-if (window.claude && window.claude.hot && window.claude.hot.ready) {
-  window.claude.hot.ready(start);
-} else {
-  start((window.claude && window.claude.hot && window.claude.hot.data) || {});
-}
+if (window.claude && window.claude.hot && window.claude.hot.ready) window.claude.hot.ready(start);
+else start((window.claude && window.claude.hot && window.claude.hot.data) || {});
 </script>
