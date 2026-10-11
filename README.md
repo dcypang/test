@@ -1,6 +1,6 @@
 # Explorer's Passport
 
-A general-knowledge quiz for 10-year-olds. Every expedition draws **18 questions
+A general-knowledge quiz for 9-year-olds (Year 5 / grade 4). Every expedition draws **18 questions
 from a bank of 500**, three from each of six subjects, across three rounds that
 get harder as you go.
 
@@ -14,7 +14,7 @@ get harder as you go.
 | Social studies | 53 | government and voting, rights and duties, economics, community, media literacy |
 
 Each question is tagged with a difficulty: round 1 is a warm-up, round 2 asks for
-two steps, round 3 is olympiad level. A right answer stamps its square on the
+two steps, round 3 is olympiad level for the age. A right answer stamps its square on the
 grid, and the grid doubles as the score report — subjects across, rounds down, so
 you can see at a glance where the gaps are.
 
@@ -40,5 +40,15 @@ back-to-back expeditions draw no repeats.
 
 Open `index.html` in any browser — no build step, works on phones, light and dark.
 
-> The earlier version of this quiz, aimed at 7-year-olds with a 100-question bank,
-> is in the git history at commit `f7534e3`.
+## Grade level
+
+The bank was first written for 10-year-olds and then turned down a year. Thirty-six
+questions were rewritten to bring the ceiling down: percentages, ratio, mean and
+range, triangle area and volume formulas left the maths; semicolons, the passive
+voice and relative clauses left the English; opportunity cost and public goods
+became concrete choices rather than named concepts. The facts in science, history
+and geography stayed — a 9-year-old can learn that Jupiter is the largest planet
+just as well — but the most abstract reasoning questions were replaced.
+
+> Earlier versions are in the git history: the 10-year-old bank at `968bf9b`, and
+> the original 7-year-old quiz with its 100-question bank at `f7534e3`.
