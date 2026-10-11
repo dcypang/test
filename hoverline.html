@@ -183,11 +183,18 @@ try {
   renderer = new THREE.WebGLRenderer({ canvas: $('view'), antialias: true, powerPreference: 'high-performance' });
 } catch (e) { noGL(); return; }
 renderer.outputColorSpace = THREE.LinearSRGBColorSpace;
-renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 1.5));
+const BASE_DPR = Math.min(window.devicePixelRatio || 1, 1.5);
+let resScale = 1;
+renderer.setPixelRatio(BASE_DPR);
+const GL2 = renderer.capabilities.isWebGL2;
+if (!GL2) renderer.toneMapping = THREE.ACESFilmicToneMapping;
+const cubeRT = new THREE.WebGLCubeRenderTarget(128, { type: GL2 ? THREE.HalfFloatType : THREE.UnsignedByteType, generateMipmaps: true, minFilter: THREE.LinearMipmapLinearFilter });
+const cubeCam = new THREE.CubeCamera(0.5, 900, cubeRT);
+const CAR_POS = { value: new THREE.Vector3() }, CAR_DIR = { value: new THREE.Vector3(0, 0, -1) }, CAR_ON = { value: 1 };
 
 const scene = new THREE.Scene();
-const FOG = new THREE.Color(0.07, 0.07, 0.16);
-const HAZE = new THREE.Color(0.27, 0.18, 0.37);
+const FOG = new THREE.Color(0.055, 0.06, 0.1);
+const HAZE = new THREE.Color(0.24, 0.16, 0.14);
 const FOG_D = 0.0034;
 scene.fog = new THREE.FogExp2(FOG.getHex(), FOG_D);
 scene.background = FOG.clone();
@@ -242,7 +249,7 @@ function lotCore(cx, cz) {
       : [[0, L / 2, 0, L / 2], [L / 2, L, 0, L / 2], [0, L / 2, L / 2, L], [L / 2, L, L / 2, L]];
     const tall = 0.3 + dens * 1.55;
     parts.forEach((p, i) => {
-      const q = (s) => H(100 + i * 24 + s);
+      const q = (s) => H(100 + i * 48 + s);
       const m = 0.8 + q(0) * 2.4;
       let x0 = lx + p[0] + m, x1 = lx + p[1] - m, z0 = lz + p[2] + m, z1 = lz + p[3] - m;
       const base = { x0, x1, z0, z1 };
@@ -259,6 +266,15 @@ function lotCore(cx, cz) {
         y = top;
         const sx = (x1 - x0) * (0.1 + 0.12 * q(10 + t)), sz = (z1 - z0) * (0.1 + 0.12 * q(13 + t));
         x0 += sx; x1 -= sx; z0 += sz; z1 -= sz;
+      }
+      const rw = x1 - x0, rd = z1 - z0;
+      if (rw > 5 && rd > 5 && h > 14) {
+        const nEq = 1 + Math.floor(q(21) * 3);
+        for (let e = 0; e < nEq; e++) {
+          const ew = 1.5 + q(22 + e) * 2.5, ed = 1.5 + q(25 + e) * 2.5, eh = 1.2 + q(28 + e) * 2.8;
+          const ex = x0 + q(31 + e) * (rw - ew), ez = z0 + q(34 + e) * (rd - ed);
+          boxes.push({ x0: ex, x1: ex + ew, z0: ez, z1: ez + ed, y0: h, y1: h + eh, seed: q(37 + e) * 0.999, thin: true });
+        }
       }
       const mx = (x0 + x1) / 2, mz = (z0 + z1) / 2;
       if (h > 140 && q(16) < 0.7) {
@@ -385,13 +401,14 @@ const fogChunk = `
   col = mix(col, uFog, clamp(1.0 - exp(-uFogD * uFogD * dist * dist), 0.0, 1.0));
 `;
 const buildingMat = new THREE.ShaderMaterial({
-  uniforms: { uFog: { value: FOG }, uHaze: { value: HAZE }, uFogD: { value: FOG_D }, uTime: TIME_U },
+  uniforms: { uFog: { value: FOG }, uHaze: { value: HAZE }, uFogD: { value: FOG_D }, uTime: TIME_U, uCarPos: CAR_POS, uCarDir: CAR_DIR, uCarOn: CAR_ON },
   extensions: { derivatives: true },
   vertexShader: `
     attribute float aSeed;
-    varying vec3 vLocal; varying vec3 vN; varying vec3 vWorld; varying float vSeed;
+    varying vec3 vLocal; varying vec3 vN; varying vec3 vWorld; varying vec3 vSize; varying float vSeed;
     void main() {
       vec3 sc = vec3(length(instanceMatrix[0].xyz), length(instanceMatrix[1].xyz), length(instanceMatrix[2].xyz));
+      vSize = sc;
       vLocal = (position + 0.5) * sc;
       vN = normal;
       vSeed = aSeed;
@@ -401,42 +418,124 @@ const buildingMat = new THREE.ShaderMaterial({
     }`,
   fragmentShader: `
     uniform vec3 uFog; uniform vec3 uHaze; uniform float uFogD; uniform float uTime;
-    varying vec3 vLocal; varying vec3 vN; varying vec3 vWorld; varying float vSeed;
+    uniform vec3 uCarPos; uniform vec3 uCarDir; uniform float uCarOn;
+    varying vec3 vLocal; varying vec3 vN; varying vec3 vWorld; varying vec3 vSize; varying float vSeed;
     float h21(vec2 p) { p = fract(p * vec2(123.34, 456.21)); p += dot(p, p + 45.32); return fract(p.x * p.y); }
+    float tWall(float p, float d, float size) { return d > 1e-4 ? (size - p) / d : (d < -1e-4 ? -p / d : 1e5); }
+    vec3 skyRefl(vec3 r) {
+      float y = r.y;
+      vec3 c = mix(uFog * 1.3, vec3(0.012, 0.014, 0.035), smoothstep(0.0, 0.6, y));
+      c += vec3(0.4, 0.2, 0.14) * exp(-abs(y) * 6.0) * 0.55;
+      c = mix(c, uHaze * 0.7, smoothstep(0.0, -0.35, y));
+      return c;
+    }
     void main() {
-      vec3 col;
       float sd = floor(vSeed * 1024.0 + 0.5) / 1024.0;
-      float glowLow = 1.0 - smoothstep(0.0, 70.0, vWorld.y);
-      vec3 wall = vec3(0.03, 0.034, 0.058) + vec3(0.035, 0.018, 0.05) * glowLow;
-      if (abs(vN.y) > 0.5) {
-        col = vec3(0.028, 0.03, 0.05) + vec3(0.02, 0.012, 0.03) * glowLow;
+      vec3 n = floor(vN + 0.5);
+      vec3 V = normalize(vWorld - cameraPosition);
+      float glowLow = 1.0 - smoothstep(0.0, 55.0, vWorld.y);
+      vec3 uplight = vec3(0.11, 0.06, 0.028) * glowLow * glowLow + vec3(0.025, 0.012, 0.035) * glowLow;
+      float style = fract(sd * 7.13);
+      bool curtain = style > 0.7;
+      vec3 wallBase = mix(vec3(0.05, 0.05, 0.06), vec3(0.075, 0.066, 0.058), fract(sd * 5.3));
+      float small = step(vSize.y, 5.0) * step(max(vSize.x, vSize.z), 7.0);
+      vec3 col;
+      if (abs(n.y) > 0.5) {
+        float gravel = h21(floor(vWorld.xz * 2.0)) * 0.012;
+        col = vec3(0.028, 0.028, 0.032) + gravel + uplight * 0.25;
+        float rimD = min(min(vLocal.x, vSize.x - vLocal.x), min(vLocal.z, vSize.z - vLocal.z));
+        col += vec3(0.03) * (1.0 - smoothstep(0.0, 0.5, rimD));
+        if (small > 0.5) col = vec3(0.07, 0.07, 0.075);
       } else {
-        float u = abs(vN.x) > 0.5 ? vLocal.z : vLocal.x;
-        float faceId = floor(vN.x + 0.5) * 1.7 + floor(vN.z + 0.5) * 3.1;
-        float style = fract(sd * 7.13);
-        vec2 cs = style < 0.5 ? vec2(2.2, 3.4) : (style < 0.82 ? vec2(1.6, 3.0) : vec2(3.6, 3.9));
-        vec2 g = vec2(u, vLocal.y) / cs;
+        bool xFace = abs(n.x) > 0.5;
+        float u = xFace ? vLocal.z : vLocal.x;
+        float faceW = xFace ? vSize.z : vSize.x;
+        vec3 tU = xFace ? vec3(0.0, 0.0, 1.0) : vec3(1.0, 0.0, 0.0);
+        float faceId = n.x * 1.7 + n.z * 3.1;
+        vec2 cs = curtain ? vec2(1.5, 3.6) : (style < 0.38 ? vec2(2.4, 3.4) : vec2(3.2, 3.7));
+        float nCols = max(1.0, floor((faceW - 1.0) / cs.x));
+        float margin = (faceW - nCols * cs.x) * 0.5;
+        float uu = u - margin;
+        vec2 g = vec2(uu, vLocal.y - 1.6) / cs;
         vec2 id = floor(g), f = fract(g);
         vec2 fw = max(fwidth(g), vec2(1e-4));
-        float wx = smoothstep(0.16 - fw.x, 0.16 + fw.x, f.x) * (1.0 - smoothstep(0.84 - fw.x, 0.84 + fw.x, f.x));
-        float wy = smoothstep(0.22 - fw.y, 0.22 + fw.y, f.y) * (1.0 - smoothstep(0.82 - fw.y, 0.82 + fw.y, f.y));
-        if (style > 0.92) wx = 1.0;   // ribbon glazing
-        float win = wx * wy;
-        float litRatio = 0.16 + 0.5 * fract(sd * 3.7);
+        float inside = step(0.0, uu) * step(uu, nCols * cs.x) * step(0.0, g.y) * step(vLocal.y, vSize.y - 1.3) * (1.0 - small);
+        vec2 a0 = curtain ? vec2(0.04, 0.07) : vec2(0.14, 0.2);
+        vec2 a1 = curtain ? vec2(0.96, 0.93) : vec2(0.86, 0.86);
+        float wx = smoothstep(a0.x - fw.x, a0.x + fw.x, f.x) * (1.0 - smoothstep(a1.x - fw.x, a1.x + fw.x, f.x));
+        float wy = smoothstep(a0.y - fw.y, a0.y + fw.y, f.y) * (1.0 - smoothstep(a1.y - fw.y, a1.y + fw.y, f.y));
+        float win = wx * wy * inside;
+        vec2 wp = clamp((f - a0) / (a1 - a0), 0.0, 1.0);
+        vec2 wsz = cs * (a1 - a0);
+
+        float rid = h21(id + vec2(sd * 91.7 + faceId * 13.1, sd * 37.3));
+        float litRatio = 0.14 + 0.5 * fract(sd * 3.7);
         float rowR = h21(vec2(id.y * 1.31, sd * 53.1 + faceId));
-        float r = h21(id + vec2(sd * 91.7 + faceId * 13.1, sd * 37.3));
-        float lit = step(r, litRatio * (0.35 + rowR * 1.1));
+        float lit = step(rid, litRatio * (0.35 + rowR * 1.1));
         float tint = h21(id + 17.0 + sd * 5.0);
-        vec3 warm = vec3(1.0, 0.72, 0.4), cool = vec3(0.68, 0.78, 0.95), cyan = vec3(0.35, 0.95, 1.0);
-        vec3 wc = tint < 0.6 ? warm : (tint < 0.94 ? cool : cyan);
-        if (fract(sd * 11.0) > 0.8) wc = mix(wc, cool, 0.75);
-        float bright = 0.4 + 0.6 * h21(id + 3.1);
-        vec3 glass = vec3(0.045, 0.055, 0.1) + vec3(0.03, 0.035, 0.08) * f.y + vec3(0.04, 0.02, 0.05) * glowLow;
-        vec3 winCol = mix(glass, wc * bright, lit);
-        col = mix(wall, winCol, win);
+        vec3 warm = vec3(1.0, 0.64, 0.32), cool = vec3(0.74, 0.84, 1.0), tv = vec3(0.35, 0.55, 1.0);
+        vec3 lc = tint < 0.62 ? warm : (tint < 0.94 ? cool : tv);
+        if (fract(sd * 11.0) > 0.8) lc = mix(lc, cool, 0.8);
+        float inten = 0.7 + 1.5 * h21(id + 3.1);
+        if (tint >= 0.94) inten *= 0.55 + 0.45 * sin(uTime * (5.0 + rid * 9.0) + rid * 40.0) * sin(uTime * 2.3 + rid * 7.0);
+
+        // interior mapping: trace the view ray into a box-shaped room behind each window
+        float du = dot(V, tU), dv = V.y, dn = max(dot(V, -n), 0.05);
+        float depth = 3.5 + 3.5 * h21(id + 9.7);
+        vec2 p0 = wp * wsz;
+        float tu = tWall(p0.x, du, wsz.x), tvv = tWall(p0.y, dv, wsz.y), tb = depth / dn;
+        float t = min(min(tu, tvv), tb);
+        vec3 hit = vec3(p0 + vec2(du, dv) * t, dn * t);
+        float back = hit.z / depth;
+        vec3 room;
+        if (t == tb) {
+          room = vec3(0.6, 0.55, 0.5) * (0.75 + 0.25 * h21(id + 1.3));
+          vec2 bq = hit.xy / wsz;
+          float furn = step(bq.y, 0.3 + 0.25 * h21(id + 5.0)) * step(abs(bq.x - h21(id + 6.0)), 0.22);
+          float art = step(abs(bq.x - h21(id + 8.0)), 0.12) * step(abs(bq.y - 0.62), 0.12) * step(0.5, h21(id + 12.0));
+          room *= (1.0 - 0.75 * furn) * (1.0 - 0.5 * art);
+        } else if (t == tvv) {
+          room = dv > 0.0 ? vec3(1.15, 1.12, 1.05) * (1.0 - 0.5 * back) : vec3(0.22, 0.17, 0.13) * (1.0 - 0.3 * back);
+        } else {
+          room = vec3(0.48, 0.44, 0.4) * (1.0 - 0.35 * back);
+        }
+        vec3 interiorLit = room * lc * inten * (1.0 - 0.4 * back);
+        float blind = h21(id + 31.0 + sd);
+        float blindTop = blind < 0.45 ? 1.0 - blind * 1.4 : 1.01;
+        float blindMask = step(blindTop, wp.y);
+        vec3 blindCol = lc * inten * 0.5 * (0.88 + 0.12 * step(0.5, fract(wp.y * wsz.y * 12.0)));
+        interiorLit = mix(interiorLit, blindCol, blindMask);
+        vec3 interior = mix(room * 0.012 + vec3(0.002, 0.002, 0.004), interiorLit, lit);
+
+        vec3 R = reflect(V, n);
+        float fres = 0.04 + 0.96 * pow(1.0 - clamp(dot(-V, n), 0.0, 1.0), 5.0);
+        vec3 refl = skyRefl(R);
+        float tintGlass = curtain ? 0.55 : 0.85;
+        vec3 glass = interior * (1.0 - fres) * tintGlass + refl * (fres + (curtain ? 0.12 : 0.05));
+        float mull = curtain ? 0.0 : (1.0 - smoothstep(0.015, 0.03 + fw.x, abs(wp.x - 0.5)));
+        glass = mix(glass, wallBase * 0.5, mull * 0.85);
+
+        float slab = 1.0 - smoothstep(0.0, 0.035 + fw.y, abs(f.y - 0.02));
+        vec3 wall = wallBase * (0.85 + 0.3 * h21(floor(vec2(uu / cs.x * 0.5, vLocal.y / cs.y)) + sd));
+        if (curtain) wall = vec3(0.018, 0.022, 0.032) + refl * 0.35;
+        if (small > 0.5) wall = vec3(0.075, 0.075, 0.08) * (0.8 + 0.2 * step(0.5, fract(vLocal.y * 3.0)));
+        wall *= 1.0 - 0.3 * slab;
+        float edge = min(u, faceW - u);
+        wall *= 0.9 + 0.3 * (1.0 - smoothstep(0.0, 0.5, edge));
+        wall *= 0.85 + 0.25 * max(dot(n, normalize(vec3(-0.45, 0.3, -0.83))), 0.0);
+        col = mix(wall + uplight, glass + uplight * 0.4, win);
+
         float far = smoothstep(0.3, 0.85, max(fw.x, fw.y));
-        vec3 avg = mix(wall, glass, 0.5) + mix(warm, cool, 0.35) * litRatio * 0.45 * 0.55;
+        vec3 avg = mix(wall, refl * 0.4, curtain ? 0.6 : 0.35) + lc * litRatio * 0.45 * (1.0 - small) + uplight;
         col = mix(col, avg, far);
+      }
+      col *= 0.55 + 0.45 * smoothstep(0.0, 7.0, vWorld.y);
+      if (uCarOn > 0.5) {
+        vec3 Lv = vWorld - uCarPos; float dl = length(Lv); vec3 Ld = Lv / max(dl, 1e-3);
+        float ndl = max(dot(-Ld, n), 0.0);
+        float cone = smoothstep(0.8, 0.96, dot(Ld, uCarDir));
+        col += vec3(1.0, 0.95, 0.86) * cone * ndl * 110.0 / (dl * dl + 6.0);
+        col += vec3(1.0, 0.15, 0.2) * ndl * 1.2 / (dl * dl + 3.0);
       }
       ${fogChunk}
       gl_FragColor = vec4(col, 1.0);
@@ -444,39 +543,114 @@ const buildingMat = new THREE.ShaderMaterial({
 });
 
 const groundMat = new THREE.ShaderMaterial({
-  uniforms: { uFog: { value: FOG }, uHaze: { value: HAZE }, uFogD: { value: FOG_D }, uC: { value: C }, uS: { value: S } },
+  uniforms: { uFog: { value: FOG }, uHaze: { value: HAZE }, uFogD: { value: FOG_D }, uC: { value: C }, uS: { value: S }, uCarPos: CAR_POS, uCarDir: CAR_DIR, uCarOn: CAR_ON },
   vertexShader: `varying vec3 vWorld; void main(){ vec4 wp = modelMatrix * vec4(position,1.0); vWorld = wp.xyz; gl_Position = projectionMatrix * viewMatrix * wp; }`,
   fragmentShader: `
     uniform vec3 uFog; uniform vec3 uHaze; uniform float uFogD; uniform float uC; uniform float uS;
+    uniform vec3 uCarPos; uniform vec3 uCarDir; uniform float uCarOn;
     varying vec3 vWorld;
     void main() {
       vec2 p = vWorld.xz;
       vec2 q = abs(fract(p / uC + 0.5) - 0.5) * uC;
       float inX = step(q.x, uS * 0.5), inZ = step(q.y, uS * 0.5);
       float road = max(inX, inZ);
-      vec3 col = mix(vec3(0.012, 0.012, 0.024), vec3(0.03, 0.028, 0.048), road);
-      float dz = step(0.55, fract(p.y / 7.0)), dx = step(0.55, fract(p.x / 7.0));
-      col += vec3(1.0, 0.62, 0.25) * ((1.0 - smoothstep(0.12, 0.3, q.x)) * dz * (1.0 - inZ) + (1.0 - smoothstep(0.12, 0.3, q.y)) * dx * (1.0 - inX)) * 0.9;
-      float curb = (1.0 - smoothstep(0.0, 0.7, abs(q.x - uS * 0.5))) * (1.0 - inZ) + (1.0 - smoothstep(0.0, 0.7, abs(q.y - uS * 0.5))) * (1.0 - inX);
-      col += vec3(0.55, 0.3, 0.75) * curb * 0.4;
+      float grit = fract(sin(dot(floor(p * 3.0), vec2(12.9898, 78.233))) * 43758.5453);
+      vec3 col = mix(vec3(0.014, 0.013, 0.016), vec3(0.022, 0.021, 0.026), road) * (0.85 + 0.3 * grit);
+      float dz = step(0.6, fract(p.y / 6.0)), dx = step(0.6, fract(p.x / 6.0));
+      float paint = (1.0 - smoothstep(0.1, 0.2, q.x)) * dz * (1.0 - inZ) + (1.0 - smoothstep(0.1, 0.2, q.y)) * dx * (1.0 - inX);
+      col += vec3(0.16, 0.13, 0.08) * paint;
+      // sodium lamp pools along the kerbs every 24 m
+      float ax = q.x - (uS * 0.5 - 1.2), az = q.y - (uS * 0.5 - 1.2);
+      float ly = mod(p.y, 24.0) - 12.0, lx = mod(p.x, 24.0) - 12.0;
+      float pool = exp(-(ax * ax + ly * ly) / 22.0) * (1.0 - inZ) + exp(-(az * az + lx * lx) / 22.0) * (1.0 - inX);
+      col += vec3(1.0, 0.55, 0.2) * pool * 0.9;
+      // wet asphalt sheen
+      vec3 V = normalize(vWorld - cameraPosition);
+      col += uHaze * pow(1.0 - clamp(-V.y, 0.0, 1.0), 4.0) * 0.35 * road;
+      if (uCarOn > 0.5) {
+        vec3 Lv = vWorld - uCarPos; float dl = length(Lv);
+        col += vec3(1.0, 0.95, 0.86) * smoothstep(0.8, 0.96, dot(Lv / dl, uCarDir)) * 110.0 / (dl * dl + 6.0) * max(-Lv.y / dl, 0.0);
+      }
       ${fogChunk}
       gl_FragColor = vec4(col, 1.0);
     }`
 });
 
 const skyMat = new THREE.ShaderMaterial({
-  uniforms: { uFog: { value: FOG } },
+  uniforms: { uFog: { value: FOG }, uTime: TIME_U },
   side: THREE.BackSide, depthWrite: false, fog: false,
   vertexShader: `varying vec3 vDir; void main(){ vDir = position; vec4 p = projectionMatrix * modelViewMatrix * vec4(position,1.0); gl_Position = p.xyww; }`,
   fragmentShader: `
-    uniform vec3 uFog; varying vec3 vDir;
+    uniform vec3 uFog; uniform float uTime; varying vec3 vDir;
     float h(vec3 p){ return fract(sin(dot(p, vec3(12.9898,78.233,37.719))) * 43758.5453); }
+    float h2(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }
+    float vn(vec2 p){ vec2 i = floor(p), f = fract(p); f = f * f * (3.0 - 2.0 * f);
+      return mix(mix(h2(i), h2(i + vec2(1.0, 0.0)), f.x), mix(h2(i + vec2(0.0, 1.0)), h2(i + vec2(1.0, 1.0)), f.x), f.y); }
+    float fbm(vec2 p){ float s = 0.0, a = 0.5; for (int i = 0; i < 5; i++) { s += a * vn(p); p *= 2.03; a *= 0.5; } return s; }
     void main(){
       vec3 d = normalize(vDir); float y = d.y;
-      vec3 col = mix(uFog, vec3(0.012, 0.012, 0.045), smoothstep(0.0, 0.55, y));
-      col += vec3(0.3, 0.1, 0.27) * exp(-max(y, 0.0) * 9.0) * smoothstep(-0.02, 0.05, y) * 0.55;
+      vec3 col = mix(uFog, vec3(0.008, 0.01, 0.025), smoothstep(0.0, 0.6, y));
+      col += vec3(0.35, 0.17, 0.12) * exp(-max(y, 0.0) * 6.0) * smoothstep(-0.02, 0.05, y) * 0.6;
       vec3 sp = floor(d * 230.0); float s = h(sp);
-      col += vec3(0.8, 0.85, 1.0) * step(0.9968, s) * smoothstep(0.12, 0.45, y) * (0.35 + 0.65 * h(sp + 1.0));
+      col += vec3(0.8, 0.85, 1.0) * step(0.998, s) * smoothstep(0.15, 0.5, y) * (0.3 + 0.5 * h(sp + 1.0));
+      vec3 md = normalize(vec3(-0.45, 0.32, -0.83));
+      float mdot = max(dot(d, md), 0.0);
+      col += vec3(1.0, 0.97, 0.9) * smoothstep(0.99972, 0.99978, mdot) * 3.0;
+      col += vec3(0.3, 0.32, 0.4) * pow(mdot, 300.0) * 0.8 + vec3(0.08, 0.09, 0.13) * pow(mdot, 14.0) * 0.4;
+      if (y > 0.0) {
+        vec2 uv = d.xz / (y + 0.12);
+        float cl = smoothstep(0.42, 0.85, fbm(uv * 1.3 + vec2(uTime * 0.006, uTime * 0.003)));
+        vec3 cc = mix(vec3(0.3, 0.16, 0.12), vec3(0.06, 0.065, 0.09), smoothstep(0.0, 0.45, y));
+        cc += vec3(0.25, 0.26, 0.32) * pow(mdot, 8.0) * 0.6;
+        col = mix(col, cc, cl * smoothstep(0.0, 0.12, y) * 0.85);
+      }
+      gl_FragColor = vec4(col, 1.0);
+    }`
+});
+
+// neon and LED signage: vertical signs get lettering, thin ones read as tubes; a few are faulty and flicker
+const signMat = new THREE.ShaderMaterial({
+  uniforms: { uTime: TIME_U, uFog: { value: FOG }, uFogD: { value: FOG_D } },
+  extensions: { derivatives: true },
+  vertexShader: `
+    varying vec3 vLocal; varying vec3 vSize; varying vec3 vColor; varying vec3 vWorld; varying float vSeed;
+    void main(){
+      vec3 sc = vec3(length(instanceMatrix[0].xyz), length(instanceMatrix[1].xyz), length(instanceMatrix[2].xyz));
+      vSize = sc; vLocal = (position + 0.5) * sc;
+      #ifdef USE_INSTANCING_COLOR
+        vColor = instanceColor;
+      #else
+        vColor = vec3(1.0);
+      #endif
+      vec4 wp = modelMatrix * instanceMatrix * vec4(position, 1.0); vWorld = wp.xyz;
+      vSeed = fract(sin(dot(instanceMatrix[3].xyz, vec3(12.9898, 78.233, 37.719))) * 43758.5453);
+      gl_Position = projectionMatrix * viewMatrix * wp;
+    }`,
+  fragmentShader: `
+    uniform float uTime; uniform vec3 uFog; uniform float uFogD;
+    varying vec3 vLocal; varying vec3 vSize; varying vec3 vColor; varying vec3 vWorld; varying float vSeed;
+    float h21(vec2 p) { p = fract(p * vec2(123.34, 456.21)); p += dot(p, p + 45.32); return fract(p.x * p.y); }
+    void main(){
+      float alongW = max(vSize.x, vSize.z);
+      float along = vSize.x > vSize.z ? vLocal.x : vLocal.z;
+      float up = vLocal.y;
+      float flick = vSeed > 0.92 ? step(0.3, fract(sin(floor(uTime * 14.0) * (vSeed * 91.0 + 1.0)) * 4375.85)) : 1.0;
+      vec3 col;
+      if (vSize.y > alongW * 1.5) {
+        vec2 g = vec2(along, up) / alongW;
+        vec2 id = floor(g), f = fract(g);
+        vec2 sub = floor(f * 4.0);
+        float on = step(0.45, h21(id * 7.0 + sub + vSeed * 31.0));
+        float margin = step(0.12, f.x) * step(f.x, 0.88) * step(0.1, f.y) * step(f.y, 0.9);
+        float stroke = mix(on * margin, 0.3, smoothstep(0.15, 0.5, fwidth(g.y) * 4.0));
+        float frame = 1.0 - step(0.1, min(min(along, alongW - along), min(up, vSize.y - up)));
+        col = vColor * 0.05 + vColor * 3.4 * stroke * flick + vColor * 1.8 * frame;
+      } else {
+        float c = 1.0 - abs(up / vSize.y - 0.5) * 2.0;
+        col = vColor * (1.4 + 2.6 * c) * flick;
+      }
+      float dist = length(vWorld - cameraPosition);
+      col = mix(col, uFog, clamp(1.0 - exp(-uFogD * uFogD * dist * dist), 0.0, 1.0));
       gl_FragColor = vec4(col, 1.0);
     }`
 });
@@ -562,7 +736,7 @@ bMesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
 bMesh.frustumCulled = false;
 scene.add(bMesh);
 
-const sMesh = new THREE.InstancedMesh(boxGeo, new THREE.MeshBasicMaterial({ color: 0xffffff }), SCAP);
+const sMesh = new THREE.InstancedMesh(boxGeo, signMat, SCAP);
 sMesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
 sMesh.frustumCulled = false;
 sMesh.setColorAt(0, ICE);
@@ -571,7 +745,7 @@ scene.add(sMesh);
 const beacons = makeGlow(KCAP, true);
 scene.add(beacons.pts);
 
-const eMesh = new THREE.InstancedMesh(new THREE.OctahedronGeometry(1.5, 0), new THREE.MeshBasicMaterial({ color: new THREE.Color(0.6, 0.97, 1.0) }), ECAP);
+const eMesh = new THREE.InstancedMesh(new THREE.OctahedronGeometry(1.5, 0), new THREE.MeshBasicMaterial({ color: new THREE.Color(1.4, 3.2, 3.8) }), ECAP);
 eMesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
 eMesh.frustumCulled = false;
 scene.add(eMesh);
@@ -588,8 +762,8 @@ const dust = makeDrift(900, 140, 0, 140, true, 0.35, new THREE.Color(0.8, 0.85, 
 const mist = makeDrift(260, 420, 3, 42, false, 70, new THREE.Color(0.75, 0.58, 1.0), 0.035);
 scene.add(dust, mist);
 
-scene.add(new THREE.HemisphereLight(new THREE.Color(0.5, 0.55, 1.0), new THREE.Color(1.0, 0.4, 0.35), 2.4));
-const sun = new THREE.DirectionalLight(new THREE.Color(1.0, 0.85, 0.85), 2.6);
+scene.add(new THREE.HemisphereLight(new THREE.Color(0.45, 0.5, 0.8), new THREE.Color(0.9, 0.5, 0.3), 0.9));
+const sun = new THREE.DirectionalLight(new THREE.Color(0.75, 0.8, 1.0), 0.9);
 sun.position.set(30, 80, -50);
 scene.add(sun);
 
@@ -624,7 +798,7 @@ function rebuild() {
       si++;
     }
     const bc = lot.beacons;
-    for (let i = 0; i < bc.length && ki < KCAP; i += 4) beacons.set(ki++, bc[i], bc[i + 1], bc[i + 2], 1.0, 0.12, 0.15, 3.2, bc[i + 3]);
+    for (let i = 0; i < bc.length && ki < KCAP; i += 4) beacons.set(ki++, bc[i], bc[i + 1], bc[i + 2], 3.2, 0.3, 0.35, 2.6, bc[i + 3]);
     for (const c of lot.cells) if (!collected.has(c.key) && energyVisible.length < ECAP) energyVisible.push(c);
   }
   bMesh.count = bi; bMesh.instanceMatrix.needsUpdate = true; seedAttr.needsUpdate = true;
@@ -642,7 +816,7 @@ function updateEnergy(t) {
     eQuat.setFromAxisAngle(yAxis, t * 1.8 + i);
     m4.compose(ePos, eQuat, eScale);
     eMesh.setMatrixAt(i, m4);
-    halos.set(i, c.x, c.y + bob, c.z, 0.3, 0.8, 1.0, 11, 0.9);
+    halos.set(i, c.x, c.y + bob, c.z, 0.5, 1.6, 2.2, 10, 0.9);
   }
   eMesh.count = n;
   eMesh.instanceMatrix.needsUpdate = true;
@@ -668,15 +842,25 @@ function probe(p) {
 }
 
 // ---------- traffic ----------
+function makeHullGeo() {
+  const sh = new THREE.Shape();
+  sh.moveTo(2.5, -0.05); sh.lineTo(2.3, 0.18); sh.lineTo(0.9, 0.42); sh.lineTo(-0.6, 0.62);
+  sh.lineTo(-2.1, 0.6); sh.lineTo(-2.35, 0.35); sh.lineTo(-2.3, -0.12); sh.lineTo(-1.6, -0.3); sh.lineTo(1.6, -0.28);
+  sh.closePath();
+  const geo = new THREE.ExtrudeGeometry(sh, { depth: 1.9, bevelEnabled: true, bevelThickness: 0.18, bevelSize: 0.14, bevelSegments: 3, steps: 1 });
+  geo.rotateY(Math.PI / 2);
+  geo.translate(-0.95, 0, 0);
+  geo.computeVertexNormals();
+  return geo;
+}
 const NCARS = 240;
-const carBodyGeo = new THREE.BoxGeometry(1.9, 0.7, 4.2);
-const carTailGeo = new THREE.BoxGeometry(1.5, 0.2, 2.6).translate(0, 0.12, 3.4);
-const carHeadGeo = new THREE.BoxGeometry(1.5, 0.14, 0.2).translate(0, 0.1, -2.15);
-const tBody = new THREE.InstancedMesh(carBodyGeo, new THREE.MeshBasicMaterial({ color: new THREE.Color(0.1, 0.11, 0.17) }), NCARS);
-const tTail = new THREE.InstancedMesh(carTailGeo, new THREE.MeshBasicMaterial({ color: new THREE.Color(1.0, 0.1, 0.18) }), NCARS);
-const tHead = new THREE.InstancedMesh(carHeadGeo, new THREE.MeshBasicMaterial({ color: new THREE.Color(0.85, 0.92, 1.0) }), NCARS);
+const PAINTS = [[0.015, 0.015, 0.02], [0.45, 0.47, 0.5], [0.72, 0.73, 0.75], [0.03, 0.06, 0.15], [0.85, 0.55, 0.04], [0.22, 0.02, 0.03], [0.08, 0.08, 0.09], [0.6, 0.6, 0.62]].map((c) => new THREE.Color(c[0], c[1], c[2]));
+const tBody = new THREE.InstancedMesh(makeHullGeo(), new THREE.MeshStandardMaterial({ color: 0xffffff, metalness: 0.6, roughness: 0.3, envMap: cubeRT.texture, envMapIntensity: 1.3 }), NCARS);
+const tTail = new THREE.InstancedMesh(new THREE.BoxGeometry(1.8, 0.12, 0.12).translate(0, 0.34, 2.42), new THREE.MeshBasicMaterial({ color: new THREE.Color(4.0, 0.25, 0.4) }), NCARS);
+const tHead = new THREE.InstancedMesh(new THREE.BoxGeometry(1.5, 0.08, 0.06).translate(0, 0.1, -2.62), new THREE.MeshBasicMaterial({ color: new THREE.Color(6.0, 6.0, 5.4) }), NCARS);
 for (const mm of [tBody, tTail, tHead]) { mm.instanceMatrix.setUsage(THREE.DynamicDrawUsage); mm.frustumCulled = false; scene.add(mm); }
-const tailGlow = makeGlow(NCARS, false);
+for (let i = 0; i < NCARS; i++) tBody.setColorAt(i, PAINTS[i % PAINTS.length]);
+const tailGlow = makeGlow(NCARS * 2, false);
 scene.add(tailGlow.pts);
 const cars = [];
 for (let i = 0; i < NCARS; i++) cars.push({ p: new V3() });
@@ -713,10 +897,11 @@ function updateTraffic(dt) {
     m4.compose(c.p, cQuat, eScale);
     tBody.setMatrixAt(i, m4); tTail.setMatrixAt(i, m4); tHead.setMatrixAt(i, m4);
     const rx = c.axis === 0 ? 0 : -c.dir, rz = c.axis === 0 ? -c.dir : 0;
-    tailGlow.set(i, c.p.x + rx * 2.4, c.p.y + 0.12, c.p.z + rz * 2.4, 1.0, 0.12, 0.2, 3.4, 0.9);
+    tailGlow.set(i, c.p.x + rx * 2.5, c.p.y + 0.34, c.p.z + rz * 2.5, 3.0, 0.25, 0.4, 2.2, 1);
+    tailGlow.set(NCARS + i, c.p.x - rx * 2.7, c.p.y + 0.1, c.p.z - rz * 2.7, 2.6, 2.6, 2.4, 2.0, 1);
   }
   tBody.instanceMatrix.needsUpdate = tTail.instanceMatrix.needsUpdate = tHead.instanceMatrix.needsUpdate = true;
-  tailGlow.flush(NCARS);
+  tailGlow.flush(NCARS * 2);
 }
 
 // ---------- particles ----------
@@ -750,7 +935,7 @@ function updateParticles(dt) {
     PA.x[i] += PA.vx[i] * dt; PA.y[i] += PA.vy[i] * dt; PA.z[i] += PA.vz[i] * dt;
     if (w !== i) for (const key of keys) PA[key][w] = PA[key][i];
     const f = PA.life[w] / PA.max[w];
-    pfx.set(w, PA.x[w], PA.y[w], PA.z[w], PA.r[w], PA.g[w], PA.b[w], PA.s[w] * (0.35 + 0.65 * f), f);
+    pfx.set(w, PA.x[w], PA.y[w], PA.z[w], PA.r[w] * 1.4, PA.g[w] * 1.4, PA.b[w] * 1.4, PA.s[w] * (0.35 + 0.65 * f), f);
     w++;
   }
   PA.n = w;
@@ -790,38 +975,32 @@ function updateStreaks(dt, speed, boosting) {
 // ---------- player car ----------
 function buildCar() {
   const g = new THREE.Group();
-  const sh = new THREE.Shape();
-  sh.moveTo(2.5, -0.05); sh.lineTo(2.3, 0.18); sh.lineTo(0.9, 0.42); sh.lineTo(-0.6, 0.62);
-  sh.lineTo(-2.1, 0.6); sh.lineTo(-2.35, 0.35); sh.lineTo(-2.3, -0.12); sh.lineTo(-1.6, -0.3); sh.lineTo(1.6, -0.28);
-  sh.closePath();
-  const hullGeo = new THREE.ExtrudeGeometry(sh, { depth: 1.9, bevelEnabled: true, bevelThickness: 0.18, bevelSize: 0.14, bevelSegments: 3, steps: 1 });
-  hullGeo.rotateY(Math.PI / 2);
-  hullGeo.translate(-0.95, 0, 0);
-  hullGeo.computeVertexNormals();
-  const paint = new THREE.MeshStandardMaterial({ color: new THREE.Color(0.85, 0.05, 0.09), roughness: 0.3, metalness: 0.25, emissive: new THREE.Color(0.14, 0.0, 0.015) });
-  g.add(new THREE.Mesh(hullGeo, paint));
-  const glassM = new THREE.MeshStandardMaterial({ color: new THREE.Color(0.04, 0.05, 0.1), roughness: 0.08, metalness: 0.6, emissive: new THREE.Color(0.02, 0.03, 0.09) });
-  const canopy = new THREE.Mesh(new THREE.SphereGeometry(1, 24, 12), glassM);
+  const env = cubeRT.texture;
+  const paint = new THREE.MeshPhysicalMaterial({ color: new THREE.Color(0.62, 0.02, 0.045), roughness: 0.35, metalness: 0.15, clearcoat: 1, clearcoatRoughness: 0.05, envMap: env, envMapIntensity: 0.8 });
+  g.add(new THREE.Mesh(makeHullGeo(), paint));
+  const glassM = new THREE.MeshPhysicalMaterial({ color: new THREE.Color(0.02, 0.025, 0.04), roughness: 0.03, metalness: 0.9, envMap: env, envMapIntensity: 2.2 });
+  const canopy = new THREE.Mesh(new THREE.SphereGeometry(1, 32, 16), glassM);
   canopy.scale.set(0.72, 0.36, 1.25); canopy.position.set(0, 0.6, 0.3);
   g.add(canopy);
-  const red = new THREE.MeshBasicMaterial({ color: new THREE.Color(1.0, 0.16, 0.26) });
-  const bar = new THREE.Mesh(new THREE.BoxGeometry(2.0, 0.12, 0.1), red);
+  const red = new THREE.MeshBasicMaterial({ color: new THREE.Color(4.0, 0.35, 0.5) });
+  const bar = new THREE.Mesh(new THREE.BoxGeometry(2.0, 0.1, 0.08), red);
   bar.position.set(0, 0.34, 2.45); g.add(bar);
+  const metal = new THREE.MeshStandardMaterial({ color: 0x2a2c34, roughness: 0.28, metalness: 0.95, envMap: env });
   for (const sx of [-1, 1]) {
-    const strip = new THREE.Mesh(new THREE.BoxGeometry(0.05, 0.06, 3.4), red);
+    const strip = new THREE.Mesh(new THREE.BoxGeometry(0.04, 0.04, 3.4), new THREE.MeshBasicMaterial({ color: new THREE.Color(1.2, 0.12, 0.18) }));
     strip.position.set(sx * 1.1, 0.12, 0.2); g.add(strip);
-    const thr = new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.36, 1.0, 16).rotateX(Math.PI / 2), new THREE.MeshStandardMaterial({ color: 0x1a1c26, roughness: 0.4, metalness: 0.7 }));
+    const thr = new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.36, 1.0, 24).rotateX(Math.PI / 2), metal);
     thr.position.set(sx * 0.72, -0.05, 2.1); g.add(thr);
-    const disc = new THREE.Mesh(new THREE.CircleGeometry(0.24, 16), new THREE.MeshBasicMaterial({ color: new THREE.Color(0.6, 0.9, 1.0) }));
+    const disc = new THREE.Mesh(new THREE.CircleGeometry(0.24, 24), new THREE.MeshBasicMaterial({ color: new THREE.Color(1.0, 1.8, 2.6) }));
     disc.position.set(sx * 0.72, -0.05, 2.61); g.add(disc);
-    const hl = new THREE.Mesh(new THREE.BoxGeometry(0.42, 0.08, 0.05), new THREE.MeshBasicMaterial({ color: 0xffffff }));
+    const hl = new THREE.Mesh(new THREE.BoxGeometry(0.42, 0.07, 0.05), new THREE.MeshBasicMaterial({ color: new THREE.Color(7, 7, 6.4) }));
     hl.position.set(sx * 0.62, 0.1, -2.62); g.add(hl);
   }
   const glow = makeGlow(4, false);
-  glow.set(0, -0.72, -0.05, 2.8, 0.45, 0.75, 1.0, 0.8, 1);
-  glow.set(1, 0.72, -0.05, 2.8, 0.45, 0.75, 1.0, 0.8, 1);
-  glow.set(2, 0, 0.34, 2.6, 1.0, 0.15, 0.25, 1.8, 0.8);
-  glow.set(3, 0, -0.6, 0, 1.0, 0.15, 0.3, 6.0, 0.28);
+  glow.set(0, -0.72, -0.05, 2.8, 0.8, 1.3, 2.0, 0.6, 1);
+  glow.set(1, 0.72, -0.05, 2.8, 0.8, 1.3, 2.0, 0.6, 1);
+  glow.set(2, 0, 0.34, 2.6, 1.6, 0.2, 0.32, 1.2, 0.7);
+  glow.set(3, 0, -0.6, 0, 1.0, 0.15, 0.3, 6.0, 0.22);
   glow.flush(4);
   g.add(glow.pts);
   return { group: g, glow };
@@ -1159,7 +1338,7 @@ function updatePlay(dt) {
     for (let i = 0; i < 4; i++) emit(P.pos.x, 1, P.pos.z, (Math.random() - 0.5) * 20 - fwd.x * 20, Math.random() * 12, (Math.random() - 0.5) * 20 - fwd.z * 20, 0.5, 1, 0.6, 0.2, 0.8, 1, -30);
   }
   const bf = P.boosting ? 1.6 : 1;
-  car.glow.size[0] = car.glow.size[1] = 0.8 * bf + Math.random() * 0.12;
+  car.glow.size[0] = car.glow.size[1] = 0.6 * bf + Math.random() * 0.12;
   car.glow.flush(4);
 }
 
@@ -1217,6 +1396,10 @@ function update(dt) {
   ground.position.set(camera.position.x, 0, camera.position.z);
   dust.material.uniforms.uCenter.value.copy(camera.position);
   mist.material.uniforms.uCenter.value.copy(camera.position);
+  CAR_ON.value = car.group.visible ? 1 : 0;
+  forwardOf(P.yaw, state === 'play' ? P.pitch : 0, tmp);
+  CAR_DIR.value.copy(tmp);
+  CAR_POS.value.copy(car.group.position).addScaledVector(tmp, 2.6);
   updateHud();
 }
 
@@ -1224,9 +1407,116 @@ function updateScale() {
   const h = renderer.getDrawingBufferSize(tmp2).y;
   SCALE_U.value = h / (2 * Math.tan(THREE.MathUtils.degToRad(camera.fov) / 2));
 }
+// ---------- post-processing: HDR target, dual-filter bloom, filmic grade ----------
+const post = (() => {
+  if (!GL2) return null;
+  const mk = (samples) => new THREE.WebGLRenderTarget(1, 1, { type: THREE.HalfFloatType, samples, depthBuffer: samples > 0 });
+  const main = mk(4);
+  const N = 6, down = [], up = [];
+  for (let i = 0; i < N; i++) { down.push(mk(0)); if (i < N - 1) up.push(mk(0)); }
+  const qScene = new THREE.Scene(), qCam = new THREE.OrthographicCamera(-1, 1, 1, -1, 0, 1);
+  const quad = new THREE.Mesh(new THREE.PlaneGeometry(2, 2));
+  quad.frustumCulled = false;
+  qScene.add(quad);
+  const qVS = 'varying vec2 vUv; void main(){ vUv = uv; gl_Position = vec4(position.xy, 0.0, 1.0); }';
+  const qm = (fs, uniforms) => new THREE.ShaderMaterial({ uniforms, vertexShader: qVS, fragmentShader: fs, depthTest: false, depthWrite: false });
+  const downM = qm(`
+    uniform sampler2D tSrc; uniform vec2 uTexel; uniform float uThr; varying vec2 vUv;
+    void main(){
+      vec3 c = texture2D(tSrc, vUv).rgb * 4.0;
+      c += texture2D(tSrc, vUv - uTexel).rgb + texture2D(tSrc, vUv + uTexel).rgb;
+      c += texture2D(tSrc, vUv + vec2(uTexel.x, -uTexel.y)).rgb + texture2D(tSrc, vUv - vec2(uTexel.x, -uTexel.y)).rgb;
+      c /= 8.0;
+      if (uThr > 0.0) {
+        c = min(c, vec3(40.0));
+        float br = max(c.r, max(c.g, c.b));
+        float soft = clamp(br - uThr + 0.5, 0.0, 1.0); soft = soft * soft * 0.5;
+        c *= max(soft, br - uThr) / max(br, 1e-4);
+      }
+      gl_FragColor = vec4(c, 1.0);
+    }`, { tSrc: { value: null }, uTexel: { value: new THREE.Vector2() }, uThr: { value: 0 } });
+  const upM = qm(`
+    uniform sampler2D tSrc; uniform sampler2D tBase; uniform vec2 uTexel; varying vec2 vUv;
+    void main(){
+      vec2 h = uTexel;
+      vec3 s = texture2D(tSrc, vUv + vec2(-2.0 * h.x, 0.0)).rgb + texture2D(tSrc, vUv + vec2(2.0 * h.x, 0.0)).rgb;
+      s += texture2D(tSrc, vUv + vec2(0.0, 2.0 * h.y)).rgb + texture2D(tSrc, vUv + vec2(0.0, -2.0 * h.y)).rgb;
+      s += (texture2D(tSrc, vUv + h).rgb + texture2D(tSrc, vUv - h).rgb + texture2D(tSrc, vUv + vec2(h.x, -h.y)).rgb + texture2D(tSrc, vUv + vec2(-h.x, h.y)).rgb) * 2.0;
+      gl_FragColor = vec4(s / 12.0 + texture2D(tBase, vUv).rgb, 1.0);
+    }`, { tSrc: { value: null }, tBase: { value: null }, uTexel: { value: new THREE.Vector2() } });
+  const compM = qm(`
+    uniform sampler2D tScene; uniform sampler2D tBloom; uniform float uBloom; uniform float uExposure; uniform float uRadial; uniform float uTime; uniform vec2 uRes;
+    varying vec2 vUv;
+    vec3 aces(vec3 x){ return clamp((x * (2.51 * x + 0.03)) / (x * (2.43 * x + 0.59) + 0.14), 0.0, 1.0); }
+    void main(){
+      vec2 dc = vUv - 0.5;
+      float ca = 0.0012 + uRadial * 0.003;
+      vec3 col = vec3(texture2D(tScene, vUv - dc * ca).r, texture2D(tScene, vUv).g, texture2D(tScene, vUv + dc * ca).b);
+      if (uRadial > 0.02) {
+        vec3 acc = col;
+        for (int i = 1; i < 8; i++) acc += texture2D(tScene, vUv - dc * (float(i) * 0.007 * uRadial)).rgb;
+        col = mix(col, acc / 8.0, smoothstep(0.05, 0.35, length(dc)));
+      }
+      col += texture2D(tBloom, vUv).rgb * uBloom;
+      col *= uExposure;
+      col *= mix(0.5, 1.0, smoothstep(0.9, 0.2, length(dc * vec2(1.0, 0.85))));
+      col = aces(col);
+      col += (fract(sin(dot(vUv * uRes + fract(uTime) * 91.7, vec2(12.9898, 78.233))) * 43758.5453) - 0.5) * 0.02;
+      gl_FragColor = vec4(col, 1.0);
+    }`, { tScene: { value: null }, tBloom: { value: null }, uBloom: { value: 0.14 }, uExposure: { value: 1.25 }, uRadial: { value: 0 }, uTime: TIME_U, uRes: { value: new THREE.Vector2() } });
+  function pass(m, target) { quad.material = m; renderer.setRenderTarget(target); renderer.render(qScene, qCam); }
+  return {
+    setSize(w, h) {
+      main.setSize(w, h);
+      let cw = w, ch = h;
+      for (let i = 0; i < N; i++) { cw = Math.max(1, cw >> 1); ch = Math.max(1, ch >> 1); down[i].setSize(cw, ch); if (i < N - 1) up[i].setSize(cw, ch); }
+      compM.uniforms.uRes.value.set(w, h);
+    },
+    render(radial) {
+      renderer.setRenderTarget(main);
+      renderer.render(scene, camera);
+      let src = main;
+      for (let i = 0; i < N; i++) {
+        downM.uniforms.tSrc.value = src.texture;
+        downM.uniforms.uTexel.value.set(1 / src.width, 1 / src.height);
+        downM.uniforms.uThr.value = i === 0 ? 1.0 : 0;
+        pass(downM, down[i]);
+        src = down[i];
+      }
+      for (let i = N - 2; i >= 0; i--) {
+        const s = i === N - 2 ? down[N - 1] : up[i + 1];
+        upM.uniforms.tSrc.value = s.texture;
+        upM.uniforms.tBase.value = down[i].texture;
+        upM.uniforms.uTexel.value.set(1 / s.width, 1 / s.height);
+        pass(upM, up[i]);
+      }
+      compM.uniforms.tScene.value = main.texture;
+      compM.uniforms.tBloom.value = up[0].texture;
+      compM.uniforms.uRadial.value = radial;
+      pass(compM, null);
+    }
+  };
+})();
+
+let radial = 0, cubeFrame = 0;
+function renderFrame(dt) {
+  if (cubeFrame++ % 3 === 0) {
+    cubeCam.position.copy(car.group.position);
+    const vis = car.group.visible;
+    car.group.visible = false; streaks.visible = false;
+    cubeCam.update(renderer, scene);
+    car.group.visible = vis; streaks.visible = true;
+  }
+  const target = state === 'play' ? (P.boosting ? 1 : clamp((P.speed - 70) / 80, 0, 0.4)) : 0;
+  radial += (target - radial) * (1 - Math.exp(-dt * 4));
+  if (post) post.render(REDUCED ? 0 : radial); else renderer.render(scene, camera);
+}
+
 function resize() {
   const w = innerWidth, h = innerHeight;
+  renderer.setPixelRatio(BASE_DPR * resScale);
   renderer.setSize(w, h, false);
+  if (post) { const b = renderer.getDrawingBufferSize(tmp2); post.setSize(b.x, b.y); }
   camera.aspect = w / h;
   camera.updateProjectionMatrix();
   updateScale();
@@ -1238,15 +1528,23 @@ document.body.classList.add('intro');
 resize();
 placeAt(0, 0);
 camera.position.copy(camPos);
-let last = performance.now();
+let last = performance.now(), frameAvg = 1 / 60, resTimer = 0;
 function frame(now) {
   requestAnimationFrame(frame);
   const dt = Math.min(0.05, Math.max(0, (now - last) / 1000));
   last = now;
   update(dt);
-  renderer.render(scene, camera);
+  renderFrame(dt);
+  // drop render resolution when the GPU can't keep up, raise it again when it can
+  frameAvg = frameAvg * 0.95 + dt * 0.05;
+  resTimer += dt;
+  if (resTimer > 2.5 && state !== 'paused') {
+    resTimer = 0;
+    if (frameAvg > 1 / 45 && resScale > 0.5) { resScale = Math.max(0.5, resScale - 0.15); resize(); }
+    else if (frameAvg < 1 / 58 && resScale < 1) { resScale = Math.min(1, resScale + 0.1); resize(); }
+  }
 }
 requestAnimationFrame(frame);
-window.__hoverline = { P, run, get state() { return state; }, launch, crash };
+window.__hoverline = { P, run, get state() { return state; }, launch, crash, get resScale() { return resScale; } };
 })();
 </script>
