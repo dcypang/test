@@ -6,10 +6,14 @@ cd "$(dirname "$0")"
 PY=${PY:-python}
 CHUNK=250
 TOTAL=6000
+MAX_CHUNKS=${MAX_CHUNKS:-999}   # chunks to render in this invocation (keeps runs under a time limit)
+done_now=0
 mkdir -p chunks
 for ((off = 0; off < TOTAL; off += CHUNK)); do
   f=$(printf "chunks/chunk_%04d.exr" "$off")
   [ -f "$f" ] && continue
+  if ((done_now >= MAX_CHUNKS)); then echo "$(date -u +%H:%M:%S) paused after $done_now chunk(s)" >> chunks/progress.txt; exit 0; fi
+  done_now=$((done_now + 1))
   "$PY" render.py house.blend "$f.tmp.exr" --samples "$CHUNK" --offset "$off" >> chunks/render.log 2>&1 && mv "$f.tmp.exr" "$f"
   n=$(ls chunks/chunk_*.exr 2>/dev/null | grep -vc tmp)
   "$PY" tonemap.py progress.png chunks/chunk_*[0-9].exr >> chunks/render.log 2>&1
