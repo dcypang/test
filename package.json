@@ -1,0 +1,17 @@
+{
+  "name": "chat-memory-bench",
+  "version": "0.1.0",
+  "description": "Conversational-memory and long-context recall benchmark for consumer chat apps (Gemini app, Meta AI / Muse Spark)",
+  "private": true,
+  "scripts": {
+    "test": "node --test test/*.test.js",
+    "test:web": "node --test test/web.smoke.js",
+    "bench": "node src/run.js",
+    "report": "node src/report.js",
+    "login": "node src/login.js"
+  },
+  "dependencies": {
+    "playwright": "1.56.1"
+  },
+  "engines": { "node": ">=20" }
+}

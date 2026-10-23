@@ -1,0 +1,18 @@
+{
+  "gemini": {
+    "label": "Gemini app (gemini.google.com)",
+    "newChatUrl": "https://gemini.google.com/app",
+    "input": "rich-textarea div.ql-editor[contenteditable=\"true\"]",
+    "send": "button.send-button, button[aria-label=\"Send message\"]",
+    "response": "model-response message-content",
+    "busy": "button[aria-label=\"Stop response\"]"
+  },
+  "muse": {
+    "label": "Meta AI with Muse Spark (meta.ai)",
+    "newChatUrl": "https://www.meta.ai/",
+    "input": "textarea, div[contenteditable=\"true\"][role=\"textbox\"]",
+    "send": "div[aria-label=\"Send Message\"], button[aria-label=\"Send message\"]",
+    "response": "div[data-testid=\"assistant-message\"], div[data-message-author-role=\"assistant\"]",
+    "busy": "div[aria-label=\"Stop\"], button[aria-label=\"Stop generating\"]"
+  }
+}
