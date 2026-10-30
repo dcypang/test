@@ -1,0 +1,10 @@
+{
+  "name": "Timbre Voice Coach",
+  "short_name": "Timbre",
+  "description": "Daily voice training with live pitch, pace and level feedback.",
+  "start_url": "./index.html",
+  "display": "standalone",
+  "background_color": "#f2f5f1",
+  "theme_color": "#0d7a6b",
+  "icons": [{ "src": "icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any maskable" }]
+}
