@@ -18,8 +18,9 @@ window.TimbreExercises = (function () {
   }
 
   function micMessage(err) {
-    if (window.self !== window.top) return 'The microphone isn\'t available in this embedded view. Open Timbre on its own page to use live feedback, or upload a recording.';
-    if (err && err.message === 'unsupported') return 'This browser can\'t use the microphone here. Open Timbre in Safari or Chrome over https (or localhost).';
+    if (err && err.name === 'TimeoutError') return 'The microphone didn\'t respond. If your browser is asking for permission, allow it, then tap Start again.';
+    if ((err && err.name === 'PolicyError') || window.self !== window.top) return 'The microphone is blocked on this page, so live feedback can\'t run here. Host Timbre on its own site to use it.';
+    if (err && err.name === 'NotSupportedError') return 'This browser can\'t use the microphone here. Open Timbre in Safari or Chrome over https (or localhost).';
     if (err && (err.name === 'NotAllowedError' || err.name === 'SecurityError')) return 'Microphone access was blocked. Allow the microphone for this site in your browser settings, then try again.';
     if (err && err.name === 'NotFoundError') return 'No microphone was found. Connect one and try again.';
     return 'The microphone couldn\'t start. Check that no other app is using it, then try again.';
@@ -29,8 +30,26 @@ window.TimbreExercises = (function () {
     root.querySelectorAll('.notice').forEach((n) => n.remove());
     const n = el(`<div class="notice" role="alert"><span>${esc(msg)}</span></div>`);
     if (withUpload) n.appendChild(uploadButton('Analyze a recording instead', onBlob));
-    root.appendChild(n);
+    const ctrl = root.querySelector('[data-go], [data-rec]');
+    const row = ctrl && ctrl.parentElement !== root ? ctrl.parentElement : ctrl;
+    if (row) row.after(n);
+    else root.appendChild(n);
+    n.scrollIntoView({ block: 'center', behavior: 'smooth' });
     return n;
+  }
+
+  // Start the mic straight from a tap and show progress on the button meanwhile.
+  async function startMic(btn) {
+    const prev = btn.innerHTML;
+    const pending = A.start();
+    btn.disabled = true;
+    btn.innerHTML = '<span>Starting microphone…</span>';
+    try {
+      await pending;
+    } finally {
+      btn.disabled = false;
+      btn.innerHTML = prev;
+    }
   }
 
   function uploadButton(label, onBlob) {
@@ -232,7 +251,7 @@ window.TimbreExercises = (function () {
 
     async function startTake() {
       try {
-        await A.start();
+        await startMic(go);
       } catch (err) {
         notice(ex$, micMessage(err), false);
         return;
@@ -374,7 +393,7 @@ window.TimbreExercises = (function () {
         else { phase = 'idle'; if (unsub) unsub(); A.stop(); $('[data-go]').innerHTML = `${icons.mic}<span>Start</span>`; $('[data-state]').textContent = 'Ready'; }
         return;
       }
-      try { await A.start(); } catch (err) { notice(ex$, micMessage(err) + ' You can still use "Time it by hand".'); return; }
+      try { await startMic($('[data-go]')); } catch (err) { notice(ex$, micMessage(err) + ' You can still use "Time it by hand".'); return; }
       phase = 'calibrating';
       ambient = [];
       calibStart = performance.now();
@@ -462,7 +481,7 @@ window.TimbreExercises = (function () {
 
     async function start() {
       if (unsub) { unsub(); unsub = null; A.stop(); $('[data-go]').innerHTML = `${icons.mic}<span>Start</span>`; return; }
-      try { await A.start(); } catch (err) { notice(ex$, micMessage(err)); return; }
+      try { await startMic($('[data-go]')); } catch (err) { notice(ex$, micMessage(err)); return; }
       $('[data-go]').innerHTML = `${icons.stop}<span>Stop</span>`;
       if (baseline === null) { calib = []; calibT = performance.now(); $('[data-state]').textContent = 'Listening… speak normally'; }
       unsub = A.subscribe((f) => {
@@ -560,7 +579,7 @@ window.TimbreExercises = (function () {
     async function toggle() {
       if (!recording) {
         if (!micReady) {
-          try { await A.start(); micReady = true; } catch (err) { notice(ex$, micMessage(err) + ' Practise each line aloud instead, then tick the checklist.'); return; }
+          try { await startMic($('[data-rec]')); micReady = true; } catch (err) { notice(ex$, micMessage(err) + ' Practise each line aloud instead, then tick the checklist.'); return; }
         }
         if (!A.startRecording()) { notice(ex$, 'Recording isn\'t supported in this browser. Practise each line aloud, then tick the checklist.'); return; }
         recording = true;
@@ -637,7 +656,7 @@ window.TimbreExercises = (function () {
       $('[data-results]').innerHTML = '';
       frames = [];
       micOk = false;
-      try { await A.start(); micOk = true; } catch (err) { notice(ex$, micMessage(err) + ' The timer still works: tap Stop the moment you finish.'); }
+      try { await startMic($('[data-go]')); micOk = true; } catch (err) { notice(ex$, micMessage(err) + ' The timer still works: tap Stop the moment you finish.'); }
       running = true;
       t0 = performance.now();
       $('[data-go]').innerHTML = `${icons.stop}<span>Stop</span>`;
@@ -702,7 +721,7 @@ window.TimbreExercises = (function () {
     let timer = 0;
 
     async function start() {
-      try { await A.start(); } catch (err) { notice(ex$, micMessage(err) + ' You can upload a voice memo of yourself reading the passage instead.', false); return; }
+      try { await startMic($('[data-go]')); } catch (err) { notice(ex$, micMessage(err) + ' Record yourself reading the passage with Voice Memos, then tap "Upload a recording".', false); return; }
       frames = [];
       plot.reset();
       $('[data-results]').innerHTML = '';
@@ -806,7 +825,7 @@ window.TimbreExercises = (function () {
       $('[data-count]').textContent = '0';
       $('[data-results]').innerHTML = '';
       if ($('#tally-rec').checked) {
-        try { await A.start(); recOn = A.startRecording(); } catch (err) { notice(ex$, micMessage(err) + ' The counter still works without recording.'); }
+        try { await startMic($('[data-go]')); recOn = A.startRecording(); } catch (err) { notice(ex$, micMessage(err) + ' The counter still works without recording.'); }
       }
       running = true;
       $('[data-tap]').disabled = false;

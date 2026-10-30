@@ -203,21 +203,54 @@ window.TimbreAudio = (function () {
     return !!(navigator.mediaDevices && navigator.mediaDevices.getUserMedia && (window.AudioContext || window.webkitAudioContext));
   }
 
-  async function start() {
-    if (live.stream) return;
-    if (!micSupported()) throw new Error('unsupported');
-    const stream = await navigator.mediaDevices.getUserMedia({
-      audio: { echoCancellation: false, noiseSuppression: false, autoGainControl: false },
-    });
+  // Chrome reports when the page (e.g. an embedded frame) isn't allowed the mic.
+  function micBlockedByPolicy() {
+    const pol = document.permissionsPolicy || document.featurePolicy;
+    try { return !!(pol && pol.allowsFeature && !pol.allowsFeature('microphone')); } catch (e) { return false; }
+  }
+
+  function named(name, message) {
+    const err = new Error(message || name);
+    err.name = name;
+    return err;
+  }
+
+  let starting = null;
+
+  /* Must be called directly from a tap/click handler: the AudioContext is
+   * created and resumed synchronously so iOS Safari treats it as user-started. */
+  function start() {
+    if (live.stream) return Promise.resolve();
+    if (starting) return starting;
+    if (!micSupported()) return Promise.reject(named('NotSupportedError', 'unsupported'));
+    if (micBlockedByPolicy()) return Promise.reject(named('PolicyError'));
     const Ctx = window.AudioContext || window.webkitAudioContext;
     const ctx = new Ctx();
-    if (ctx.state === 'suspended') await ctx.resume();
-    const source = ctx.createMediaStreamSource(stream);
-    const analyser = ctx.createAnalyser();
-    analyser.fftSize = 2048;
-    source.connect(analyser);
-    Object.assign(live, { ctx, stream, analyser, buf: new Float32Array(analyser.fftSize), floor: -60 });
-    tick();
+    if (ctx.resume) ctx.resume().catch(() => {});
+    starting = (async () => {
+      try {
+        const stream = await Promise.race([
+          navigator.mediaDevices.getUserMedia({
+            audio: { echoCancellation: false, noiseSuppression: false, autoGainControl: false },
+          }),
+          new Promise((_, reject) => setTimeout(() => reject(named('TimeoutError')), 20000)),
+        ]);
+        // iOS can suspend the context while the mic switches on; wake it without blocking.
+        if (ctx.state !== 'running' && ctx.resume) ctx.resume().catch(() => {});
+        const source = ctx.createMediaStreamSource(stream);
+        const analyser = ctx.createAnalyser();
+        analyser.fftSize = 2048;
+        source.connect(analyser);
+        Object.assign(live, { ctx, stream, analyser, buf: new Float32Array(analyser.fftSize), floor: -60 });
+        tick();
+      } catch (err) {
+        if (ctx.close) ctx.close().catch(() => {});
+        throw err;
+      } finally {
+        starting = null;
+      }
+    })();
+    return starting;
   }
 
   function tick() {
