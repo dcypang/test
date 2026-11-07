@@ -1,0 +1,416 @@
+<title>The Great Goo Caper</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bangers&family=Comic+Neue:wght@400;700&display=swap">
+<style>
+/* Layout: a stack of printed comic pages on a halftone night-blue table; each page is a 2-column panel grid. Single deliberate look (paper + ink) in both themes. */
+:root {
+  --table: #1b2550;
+  --table-dot: #26336b;
+  --paper: #fffdf4;
+  --ink: #1b1b1f;
+  --caption: #ffe45c;
+  --shout: #fff7b0;
+  --robot: #dff4ff;
+  --red: #d7263d;
+  --blue: #1e5bd8;
+  --muted: #c9d2f2;
+  --display: "Bangers", "Impact", "Arial Black", sans-serif;
+  --body: "Comic Neue", "Comic Sans MS", "Chalkboard SE", system-ui, sans-serif;
+  color-scheme: light;
+}
+body {
+  background-color: var(--table);
+  background-image: radial-gradient(var(--table-dot) 1.6px, transparent 1.7px);
+  background-size: 14px 14px;
+  color: var(--ink);
+  font-family: var(--body);
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  padding-block: 28px 56px;
+}
+.book { max-width: 900px; margin: 0 auto; display: flex; flex-direction: column; gap: 36px; }
+.intro { color: var(--muted); text-align: center; font-size: 15px; display: flex; flex-direction: column; gap: 4px; }
+.intro b { font-family: var(--display); font-weight: 400; letter-spacing: .08em; font-size: 20px; color: var(--paper); }
+.page {
+  background: var(--paper);
+  border: 3px solid var(--ink);
+  box-shadow: 9px 9px 0 #0b1024;
+  padding: 14px;
+  display: flex; flex-direction: column; gap: 10px;
+}
+.page-head { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; }
+.page-head h2 { margin: 0; font-family: var(--display); font-weight: 400; font-size: clamp(20px, 3.4vw, 28px); letter-spacing: .04em; text-wrap: balance; }
+.page-head span { font-family: var(--display); letter-spacing: .12em; font-size: 15px; color: #5a5a66; white-space: nowrap; }
+.grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.panel {
+  position: relative; container-type: inline-size;
+  border: 3px solid var(--ink); background: #fff;
+  aspect-ratio: 4 / 3; overflow: hidden; max-width: 100%;
+}
+.panel.w2 { grid-column: span 2; aspect-ratio: 8 / 3; }
+.panel.cover { aspect-ratio: 8 / 9.5; }
+.panel svg { display: block; width: 100%; height: 100%; }
+.cap {
+  position: absolute; left: 0; top: 0; max-width: 62%;
+  background: var(--caption); border-right: 3px solid var(--ink); border-bottom: 3px solid var(--ink);
+  padding: .35em .6em; font-weight: 700; font-size: clamp(10px, 3.3cqw, 16px); line-height: 1.2;
+}
+.w2 .cap { font-size: clamp(10px, 1.75cqw, 16px); max-width: 55%; }
+.bubble {
+  position: absolute; box-sizing: border-box; background: #fff; border: 2.5px solid var(--ink); border-radius: 48% / 42%;
+  padding: .55em .8em; text-align: center; font-weight: 700; line-height: 1.18;
+  font-size: clamp(10px, 3.5cqw, 17px);
+}
+.w2 .bubble { font-size: clamp(10px, 1.85cqw, 17px); }
+.bubble.shout { background: var(--shout); border-width: 3.5px; border-radius: 14px; text-transform: uppercase; font-family: var(--display); font-weight: 400; letter-spacing: .05em; font-size: clamp(12px, 4.6cqw, 22px); }
+.w2 .bubble.shout { font-size: clamp(12px, 2.6cqw, 24px); }
+.bubble.robot { background: var(--robot); border-radius: 6px; text-transform: uppercase; letter-spacing: .06em; font-family: ui-monospace, "Courier New", monospace; }
+.bubble::before, .bubble::after { content: ""; position: absolute; width: 0; height: 0; border-style: solid; }
+.bubble.tl::before, .bubble.tc::before, .bubble.tr::before { top: 100%; border-width: 16px 9px 0 9px; border-color: var(--ink) transparent transparent transparent; }
+.bubble.tl::after, .bubble.tc::after, .bubble.tr::after { top: 100%; margin-top: -3.5px; border-width: 13px 6.5px 0 6.5px; border-color: #fff transparent transparent transparent; }
+.bubble.shout.tl::after, .bubble.shout.tc::after, .bubble.shout.tr::after { border-top-color: var(--shout); }
+.bubble.robot.tl::after, .bubble.robot.tc::after, .bubble.robot.tr::after { border-top-color: var(--robot); }
+.bubble.tl::before { left: 16%; } .bubble.tl::after { left: calc(16% + 2.5px); }
+.bubble.tc::before { left: calc(50% - 9px); } .bubble.tc::after { left: calc(50% - 6.5px); }
+.bubble.tr::before { right: 16%; } .bubble.tr::after { right: calc(16% + 2.5px); }
+.cover-title { position: absolute; left: 0; right: 0; top: 2.5%; text-align: center; pointer-events: none; }
+.cover-title .kicker { display: inline-block; background: var(--ink); color: var(--caption); font-family: var(--display); letter-spacing: .14em; font-size: 3.4cqw; padding: .1em .8em; transform: rotate(-2deg); }
+.cover-title h1 {
+  margin: .1em 0 0; font-family: var(--display); font-weight: 400; line-height: .92;
+  font-size: 11.5cqw; color: var(--caption); letter-spacing: .02em;
+  -webkit-text-stroke: .6cqw var(--ink); paint-order: stroke fill;
+  text-shadow: .8cqw .8cqw 0 var(--ink); text-wrap: balance;
+}
+.cover-title .sub { margin-top: .4em; font-family: var(--display); font-size: 5cqw; color: #fff; -webkit-text-stroke: .35cqw var(--ink); paint-order: stroke fill; letter-spacing: .04em; }
+.badge { position: absolute; left: 4%; top: 31%; background: #fff; border: 3px solid var(--ink); font-family: var(--display); font-size: 2.6cqw; line-height: 1; padding: .4em .5em; text-align: center; transform: rotate(-4deg); }
+.badge b { display: block; font-size: 2em; font-weight: 400; color: var(--red); }
+.end-note { color: var(--muted); text-align: center; font-size: 14px; }
+@media (max-width: 600px) {
+  .grid { grid-template-columns: 1fr; }
+  .panel.w2 { grid-column: span 1; aspect-ratio: 8 / 3.6; }
+  .panel.cover { aspect-ratio: 8 / 9.5; }
+  .page { padding: 10px; }
+}
+</style>
+
+<div class="book" id="book">
+  <div class="intro"><b>A Pang Family Comic</b><span>Starring Winston Pang, Derek Pang, and the Spidey Team. 12 pages.</span></div>
+</div>
+
+<script>
+const INK = '#1b1b1f';
+function rand(seed){return function(){seed|=0;seed=seed+0x6D2B79F5|0;let t=Math.imul(seed^seed>>>15,1|seed);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296;};}
+let UID = 0;
+
+/* ---------- characters ---------- */
+const C = {
+  winston:{skin:'#f3cba5',hair:'spiky',shirt:'#2fb36b',sleeve:'#2fb36b',hand:'#f3cba5',pants:'#2d4a8a',shoes:'#e04a2f',stripe:'#ffffff'},
+  derek:{skin:'#ecc29b',hair:'neat',glasses:1,shirt:'#1f8a9e',sleeve:'#1f8a9e',hand:'#ecc29b',pants:'#c9a46a',shoes:'#5a3a22',collar:1},
+  spidey:{mask:'#d7263d',web:INK,shirt:'#d7263d',sleeve:'#1e5bd8',hand:'#d7263d',pants:'#1e5bd8',shoes:'#d7263d',emblem:INK,bodyWeb:INK},
+  spin:{mask:'#232328',web:'#e63946',shirt:'#232328',sleeve:'#232328',hand:'#e63946',pants:'#232328',shoes:'#e63946',emblem:'#e63946',bodyWeb:'#e63946'},
+  ghost:{mask:'#fafafa',web:'#8a9aa6',hood:'#fafafa',hoodIn:'#2ec4b6',shirt:'#fafafa',sleeve:'#fafafa',hand:'#ff5ca8',pants:'#fafafa',shoes:'#ff5ca8',emblem:INK,side:'#ff5ca8'},
+  goblin:{skin:'#7cc242',face:'goblin',shirt:'#6b2fa3',sleeve:'#5aa832',hand:'#5aa832',pants:'#5aa832',shoes:'#6b2fa3',belt:'#3f1a66'},
+  rhino:{mask:'#8d939b',face:'rhino',shirt:'#8d939b',sleeve:'#8d939b',hand:'#7d838b',pants:'#7d838b',shoes:'#666b73',wide:1.45,headR:25}
+};
+const POSES={down:[12,-12],up:[160,-160],wave:[12,-150],point:[12,-90],cheer:[135,-135],swing:[22,-170],hips:[42,-42],hug:[70,-70],flail:[120,-60]};
+
+function person(c, pose, o){
+  o = o||{};
+  const W=c.wide||1, [L,R]=POSES[pose||'down'];
+  const sy=-116, lx=-28*W, rx=28*W, hy=-150, hr=c.headR||22;
+  let s='';
+  const arm=(x,a)=>`<g transform="translate(${x},${sy}) rotate(${a})"><rect x="-6.5" y="-4" width="13" height="50" rx="6.5" fill="${c.sleeve}"/><circle cy="50" r="7.5" fill="${c.hand}"/></g>`;
+  const rad=R*Math.PI/180, hx=rx-Math.sin(rad)*50, hyy=sy+Math.cos(rad)*50;
+  if(o.web) s+=webLine(hx,hyy,hx+o.web,-1400);
+  s+=`<rect x="${-21*W}" y="-80" width="${18*W}" height="76" rx="7" fill="${c.pants}"/><rect x="${3*W}" y="-80" width="${18*W}" height="76" rx="7" fill="${c.pants}"/>`;
+  s+=`<ellipse cx="${-12*W}" cy="-5" rx="${13*W}" ry="6.5" fill="${c.shoes}"/><ellipse cx="${12*W}" cy="-5" rx="${13*W}" ry="6.5" fill="${c.shoes}"/>`;
+  s+=arm(lx,L)+arm(rx,R);
+  s+=`<rect x="${-25*W}" y="-128" width="${50*W}" height="56" rx="13" fill="${c.shirt}"/>`;
+  if(c.stripe) s+=`<path d="M-12,-126 L-12,-74 M12,-126 L12,-74" stroke="${c.stripe}" stroke-width="3" fill="none"/><path d="M-12,-126 L-12,-74 M12,-126 L12,-74" stroke="${INK}" stroke-width="0.8" fill="none" opacity=".4"/>`;
+  if(c.collar) s+=`<path d="M-10,-128 L0,-116 L10,-128" fill="#fff"/>`;
+  if(c.side) s+=`<path d="M${-25*W+3},-112 L${-25*W+3},-80 M${25*W-3},-112 L${25*W-3},-80" stroke="${c.side}" stroke-width="5" fill="none"/>`;
+  if(c.bodyWeb) s+=`<g stroke="${c.bodyWeb}" stroke-width="1" fill="none" opacity=".75"><path d="M0,-104 L-24,-126 M0,-104 L24,-126 M0,-104 L-25,-96 M0,-104 L25,-96 M0,-104 L-14,-73 M0,-104 L14,-73"/><path d="M-12,-115 Q0,-110 12,-115 M-16,-98 Q0,-92 16,-98"/></g>`;
+  if(c.belt) s+=`<rect x="${-25*W}" y="-82" width="${50*W}" height="8" fill="${c.belt}"/>`;
+  if(c.emblem) s+=`<g fill="${c.emblem}" stroke="none"><ellipse cy="-102" rx="4" ry="6.5"/><circle cy="-110" r="3"/></g><path d="M-3,-106 L-11,-114 L-13,-108 M3,-106 L11,-114 L13,-108 M-3,-100 L-11,-94 L-13,-88 M3,-100 L11,-94 L13,-88" stroke="${c.emblem}" stroke-width="1.6" fill="none"/>`;
+  if(o.hold) s+=`<g transform="translate(${hx},${hyy})">${HOLD[o.hold]}</g>`;
+  // head
+  if(c.face==='goblin'){
+    s+=`<path d="M-20,${hy} L-34,${hy-14} L-22,${hy-6}Z M20,${hy} L34,${hy-14} L22,${hy-6}Z" fill="${c.skin}"/>`;
+    s+=`<circle cy="${hy}" r="${hr}" fill="${c.skin}"/>`;
+    s+=`<g stroke="none"><ellipse cx="-8" cy="${hy-2}" rx="6" ry="4" fill="#ffe14d"/><ellipse cx="8" cy="${hy-2}" rx="6" ry="4" fill="#ffe14d"/><ellipse cx="-8" cy="${hy-2}" rx="1.5" ry="3.5" fill="${INK}"/><ellipse cx="8" cy="${hy-2}" rx="1.5" ry="3.5" fill="${INK}"/></g>`;
+    s+=`<path d="M-15,${hy-10} L-3,${hy-6} M15,${hy-10} L3,${hy-6}" stroke-width="3" fill="none"/>`;
+    if(o.mood==='shock'||o.mood==='sad') s+=`<ellipse cx="0" cy="${hy+11}" rx="5" ry="6" fill="${INK}"/>`;
+    else s+=`<path d="M-13,${hy+6} Q0,${hy+20} 13,${hy+6} Z" fill="#fff"/><path d="M-6,${hy+8} L-6,${hy+13} M0,${hy+8.5} L0,${hy+15} M6,${hy+8} L6,${hy+13}" stroke-width="1.2" fill="none"/>`;
+    s+=`<path d="M-25,${hy-6} Q-22,${hy-30} 2,${hy-30} Q20,${hy-58} 44,${hy-52} Q30,${hy-44} 26,${hy-28} Q28,${hy-16} 25,${hy-6} Q0,${hy-16} -25,${hy-6}Z" fill="#6b2fa3"/>`;
+  } else if(c.face==='rhino'){
+    s+=`<circle cy="${hy}" r="${hr}" fill="${c.mask}"/>`;
+    s+=`<ellipse cx="0" cy="${hy+9}" rx="13" ry="9" fill="#a9aeb5"/>`;
+    s+=`<path d="M-4,${hy+2} L2,${hy-30} L10,${hy+1}Z" fill="#efe8d4"/>`;
+    s+=`<path d="M-18,${hy-10} L-6,${hy-6} M18,${hy-10} L6,${hy-6}" stroke-width="3.5" fill="none"/>`;
+    s+=`<circle cx="-11" cy="${hy-2}" r="2.6" fill="${INK}" stroke="none"/><circle cx="11" cy="${hy-2}" r="2.6" fill="${INK}" stroke="none"/>`;
+    s+= o.mood==='sad' ? `<path d="M-6,${hy+14} Q0,${hy+9} 6,${hy+14}" fill="none"/>` : `<path d="M-7,${hy+12} L7,${hy+12}" fill="none"/>`;
+    s+=`<path d="M-24,${hy-12} L-30,${hy-22} L-20,${hy-20}Z M24,${hy-12} L30,${hy-22} L20,${hy-20}Z" fill="${c.mask}"/>`;
+  } else if(c.mask){
+    if(c.hood) s+=`<circle cy="${hy-1}" r="${hr+6}" fill="${c.hood}"/><path d="M${-hr-3},${hy+4} A${hr+3},${hr+3} 0 0 1 ${hr+3},${hy+4}" stroke="${c.hoodIn}" stroke-width="3" fill="none"/>`;
+    s+=`<circle cy="${hy}" r="${hr}" fill="${c.mask}"/>`;
+    let w='';
+    for(let a=0;a<360;a+=40){const r=a*Math.PI/180;w+=`M0,${hy+2} L${(Math.cos(r)*(hr-1)).toFixed(1)},${(hy+2+Math.sin(r)*(hr-1)).toFixed(1)} `;}
+    s+=`<path d="${w}" stroke="${c.web}" stroke-width="1.1" fill="none"/><circle cy="${hy+2}" r="${hr*0.55}" stroke="${c.web}" stroke-width="1.1" fill="none"/>`;
+    const big = (o.mood==='shock'||o.mood==='wow') ? 1.25 : 1;
+    const eye=`M-3,${hy+2} Q-9,${hy-13} -18,${hy-6} Q-16,${hy+7} -3,${hy+2}Z`;
+    s+=`<g transform="translate(0,${hy}) scale(${big}) translate(0,${-hy})"><path d="${eye}" fill="#fff" stroke-width="3"/><path d="${eye}" transform="scale(-1,1)" fill="#fff" stroke-width="3"/></g>`;
+  } else {
+    s+=`<circle cy="${hy}" r="${hr}" fill="${c.skin}"/>`;
+    s+=`<circle cx="-13" cy="${hy+6}" r="4" fill="#f08c8c" opacity=".45" stroke="none"/><circle cx="13" cy="${hy+6}" r="4" fill="#f08c8c" opacity=".45" stroke="none"/>`;
+    const m=o.mood;
+    if(m==='shock'||m==='wow') s+=`<circle cx="-8" cy="${hy-2}" r="4" fill="#fff" stroke-width="1.5"/><circle cx="8" cy="${hy-2}" r="4" fill="#fff" stroke-width="1.5"/><circle cx="-8" cy="${hy-2}" r="1.8" fill="${INK}" stroke="none"/><circle cx="8" cy="${hy-2}" r="1.8" fill="${INK}" stroke="none"/>`;
+    else s+=`<circle cx="-8" cy="${hy-2}" r="2.8" fill="${INK}" stroke="none"/><circle cx="8" cy="${hy-2}" r="2.8" fill="${INK}" stroke="none"/>`;
+    if(m==='shock'||m==='wow') s+=`<ellipse cx="0" cy="${hy+11}" rx="4.5" ry="5.5" fill="${INK}"/>`;
+    else if(m==='sad') s+=`<path d="M-7,${hy+13} Q0,${hy+7} 7,${hy+13}" fill="none"/><path d="M-13,${hy-9} L-4,${hy-7} M13,${hy-9} L4,${hy-7}" stroke-width="1.6" fill="none"/>`;
+    else if(m==='laugh') s+=`<path d="M-9,${hy+7} Q0,${hy+21} 9,${hy+7}Z" fill="#8a2a2a"/>`;
+    else if(m==='think') s+=`<path d="M-5,${hy+11} L6,${hy+9}" fill="none"/><path d="M-13,${hy-10} L-4,${hy-11}" stroke-width="1.6" fill="none"/>`;
+    else s+=`<path d="M-8,${hy+8} Q0,${hy+16} 8,${hy+8}" fill="none"/>`;
+    if(c.glasses) s+=`<g fill="none" stroke-width="2"><circle cx="-8" cy="${hy-2}" r="7"/><circle cx="8" cy="${hy-2}" r="7"/><path d="M-1,${hy-2} L1,${hy-2} M-15,${hy-3} L-21,${hy-6} M15,${hy-3} L21,${hy-6}"/></g>`;
+    if(c.hair==='spiky') s+=`<path d="M-23,${hy+2} L-27,${hy-14} L-19,${hy-17} L-17,${hy-29} L-7,${hy-22} L0,${hy-34} L7,${hy-22} L17,${hy-29} L19,${hy-17} L27,${hy-12} L23,${hy+2} Q20,${hy-10} 8,${hy-13} Q-6,${hy-8} -23,${hy+2}Z" fill="${INK}"/>`;
+    if(c.hair==='neat') s+=`<path d="M-23,${hy+3} Q-27,${hy-27} 0,${hy-26} Q25,${hy-27} 23,${hy-1} Q19,${hy-13} 5,${hy-15} Q-9,${hy-11} -16,${hy-13} Q-20,${hy-6} -23,${hy+3}Z" fill="${INK}"/>`;
+  }
+  if(o.glider) s+=`<path d="M-80,6 Q-45,-8 0,-1 Q45,-8 80,6 Q58,18 35,11 Q18,25 0,14 Q-18,25 -35,11 Q-58,18 -80,6Z" fill="#3c6e1f"/><ellipse cx="0" cy="18" rx="10" ry="6" fill="#ff9f1c"/><path d="M-6,22 L0,40 L6,22" fill="#ffd166"/>`;
+  return s;
+}
+const HOLD={
+  remote:`<rect x="-7" y="-14" width="14" height="22" rx="3" fill="#333a44"/><path d="M4,-14 L8,-28" fill="none"/><circle cx="8" cy="-29" r="3" fill="#ff3b3b"/><rect x="-4" y="-8" width="8" height="5" fill="#3ad0ff" stroke="none"/>`,
+  mop:`<path d="M0,-50 L0,95" stroke="#a0703a" stroke-width="5"/><path d="M0,-50 L0,95" stroke="${INK}" stroke-width="1" fill="none" opacity=".4"/><path d="M-18,95 L18,95 L22,118 L-22,118Z" fill="#e9e3cf"/>`,
+  band:`<rect x="-9" y="-4" width="18" height="9" rx="3" fill="#d7263d"/>`
+};
+
+function bolt(pose){
+  const [L,R] = pose==='cheer'?[140,-140]:pose==='wave'?[12,-150]:[15,-15];
+  const arm=(x,a)=>`<g transform="translate(${x},-55) rotate(${a})"><rect x="-4" y="0" width="8" height="26" rx="3" fill="#9fb0c0"/><circle cy="28" r="5" fill="#ffb703"/></g>`;
+  return `<rect x="-16" y="-24" width="10" height="20" fill="#9fb0c0"/><rect x="6" y="-24" width="10" height="20" fill="#9fb0c0"/><rect x="-20" y="-7" width="16" height="7" rx="2" fill="#4a5563"/><rect x="4" y="-7" width="16" height="7" rx="2" fill="#4a5563"/>`+
+    arm(-24,L)+arm(24,R)+
+    `<rect x="-24" y="-64" width="48" height="42" rx="6" fill="#c9d3dd"/><rect x="-12" y="-55" width="24" height="14" rx="2" fill="#2b3a4a"/><path d="M-8,-48 L-3,-52 L2,-44 L7,-49" stroke="#7CFC00" stroke-width="2" fill="none"/>`+
+    `<text x="0" y="-27" font-family="Bangers, Impact, sans-serif" font-size="9" text-anchor="middle" fill="${INK}" stroke="none">BOLT</text>`+
+    `<rect x="-6" y="-70" width="12" height="7" fill="#9fb0c0"/><rect x="-20" y="-96" width="40" height="28" rx="6" fill="#c9d3dd"/><rect x="-14" y="-89" width="10" height="9" rx="2" fill="#3ad0ff"/><rect x="4" y="-89" width="10" height="9" rx="2" fill="#3ad0ff"/><path d="M-6,-75 Q0,-71 6,-75" fill="none"/><path d="M0,-96 L0,-108" fill="none"/><circle cy="-111" r="4" fill="#ff3b3b"/>`;
+}
+function tracee(){
+  return `<ellipse cx="0" cy="34" rx="16" ry="4" fill="#000" opacity=".18" stroke="none"/><circle r="20" fill="#e9eef3"/><rect x="-15" y="-8" width="30" height="12" rx="6" fill="#1e5bd8"/><circle cx="-6" cy="-2" r="2.5" fill="#9ff" stroke="none"/><circle cx="6" cy="-2" r="2.5" fill="#9ff" stroke="none"/><path d="M0,-20 L0,-30" fill="none"/><circle cy="-32" r="3.5" fill="#d7263d"/><path d="M-20,2 L-28,8 M20,2 L28,8" fill="none"/>`;
+}
+function machine(){
+  let s=`<path d="M38,-128 L102,-170 L114,-152 L48,-108Z" fill="#7a7f88"/><ellipse cx="108" cy="-161" rx="7" ry="11" transform="rotate(-34 108 -161)" fill="#3c6e1f"/>`;
+  s+=`<rect x="-82" y="-84" width="164" height="84" rx="8" fill="#5d2b8f"/><rect x="-72" y="-74" width="56" height="28" rx="4" fill="#2b1645"/>`;
+  s+=`<circle cx="-58" cy="-60" r="8" fill="#fff"/><path d="M-58,-60 L-53,-65" fill="none"/><circle cx="-32" cy="-60" r="8" fill="#fff"/><path d="M-32,-60 L-37,-64" fill="none"/>`;
+  s+=`<text x="0" y="-16" font-family="Bangers, Impact, sans-serif" font-size="17" text-anchor="middle" fill="#b6ff5c" stroke="none" letter-spacing="1">GOO-BLASTER 3000</text>`;
+  s+=`<rect x="-42" y="-164" width="84" height="84" rx="28" fill="#9be36b"/><path d="M-42,-118 Q0,-128 42,-118 L42,-108 Q42,-80 14,-80 L-14,-80 Q-42,-80 -42,-108Z" fill="#5fb52c" stroke="none"/><circle cx="-14" cy="-140" r="5" fill="#d8ffb8" stroke="none"/><circle cx="12" cy="-100" r="4" fill="#d8ffb8" stroke="none"/><circle cx="20" cy="-130" r="3" fill="#d8ffb8" stroke="none"/>`;
+  s+=`<rect x="-46" y="-168" width="92" height="10" rx="4" fill="#7a7f88"/>`;
+  s+=`<path d="M60,-84 L76,-120" stroke-width="4" fill="none"/><circle cx="77" cy="-123" r="7" fill="#ff3b3b"/>`;
+  return s;
+}
+function goo(){return `<path d="M0,-15 C13,-17 19,-4 15,6 C11,17 -11,17 -15,6 C-19,-4 -13,-13 0,-15Z" fill="#79d13a"/><circle cx="-5" cy="-6" r="3.5" fill="#d8ffb8" stroke="none"/>`;}
+function net(r){
+  let d='';
+  for(let i=0;i<8;i++){const a=i*Math.PI/4;d+=`M0,0 L${(Math.cos(a)*r).toFixed(1)},${(Math.sin(a)*r).toFixed(1)} `;}
+  [0.35,0.68,1].forEach(k=>{for(let i=0;i<=8;i++){const a=i*Math.PI/4, rr=r*k*(i%2?0.93:1);d+=(i?'L':'M')+`${(Math.cos(a)*rr).toFixed(1)},${(Math.sin(a)*rr).toFixed(1)} `;}});
+  return `<path d="${d}" stroke="${INK}" stroke-width="4.5" fill="none"/><path d="${d}" stroke="#fff" stroke-width="2.2" fill="none"/>`;
+}
+function webLine(x1,y1,x2,y2){return `<path d="M${x1},${y1} L${x2},${y2}" stroke="${INK}" stroke-width="4" fill="none"/><path d="M${x1},${y1} L${x2},${y2}" stroke="#fff" stroke-width="2" fill="none"/>`;}
+
+function item(it, r){
+  const [k]=it;
+  const g=(x,y,s,inner,o)=>{o=o||{};const f=o.flip?-1:1;return `<g transform="translate(${x},${y}) rotate(${o.rot||0}) scale(${s*f},${s})">${inner}</g>`;};
+  if(C[k]){const [,x,y,s,pose,o]=it;const oo=Object.assign({},o||{});if(k==='goblin'&&oo.glider===undefined)oo.glider=1;return g(x,y,s,person(C[k],pose,oo),oo);}
+  switch(k){
+    case 'bolt': return g(it[1],it[2],it[3],bolt(it[4]),it[5]);
+    case 'tracee': return g(it[1],it[2],it[3],tracee());
+    case 'machine': return g(it[1],it[2],it[3],machine());
+    case 'goo': return g(it[1],it[2],it[3],goo(),{rot:it[4]||0});
+    case 'net': return `<g transform="translate(${it[1]},${it[2]}) scale(1,${it[4]||1})">${net(it[3])}</g>`;
+    case 'web': return webLine(it[1],it[2],it[3],it[4]);
+    case 'wagon': return g(it[1],it[2],it[3],`<path d="M-55,-30 L-100,-60" stroke-width="4" fill="none"/><rect x="-58" y="-44" width="116" height="30" rx="4" fill="#d93a2b"/><circle cx="-36" cy="-10" r="11" fill="#333"/><circle cx="36" cy="-10" r="11" fill="#333"/><circle cx="-36" cy="-10" r="3" fill="#ccc"/><circle cx="36" cy="-10" r="3" fill="#ccc"/>`);
+    case 'table': return g(it[1],it[2],it[3],`<rect x="-62" y="-66" width="8" height="66" fill="#8b5a2b"/><rect x="54" y="-66" width="8" height="66" fill="#8b5a2b"/><rect x="-75" y="-74" width="150" height="40" rx="3" fill="#3a7bd5"/><path d="M-75,-60 L75,-60" stroke="#fff" stroke-width="2" fill="none"/>`);
+    case 'ribbon': return g(it[1],it[2],it[3],`<path d="M-8,6 L-14,36 L-4,30 L0,40 L4,10Z M8,6 L14,36 L4,30 Z" fill="#1e5bd8"/><circle r="16" fill="#1e5bd8"/><circle r="10" fill="#ffd23f"/><text y="4" font-family="Bangers, Impact, sans-serif" font-size="12" text-anchor="middle" fill="${INK}" stroke="none">1st</text>`);
+    case 'banner': {const [,x,y,t,w]=it;return `<g transform="translate(${x},${y})"><path d="M${-w/2},0 L${w/2},0 L${w/2-10},26 L${w/2},52 L${-w/2},52 L${-w/2+10},26Z" fill="#d7263d" stroke="${INK}" stroke-width="3"/><text y="35" font-family="Bangers, Impact, sans-serif" font-size="28" letter-spacing="2" text-anchor="middle" fill="#fff">${t}</text></g>`;}
+    case 'confetti': {const [,x0,y0,x1,y1,n]=it;const cols=['#ff3b3b','#ffd23f','#3ad0ff','#7CFC00','#ff5ca8','#ffffff','#1e5bd8'];let s='';for(let i=0;i<n;i++){const x=x0+r()*(x1-x0),y=y0+r()*(y1-y0);s+=`<rect x="${x.toFixed(1)}" y="${y.toFixed(1)}" width="${(5+r()*6).toFixed(1)}" height="${(3+r()*4).toFixed(1)}" fill="${cols[i%cols.length]}" stroke="${INK}" stroke-width="0.8" transform="rotate(${(r()*180).toFixed(0)} ${x.toFixed(1)} ${y.toFixed(1)})"/>`;}return s;}
+    case 'speed': {const [,x0,y0,x1,y1,n]=it;let s='';for(let i=0;i<n;i++){const y=y0+r()*(y1-y0),x=x0+r()*(x1-x0)*0.4,l=40+r()*(x1-x0)*0.5;s+=`<path d="M${x.toFixed(0)},${y.toFixed(0)} L${(x+l).toFixed(0)},${y.toFixed(0)}" stroke="${INK}" stroke-width="2" opacity=".55" fill="none"/>`;}return s;}
+    case 'spark': return g(it[1],it[2],it[3],`<path d="M0,-30 L8,-8 L30,-12 L12,4 L22,26 L0,12 L-22,26 L-12,4 L-30,-12 L-8,-8Z" fill="#ffe14d"/>`);
+    case 'notes': return `<text x="${it[1]}" y="${it[2]}" font-size="${it[3]||30}" fill="${INK}" font-family="serif">♪ ♫ ♪</text>`;
+    case 'trophy': return g(it[1],it[2],it[3],`<rect x="-22" y="-10" width="44" height="10" fill="#8b5a2b"/><rect x="-6" y="-30" width="12" height="20" fill="#f4c430"/><path d="M-26,-74 L26,-74 Q26,-30 0,-30 Q-26,-30 -26,-74Z" fill="#f4c430"/><path d="M-26,-66 Q-42,-62 -26,-46 M26,-66 Q42,-62 26,-46" fill="none" stroke-width="4"/><text y="-48" font-family="Bangers, Impact, sans-serif" font-size="16" text-anchor="middle" fill="${INK}" stroke="none">1</text>`);
+    case 'crowd': {const [,x0,x1,y]=it;let s='';const cols=['#e07a5f','#3d405b','#81b29a','#f2cc8f','#6d597a','#e56b6f'];for(let x=x0,i=0;x<x1;x+=34,i++){s+=`<g opacity=".9"><circle cx="${x}" cy="${y-48}" r="13" fill="#e8c4a0"/><rect x="${x-16}" y="${y-36}" width="32" height="40" rx="10" fill="${cols[i%cols.length]}"/></g>`;}return s;}
+  }
+  return '';
+}
+
+/* ---------- backgrounds ---------- */
+function skyline(w, base, r, fill, win, minH, maxH){
+  let s='', x=-10;
+  while(x<w){const bw=38+r()*60, bh=minH+r()*(maxH-minH);s+=`<rect x="${x.toFixed(0)}" y="${(base-bh).toFixed(0)}" width="${bw.toFixed(0)}" height="${bh.toFixed(0)}" fill="${fill}" stroke="${INK}" stroke-width="1.5"/>`;
+    if(win){for(let wy=base-bh+10;wy<base-12;wy+=16)for(let wx=x+7;wx<x+bw-10;wx+=13)if(r()>.45)s+=`<rect x="${wx.toFixed(0)}" y="${wy.toFixed(0)}" width="6" height="8" fill="${win}"/>`;}
+    x+=bw+2+r()*8;}
+  return s;
+}
+function clouds(w, r, n){let s='';for(let i=0;i<n;i++){const x=r()*w,y=20+r()*70,k=0.6+r()*0.7;s+=`<g transform="translate(${x.toFixed(0)},${y.toFixed(0)}) scale(${k.toFixed(2)})" fill="#fff" stroke="${INK}" stroke-width="2"><path d="M-40,10 Q-44,-8 -24,-8 Q-20,-26 0,-22 Q14,-34 28,-18 Q48,-18 44,0 Q50,12 34,12 L-30,12 Q-44,14 -40,10Z"/></g>`;}return s;}
+function grad(id, a, b){return `<defs><linearGradient id="${id}" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="${a}"/><stop offset="1" stop-color="${b}"/></linearGradient></defs>`;}
+function burst(w,h,cx,cy,a,b){let s=`<rect width="${w}" height="${h}" fill="${a}"/>`;const n=28,R=Math.max(w,h)*1.5;for(let i=0;i<n;i+=2){const a1=i/n*Math.PI*2,a2=(i+1)/n*Math.PI*2;s+=`<path d="M${cx},${cy} L${(cx+Math.cos(a1)*R).toFixed(0)},${(cy+Math.sin(a1)*R).toFixed(0)} L${(cx+Math.cos(a2)*R).toFixed(0)},${(cy+Math.sin(a2)*R).toFixed(0)}Z" fill="${b}"/>`;}return s;}
+
+function bg(kind, w, h, r){
+  const id='g'+(UID++);
+  const gy=h-15;
+  switch(kind){
+    case 'park': return grad(id,'#6cc3f0','#dff3ff')+`<rect width="${w}" height="${h}" fill="url(#${id})"/>`+clouds(w,r,w/260)+skyline(w,gy-40,r,'#a9c4dc',null,40,110)+`<ellipse cx="${w*0.3}" cy="${gy+40}" rx="${w*0.6}" ry="90" fill="#7dcc56" stroke="${INK}" stroke-width="2"/><rect y="${gy-25}" width="${w}" height="${h}" fill="#6cc04a"/>`+[0.1,0.85,0.55].map(k=>`<g transform="translate(${w*k},${gy-30})"><rect x="-6" y="-40" width="12" height="40" fill="#7a4a24" stroke="${INK}" stroke-width="2"/><circle cy="-60" r="32" fill="#3f9e3a" stroke="${INK}" stroke-width="2"/></g>`).join('')+`<path d="M0,${gy-6} L${w},${gy-6}" stroke="#d9c79a" stroke-width="16"/>`;
+    case 'city': return grad(id,'#5fb4ea','#d2ecff')+`<rect width="${w}" height="${h}" fill="url(#${id})"/>`+clouds(w,r,w/250)+skyline(w,h,r,'#a7b8d4','#e9f2ff',90,180)+skyline(w,h,r,'#5b6b8c','#ffe08a',50,150);
+    case 'fair': return grad(id,'#77c6f2','#e6f6ff')+`<rect width="${w}" height="${h}" fill="url(#${id})"/>`+clouds(w,r,w/300)+skyline(w,gy-50,r,'#b9cce0',null,30,90)+[0.15,0.5,0.85].map((k,i)=>{const x=w*k;let s=`<g transform="translate(${x},${gy-48})"><path d="M-60,0 L0,-70 L60,0Z" fill="#fff" stroke="${INK}" stroke-width="2"/>`;for(let j=-3;j<3;j+=2)s+=`<path d="M0,-70 L${j*20},0 L${(j+1)*20},0Z" fill="${['#d7263d','#1e5bd8','#ffb703'][i]}"/>`;return s+`<rect x="-60" y="0" width="120" height="16" fill="#fff" stroke="${INK}" stroke-width="2"/></g>`;}).join('')+`<rect y="${gy-32}" width="${w}" height="${h}" fill="#86c95e"/><path d="M0,30 Q${w/4},55 ${w/2},30 Q${w*3/4},55 ${w},30" stroke="${INK}" stroke-width="1.5" fill="none"/>`+Array.from({length:Math.floor(w/40)},(_,i)=>{const x=i*40+20,y=30+Math.sin((x/(w/2))*Math.PI)*-0+ (Math.abs(((x%(w/2))/(w/2))-0.5)<0.5? (25*(1-Math.pow(((x%(w/2))/(w/4))-1,2))):0);return `<path d="M${x-8},${y} L${x+8},${y} L${x},${y+16}Z" fill="${['#d7263d','#ffd23f','#1e5bd8','#2fb36b'][i%4]}" stroke="${INK}" stroke-width="1.2"/>`;}).join('');
+    case 'hq': {let s=`<rect width="${w}" height="${h}" fill="#1d2a52"/>`;for(let x=0;x<w;x+=40)s+=`<path d="M${x},0 L${x},${h}" stroke="#25356a" stroke-width="2"/>`;s+=`<g transform="translate(${w-90},70)" stroke="#3b5bb5" stroke-width="2" fill="none">${net(60).replace(/stroke="[^"]*"/g,'')}</g>`;s+=`<rect x="${w*0.08}" y="22" width="${Math.min(260,w*0.5)}" height="120" rx="8" fill="#0e1630" stroke="${INK}" stroke-width="3"/><g stroke="#2ec4b6" stroke-width="1.5" opacity=".7">`+Array.from({length:6},(_,i)=>`<path d="M${w*0.08+10},${40+i*18} L${w*0.08+Math.min(250,w*0.5-10)},${40+i*18}"/>`).join('')+`</g><circle cx="${w*0.08+Math.min(180,w*0.36)}" cy="58" r="6" fill="#ff3b3b"/>`;s+=`<rect y="${gy-20}" width="${w}" height="${h}" fill="#2b3a6e" stroke="${INK}" stroke-width="2"/>`;return s;}
+    case 'screen': {let s=`<rect width="${w}" height="${h}" fill="#0e1630"/>`;for(let x=0;x<w;x+=34)s+=`<path d="M${x},0 L${x+20},${h}" stroke="#1f6f78" stroke-width="2"/>`;for(let y=0;y<h;y+=30)s+=`<path d="M0,${y} L${w},${y+8}" stroke="#1f6f78" stroke-width="2"/>`;s+=`<rect x="${w*0.55}" y="40" width="40" height="30" fill="#2ec4b6" opacity=".5"/><circle cx="${w*0.55+20}" cy="55" r="18" fill="none" stroke="#ff3b3b" stroke-width="3"/><circle cx="${w*0.55+20}" cy="55" r="7" fill="#ff3b3b"/><text x="${w*0.55+44}" y="60" font-family="ui-monospace, monospace" font-size="14" fill="#ff8a8a">BOLT · TOWER ONE</text>`;s+=`<rect y="${gy-10}" width="${w}" height="${h}" fill="#2b3a6e"/>`;return s;}
+    case 'dusk': return grad(id,'#ff9a5a','#6a4c93')+`<rect width="${w}" height="${h}" fill="url(#${id})"/>`+`<circle cx="${w*0.8}" cy="${h*0.75}" r="60" fill="#ffd166" opacity=".8"/>`+skyline(w,h,r,'#3d3366','#ffd166',80,200)+skyline(w,h,r,'#2a2346','#ffb347',40,130);
+    case 'roof': {let s=grad(id,'#141a42','#3b2f6b')+`<rect width="${w}" height="${h}" fill="url(#${id})"/>`;for(let i=0;i<w/20;i++)s+=`<circle cx="${(r()*w).toFixed(0)}" cy="${(r()*120).toFixed(0)}" r="${(0.8+r()*1.4).toFixed(1)}" fill="#fff"/>`;s+=`<circle cx="${w*0.12}" cy="50" r="26" fill="#fff6c9" stroke="${INK}" stroke-width="2"/>`+skyline(w,gy-28,r,'#2a2350','#ffd166',30,110)+`<rect y="${gy-30}" width="${w}" height="${h}" fill="#6d6a7c" stroke="${INK}" stroke-width="2"/><rect y="${gy-36}" width="${w}" height="8" fill="#8b88a0" stroke="${INK}" stroke-width="2"/>`;for(let x=20;x<w;x+=70)s+=`<path d="M${x},${gy-20} L${x+30},${gy-20}" stroke="#5a5768" stroke-width="2"/>`;return s;}
+    case 'burstR': return burst(w,h,w/2,h/2,'#ffd23f','#ff8c42');
+    case 'burstB': return burst(w,h,w/2,h/2,'#3ad0ff','#1e5bd8');
+    case 'burstP': return burst(w,h,w/2,h*0.55,'#ff5ca8','#ffd23f');
+    case 'cover': return burst(w,h,w/2,h*0.42,'#2b6fe0','#1e4fb0')+skyline(w,h,r,'#16306e','#ffe08a',150,330)+`<rect y="${h-60}" width="${w}" height="60" fill="#0f1c45"/>`;
+  }
+  return `<rect width="${w}" height="${h}" fill="#fff"/>`;
+}
+
+/* ---------- story ---------- */
+const PAGES = [
+ {title:'Cover', cover:true},
+ {title:'Saturday Morning', panels:[
+  {w:2,bg:'park',cap:'Saturday morning. Winston and Derek Pang are pulling their robot, BOLT, to the City Science Fair.',
+   items:[['wagon',430,285,1],['bolt',430,245,0.95,'wave'],['winston',290,285,0.74,'wave'],['derek',590,285,1,'down']],
+   b:[[6,26,28,"Today's the day! Bolt is going to win the science fair!",'tr'],[64,10,30,'Three weeks of building. He better win!','tl']]},
+  {bg:'park',items:[['bolt',200,285,2,'cheer']],b:[[8,6,84,'BEEP BOOP. BOLT IS READY TO WIN.','tc','robot']]},
+  {bg:'park',items:[['winston',120,285,0.98,'cheer',{mood:'laugh'}],['derek',290,285,1.08,'down',{mood:'laugh'}]],
+   b:[[2,5,46,'Did you hear that? He said he\'s READY!','tl'],[54,4,44,'We did build him to be confident.','tr']]}
+ ]},
+ {title:'Trouble at the Fair', panels:[
+  {bg:'fair',items:[['table',200,285,1],['bolt',200,212,0.95,'cheer'],['notes',245,120,26],['winston',70,285,0.74,'point',{mood:'laugh'}],['derek',335,285,0.95,'down']],
+   b:[[2,4,52,'Bolt can sort recycling AND do the robot dance!','tl'],[62,30,36,'Nice moves, Bolt!','tr']]},
+  {bg:'city',items:[['speed',0,80,400,260,14],['goblin',250,200,1.05,'cheer']],sfx:[['WHOOOSH!',20,90,52,-8,'#7CFC00']],
+   b:[[4,62,50,'Ha-ha-HA! What a shiny little robot! He\'ll power my machine!','tr','shout']]},
+  {bg:'fair',items:[['goblin',260,165,0.85,'down'],['bolt',300,205,0.7,'cheer'],['winston',80,285,0.85,'up',{mood:'shock'}],['derek',175,285,1,'point',{mood:'shock'}]],
+   b:[[2,4,44,'HEY! Give him back!','tl','shout'],[62,72,36,'Stop that goblin!','tl']]},
+  {bg:'city',items:[['rhino',210,292,1.08,'hips']],sfx:[['STOMP! STOMP!',150,70,46,6,'#ffb703']],
+   b:[[2,32,40,'Rhino carry the robot batteries! Rhino STRONG!','tr','shout']]}
+ ]},
+ {title:'Swinging In', panels:[
+  {w:2,bg:'city',cap:'Then, from high above the street...',items:[['spidey',200,215,0.95,'swing',{web:40}],['spin',430,175,0.9,'swing',{web:30}],['ghost',650,205,0.92,'swing',{web:-20}]],sfx:[['THWIP!',250,80,46,-10,'#fff'],['THWIP!',470,50,40,6,'#fff'],['THWIP!',690,70,40,-4,'#fff']]},
+  {bg:'city',items:[['spidey',100,285,1,'point'],['goblin',320,105,0.5,'cheer'],['bolt',340,120,0.4,'up']],
+   b:[[34,58,40,'Hold it right there, Goblin!','tl'],[30,2,46,'Too slow, Spidey! Catch me at the top of the city!','tr','shout']]},
+  {bg:'city',items:[['spin',80,285,0.95,'down'],['winston',200,285,0.76,'down',{mood:'sad'}],['ghost',320,285,0.95,'hips']],
+   b:[[2,6,34,'Are you two okay?','tl'],[30,30,40,'They took Bolt! He\'s our robot!','tc'],[64,4,34,"We'll get him back.",'tr']]},
+  {w:2,bg:'city',items:[['winston',190,285,0.74,'down'],['derek',300,285,1,'point',{hold:'remote'}],['spidey',600,285,1,'hips']],
+   b:[[8,8,40,"Bolt has a tracker beacon. This remote can follow his signal!",'tr'],[62,4,34,'Great thinking! Come with us to WEB-Quarters.','tc']]}
+ ]},
+ {title:'WEB-Quarters', panels:[
+  {w:2,bg:'hq',cap:'WEB-Quarters: the Spidey Team\'s secret headquarters!',items:[['winston',330,285,0.76,'cheer',{mood:'wow'}],['derek',470,285,1,'down',{mood:'wow'}],['tracee',640,175,1.3]],
+   b:[[22,34,20,'WOOOOW!','tr','shout'],[54,16,30,'This is the coolest place I have ever seen.','tl']]},
+  {bg:'screen',items:[['ghost',85,285,0.95,'point'],['tracee',320,230,1]],
+   b:[[2,4,58,'Trace-E found Bolt\'s signal! He\'s on top of Tower One, the tallest building in the city.','tl'],[62,46,34,'BLEEP BLOOP!','tc','robot']]},
+  {bg:'hq',items:[['spidey',110,285,1,'point',{hold:'band'}],['winston',290,285,0.82,'cheer',{mood:'laugh'}]],
+   b:[[2,48,40,'You two know Bolt best. Today, you\'re on the team!','tc'],[50,4,48,'Honorary Spidey Team? YES!!','tr','shout']]},
+  {w:2,bg:'burstR',items:[['spidey',110,290,0.95,'cheer'],['spin',235,290,0.92,'cheer'],['ghost',360,290,0.92,'cheer'],['winston',480,290,0.74,'cheer',{mood:'laugh'}],['derek',590,290,0.98,'cheer',{mood:'laugh'}],['tracee',715,190,1.1]],
+   b:[[30,4,40,'GO WEBS GO!','tc','shout']]}
+ ]},
+ {title:'Up to Tower One', panels:[
+  {w:2,bg:'dusk',cap:'Across the city, the team swings toward Tower One.',items:[['spidey',230,215,0.88,'swing',{web:40}],['winston',282,232,0.6,'up',{mood:'laugh'}],['spin',540,175,0.88,'swing',{web:20}],['derek',592,195,0.72,'up',{mood:'shock'}]],sfx:[['THWIP!',360,70,44,-8,'#fff']],
+   b:[[4,32,18,'WHEEEEE!','tr','shout'],[72,8,26,'I am NOT looking down!','tl']]},
+  {w:2,bg:'roof',items:[['machine',520,282,1.1],['bolt',520,98,0.68,'up'],['goblin',300,285,1,'hips',{glider:0}],['rhino',700,288,0.9,'hips']],
+   b:[[2,6,38,'With that robot\'s battery, my Goo-Blaster 3000 will cover the WHOLE CITY in sticky green goo!','tr','shout'],[72,4,24,'Goo! Goo! Goo!','tr']]},
+  {bg:'roof',items:[['winston',130,285,0.85,'down',{mood:'sad'}],['derek',270,285,1,'down',{mood:'think'}]],
+   b:[[2,4,40,'Bolt looks scared.','tl'],[48,4,50,'Then we need a plan. A smart one.','tr']]},
+  {bg:'roof',items:[['ghost',90,285,0.95,'down'],['spidey',300,285,1,'hips']],
+   b:[[44,4,54,'Spin and Ghost-Spider, take Rhino. I\'ll watch Goblin.','tr'],[2,30,30,'On it!','tl']]}
+ ]},
+ {title:'Rhino Charges', panels:[
+  {w:2,bg:'roof',items:[['speed',380,90,800,260,18],['rhino',520,288,1.15,'point',{flip:1}],['spin',150,285,0.92,'up',{mood:'shock'}],['ghost',265,285,0.92,'down',{mood:'shock'}]],sfx:[['RUMBLE RUMBLE!',420,70,48,-4,'#ffb703']],
+   b:[[74,6,25,'Nobody gets past RHINO!','tl','shout']]},
+  {bg:'roof',items:[['ghost',90,285,0.95,'down'],['derek',290,285,1,'point']],
+   b:[[2,4,40,"He's too strong to stop head-on!",'tl'],[44,20,54,"Then don't stop him. Make him SLIDE! Put webs on the floor!",'tr']]},
+  {bg:'roof',items:[['net',260,275,120,0.18],['spin',80,285,0.92,'point',{web:0}],['rhino',275,268,1,'flail',{rot:-18,mood:'sad'}]],sfx:[['SKREEEE!',20,90,46,-6,'#fff']],
+   b:[[56,4,42,'Whoa-whoa-WHOA!','tc','shout']]},
+  {w:2,bg:'roof',items:[['spin',150,285,0.95,'cheer'],['rhino',400,285,1.05,'up',{mood:'sad'}],['net',400,175,120,1],['ghost',650,285,0.95,'cheer']],
+   b:[[24,4,20,'Rhino... is stuck.','tr'],[66,8,24,'Nice plan, Derek!','tl']]}
+ ]},
+ {title:'Fire the Goo!', panels:[
+  {w:2,bg:'roof',items:[['machine',520,282,1.1],['bolt',520,98,0.68,'up'],['goblin',300,285,1,'up',{glider:0}],['goo',650,60,1.2,20],['goo',720,110,1,-30],['goo',760,40,0.9,50]],sfx:[['SPLOOORT!',580,180,50,-6,'#7CFC00']],
+   b:[[2,6,34,"You're too late, Spidey Team! FIRE THE GOO!",'tr','shout']]},
+  {bg:'city',items:[['net',200,95,90,1],['goo',170,80,1],['goo',230,110,1,40],['goo',210,60,0.8,-20],['spidey',200,290,1,'up']],sfx:[['SPLAT!',260,190,40,10,'#7CFC00']],
+   b:[[2,48,26,'Web shield!','tr','shout']]},
+  {bg:'city',items:[['goo',60,40,1.2],['goo',150,90,1,30],['goo',300,50,1.3,-10],['goo',350,140,0.9],['spin',200,285,0.95,'up',{mood:'shock'}]],
+   b:[[2,30,46,"There's too much goo! We can't block it all!",'tr']]},
+  {w:2,bg:'roof',items:[['winston',330,285,0.9,'point',{mood:'wow'}],['derek',480,285,1,'down',{mood:'think'}],['spark',380,90,0.9]],
+   b:[[2,6,34,'Wait! Bolt knows my voice. And I know his SECRET command!','tr'],[64,6,32,'Winston... are you thinking what I\'m thinking?','tl']]}
+ ]},
+ {title:'The Secret Command', panels:[
+  {bg:'burstB',items:[['winston',200,295,1.25,'cheer',{mood:'wow'}]],
+   b:[[16,3,68,'BOLT! DANCE MODE!','tc','shout']]},
+  {bg:'roof',items:[['bolt',200,260,1.7,'cheer'],['notes',40,120,30],['notes',280,90,30]],
+   b:[[18,4,64,'DANCE MODE: ACTIVATED.','tc','robot']]},
+  {bg:'roof',items:[['machine',150,282,1.1],['spark',90,120,1],['spark',230,170,0.7],['goblin',330,285,0.9,'up',{glider:0,mood:'shock'}]],sfx:[['BZZZT!',20,70,46,-8,'#ffe14d']],
+   b:[[48,4,50,'No, no, NO! Stop dancing, you silly robot!','tr','shout']]},
+  {bg:'roof',items:[['derek',200,285,1.08,'cheer',{mood:'laugh'}]],
+   b:[[2,4,96,'When Bolt dances, he switches his batteries OFF! No power means no goo! Winston, you did it!','tc']]}
+ ]},
+ {title:'KA-POOF!', panels:[
+  {w:2,bg:'burstP',cap:'Instead of goo... the machine fills the sky with CONFETTI!',items:[['machine',400,285,1.05],['bolt',400,108,0.66,'cheer'],['confetti',0,0,800,300,160]],sfx:[['KA-POOF!',40,200,80,-8,'#fff']]},
+  {bg:'city',items:[['speed',0,60,400,260,12],['goblin',210,190,1,'flail',{rot:28,mood:'shock'}]],sfx:[['SPIN! SPIN!',210,60,42,8,'#7CFC00']],
+   b:[[2,66,50,'My beautiful machine!!','tr','shout']]},
+  {bg:'roof',items:[['web',90,170,330,40],['web',300,170,330,40],['spidey',80,285,0.9,'point'],['spin',290,285,0.9,'point',{flip:1}],['goblin',330,70,0.45,'flail',{rot:20}]],
+   b:[[2,4,30,'Got him!','tl'],[58,46,40,'Webbed and wrapped!','tr']]},
+  {w:2,bg:'roof',items:[['web',400,0,400,90],['goblin',400,270,0.95,'down',{glider:0,mood:'sad'}],['net',400,190,95,1.2],['spidey',620,285,1,'hips']],
+   b:[[4,10,32,'This is SO not fair.','tr'],[68,6,30,'Neither is stealing robots.','tl']]}
+ ]},
+ {title:'Cleanup Crew', panels:[
+  {bg:'roof',items:[['winston',170,285,0.95,'hug',{mood:'laugh'}],['bolt',255,285,1.15,'cheer']],
+   b:[[2,4,40,"Bolt! You're safe!",'tl'],[46,6,52,'BEEP. THANK YOU, WINSTON.','tr','robot']]},
+  {bg:'roof',cap:'Goblin and Rhino get mop duty.',items:[['confetti',0,240,400,290,50],['goblin',120,285,0.88,'down',{glider:0,mood:'sad',hold:'mop'}],['rhino',300,288,0.92,'down',{hold:'mop'}]],
+   b:[[50,18,48,'Rhino... actually likes confetti.','tr'],[2,30,36,"Don't help, Rhino.",'tc']]},
+  {w:2,bg:'roof',items:[['ghost',120,285,0.95,'down'],['spin',240,285,0.95,'hips'],['spidey',360,285,1,'down'],['derek',540,285,1,'down',{mood:'laugh'}],['winston',660,285,0.76,'wave',{mood:'laugh'}]],
+   b:[[2,6,26,'You two were amazing today.','tr'],[46,4,26,'Winston was the real hero. He knew Bolt best.','tc'],[76,22,23,'Derek had the slippery web plan!','tl']]}
+ ]},
+ {title:'First Place', panels:[
+  {w:2,bg:'fair',cap:'Back at the City Science Fair...',items:[['crowd',20,780,300],['banner',400,46,'1ST PLACE',200],['table',400,285,1],['bolt',400,212,0.95,'cheer'],['trophy',455,212,0.7],['ribbon',350,180,0.8],['winston',250,285,0.76,'cheer',{mood:'laugh'}],['derek',560,285,1,'cheer',{mood:'laugh'}]],
+   b:[[4,34,22,'FIRST PLACE!!','tr','shout'],[74,20,24,'Way to go, Bolt!','tl']]},
+  {bg:'dusk',items:[['spidey',120,170,0.55,'wave'],['spin',200,170,0.55,'wave'],['ghost',280,170,0.55,'wave']],
+   b:[[18,4,64,'See you around, team!','tc']]},
+  {bg:'burstR',items:[['spidey',60,290,0.68,'cheer'],['spin',130,290,0.66,'cheer'],['ghost',200,290,0.66,'cheer'],['winston',262,290,0.55,'cheer',{mood:'laugh'}],['derek',335,290,0.7,'cheer',{mood:'laugh'}],['bolt',262,200,0.5,'cheer']],sfx:[['THE END',200,60,64,-4,'#fff']],
+   b:[[8,26,40,'GO WEBS GO!','tl','shout']]}
+ ]}
+];
+
+/* ---------- render ---------- */
+const book=document.getElementById('book');
+function esc(t){return t.replace(/&/g,'&amp;').replace(/</g,'&lt;');}
+function svgFor(p, w, h, seed){
+  const r=rand(seed);
+  let s=`<svg viewBox="0 0 ${w} ${h}" preserveAspectRatio="xMidYMid slice" role="img" aria-label="${esc(p.alt||'comic panel')}"><g stroke="${INK}" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round">`;
+  s+=bg(p.bg,w,h,r);
+  (p.items||[]).forEach(it=>{s+=item(it,r);});
+  (p.sfx||[]).forEach(([t,x,y,size,rot,fill])=>{s+=`<text x="${x}" y="${y}" transform="rotate(${rot} ${x} ${y})" font-family="Bangers, Impact, sans-serif" font-size="${size}" letter-spacing="2" fill="${fill}" stroke="${INK}" stroke-width="${size/7}" paint-order="stroke" text-anchor="${x>w*0.35&&x<w*0.65?'middle':'start'}">${t}</text>`;});
+  return s+'</g></svg>';
+}
+function overlays(p){
+  let s='';
+  if(p.cap) s+=`<div class="cap">${esc(p.cap)}</div>`;
+  (p.b||[]).forEach(([x,y,w,t,tail,cls])=>{s+=`<div class="bubble ${tail||''} ${cls||''}" style="left:${x}%;top:${y}%;width:${w}%">${esc(t)}</div>`;});
+  return s;
+}
+let seed=7;
+PAGES.forEach((pg,i)=>{
+  const page=document.createElement('section');
+  page.className='page';
+  const n=i+1;
+  if(pg.cover){
+    const items=[['goblin',665,430,1,'cheer'],['spin',180,770,1.35,'point'],['spidey',400,750,1.5,'cheer'],['ghost',620,770,1.35,'wave'],['winston',280,920,1.1,'cheer',{mood:'laugh'}],['bolt',400,920,1.2,'cheer'],['derek',530,920,1.3,'wave',{mood:'laugh'}]];
+    page.innerHTML=`<div class="panel cover" style="aspect-ratio:8/9.5">${svgFor({bg:'cover',items},800,950,seed++)}`+
+      `<div class="badge">No.<b>1</b>Nov 2026</div>`+
+      `<div class="cover-title"><span class="kicker">WINSTON &amp; DEREK PANG with THE SPIDEY TEAM</span><h1>The Great Goo Caper</h1><div class="sub">A robot! A goblin! A whole lot of confetti!</div></div></div>`;
+  } else {
+    let html=`<div class="page-head"><h2>${esc(pg.title)}</h2><span>Page ${n} of ${PAGES.length}</span></div><div class="grid">`;
+    pg.panels.forEach(p=>{const w=p.w===2?800:400;html+=`<div class="panel${p.w===2?' w2':''}">${svgFor(p,w,300,seed++)}${overlays(p)}</div>`;});
+    page.innerHTML=html+'</div>';
+  }
+  book.appendChild(page);
+});
+const end=document.createElement('p');end.className='end-note';end.textContent='A fan-made comic for the Pang family. Spidey and friends belong to their creators.';book.appendChild(end);
+</script>
