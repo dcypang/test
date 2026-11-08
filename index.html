@@ -1,0 +1,67 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+<title>SimSaratoga</title>
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+<div id="app">
+  <header id="topbar">
+    <div class="brand">Sim<b>Saratoga</b><span class="sub">City Planning Simulator</span></div>
+    <div class="stats">
+      <div class="stat"><span class="lbl">Date</span><span id="s-date">—</span></div>
+      <div class="stat"><span class="lbl">Funds</span><span id="s-funds">—</span></div>
+      <div class="stat"><span class="lbl">Population</span><span id="s-pop">—</span></div>
+      <div class="stat"><span class="lbl">Homes</span><span id="s-units">—</span></div>
+      <div class="stat"><span class="lbl">Approval</span><span id="s-approval">—</span></div>
+      <div class="stat rhna"><span class="lbl">Housing Element (RHNA)</span>
+        <span class="bar"><i id="s-rhna-bar"></i></span><span id="s-rhna">—</span></div>
+    </div>
+    <div class="speed">
+      <button data-speed="0" title="Pause (Space)">❚❚</button>
+      <button data-speed="1" title="Normal">▶</button>
+      <button data-speed="2" title="Fast">▶▶</button>
+      <button data-speed="3" title="Fastest">▶▶▶</button>
+      <button id="menu-btn" title="Menu">☰</button>
+    </div>
+  </header>
+
+  <aside id="toolbar"></aside>
+
+  <main id="viewport">
+    <canvas id="map"></canvas>
+    <div id="demand" title="Development demand">
+      <div><span>R</span><i id="d-r"></i></div>
+      <div><span>C</span><i id="d-c"></i></div>
+      <div><span>MU</span><i id="d-m"></i></div>
+    </div>
+    <div id="overlays"></div>
+    <canvas id="minimap" width="180" height="180"></canvas>
+    <div id="hint"></div>
+    <div id="loading">Loading Saratoga…</div>
+  </main>
+
+  <aside id="panel">
+    <section id="inspector"><h3>Inspector</h3><div id="inspect-body" class="muted">Pick a building, road or lot to see its details.</div></section>
+    <section id="apps"><h3>Planning Commission <span id="apps-count" class="pill">0</span></h3>
+      <label class="tog"><input type="checkbox" id="auto-approve" checked> Approve projects that meet the code automatically</label>
+      <div id="apps-list"></div></section>
+    <section id="budget"><h3>Budget <small>(per year)</small></h3><div id="budget-body"></div></section>
+  </aside>
+
+  <footer id="ticker"><span id="ticker-text">Welcome to Saratoga, the city in the foothills.</span></footer>
+</div>
+
+<div id="modal" class="hidden"><div class="card"><div id="modal-body"></div></div></div>
+
+<script src="data/saratoga.js"></script>
+<script src="js/rules.js"></script>
+<script src="js/world.js"></script>
+<script src="js/sim.js"></script>
+<script src="js/render.js"></script>
+<script src="js/ui.js"></script>
+<script src="js/main.js"></script>
+</body>
+</html>
