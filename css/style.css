@@ -61,6 +61,7 @@ button { font: inherit; color: inherit; cursor: pointer; }
 #camctl { position: absolute; right: 10px; top: 62px; display: flex; flex-direction: column; gap: 4px; }
 #camctl button { width: 34px; height: 30px; background: rgba(21,26,31,.85); border: 1px solid var(--line); border-radius: 7px; font-size: 15px; }
 #camctl #view-btn { font-size: 12px; font-weight: 700; color: var(--accent); }
+#camctl button.on { border-color: var(--accent); background: rgba(242,181,68,.25); }
 #minimap { position: absolute; right: 10px; bottom: 10px; border: 2px solid #151a1f; border-radius: 6px; background: #8fae7a; cursor: pointer; box-shadow: 0 2px 8px rgba(0,0,0,.4); }
 #demand {
   position: absolute; left: 10px; top: 10px; background: rgba(21,26,31,.85); border-radius: 8px; padding: 6px 8px;
@@ -135,7 +136,7 @@ button { font: inherit; color: inherit; cursor: pointer; }
   .stats { gap: 10px; } .stat { font-size: 12px; } .brand .sub { display: none; }
   .stat.rhna { min-width: 130px; }
   #minimap { width: 96px; height: 96px; }
-  #camctl { flex-direction: row; top: 8px; right: 62px; }
+  #camctl { flex-direction: row; flex-wrap: wrap; justify-content: flex-end; max-width: 140px; top: 8px; right: 62px; }
   #camctl button { width: 30px; height: 28px; font-size: 13px; }
   #overlays { max-width: calc(100% - 140px); }
 }

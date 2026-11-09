@@ -4,9 +4,23 @@ A SimCity-style city planning game set in **Saratoga, California**. You are the 
 director: rezone land, decide on development projects, balance the budget and meet the state's
 housing target, on a map built from Saratoga's real streets and building footprints.
 
-The city is shown in **3D**: every footprint is extruded to its number of stories, homes get
-pitched roofs, the foothills rise toward the Santa Cruz Mountains, and lots and hillsides are
-planted with trees, lit by an afternoon sun with shadows. A flat 2D map is one click away.
+The city is shown in **3D**:
+
+- **Buildings**: every footprint is extruded to its number of stories. Homes get gable or hip roofs
+  with eaves, chimneys, front doors, garage doors, windows and the occasional solar array. Shops
+  get storefront glass, awnings on the street side, parapets and rooftop units. Sites under
+  construction rise month by month, with a tower crane on the taller ones.
+- **Streets**: asphalt with sidewalks, centre lines and lane dashes, streetlights on the main
+  roads, and traffic that drives on the right, from Highway 85 down to residential streets.
+- **Landscape**: foothills that continue to the horizon, a painted ground with lawns, driveways,
+  orchard rows and creeks, and about 60,000 trees (broadleaf, pine and redwood) that sway in the
+  wind and follow the seasons: blossom in spring, golden hills in late summer, fall colour, bare
+  branches in winter.
+- **Sky and light**: a shader sky with drifting clouds and a sun, soft shadows, and four times of
+  day. At sunset and night, windows, streetlights and headlights come on and stars come out.
+- **Camera**: orbit, tilt and zoom from a regional overview down to street level.
+
+A flat 2D map is one click away.
 
 ## Play
 
@@ -19,12 +33,19 @@ python3 -m http.server 8000
 
 No build step and no dependencies. The game saves to your browser's local storage.
 
+The 3D view needs WebGL and falls back to the flat map without it. Graphics quality adapts to the
+device: if frames get slow it lowers the resolution, then turns off shadows, then stops the
+ambient animation. You can pin it from the menu (☰ → 3D graphics) or with `?gfx=high` or
+`?gfx=low` in the URL.
+
 ### Controls
 
 | Action | How |
 | --- | --- |
 | Pan | Drag with the Inspect tool, middle-drag, or hold Space and drag |
 | Rotate / tilt (3D) | Right-drag or Shift-drag, `Q`/`E` and `R`/`F`, two-finger twist, or the buttons on the right |
+| Time of day (3D) | `T` or the ☀️ button: afternoon, sunset, night, morning |
+| Circle the camera (3D) | `C` or the 🎥 button |
 | Switch 3D / 2D | `V` or the 2D/3D button |
 | Zoom | Mouse wheel, pinch, or `+` / `-` |
 | Inspect | Click a building, street or lot |
@@ -87,7 +108,8 @@ streets and houses in it are generated, so it is not building-for-building accur
   surface: a gently sloping valley floor in the north-east and foothills rising south-west of a
   line from Prospect Road past the Village toward Montalvo (`World.buildTerrain` in `js/world.js`).
 - **Building heights** come from OSM `building:levels` where mapped; otherwise from the building
-  type and size. Roof shapes are generic (gables on simple four-sided homes, flat elsewhere).
+  type and size. Roof shapes, windows, doors, colours, trees, traffic and streetlights are
+  generated to look plausible. They are decoration, not survey data.
 
 - **Building footprints and streets** are as accurate as OpenStreetMap's coverage of Saratoga.
 - **Zoning is inferred**, not copied from the official zoning map. Each 20 m cell gets a district
@@ -108,7 +130,7 @@ Map data © OpenStreetMap contributors, available under the Open Database Licens
 | `js/rules.js` | Zoning districts, building types, buildable projects, economy constants |
 | `js/world.js` | Map loading, spatial indexes, zoning grid inference, building placement |
 | `js/sim.js` | Monthly simulation: growth, applications, budget, approval, housing law, save/load |
-| `js/render3d.js` | 3D renderer (three.js): terrain, extruded buildings, streets, creeks, trees, shadows, labels |
+| `js/render3d.js` | 3D renderer (three.js): terrain and horizon, buildings and their details, streets, traffic, trees, sky, time of day, labels |
 | `js/render.js` | Flat 2D map renderer and the overlays (zoning, vacant lots, street access, fire coverage) |
 | `js/vendor/three.min.js` | three.js r149 (MIT), bundled so the game works offline |
 | `js/ui.js` | Tools, input, inspector, Planning Commission and budget panels |

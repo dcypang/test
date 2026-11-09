@@ -43,8 +43,9 @@ SG.World = class World {
     const [lat0, lon0] = this.map.origin;
     const KX = 111320 * Math.cos(lat0 * Math.PI / 180), KY = 110540;
     const P = (lat, lon) => [(lon - lon0) * KX, (lat0 - lat) * KY];
-    const line = [[37.302, -122.070], [37.292, -122.060], [37.280, -122.052], [37.268, -122.045], [37.258, -122.036],
-      [37.252, -122.026], [37.246, -122.012], [37.240, -121.998], [37.235, -121.983]].map(([a, b]) => P(a, b));
+    // the first and last points carry the foothill line far past the map (the range runs NW-SE)
+    const line = [[37.60, -122.37], [37.302, -122.070], [37.292, -122.060], [37.280, -122.052], [37.268, -122.045], [37.258, -122.036],
+      [37.252, -122.026], [37.246, -122.012], [37.240, -121.998], [37.235, -121.983], [37.085, -121.533]].map(([a, b]) => P(a, b));
     const signed = (x, y) => {
       let best = Infinity, side = 1;
       for (let i = 1; i < line.length; i++) {

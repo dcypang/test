@@ -83,7 +83,8 @@ SG.UI = class UI {
     cv.addEventListener('wheel', e => {
       e.preventDefault();
       const [x, y] = pos(e);
-      this.r.zoomAt(x, y, Math.exp(-e.deltaY * (e.ctrlKey ? 0.01 : 0.0015)));
+      const f = Math.exp(-e.deltaY * (e.ctrlKey ? 0.01 : 0.0015));
+      if (this.r.zoomSmooth) this.r.zoomSmooth(x, y, f); else this.r.zoomAt(x, y, f);
     }, { passive: false });
 
     cv.addEventListener('pointerdown', e => {
@@ -147,11 +148,13 @@ SG.UI = class UI {
       if (e.key === '-') this.r.zoomAt(this.r.vw / 2, this.r.vh / 2, 1 / 1.3);
       if (e.key === 'z') this.setOverlay(this.r.overlay === 'zoning' ? 'none' : 'zoning');
       if (e.key === 'v') this.g.toggleView();
-      if (this.r.orbit) {
-        if (e.key === 'q') this.r.orbit(-40, 0);
-        if (e.key === 'e') this.r.orbit(40, 0);
-        if (e.key === 'r') this.r.orbit(0, 25);
-        if (e.key === 'f') this.r.orbit(0, -25);
+      if (this.r.orbitSmooth) {
+        if (e.key === 'q') this.r.orbitSmooth(-60, 0);
+        if (e.key === 'e') this.r.orbitSmooth(60, 0);
+        if (e.key === 'r') this.r.orbitSmooth(0, 40);
+        if (e.key === 'f') this.r.orbitSmooth(0, -40);
+        if (e.key === 't') this.camAction('tod');
+        if (e.key === 'c') this.camAction('spin');
       }
     });
 
@@ -415,15 +418,20 @@ SG.UI = class UI {
   bindChrome() {
     document.querySelectorAll('.speed button[data-speed]').forEach(b => b.onclick = () => this.g.setSpeed(+b.dataset.speed));
     this.$('menu-btn').onclick = () => this.menu();
-    document.querySelectorAll('#camctl button').forEach(b => b.onclick = () => {
-      const c = b.dataset.cam, r = this.r;
-      if (c === 'view') return this.g.toggleView();
-      if (!r.orbit) return;
-      if (c === 'rotl') r.orbit(-60, 0); if (c === 'rotr') r.orbit(60, 0);
-      if (c === 'up') r.orbit(0, 35); if (c === 'down') r.orbit(0, -35);
-    });
+    document.querySelectorAll('#camctl button').forEach(b => b.onclick = () => this.camAction(b.dataset.cam));
     this.$('auto-approve').onchange = e => { this.sim.autoApprove = e.target.checked; };
     this.$('modal').addEventListener('click', e => { if (e.target.id === 'modal') this.closeModal(); });
+  }
+  camAction(c) {
+    const r = this.r;
+    if (c === 'view') return this.g.toggleView();
+    if (!r.orbitSmooth) return;
+    if (c === 'rotl') r.orbitSmooth(-90, 0);
+    if (c === 'rotr') r.orbitSmooth(90, 0);
+    if (c === 'up') r.orbitSmooth(0, 60);
+    if (c === 'down') r.orbitSmooth(0, -60);
+    if (c === 'tod') { const t = r.cycleTod(); this.$('tod-btn').textContent = t.icon; this.ticker(`Time of day: ${t.label.toLowerCase()}.`); }
+    if (c === 'spin') { r.autoOrbit = !r.autoOrbit; this.$('spin-btn').classList.toggle('on', r.autoOrbit); }
   }
   renderStats() {
     const s = this.sim, st = s.rhnaStatus();
@@ -498,7 +506,8 @@ SG.UI = class UI {
         <li><b>Zoning</b> tools paint districts: R-1-40,000 hillside lots, the Village (C-H), mixed-use housing sites (MU)…</li>
         <li><b>Private</b> tools file projects. ADUs and SB 9 duplexes must be approved by state law.</li>
         <li><b>City</b> tools build parks, fire stations and libraries with city money.</li>
-        <li><b>3D view</b>: right-drag (or Shift-drag) to rotate and tilt, Q/E and R/F from the keyboard, two-finger twist on touch. V or the 2D button switches to the flat map.</li>
+        <li><b>3D view</b>: right-drag (or Shift-drag) to rotate and tilt, Q/E and R/F from the keyboard, two-finger twist on touch. Zoom all the way in and tilt down for street-level views.</li>
+        <li><b>T</b> changes the time of day (sunset and night light up the town), <b>C</b> circles the camera, <b>V</b> switches to the flat map.</li>
         <li>Space pauses. Press Z for the zoning map. <b>[</b> and <b>]</b> change the brush size.</li>
       </ul>
       <div class="row"><button class="btn" id="m-start">Start planning</button></div>`);
@@ -512,11 +521,14 @@ SG.UI = class UI {
       <button class="btn danger" id="m-new">Start over</button>
       <button class="btn" id="m-help">How to play</button>
       <button class="btn" id="m-close">Close</button></div>
+      ${this.g.r3d ? `<div class="slider">3D graphics <select id="m-gfx">${[['auto', 'Automatic'], ['high', 'High (always full detail)'], ['low', 'Low (no shadows or animation)']]
+        .map(([v, l]) => `<option value="${v}" ${this.g.r3d.gfxMode === v ? 'selected' : ''}>${l}</option>`).join('')}</select></div>` : ''}
       <h3 style="margin-top:16px">Recent news</h3>
       <ul>${this.sim.news.slice(0, 10).map(n => `<li><span class="muted">${n.when}</span> ${n.msg}</li>`).join('') || '<li class="muted">Nothing yet.</li>'}</ul>
       <h3>History</h3>
       <ul>${this.sim.history.slice(-8).map(h => `<li>${h.y}: ${SG.fmtInt(h.pop)} residents, ${SG.fmtInt(h.units)} homes, ${SG.fmtMoney(h.funds)}</li>`).join('') || '<li class="muted">The first year is not over yet.</li>'}</ul>
       <p class="muted">Map data © OpenStreetMap contributors (ODbL), generated ${window.SARATOGA_MAP.generated}. Zoning districts are inferred from what is built and simplified for play; this is not the official Saratoga zoning map.</p>`);
+    if (this.$('m-gfx')) this.$('m-gfx').onchange = e => this.g.r3d.setGfx(e.target.value);
     this.$('m-save').onclick = () => { this.g.save(); this.closeModal(); };
     this.$('m-load').onclick = () => { this.g.load(); this.closeModal(); };
     this.$('m-new').onclick = () => { if (confirm('Throw away this city and start over?')) { this.g.newGame(); this.closeModal(); } };

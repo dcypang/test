@@ -70,7 +70,7 @@ SG.Game = class Game {
         this.refreshPanels();
       }
     }
-    this.renderer.draw();
+    this.renderer.draw(t);
     this.renderer.drawMinimap(document.getElementById('minimap'));
     requestAnimationFrame(t2 => this.frame(t2));
   }
