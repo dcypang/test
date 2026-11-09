@@ -9,9 +9,9 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:wght@400;700&family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700;12..96,800&family=IBM+Plex+Mono:wght@500&display=swap">
 <style>
-/* Layout: a living city diorama on top; below it, one planning step beside a live city report.
-   Category colors follow the land-use map convention: residential yellow, commercial red,
-   industrial purple, parks green. */
+/* Layout: the city (street view or lit model-table map) on top; below it one planning step
+   beside a live report and a feed of resident reactions. Category colors follow the
+   land-use map convention: residential yellow, commercial red, industrial purple, parks green. */
 :root{
   --bg:#E9EFEB; --surface:#FFFFFF; --surface-2:#DCE5E0; --ink:#13221C; --ink-2:#4A5D55; --line:#C3CFC9;
   --accent:#2443A6; --accent-ink:#FFFFFF; --accent-soft:#DCE3F7;
@@ -36,9 +36,8 @@
 body{background:var(--bg);color:var(--ink);font-family:var(--f-body);font-size:16px;line-height:1.5;margin:0}
 button{font:inherit;color:inherit}
 :focus-visible{outline:3px solid var(--accent);outline-offset:2px}
-.app{max-width:1180px;margin:0 auto;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:14px 40px;display:grid;gap:14px}
+.app{max-width:1220px;margin:0 auto;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:14px 40px;display:grid;gap:14px}
 
-/* top bar */
 .top{display:flex;flex-wrap:wrap;align-items:center;gap:10px 16px}
 .brand{font-family:var(--f-display);font-weight:800;font-size:1.35rem;letter-spacing:-.02em;display:flex;align-items:baseline;gap:8px;margin-right:auto}
 .brand small{font-family:var(--f-mono);font-weight:500;font-size:.72rem;letter-spacing:.08em;color:var(--ink-2);text-transform:uppercase}
@@ -48,26 +47,30 @@ button{font:inherit;color:inherit}
 .ghost{background:none;border:1px solid transparent;border-radius:999px;padding:6px 12px;cursor:pointer;color:var(--ink-2);text-decoration:underline;text-underline-offset:3px}
 .ghost:hover{color:var(--ink)}
 
-/* chapters */
 .chapters{display:flex;gap:6px;overflow-x:auto;padding-bottom:2px;scrollbar-width:thin}
 .chap{flex:0 0 auto;display:flex;align-items:center;gap:8px;border:1px solid var(--line);background:var(--surface);border-radius:999px;padding:7px 14px 7px 8px;cursor:pointer;font-weight:700}
 .chap .n{width:24px;height:24px;border-radius:50%;display:grid;place-items:center;font-family:var(--f-mono);font-size:.75rem;background:var(--surface-2);color:var(--ink-2)}
 .chap[aria-current="true"]{background:var(--ink);color:var(--bg);border-color:var(--ink)}
-.chap[aria-current="true"] .n{background:var(--chap-col);color:#13221C}
-.chap.done .n{background:var(--chap-col);color:#13221C}
+.chap[aria-current="true"] .n,.chap.done .n{background:var(--chap-col);color:#13221C}
 
-/* stage */
-.stage{position:relative;border-radius:var(--r);overflow:hidden;border:1px solid var(--line);background:var(--surface-2)}
-.stage canvas{display:block;width:100%;aspect-ratio:1000/440;max-width:100%}
-.stage .tag{position:absolute;left:10px;top:10px;font-family:var(--f-mono);font-size:.7rem;letter-spacing:.06em;text-transform:uppercase;background:color-mix(in srgb,var(--surface) 82%,transparent);border-radius:6px;padding:3px 8px;color:var(--ink-2)}
+.stage{position:relative;border-radius:var(--r);overflow:hidden;border:1px solid var(--line);background:#101820}
+.stage canvas{display:block;width:100%;aspect-ratio:1000/440;max-width:100%;touch-action:pan-y}
+.stage .tag{position:absolute;left:10px;top:10px;font-family:var(--f-mono);font-size:.7rem;letter-spacing:.06em;text-transform:uppercase;background:color-mix(in srgb,var(--surface) 85%,transparent);border-radius:6px;padding:3px 8px;color:var(--ink-2)}
+.viewtoggle{position:absolute;right:10px;top:10px;display:flex;background:color-mix(in srgb,var(--surface) 88%,transparent);border-radius:999px;padding:3px;gap:2px}
+.viewtoggle button{border:none;background:none;border-radius:999px;padding:4px 12px;font-size:.8rem;font-weight:700;cursor:pointer;color:var(--ink-2);min-height:30px}
+.viewtoggle button[aria-pressed="true"]{background:var(--ink);color:var(--bg)}
+.maplegend{display:flex;flex-wrap:wrap;gap:4px 14px;font-size:.8rem;color:var(--ink-2);margin-top:-6px}
+.maplegend span{display:inline-flex;align-items:center;gap:6px}
+.maplegend i{width:11px;height:11px;border-radius:3px;display:inline-block}
+.maplegend i.dot{border-radius:50%}
 
-/* main grid */
-.main{display:grid;grid-template-columns:minmax(0,1fr) 300px;gap:14px;align-items:start}
-@media (max-width:880px){.main{grid-template-columns:minmax(0,1fr)}}
-.panel,.report{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:18px 18px 16px;min-width:0}
+.main{display:grid;grid-template-columns:minmax(0,1fr) 310px;gap:14px;align-items:start}
+@media (max-width:900px){.main{grid-template-columns:minmax(0,1fr)}}
+.side{display:grid;gap:14px;min-width:0}
+.panel,.card{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:18px 18px 16px;min-width:0}
 .eyebrow{font-family:var(--f-mono);font-size:.72rem;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-2);display:flex;flex-wrap:wrap;gap:6px 12px;align-items:center}
 .steps{display:flex;gap:6px;flex-wrap:wrap}
-.stepchip{border:1px solid var(--line);background:var(--surface);border-radius:999px;padding:2px 10px;font-family:var(--f-mono);font-size:.72rem;cursor:pointer;color:var(--ink-2);letter-spacing:.02em;text-transform:none}
+.stepchip{border:1px solid var(--line);background:var(--surface);border-radius:999px;padding:2px 10px;font-family:var(--f-mono);font-size:.72rem;cursor:pointer;color:var(--ink-2);text-transform:none}
 .stepchip[aria-current="true"]{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
 h1,h2,h3{font-family:var(--f-display);letter-spacing:-.015em;text-wrap:balance;margin:0}
 .panel h2{font-size:clamp(1.4rem,3.2vw,1.9rem);font-weight:700;margin-top:8px;line-height:1.15}
@@ -78,47 +81,54 @@ h1,h2,h3{font-family:var(--f-display);letter-spacing:-.015em;text-wrap:balance;m
 .btn.primary{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
 .btn:disabled{opacity:.4;cursor:default}
 
-/* info box */
 .info{border-left:3px solid var(--accent);background:var(--accent-soft);padding:10px 14px;border-radius:0 10px 10px 0;font-size:.95rem;max-width:70ch}
 .info b{font-family:var(--f-display)}
-.info-btn{width:28px;height:28px;flex:0 0 28px;border-radius:50%;border:1px solid var(--line);background:var(--surface);font-family:Georgia,serif;font-style:italic;font-weight:700;cursor:pointer;font-size:.85rem;line-height:1;color:var(--ink)}
+.info-btn{width:28px;height:28px;flex:0 0 28px;border-radius:50%;border:1px solid var(--line);background:var(--surface);font-family:Georgia,serif;font-style:italic;font-weight:700;cursor:pointer;font-size:.85rem;line-height:1;color:var(--ink);padding:0}
 .info-btn[aria-pressed="true"]{background:var(--ink);color:var(--bg);border-color:var(--ink)}
 
-/* partition bar */
 .pbar-track{position:relative;height:72px;margin:6px 11px 0}
 .pbar-segs{position:absolute;inset:0;display:flex;border-radius:10px;overflow:hidden;box-shadow:inset 0 0 0 1px rgba(0,0,0,.08)}
-.seg{height:100%;display:flex;align-items:flex-end;justify-content:center;padding-bottom:8px;font-family:var(--f-mono);font-size:.82rem;white-space:nowrap;overflow:hidden;transition:width .05s}
+.seg{height:100%;display:flex;align-items:flex-end;justify-content:center;padding-bottom:8px;font-family:var(--f-mono);font-size:.82rem;white-space:nowrap;overflow:hidden}
 .handle{position:absolute;top:50%;width:24px;height:52px;margin:-26px 0 0 -12px;border-radius:12px;border:2px solid var(--ink);background:var(--surface);cursor:ew-resize;touch-action:none;padding:0;display:grid;place-items:center;z-index:2;box-shadow:0 2px 6px rgba(0,0,0,.25)}
 .handle::before{content:"";width:8px;height:18px;border-left:2px solid var(--ink-2);border-right:2px solid var(--ink-2)}
-.handle:active,.handle.drag{transform:scale(1.08)}
+.handle.drag{transform:scale(1.08)}
 .legend{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:6px 14px;margin-top:6px}
 .lg{display:flex;align-items:center;gap:8px;min-width:0}
 .lg .chip{width:14px;height:14px;border-radius:4px;flex:0 0 14px;box-shadow:inset 0 0 0 1px rgba(0,0,0,.15)}
 .lg .nm{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .lg .val{font-family:var(--f-mono);font-variant-numeric:tabular-nums;font-size:.9rem}
 
-/* fan */
 .fan{width:100%;max-width:540px;margin:0 auto;display:block;touch-action:none}
 .fan .fh{cursor:grab}
 .fan text{font-family:var(--f-mono);font-size:13px}
 
-/* single slider */
+.levels{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:18px}
+.lvl{display:grid;gap:8px}
+.tank{position:relative;height:210px;border-radius:12px;background:repeating-linear-gradient(to top,var(--surface-2) 0 1px,transparent 1px 21px),var(--surface);border:1px solid var(--line);cursor:ns-resize;touch-action:none;overflow:hidden}
+.tank .fill{position:absolute;left:0;right:0;bottom:0;background:var(--lc);opacity:.85;border-top:3px solid var(--lc)}
+.tank .icon{position:absolute;right:10px;bottom:10px;width:84px;height:84px;border-radius:20px;background:#F4F7FA;border:3px solid var(--lc);display:grid;place-items:center;box-shadow:0 2px 8px rgba(0,0,0,.15)}
+.tank .icon svg{width:60px;height:60px}
+.lvh{position:absolute;left:24%;width:52px;height:30px;margin:-15px 0 0 -26px;border-radius:9px;border:2px solid var(--ink);background:var(--surface);display:grid;place-items:center;padding:0;cursor:ns-resize;z-index:2}
+.lvh::before{content:"";width:20px;height:8px;border-top:2px solid var(--ink-2);border-bottom:2px solid var(--ink-2)}
+.lvl .cap{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.lvl .cap b{font-family:var(--f-display);font-size:1.1rem}
+.lvl .cap .v{font-family:var(--f-mono);font-variant-numeric:tabular-nums}
+.lvl .note{color:var(--ink-2);font-size:.88rem}
+
 .single{display:grid;gap:4px}
 .single .row{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap}
 .single output{font-family:var(--f-display);font-weight:800;font-size:2.6rem;line-height:1;font-variant-numeric:tabular-nums}
 .single .unit{color:var(--ink-2)}
 .range-wrap{position:relative;padding:8px 0 30px}
 input[type=range]{width:100%;accent-color:var(--accent);height:36px;margin:0}
-.mark{position:absolute;bottom:0;transform:translateX(-50%);font-family:var(--f-mono);font-size:.7rem;color:var(--ink-2);white-space:nowrap;text-align:center}
+.mark{position:absolute;bottom:0;transform:translateX(-50%);font-family:var(--f-mono);font-size:.7rem;color:var(--ink-2);white-space:nowrap}
 .mark::before{content:"";display:block;width:2px;height:8px;background:var(--ink-2);margin:0 auto 2px}
-.mark.end-l{transform:none}.mark.end-l::before{margin-left:0}
 .sub-slider{border-top:1px dashed var(--line);padding-top:12px;margin-top:4px}
 .sub-slider .lab{display:flex;align-items:center;gap:8px;font-weight:700}
 .sub-slider output{font-family:var(--f-mono);font-weight:500;font-size:1rem;margin-left:auto}
 
-/* rank */
 .rank{list-style:none;margin:0;padding:0;display:grid;gap:8px;touch-action:pan-y}
-.rk{display:grid;grid-template-columns:34px 34px minmax(0,1fr) auto;align-items:center;gap:10px;background:var(--surface-2);border:1px solid var(--line);border-radius:12px;padding:8px 10px;user-select:none}
+.rk{display:grid;grid-template-columns:30px 34px minmax(0,1fr) auto;align-items:center;gap:8px 10px;background:var(--surface-2);border:1px solid var(--line);border-radius:12px;padding:8px 10px;user-select:none}
 .rk.lift{box-shadow:0 8px 20px rgba(0,0,0,.22);border-color:var(--accent);position:relative;z-index:3}
 .rk .num{font-family:var(--f-display);font-weight:800;font-size:1.4rem;text-align:center;color:var(--ink-2)}
 .rk:first-child .num{color:var(--accent)}
@@ -127,27 +137,40 @@ input[type=range]{width:100%;accent-color:var(--accent);height:36px;margin:0}
 .rk .t b{display:block;font-family:var(--f-display);font-size:1.05rem}
 .rk .t span{color:var(--ink-2);font-size:.88rem;display:block}
 .rk .acts{display:flex;gap:4px;align-items:center}
+.rk .ex{grid-column:3/-1;display:flex;align-items:center;gap:6px 14px;flex-wrap:wrap;font-size:.85rem;color:var(--ink-2)}
+.rk .ex svg{width:62px;height:36px;flex:0 0 62px}
+.rk .ex .c{font-family:var(--f-mono);color:var(--ink);font-size:.95rem}
+.supply{display:flex;align-items:center;gap:8px;min-width:150px;flex:1}
+.supply .sb{flex:1;height:8px;border-radius:4px;background:var(--surface);position:relative;overflow:hidden;box-shadow:inset 0 0 0 1px var(--line)}
+.supply .sb i{position:absolute;inset:0 auto 0 0;background:var(--sc)}
+.supply .sb s{position:absolute;top:0;bottom:0;background:repeating-linear-gradient(45deg,transparent 0 3px,var(--ink-2) 3px 4px);opacity:.45}
+@media (max-width:560px){.rk .ex{grid-column:1/-1}.rk .t span{font-size:.82rem}}
 .mini{width:32px;height:32px;border-radius:8px;border:1px solid var(--line);background:var(--surface);cursor:pointer;font-size:.8rem;padding:0}
 .mini:disabled{opacity:.3;cursor:default}
-.weight{font-family:var(--f-mono);font-size:.72rem;color:var(--ink-2)}
 
-/* report */
-.report h3{font-size:1.05rem;display:flex;justify-content:space-between;align-items:baseline;gap:8px}
-.co2{margin:10px 0 14px;padding:12px;border-radius:10px;background:var(--surface-2)}
-.co2 .v{font-family:var(--f-display);font-weight:800;font-size:2rem;line-height:1;font-variant-numeric:tabular-nums}
-.co2 .u{color:var(--ink-2);font-size:.85rem}
+.card h3{font-size:1.05rem;display:flex;justify-content:space-between;align-items:baseline;gap:8px}
+.ringrow{display:flex;align-items:center;gap:14px;margin:10px 0 14px}
+.ring{width:84px;height:84px;flex:0 0 84px}
+.ring text{font-family:var(--f-display);font-weight:800}
+.co2 .v{font-family:var(--f-display);font-weight:800;font-size:1.7rem;line-height:1;font-variant-numeric:tabular-nums}
+.co2 .u{color:var(--ink-2);font-size:.82rem}
 .meters{display:grid;gap:12px}
 .meter .lbl{display:flex;justify-content:space-between;font-size:.9rem;gap:8px}
 .meter .lbl span:last-child{font-family:var(--f-mono);font-variant-numeric:tabular-nums}
 .bar{position:relative;height:10px;border-radius:6px;background:var(--surface-2);margin-top:4px}
 .bar i{position:absolute;inset:0 auto 0 0;border-radius:6px;background:var(--mcol);transition:width .25s}
 .bar s{position:absolute;top:-4px;bottom:-4px;width:2px;background:var(--ink);opacity:.7}
-.delta{font-family:var(--f-mono);font-size:.75rem;padding:1px 6px;border-radius:999px;margin-left:6px}
+.delta{font-family:var(--f-mono);font-size:.75rem;margin-left:6px}
 .delta.up{color:var(--good)}.delta.down{color:var(--bad)}
 .keynote{font-size:.78rem;color:var(--ink-2);margin-top:12px;display:flex;align-items:center;gap:6px}
 .keynote s{display:inline-block;width:2px;height:12px;background:var(--ink);opacity:.7}
+.feed{list-style:none;margin:10px 0 0;padding:0;display:grid;gap:8px}
+.feed li{display:grid;grid-template-columns:34px minmax(0,1fr);gap:10px;align-items:start;padding:8px;border-radius:10px;background:var(--surface-2);animation:pop .35s ease-out}
+.feed .av{width:34px;height:34px;border-radius:50%;display:grid;place-items:center;font-family:var(--f-display);font-weight:800;font-size:.85rem;color:#13221C;background:var(--mood)}
+.feed .who{font-family:var(--f-mono);font-size:.7rem;letter-spacing:.04em;color:var(--ink-2);text-transform:uppercase}
+.feed .tx{font-size:.92rem;line-height:1.35}
+@keyframes pop{from{transform:translateY(4px);opacity:.4}to{transform:none;opacity:1}}
 
-/* start + results */
 .start{display:grid;gap:14px}
 .start h1{font-size:clamp(1.8rem,5vw,2.8rem);font-weight:800;line-height:1.05;max-width:22ch}
 .start p{color:var(--ink-2);max-width:62ch;margin:0}
@@ -174,7 +197,7 @@ input[type=range]{width:100%;accent-color:var(--accent);height:36px;margin:0}
 .fb ul{margin:0;padding-left:0;list-style:none;display:grid;gap:8px}
 .fb li{padding:8px 10px;border-radius:8px;background:var(--surface-2);border-left:3px solid var(--c);font-size:.95rem}
 .muted{color:var(--ink-2);font-size:.85rem}
-@media (prefers-reduced-motion: reduce){*{transition:none!important}}
+@media (prefers-reduced-motion: reduce){*{transition:none!important;animation:none!important}}
 </style>
 </head>
 <body>
@@ -185,75 +208,103 @@ input[type=range]{width:100%;accent-color:var(--accent);height:36px;margin:0}
     <button class="ghost" id="restart" type="button" hidden>Start over</button>
   </header>
   <nav class="chapters" id="chapters" aria-label="Planning chapters" hidden></nav>
-  <div class="stage"><canvas id="scene" aria-label="Illustration of your city that changes as you plan"></canvas><span class="tag" id="stageTag">Your city in 2050</span></div>
+  <div class="stage">
+    <canvas id="scene" aria-label="Illustration of your city that changes as you plan"></canvas>
+    <span class="tag" id="stageTag">Your city in 2050</span>
+    <div class="viewtoggle" role="group" aria-label="City view">
+      <button type="button" id="vStreet" aria-pressed="true">Street</button>
+      <button type="button" id="vMap" aria-pressed="false">Map</button>
+    </div>
+  </div>
+  <div class="maplegend" id="mapLegend" hidden></div>
   <section class="start" id="start" hidden></section>
   <div class="main" id="main" hidden>
     <section class="panel" id="panel" aria-live="polite"></section>
-    <aside class="report" id="report"></aside>
+    <aside class="side">
+      <div class="card" id="report"></div>
+      <div class="card" id="voices"></div>
+    </aside>
   </div>
 </div>
 
 <script>
 "use strict";
 /* ================= data ================= */
+// pot: how well each renewable suits the city (1 = good). caps: most of the grid a source can supply by 2050.
 const CITIES = [
-  {id:'sf', name:'San Francisco', tag:'Foggy summers, strong Pacific wind, steep hills, very expensive land.',
-   sun:.8, wind:1.1, hydro:.7, heat:.3, flood:.8, land:1.35,
-   start:{energy:[22,11,13,9,43,2], storage:['battery','demand','rooftop','pumped','hydrogen'],
-     bmix:[55,15,30], green:14, live:[32,48,20], work:[40,20,15,25],
+  {id:'sf', name:'San Francisco', tag:'Foggy summers, strong Pacific wind, ocean waves, geothermal fields to the north, very expensive land.',
+   pot:{solar:.8,wind:1.1,geo:.9,wave:.8,hydro:.6}, heat:.3, cold:.35, flood:.8, land:1.35,
+   caps:{nuclear:.2,gas:.5,oil:.05,coal:.05}, gasCost:7,
+   start:{order:['renew','gas','nuclear','coal','oil'], renew:[40,20,15,5,20], battery:15, micro:5,
+     bmix:[55,15,30], green:14, live:[32,48,20], work:[40,20,15,25], retro:20, newStd:30,
      tech:['ev','av','bike','scooter','hsr'], tmix:[20,5,55,12,8], gmix:[70,25,5], canopy:14, roofs:3}},
-  {id:'phx', name:'Phoenix', tag:'Over 300 sunny days a year, extreme summer heat, little water.',
-   sun:1.3, wind:.6, hydro:.35, heat:1, flood:.3, land:.8,
-   start:{energy:[10,1,5,28,43,13], storage:['battery','rooftop','demand','hydrogen','pumped'],
-     bmix:[66,6,28], green:9, live:[72,23,5], work:[28,24,16,32],
+  {id:'phx', name:'Phoenix', tag:'Over 300 sunny days a year, extreme summer heat, no coastline and little water.',
+   pot:{solar:1.3,wind:.6,geo:.5,wave:0,hydro:.35}, heat:1, cold:.1, flood:.3, land:.8,
+   caps:{nuclear:.3,gas:.45,oil:.05,coal:.15}, gasCost:6.5,
+   start:{order:['gas','nuclear','coal','renew','oil'], renew:[55,10,5,0,30], battery:10, micro:3,
+     bmix:[66,6,28], green:9, live:[72,23,5], work:[28,24,16,32], retro:10, newStd:20,
      tech:['ev','av','scooter','bike','hsr'], tmix:[12,4,74,7,3], gmix:[55,40,5], canopy:10, roofs:1}},
-  {id:'osl', name:'Oslo', tag:'Long dark winters, forested hills, rivers that already power the grid.',
-   sun:.5, wind:.9, hydro:1.4, heat:.1, flood:.5, land:1.1,
-   start:{energy:[1,10,88,0,1,0], storage:['pumped','demand','battery','hydrogen','rooftop'],
-     bmix:[52,26,22], green:28, live:[24,60,16], work:[44,24,10,22],
+  {id:'osl', name:'Oslo', tag:'Long dark winters, forested hills, and rivers that already power most of the grid.',
+   pot:{solar:.5,wind:.9,geo:.2,wave:.5,hydro:1.4}, heat:.1, cold:1, flood:.5, land:1.1,
+   caps:{nuclear:.15,gas:.25,oil:.05,coal:.05}, gasCost:8,
+   start:{order:['renew','gas','oil','nuclear','coal'], renew:[3,12,0,0,85], battery:8, micro:5,
+     bmix:[52,26,22], green:28, live:[24,60,16], work:[44,24,10,22], retro:35, newStd:50,
      tech:['ev','bike','hsr','scooter','av'], tmix:[24,12,36,13,15], gmix:[55,40,5], canopy:30, roofs:8}},
-  {id:'sgp', name:'Singapore', tag:'Hot and humid all year, almost no spare land, heavy tropical rain.',
-   sun:.9, wind:.3, hydro:.1, heat:.9, flood:.95, land:1.5,
-   start:{energy:[5,0,0,0,94,1], storage:['battery','demand','rooftop','hydrogen','pumped'],
-     bmix:[44,26,30], green:16, live:[6,16,78], work:[36,26,24,14],
+  {id:'sgp', name:'Singapore', tag:'Hot and humid all year, almost no spare land, heavy tropical rain, calm winds.',
+   pot:{solar:.9,wind:.3,geo:.1,wave:.3,hydro:.05}, heat:.9, cold:0, flood:.95, land:1.5,
+   caps:{nuclear:.1,gas:.95,oil:.1,coal:.05}, gasCost:9,
+   start:{order:['gas','renew','oil','coal','nuclear'], renew:[90,5,0,5,0], battery:5, micro:2,
+     bmix:[44,26,30], green:16, live:[6,16,78], work:[36,26,24,14], retro:25, newStd:40,
      tech:['ev','av','scooter','bike','hsr'], tmix:[20,3,40,17,20], gmix:[70,26,4], canopy:26, roofs:10}}
 ];
 const CITY = Object.fromEntries(CITIES.map(c=>[c.id,c]));
+const fitWord = p=>p>=1?'an excellent fit':p>=.75?'a good fit':p>=.45?'a fair fit':p>=.2?'a poor fit':'barely possible';
 
-const ENERGY = [
-  {id:'solar', name:'Solar', color:'#E9B308', co2:45, lcoe:50, fact:'Large solar farms emit about 45 g of CO₂ per kWh over their lifetime, counting manufacturing. They only produce in daylight, so the evening needs storage or another source.'},
-  {id:'wind', name:'Wind', color:'#6CB8DC', co2:11, lcoe:45, fact:'Onshore wind has one of the smallest lifetime footprints, around 11 g CO₂ per kWh. Output follows the weather, which can leave calm nights short of power.'},
-  {id:'hydro', name:'Hydro', color:'#2F6DB5', co2:24, lcoe:65, fact:'Dams can raise or lower output within minutes, which makes them a good partner for solar and wind. A city needs rivers and terrain to use much of it.'},
-  {id:'nuclear', name:'Nuclear', color:'#8A6FC9', co2:12, lcoe:140, fact:'Nuclear runs day and night at about 12 g CO₂ per kWh. New plants take a decade or more to build and are among the most expensive sources per kWh.'},
-  {id:'gas', name:'Natural gas', color:'#8E959C', co2:490, lcoe:70, fact:'Gas plants start quickly when demand spikes, but each kWh releases about 490 g of CO₂, plus methane that leaks from wells and pipelines.'},
-  {id:'coal', name:'Coal', color:'#4A4540', co2:820, lcoe:110, fact:'Coal is the dirtiest common source: about 820 g CO₂ per kWh, plus soot and sulfur dioxide that harm the lungs of people living nearby.'}
+const SOURCES = [
+  {id:'nuclear', name:'Nuclear', color:'#8A6FC9', hint:'Steady day and night, slow and costly to build', fact:'Nuclear runs around the clock at about 12 g CO₂ per kWh. New plants take a decade or more to build, so only a limited share can come online by 2050.'},
+  {id:'renew', name:'Renewables', color:'#3FA66B', hint:'Clean, but limited by storage and geography', fact:'Renewables are the cleanest option, but how much of the grid they can run depends on your mix (next step) and on storage (step 3).'},
+  {id:'gas', name:'Natural gas', color:'#8E959C', hint:'Flexible and cheap, but emits CO₂', fact:'Gas plants start quickly when demand spikes. Each kWh releases about 490 g of CO₂, plus methane that leaks from wells and pipelines.'},
+  {id:'oil', name:'Oil', color:'#A0522D', hint:'Expensive and dirty, used mostly on islands', fact:'Burning oil for electricity emits about 650 g CO₂ per kWh and is one of the most expensive ways to make power.'},
+  {id:'coal', name:'Coal', color:'#4A4540', hint:'The dirtiest source on the grid', fact:'Coal emits about 820 g CO₂ per kWh, plus soot and sulfur dioxide that harm the lungs of people living nearby.'}
 ];
-const STORAGE = [
-  {id:'battery', name:'Grid batteries', hint:'Move midday solar into the evening', fit:c=>.72+.25*c.sun, fact:'Lithium-ion grid batteries return about 85–90% of the energy put into them and usually run for about four hours. They pair best with solar.'},
-  {id:'pumped', name:'Pumped hydro', hint:'Pump water uphill, release it when needed', fit:c=>.25+.6*c.hydro, fact:'Pumped hydro makes up more than 90% of the world’s grid storage capacity. It needs two reservoirs at different heights, so flat or dry cities struggle to build it.'},
-  {id:'hydrogen', name:'Green hydrogen', hint:'Store surplus power for weeks or seasons', fit:c=>.5+.1*c.wind, fact:'Turning electricity into hydrogen and back loses roughly 60–70% of the energy. In exchange it can be stored for whole seasons.'},
-  {id:'demand', name:'Smart demand', hint:'Run heaters and chargers when power is plentiful', fit:c=>.85, fact:'Smart thermostats, water heaters and car chargers can shift when they draw power. It is the cheapest form of flexibility because the equipment already exists.'},
-  {id:'rooftop', name:'Home solar + batteries', hint:'Every roof becomes a small power plant', fit:c=>.35+.5*c.sun, fact:'Rooftop systems avoid losses on long power lines and keep homes running during outages, but cost more per kWh than large solar farms.'}
+const RENEW = [
+  {id:'solar', name:'Solar', color:'#E9B308', cost:5, co2:45, firm:.2, fact:'Solar panels only produce in daylight, so evenings need storage.'},
+  {id:'wind', name:'Wind', color:'#6CB8DC', cost:4.5, co2:11, firm:.3, fact:'Wind is among the cheapest and cleanest sources, but output drops on calm days.'},
+  {id:'geo', name:'Geothermal', color:'#C8643A', cost:7, co2:38, firm:.95, fact:'Geothermal plants tap underground heat and run day and night, but only where hot rock sits near the surface.'},
+  {id:'wave', name:'Wave', color:'#2BA3A0', cost:18, co2:15, firm:.5, fact:'Wave machines turn ocean swells into power. The technology is still young and expensive, and it needs a coastline.'},
+  {id:'hydro', name:'Hydro', color:'#2F6DB5', cost:6.5, co2:24, firm:1, fact:'Dams can raise or lower output within minutes, making them a great partner for solar and wind, but they need rivers and valleys.'}
+];
+const STOREI = [
+  {id:'battery', name:'Battery storage', color:'#6CB8DC', note:'Share of the evening peak your batteries can cover', fact:'Grid batteries soak up midday solar and release it after sunset. They return about 85–90% of the energy stored, and let renewables supply more of the grid.',
+   icon:'<svg viewBox="0 0 60 60"><g fill="#2F4760"><rect x="6" y="24" width="15" height="22" rx="2"/><rect x="23" y="24" width="15" height="22" rx="2"/><rect x="40" y="24" width="15" height="22" rx="2"/><rect x="9" y="20" width="4" height="4"/><rect x="26" y="20" width="4" height="4"/><rect x="43" y="20" width="4" height="4"/></g><g stroke="#7FD18B" stroke-width="2"><path d="M10 33h6M13 30v6M27 33h6M30 30v6M44 33h6M47 30v6"/></g></svg>'},
+  {id:'micro', name:'Microgrids', color:'#E9A23B', note:'Share of neighborhoods that can run on their own', fact:'A microgrid pairs local solar or wind with batteries so a neighborhood keeps its lights on when the main grid fails in a storm or heat wave.',
+   icon:'<svg viewBox="0 0 60 60"><path d="M24 50V14" stroke="#2F4760" stroke-width="3"/><g fill="#2F4760"><path d="M24 14l-14-5 1-3 14 5z"/><path d="M24 14l9 12-3 2-8-12z"/><path d="M24 14l2-13 3 1-3 13z"/></g><circle cx="24" cy="14" r="2.5" fill="#2F4760"/><rect x="36" y="34" width="16" height="14" rx="2" fill="#2F4760"/><rect x="40" y="31" width="3" height="3" fill="#2F4760"/><path d="M40 41h8M44 38v6" stroke="#7FD18B" stroke-width="2"/><rect x="6" y="40" width="50" height="12" fill="none" stroke="#E9A23B" stroke-width="2" stroke-dasharray="3 3"/></svg>'}
+];
+const CONSERVE = [
+  {id:'retro', name:'Older buildings', color:'#5FAE7A', note:'Share retrofitted with insulation, new windows and heat pumps', fact:'Most buildings standing in 2050 already exist today. Insulation, better windows and electric heat pumps cut their energy use and end gas heating.',
+   icon:'<svg viewBox="0 0 60 60"><rect x="8" y="16" width="44" height="34" fill="#2F4760"/><path d="M6 16h48l-4-6H10z" fill="#1E3046"/><g fill="#C9DDEA"><rect x="12" y="21" width="6" height="6"/><rect x="21" y="21" width="6" height="6"/><rect x="33" y="21" width="6" height="6"/><rect x="42" y="21" width="6" height="6"/><rect x="12" y="32" width="6" height="6"/><rect x="42" y="32" width="6" height="6"/><path d="M26 50v-10a4 4 0 0 1 8 0v10z"/></g><circle cx="10" cy="46" r="6" fill="#5FAE7A"/><circle cx="51" cy="46" r="6" fill="#5FAE7A"/></svg>'},
+  {id:'newStd', name:'New construction', color:'#4C86D0', note:'Share of new buildings built all-electric and super-efficient', fact:'A building constructed to a zero-energy standard needs very little heating or cooling and can make its own power with rooftop solar. Building it right the first time is far cheaper than fixing it later.',
+   icon:'<svg viewBox="0 0 60 60"><rect x="8" y="14" width="44" height="36" fill="#2F4760"/><rect x="6" y="12" width="48" height="3" fill="#1E3046"/><g fill="#C9DDEA"><rect x="12" y="19" width="8" height="10"/><rect x="26" y="22" width="22" height="5"/><rect x="34" y="34" width="14" height="16"/><rect x="12" y="34" width="8" height="8"/></g><g fill="#5FAE7A"><circle cx="14" cy="49" r="2.5"/><circle cx="20" cy="49" r="2.5"/><circle cx="26" cy="49" r="2.5"/></g></svg>'}
 ];
 const LAND = [
-  {id:'res', name:'Residential', color:'#E8B931', fact:'Land zoned only for homes. Neighborhoods that are only housing mean longer trips to work and shops.'},
+  {id:'res', name:'Residential', color:'#E8B931', fact:'Land zoned only for homes. Areas that are only housing mean longer trips to work and shops.'},
   {id:'mixed', name:'Mixed-use', color:'#E07B2E', fact:'Shops and offices on the ground floor with homes above. Daily errands become a short walk, which cuts car trips.'},
   {id:'com', name:'Commercial', color:'#C8443A', fact:'Offices, stores, factories and parking. This land provides jobs and tax revenue, but empties out at night.'}
 ];
 const HOUSING = [
   {id:'sf', name:'Single-family', color:'#F3D98A', fact:'Detached houses with yards. Popular, but they use the most land, energy and car travel per household.'},
-  {id:'mf', name:'Multi-family', color:'#E1AE22', fact:'Townhouses and 3–6 story apartments. Shared walls cut heating and cooling needs, and there are enough neighbors to support a corner store and a bus line.'},
-  {id:'hr', name:'High-rise', color:'#A67708', fact:'Towers fit the most homes on the least land and can support rail, but they cost more per square foot to build.'}
+  {id:'mf', name:'Multi-family', color:'#E1AE22', fact:'Townhouses and 3–6 story apartments. Shared walls cut heating and cooling, and there are enough neighbors to support a corner store and a bus line.'},
+  {id:'hr', name:'High-rise', color:'#A67708', fact:'Towers fit the most homes on the least land and can support rail, but cost more per square foot to build.'}
 ];
 const WORK = [
-  {id:'off', name:'Office', color:'#C8443A', fact:'Office towers bring many jobs to a small area. Good transit is what keeps them from causing traffic jams.'},
+  {id:'off', name:'Office', color:'#C8443A', fact:'Office towers bring many jobs to a small area. Good transit keeps them from causing traffic jams.'},
   {id:'ret', name:'Retail', color:'#E8837A', fact:'Shops and restaurants make streets lively and walkable when they sit close to where people live.'},
   {id:'ind', name:'Industrial', color:'#7B5EA7', fact:'Factories and warehouses provide jobs but use lots of energy and can pollute nearby air.'},
   {id:'park', name:'Parking lots', color:'#9AA0A6', fact:'In many American downtowns parking takes up a large share of the land. Paved lots trap heat and send rainwater straight into drains.'}
 ];
 const TECH = [
   {id:'av', name:'Self-driving cars', hint:'Convenient, but cars may cruise empty between rides', fact:'Studies expect self-driving cars to add miles driven, because riding becomes easier and cars travel empty between passengers.'},
-  {id:'ev', name:'Electric cars', hint:'No tailpipe, but only as clean as your grid', fact:'An electric car has no tailpipe emissions. Its real footprint depends on how your city generates power, so it pairs well with a clean grid.'},
+  {id:'ev', name:'Electric cars', hint:'No tailpipe, but only as clean as your grid', fact:'An electric car has no tailpipe emissions. Its real footprint depends on how your city makes power, so it pairs well with a clean grid.'},
   {id:'hsr', name:'High-speed rail', hint:'Replaces short flights to nearby cities', fact:'Per passenger, high-speed rail emits a small fraction of a short flight. Lines are expensive and take many years to build.'},
   {id:'scooter', name:'E-scooters', hint:'Quick short trips that take little space', fact:'Shared scooters replace some short car trips, but they also replace walks, and early scooters often lasted only a few months.'},
   {id:'bike', name:'Bikeshare', hint:'Works best when there are protected bike lanes', fact:'Bikeshare is cheap and healthy, but use stays low unless riders have safe, separated bike lanes.'}
@@ -262,7 +313,7 @@ const STREET = [
   {id:'side', name:'Sidewalks', color:'#CDB98E', fact:'Wide sidewalks make walking pleasant, and walking is the cleanest trip there is.'},
   {id:'bike', name:'Bike lanes', color:'#3F9B5A', fact:'Protected bike lanes reliably bring more people out on bikes, including riders who would never cycle next to traffic.'},
   {id:'road', name:'Car lanes', color:'#6E757C', fact:'Car lanes move the fewest people per meter of street. Adding lanes tends to fill them again with new traffic.'},
-  {id:'bus', name:'Bus lanes', color:'#D0574B', fact:'A dedicated bus lane lets buses skip traffic, which makes them faster and more reliable. It is the cheapest form of rapid transit.'},
+  {id:'bus', name:'Bus lanes', color:'#D0574B', fact:'A dedicated bus lane lets buses skip traffic, making them faster and more reliable. It is the cheapest form of rapid transit.'},
   {id:'rail', name:'Rail lines', color:'#2F6DB5', fact:'Trains carry huge numbers of riders but cost the most to build. They only pay off where enough people live and work near stations.'}
 ];
 const GREEN = [
@@ -270,8 +321,7 @@ const GREEN = [
   {id:'gh', name:'Wildlife habitat', color:'#2F7A45', fact:'Native woods, wetlands and meadows support birds, pollinators and other animals, and they soak up stormwater.'},
   {id:'gf', name:'Urban farms', color:'#B3BE3A', fact:'Community gardens and urban farms grow fresh food nearby and teach people where food comes from.'}
 ];
-const STORE_BY = Object.fromEntries(STORAGE.map(s=>[s.id,s]));
-const TECH_BY = Object.fromEntries(TECH.map(s=>[s.id,s]));
+const SRC_BY = Object.fromEntries(SOURCES.map(s=>[s.id,s]));
 const RANKW = [.32,.26,.2,.14,.08];
 
 const CHAPTERS = [
@@ -279,83 +329,101 @@ const CHAPTERS = [
   {name:'Greenspace', col:'#6DB865'}, {name:'Report', col:'#9DB1FF'}
 ];
 const STEPS = [
-  {ch:0, short:'Mix', kind:'bar', items:ENERGY, path:['energy','mix'],
-   title:'Choose where your power comes from', lede:'Drag the handles to split your electricity among sources. Clean power cuts emissions, but solar and wind need help when the sun sets and the wind drops.'},
-  {ch:0, short:'Storage', kind:'rank', items:STORAGE, path:['energy','storage'],
-   title:'Rank your grid upgrades', lede:'Your budget goes to the top of the list first. Some options suit your city’s geography better than others.'},
-  {ch:1, short:'Zoning', kind:'bar', items:LAND, path:['buildings','mix'], extra:'green',
+  {ch:0, short:'Prioritize', kind:'rank', items:SOURCES, path:['energy','order'], extra:'sources',
+   title:'Prioritize your city’s energy sources', lede:'Power is bought from the top of your list first. Each source can only supply so much, and whatever is left comes from the next one down.'},
+  {ch:0, short:'Renew', kind:'fan', items:RENEW, path:['energy','renew'], cityFit:true,
+   title:'Balance your renewables', lede:'Split your renewable power among five technologies. Geography matters: tap the i to see how well each suits your city.'},
+  {ch:0, short:'Store', kind:'levels', items:STOREI, obj:'energy',
+   title:'How much energy will you store?', lede:'Drag each level up or down. Storage lets renewables run more of the grid and keeps the lights on in storms, but it costs money.'},
+  {ch:1, short:'Mix', kind:'bar', items:LAND, path:['buildings','mix'], extra:'green',
    title:'Zone your city’s land', lede:'Split the built-up land among homes, mixed-use blocks and commercial districts, then decide how much of the city stays green.'},
   {ch:1, short:'Live', kind:'fan', items:HOUSING, path:['buildings','live'],
-   title:'Balance your housing', lede:'Denser housing shortens trips and supports transit. Houses with yards give families space but spread the city out.'},
+   title:'Balance your housing mix', lede:'Denser housing shortens trips and supports transit. Houses with yards give families space but spread the city out.'},
   {ch:1, short:'Work', kind:'fan', items:WORK, path:['buildings','work'],
-   title:'Shape your commercial districts', lede:'Decide what fills the commercial land. Watch how much ends up as parking.'},
+   title:'Balance your commercial mix', lede:'Decide what fills the commercial land. Watch how much ends up as parking.'},
+  {ch:1, short:'Conserve', kind:'levels', items:CONSERVE, obj:'buildings',
+   title:'How efficient will your buildings be?', lede:'Upgrade the buildings you already have and set the bar for new ones. Both cut energy use, especially in cold or hot cities.'},
   {ch:2, short:'Tech', kind:'rank', items:TECH, path:['transport','tech'],
-   title:'Rank transportation technologies', lede:'Put the technologies you will invest in most at the top.'},
+   title:'Prioritize your transportation technologies', lede:'Put the technologies you will invest in most at the top.'},
   {ch:2, short:'Streets', kind:'bar', items:STREET, path:['transport','mix'],
    title:'Divide your street space', lede:'Every street has a fixed width. Space you give to buses, bikes and people on foot comes out of car lanes.'},
-  {ch:3, short:'Uses', kind:'bar', items:GREEN, path:['green','mix'],
+  {ch:3, short:'Mix', kind:'bar', items:GREEN, path:['green','mix'],
    title:'Decide what your green space is for', lede:'Your green land can be parks for people, habitat for wildlife, or farms for food.'},
   {ch:3, short:'Canopy', kind:'single', key:'canopy', max:60, unit:'of the city shaded by trees',
-   title:'Set your tree canopy', lede:'Street trees shade sidewalks and buildings, which cuts air-conditioning and keeps people safer in heat waves.',
+   title:'Adjust the coverage of your tree canopy', lede:'Street trees shade sidewalks and buildings, which cuts air-conditioning and keeps people safer in heat waves.',
    goal:[35,'Common city goal: 30–40%'], fact:'Shaded pavement can be many degrees cooler than pavement in full sun. Many cities have set canopy goals between 30% and 40%.'},
   {ch:3, short:'Roofs', kind:'single', key:'roofs', max:100, unit:'of flat roofs planted',
-   title:'Plant green roofs', lede:'Plants on rooftops soak up rain, cool the building below and give birds and insects a place to live.',
+   title:'How widely will you adopt green rooftops?', lede:'Plants on rooftops soak up rain, cool the building below and give birds and insects a place to live.',
    goal:[50,'Ambitious target: 50%'], fact:'A planted roof can hold back about half of the rain that falls on it over a year, and its surface stays far cooler than bare roofing on a hot day.'},
   {ch:4, short:'Report', kind:'results', title:'Your 2050 city report'}
 ];
+const yearAt = i=>2026+Math.round(i*24/(STEPS.length-1));
 
 /* ================= helpers ================= */
 const $ = s=>document.querySelector(s);
 const sum = a=>a.reduce((x,y)=>x+y,0);
 const c01 = v=>Math.max(0,Math.min(1,v));
 const c100 = v=>Math.max(0,Math.min(100,v));
-const pct = v=>Math.round(v*100)+'%';
 function el(tag,cls,html){const e=document.createElement(tag); if(cls)e.className=cls; if(html!=null)e.innerHTML=html; return e;}
 function esc(s){return String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));}
 function mulberry32(a){return function(){a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296}}
-function hash(s){let h=2166136261;for(const ch of s){h^=ch.charCodeAt(0);h=Math.imul(h,16777619)}return h>>>0}
+function hash(s){let h=2166136261;for(const ch of String(s)){h^=ch.charCodeAt(0);h=Math.imul(h,16777619)}return h>>>0}
 function alloc(n,w){const t=sum(w)||1;const raw=w.map(x=>x/t*n);const base=raw.map(Math.floor);let rem=n-sum(base);const ord=raw.map((r,i)=>[r-base[i],i]).sort((a,b)=>b[0]-a[0]);for(let k=0;k<rem;k++)base[ord[k%ord.length][1]]++;return base;}
-function lum(hex){const n=parseInt(hex.slice(1),16);const r=(n>>16)/255,g=(n>>8&255)/255,b=(n&255)/255;return .2126*r+.7152*g+.0722*b;}
+function lum(hex){const n=parseInt(hex.slice(1),16);return .2126*(n>>16)/255+.7152*(n>>8&255)/255+.0722*(n&255)/255;}
 function textOn(hex){return lum(hex)>.45?'#13221C':'#FFFFFF';}
-function mixHex(a,b,t){const A=parseInt(a.slice(1),16),B=parseInt(b.slice(1),16);const f=(s)=>Math.round(((A>>s)&255)*(1-t)+((B>>s)&255)*t);return `rgb(${f(16)},${f(8)},${f(0)})`;}
+function mixHex(a,b,t){const A=parseInt(a.slice(1),16),B=parseInt(b.slice(1),16);const f=s=>Math.round(((A>>s)&255)*(1-t)+((B>>s)&255)*t);return `rgb(${f(16)},${f(8)},${f(0)})`;}
 function isDark(){const t=document.documentElement.dataset.theme;if(t==='dark')return true;if(t==='light')return false;return matchMedia('(prefers-color-scheme: dark)').matches;}
+const factOf = it=>typeof it.fact==='function'?it.fact():it.fact;
 const reduceMotion = matchMedia('(prefers-reduced-motion: reduce)');
 
 /* ================= state ================= */
-let S=null, M=null, BASE=null;
+let S=null, M=null, BASE=null, VIEW='street';
 function newState(id){
   const s=CITY[id].start;
-  return {city:id, step:0, visited:[0],
-    energy:{mix:[...s.energy], storage:[...s.storage]},
-    buildings:{mix:[...s.bmix], green:s.green, live:[...s.live], work:[...s.work]},
+  return {city:id, step:0,
+    energy:{order:[...s.order], renew:[...s.renew], battery:s.battery, micro:s.micro},
+    buildings:{mix:[...s.bmix], green:s.green, live:[...s.live], work:[...s.work], retro:s.retro, newStd:s.newStd},
     transport:{tech:[...s.tech], mix:[...s.tmix]},
     green:{mix:[...s.gmix], canopy:s.canopy, roofs:s.roofs}};
 }
 const getP = p=>S[p[0]][p[1]];
 const setP = (p,v)=>{S[p[0]][p[1]]=v};
-const KEY='greenprint-city-v1';
-function save(){try{localStorage.setItem(KEY,JSON.stringify(S))}catch(e){}}
-function load(){try{const v=JSON.parse(localStorage.getItem(KEY));if(v&&CITY[v.city]&&v.energy)return v;}catch(e){}return null;}
+const KEY='greenprint-city-v2';
+function save(){try{localStorage.setItem(KEY,JSON.stringify({S,VIEW}))}catch(e){}}
+function load(){try{const v=JSON.parse(localStorage.getItem(KEY));if(v&&v.S&&CITY[v.S.city]&&v.S.energy&&v.S.energy.order){VIEW=v.VIEW==='map'?'map':'street';return v.S;}}catch(e){}return null;}
 
 /* ================= model ================= */
+function energy(st,city){
+  const R=st.energy.renew.map(v=>v/100);
+  const p=RENEW.map(r=>city.pot[r.id]);
+  const firm=sum(R.map((s,k)=>s*RENEW[k].firm));
+  const quality=sum(R.map((s,k)=>s*Math.min(1,p[k])));
+  const bat=st.energy.battery/100, mic=st.energy.micro/100;
+  const renewCap=c01((.3+.6*firm+.5*bat+.2*mic)*(.5+.5*quality));
+  const renewCost=sum(R.map((s,k)=>s*RENEW[k].cost/Math.max(.12,p[k])));
+  const renewCo2=sum(R.map((s,k)=>s*RENEW[k].co2));
+  const src={nuclear:{cap:city.caps.nuclear,cost:14,co2:12},renew:{cap:renewCap,cost:renewCost,co2:renewCo2},
+    gas:{cap:city.caps.gas,cost:city.gasCost,co2:490},oil:{cap:city.caps.oil,cost:20,co2:650},coal:{cap:city.caps.coal,cost:11,co2:820}};
+  let left=1;const share={};
+  st.energy.order.forEach(id=>{const s=Math.min(left,src[id].cap);share[id]=s;left-=s;});
+  const imports=Math.max(0,left);
+  const co2=sum(Object.keys(share).map(k=>share[k]*src[k].co2))+imports*500;
+  const cost=sum(Object.keys(share).map(k=>share[k]*src[k].cost))+imports*15+bat*2+mic*1.2;
+  const firmShare=share.nuclear+share.gas+share.oil+share.coal+share.renew*firm;
+  const reliab=c100(55+25*mic+12*bat+15*firmShare-imports*150);
+  const gen={nuclear:share.nuclear,gas:share.gas,oil:share.oil,coal:share.coal};
+  RENEW.forEach((r,k)=>gen[r.id]=share.renew*R[k]);
+  return {R,p,firm,quality,bat,mic,renewCap,src,share,imports,co2,cost,reliab,gen};
+}
 function compute(st){
   const city=CITY[st.city];
-  const E=st.energy.mix.map(v=>v/100);
-  const co2=sum(E.map((e,i)=>e*ENERGY[i].co2));
-  const pot=[city.sun,city.wind,city.hydro,1,1,1];
-  let eCost=sum(E.map((e,i)=>e*ENERGY[i].lcoe/Math.max(.15,pot[i])));
-  const sqRaw=sum(st.energy.storage.map((id,i)=>RANKW[i]*Math.min(1.1,STORE_BY[id].fit(city))));
-  const sq=c01((sqRaw-.5)*2.2);
-  const variable=E[0]+E[1];
-  const coverage=.3+.45*sq+E[2]*.4*Math.min(1,city.hydro);
-  const shortfall=Math.max(0,variable-coverage);
-  const reliab=c100(100-shortfall*230);
-  eCost+=60*shortfall+25*Math.max(0,variable-.3)*(1-sq*.6);
-
+  const en=energy(st,city);
+  const co2=en.co2;
   const [res,mixed,com]=st.buildings.mix.map(v=>v/100);
   const g=st.buildings.green/100;
   const [sfh,mfh,hr]=st.buildings.live.map(v=>v/100);
-  const [off,ret,ind,park]=st.buildings.work.map(v=>v/100);
+  const [,ret,ind,park]=st.buildings.work.map(v=>v/100);
+  const retro=st.buildings.retro/100, newStd=st.buildings.newStd/100;
   const D=sfh*1+mfh*3.5+hr*8;
   const Mx=c01(mixed*1.6+ret*com*1.2);
   const balance=1-Math.min(1,Math.abs((res+mixed*.5)-.6)*2.5);
@@ -374,33 +442,36 @@ function compute(st){
   const canopy=st.green.canopy, roofs=st.green.roofs;
   const [gp,gh,gf]=st.green.mix.map(v=>v/100);
   const coolCut=(1-.12*roofs/100*city.heat)*(1-.18*canopy/60*city.heat);
-  const elecUse=6.5*(1.25-.05*D)*coolCut+car*evAdopt*2;
-  const em={power:elecUse*co2/1000, cars:4.2*car*carMult*(1-evAdopt), transit:.6*transit*(.3+.7*co2/820), trips:.9*(1-2*tw('hsr')), industry:indLand*8};
+  const effic=(1-.22*retro-.12*newStd);
+  const heatPump=city.cold*1.6*(.7*retro+.3*newStd);
+  const elecUse=6.5*(1.25-.05*D)*coolCut*effic+heatPump*.35+car*evAdopt*2;
+  const em={power:elecUse*co2/1000, heating:city.cold*2.2*(1-.75*retro)*(1-.3*newStd)*(1.2-.05*D),
+    cars:4.2*car*carMult*(1-evAdopt), transit:.6*transit*(.3+.7*co2/820), trips:.9*(1-2*tw('hsr')), industry:indLand*8};
   const total=sum(Object.values(em));
 
   const climate=c100(100-(total-.8)*11);
-  const eAff=c100(100-(eCost-45)*1.1);
+  const eAff=c100(100-(en.cost-4.5)*8);
   const hAff=c100(35+7*D-25*(city.land-1)+15*Mx-120*parkLand-30*g);
   const infra=T[0]*.2+T[1]*.25+T[2]+T[3]*.6+T[4]*1.5;
   const tAff=c100(100-35*infra-40*car);
   const techCost=30*(tw('av')+tw('hsr')*1.1+tw('ev')*.4+tw('scooter')*.1);
-  const afford=c100((eAff+hAff+tAff)/3-techCost*.5-roofs*.1-canopy*.08+8);
+  const afford=c100((eAff+hAff+tAff)/3-techCost*.5-roofs*.1-canopy*.08-retro*6-newStd*3+8+(city.cold+city.heat)*4*(retro+newStd));
 
-  const aq=c100(100-E[5]*90-E[4]*30-car*35-indLand*150);
+  const aq=c100(100-en.gen.coal*90-en.gen.oil*70-en.gen.gas*30-en.imports*20-car*35-indLand*150-city.cold*20*(1-retro));
   const move=c100(active*140+Mx*30+transit*40);
   const greenAccess=c100(g*170*(gp+.5*gh+.3*gf)+canopy*1.1);
-  const daily=c100(55+balance*25-parkLand*200-Math.max(0,D-6.5)*10+sfh*10+tw('bike')*40+tw('hsr')*20+tw('av')*15);
+  const daily=c100(55+balance*25-parkLand*200-Math.max(0,D-6.5)*10+sfh*10+tw('bike')*40+tw('hsr')*20+tw('av')*15+retro*8);
   const live=c100(.3*aq+.25*move+.25*greenAccess+.2*daily);
 
   const biodiv=c100(8+g*gh*420+g*gp*90+g*gf*40+canopy*.9+roofs*.2);
-  const heatRes=c100(25+canopy*1.3+roofs*.35+g*70-parkLand*120);
-  const floodRes=c100(25+g*110+roofs*.45+canopy*.4-T[2]*20-parkLand*100);
-  const nature=c100(.3*biodiv+.2*heatRes+.2*floodRes+.3*reliab);
+  const heatRes=c100(25+canopy*1.3+roofs*.35+g*70-parkLand*120+retro*10);
+  const floodRes=c100(25+g*110+roofs*.45+canopy*.4-T[2]*20-parkLand*100+en.mic*15);
+  const nature=c100(.3*biodiv+.2*heatRes+.2*floodRes+.3*en.reliab);
 
   const scores={climate,afford,live,nature};
   const overall=(climate+afford+live+nature)/4;
-  return {co2,eCost,reliab,variable,coverage,shortfall,sq,D,Mx,balance,parkLand,indLand,g,active,transit,car,evAdopt,em,total,
-    scores,overall,aq,biodiv,heatRes,floodRes,tw,E,T,city,canopy,roofs,gp,gh,gf,sfh,hr};
+  return {en,D,Mx,balance,parkLand,indLand,g,active,transit,car,evAdopt,em,total,scores,overall,aq,biodiv,heatRes,floodRes,
+    tw,T,city,canopy,roofs,gp,gh,gf,sfh,hr,retro,newStd};
 }
 const METERS=[
   {k:'climate', name:'Climate', col:'#3FA66B', desc:'How little CO₂ the city emits'},
@@ -410,28 +481,29 @@ const METERS=[
 ];
 function grade(v){return v>=80?['A','#23794A']:v>=68?['B','#4F8A2B']:v>=55?['C','#A8790C']:v>=42?['D','#C0612A']:['F','#B23A2E'];}
 
-/* ================= scene ================= */
+/* ================= street scene ================= */
 const SW=1000, SH=440, GY=360;
 const BSPEC={house:{w:[30,40],h:[30,42]},mid:{w:[42,54],h:[78,118]},tower:{w:[40,54],h:[175,250]},mixed:{w:[48,60],h:[96,140]},
   office:{w:[46,62],h:[145,225]},retail:{w:[54,70],h:[38,52]},industrial:{w:[66,80],h:[48,62]},parking:{w:[62,76],h:[42,56]}};
-const ZCOL={house:'#F3D98A',mid:'#E1AE22',tower:'#A67708',mixed:'#E07B2E',office:'#C8443A',retail:'#E8837A',industrial:'#7B5EA7',parking:'#9AA0A6'};
+const ZCOL={house:'#F3D98A',mid:'#E1AE22',tower:'#A67708',mixed:'#E07B2E',office:'#C8443A',retail:'#E8837A',industrial:'#7B5EA7',parking:'#9AA0A6',
+  park:'#6DB865',habitat:'#2F7A45',farm:'#B3BE3A'};
 function pal(d){return d?{
   bld:['#1E3046','#24394F','#1A2A3D'],win:'#2C4259',lit:'#F3CF7A',house:'#2B3D54',roof:'#121D29',glass:'#2A4863',
   hill1:'#14241D',hill2:'#1A3026',grass:'#2D5B3A',tree:['#2F6B43','#285C3A','#3A7A4C'],trunk:'#4A3A2E',conifer:'#22543A',
   side:'#3B3935',bike:'#2C5A3B',bus:'#6B302B',road:'#2A2F35',rail:'#33373C',line:'#C9C2A8',steel:'#9AA3AC',
   car:['#C8D3DE','#7FA6C8','#D98C5F','#8E9AA6'],busBody:'#D9534A',train:'#5C8FD6',person:'#CBD5DF',
-  smoke:'#7E776C',steam:'#B9C2CC',panel:'#2B4F8A',concrete:'#59636F',water:'#24507A',cloud:'#26364A',farm:'#5E6B2A',crop:'#8FA33A',deer:'#B9A58A'
+  smoke:'#7E776C',steam:'#B9C2CC',panel:'#2B4F8A',concrete:'#59636F',water:'#24507A',sea:'#1C3A5A',cloud:'#26364A',farm:'#5E6B2A',crop:'#8FA33A',deer:'#B9A58A',batt:'#5C7A96'
 }:{
   bld:['#46698C','#557A9C','#3D5E7F'],win:'#C9DDEA',lit:'#FFF4C9',house:'#6F8DA8',roof:'#2F4760',glass:'#86AFCB',
   hill1:'#A9C9B6',hill2:'#8DB59D',grass:'#5E9E62',tree:['#4E9A5B','#3F8A4E','#5DAA66'],trunk:'#6B4E3A',conifer:'#2F7A45',
   side:'#DCD4C2',bike:'#86C495',bus:'#E08A80',road:'#5B636B',rail:'#9399A0',line:'#F4EFD8',steel:'#4B535B',
   car:['#F2F4F6','#2F6DB5','#D9622B','#3C4650'],busBody:'#C8443A',train:'#2F6DB5',person:'#2A3540',
-  smoke:'#6E675C',steam:'#FFFFFF',panel:'#1F3D73',concrete:'#C9CFD5',water:'#4E8FC7',cloud:'#FFFFFF',farm:'#9C7A4E',crop:'#7FA83A',deer:'#5B4632'
+  smoke:'#6E675C',steam:'#FFFFFF',panel:'#1F3D73',concrete:'#C9CFD5',water:'#4E8FC7',sea:'#5D9CCB',cloud:'#FFFFFF',farm:'#9C7A4E',crop:'#7FA83A',deer:'#5B4632',batt:'#E6EBEF'
 };}
 const STARS=(()=>{const r=mulberry32(7);return Array.from({length:60},()=>[r()*SW,r()*230,r()*1.2+.4]);})();
 
 class Scene{
-  constructor(cv){this.cv=cv;this.ctx=cv.getContext('2d');this.key='';this.items=[];this.t0=performance.now();this.raf=0;
+  constructor(cv){this.cv=cv;this.ctx=cv.getContext('2d');this.key='';this.mkey='';this.items=[];this.t0=performance.now();this.raf=0;
     new ResizeObserver(()=>{this.resize();this.draw(this.now())}).observe(cv);
     document.addEventListener('visibilitychange',()=>this.loop());
   }
@@ -439,8 +511,9 @@ class Scene{
   resize(){const w=this.cv.clientWidth||600;const dpr=Math.min(2,window.devicePixelRatio||1);this.cv.width=Math.round(w*dpr);this.cv.height=Math.round(w*SH/SW*dpr);this.s=this.cv.width/SW;}
   loop(){cancelAnimationFrame(this.raf);if(reduceMotion.matches||document.hidden){this.draw(0);return;}
     const f=()=>{this.draw(this.now());this.raf=requestAnimationFrame(f)};this.raf=requestAnimationFrame(f);}
+  draw(t){if(!S||!M)return;this.ctx.setTransform(this.s,0,0,this.s,0,0);if(VIEW==='map')this.drawMap(t);else this.drawStreet(t);}
   layout(st){
-    const key=JSON.stringify([st.city,st.buildings,st.green]);
+    const key=JSON.stringify([st.city,st.buildings.mix,st.buildings.green,st.buildings.live,st.buildings.work,st.green]);
     if(key===this.key)return; this.key=key;
     const rnd=mulberry32(hash(st.city)), N=26;
     const g=st.buildings.green/100;
@@ -455,13 +528,11 @@ class Scene{
     const n=blds.length,arr=new Array(n),ctr=Math.floor(n/2),pos=[ctr];
     for(let d=1;pos.length<n;d++){if(ctr-d>=0)pos.push(ctr-d);if(ctr+d<n&&pos.length<n)pos.push(ctr+d);}
     blds.forEach((bb,k)=>arr[pos[k]]=bb);
-    // green roofs + rooftop solar on flat roofs, stable order
     const flat=arr.filter(bb=>bb.type!=='house').sort((x,y)=>x.q[2]-y.q[2]);
     const nGR=Math.round(flat.length*st.green.roofs/100);
     flat.forEach((bb,k)=>bb.green=k<nGR);
     const gk=alloc(nPark,st.green.mix); const parks=[];
     ['park','habitat','farm'].forEach((t,k)=>{for(let j=0;j<gk[k];j++)parks.push({type:t,w:t==='park'?58:62,h:0,q:R[N+parks.length],park:true})});
-    // interleave parks so they never cluster
     const sq=[];let pi=0;
     for(let k=0;k<=n;k++){while(pi<parks.length&&Math.round((pi+1)*n/(parks.length+1))===k){sq.push(parks[pi++])}if(k<n)sq.push(arr[k]);}
     while(pi<parks.length)sq.push(parks[pi++]);
@@ -472,13 +543,10 @@ class Scene{
     const tr=mulberry32(hash(st.city)+3);
     this.treeSeeds=Array.from({length:60},()=>[tr(),tr(),tr()]);
   }
-  draw(t){
-    if(!S||!M){return}
+  drawStreet(t){
     this.layout(S);
-    const ctx=this.ctx; ctx.setTransform(this.s,0,0,this.s,0,0);
-    const d=isDark(), P=pal(d), E=M.E;
-    const smog=c01(E[5]*1.1+E[4]*.45+M.car*.25-.08);
-    // sky
+    const ctx=this.ctx, d=isDark(), P=pal(d), G=M.en.gen;
+    const smog=c01(G.coal*1.1+G.oil*.8+G.gas*.45+M.en.imports*.4+M.car*.25+M.city.cold*.15*(1-M.retro)-.08);
     const sky=ctx.createLinearGradient(0,0,0,GY);
     sky.addColorStop(0,d?mixHex('#07122A','#231C14',smog):mixHex('#79B6E2','#A69B80',smog));
     sky.addColorStop(1,d?mixHex('#1E3552','#3E3426',smog):mixHex('#DDF0F6','#DCCDA6',smog));
@@ -487,65 +555,59 @@ class Scene{
     ctx.globalAlpha=1-smog*.6;ctx.fillStyle=d?'#E9ECF2':'#FFE8A3';ctx.beginPath();ctx.arc(860,68,d?20:28,0,7);ctx.fill();
     if(d){ctx.fillStyle=mixHex('#07122A','#231C14',smog);ctx.beginPath();ctx.arc(869,62,18,0,7);ctx.fill();}
     ctx.globalAlpha=1;
-    // clouds
     ctx.fillStyle=P.cloud;ctx.globalAlpha=d?.5:.75;
     for(let k=0;k<3;k++){const x=((k*380+t*6)%(SW+200))-100,y=48+k*34;this.cloud(x,y,1-k*.15)}
     ctx.globalAlpha=1;
-    // hills
+    const sea=G.wave>0;
+    if(sea){ctx.fillStyle=P.sea;ctx.fillRect(560,286,440,24);
+      const nb=Math.max(1,Math.min(10,Math.round(G.wave*80)));for(let k=0;k<nb;k++){const x=585+k*40,y=296+Math.sin(t*2+k)*2.5;ctx.fillStyle='#E9A23B';ctx.fillRect(x-7,y-2,14,4);ctx.fillStyle=P.steel;ctx.fillRect(x-1,y-9,2,7);}}
     ctx.fillStyle=P.hill1;ctx.beginPath();ctx.moveTo(0,300);
-    for(let x=0;x<=SW;x+=20)ctx.lineTo(x,282+Math.sin(x/90)*14+Math.sin(x/37)*5);ctx.lineTo(SW,GY);ctx.lineTo(0,GY);ctx.fill();
-    this.energy(t,P,E,smog);
+    for(let x=0;x<=SW;x+=20){const flat=sea&&x>560;ctx.lineTo(x,(flat?304:282)+Math.sin(x/90)*(flat?3:14)+Math.sin(x/37)*(flat?1:5));}
+    ctx.lineTo(SW,GY);ctx.lineTo(0,GY);ctx.fill();
+    this.energy(t,P,G,d);
     ctx.fillStyle=P.hill2;ctx.beginPath();ctx.moveTo(0,320);
     for(let x=0;x<=SW;x+=20)ctx.lineTo(x,318+Math.sin(x/120+2)*10);ctx.lineTo(SW,GY);ctx.lineTo(0,GY);ctx.fill();
-    // birds
     const nb=Math.max(0,Math.round((M.biodiv-35)/9));
     ctx.strokeStyle=d?'#C8D2DC':'#2A3540';ctx.lineWidth=1.6;
     for(let k=0;k<nb;k++){const x=((k*137+t*(28+k*3))%(SW+80))-40,y=120+((k*53)%90)+Math.sin(t*2+k)*4,f=Math.sin(t*8+k)*3;
       ctx.beginPath();ctx.moveTo(x-6,y-f);ctx.quadraticCurveTo(x-3,y-3,x,y);ctx.quadraticCurveTo(x+3,y-3,x+6,y-f);ctx.stroke();}
-    // buildings & parks
-    const solarShare=c01(E[0]/40);
+    const solarShare=c01(G.solar/.35);
     let solarIdx=0;
-    this.items.forEach((it,k)=>{if(it.park)this.parkSlot(it,P,t,k);else{this.building(it,P,d,k,solarShare,solarIdx);if(!it.green&&it.type!=='parking')solarIdx++;}});
-    // canopy trees along the street
+    this.items.forEach((it,k)=>{if(it.park)this.parkSlot(it,P);else{this.building(it,P,d,k,solarShare,solarIdx);if(!it.green&&it.type!=='parking')solarIdx++;}});
     const nT=Math.round(S.green.canopy*.75);
     for(let k=0;k<nT;k++){const s=this.treeSeeds[k%60];const x=((k+.5)/nT)*SW+(s[0]-.5)*14;this.tree(x,GY+2,9+s[1]*8,P.tree[k%3],P)}
     ctx.fillStyle=P.grass;ctx.fillRect(0,GY-2,SW,5);
     this.street(t,P,d);
   }
   cloud(x,y,s){const c=this.ctx;c.beginPath();c.arc(x,y,16*s,0,7);c.arc(x+18*s,y-8*s,20*s,0,7);c.arc(x+40*s,y,15*s,0,7);c.rect(x,y,40*s,14*s);c.fill();}
-  puffs(x,y,col,n,t,strength,dark){
-    const c=this.ctx;c.fillStyle=col;
+  puffs(x,y,col,n,t,strength){const c=this.ctx;c.fillStyle=col;
     for(let k=0;k<n;k++){const ph=(t*.25+k/n)%1;c.globalAlpha=(1-ph)*strength;c.beginPath();c.arc(x+ph*40+Math.sin(ph*6+k)*4,y-ph*70,5+ph*16,0,7);c.fill();}
-    c.globalAlpha=1;
-  }
-  energy(t,P,E,smog){
+    c.globalAlpha=1;}
+  energy(t,P,G,d){
     const c=this.ctx;
-    // hydro dam at far left
-    if(E[2]>0){const s=.6+.4*c01(E[2]/.5);c.fillStyle=P.water;c.beginPath();c.moveTo(0,262);c.lineTo(70*s,262);c.lineTo(70*s,300);c.lineTo(0,300);c.fill();
+    if(G.hydro>0){const s=.6+.4*c01(G.hydro/.4);c.fillStyle=P.water;c.fillRect(0,262,70*s,38);
       c.fillStyle=P.concrete;c.beginPath();c.moveTo(70*s,256);c.lineTo(82*s,256);c.lineTo(96*s,312);c.lineTo(70*s,312);c.fill();
       c.fillStyle=P.water;c.globalAlpha=.6;c.fillRect(84*s,300,8,12);c.globalAlpha=1;}
-    // solar farm, left foothills
-    const ns=Math.round(E[0]*30);
+    const ns=Math.round(G.solar*36);
     for(let k=0;k<ns;k++){const col=k%10,row=Math.floor(k/10);const x=110+col*14+row*6,y=300+row*8;
-      c.fillStyle=P.panel;c.beginPath();c.moveTo(x,y);c.lineTo(x+11,y);c.lineTo(x+8,y-6);c.lineTo(x-3,y-6);c.fill();
-      c.strokeStyle=P.steel;c.lineWidth=.6;c.stroke();}
-    // wind turbines spread across the horizon
-    const nw=Math.min(14,Math.round(E[1]*28));
-    for(let k=0;k<nw;k++){const x=290+((k*167)%640)+(k%2)*20,by=290+Math.sin(x/90)*12,H=95+(k*37%40);
-      this.turbine(x,by,H,t*1.6+k,P);}
-    // nuclear cooling towers, right
-    if(E[3]>0){const nn=E[3]>.25?2:1;for(let k=0;k<nn;k++){const x=935-k*40,by=304;
+      c.fillStyle=P.panel;c.beginPath();c.moveTo(x,y);c.lineTo(x+11,y);c.lineTo(x+8,y-6);c.lineTo(x-3,y-6);c.fill();}
+    const nbt=Math.round(M.en.bat*8);
+    for(let k=0;k<nbt;k++){const x=118+k*17,y=334;c.fillStyle=P.batt;c.fillRect(x,y-9,14,9);c.fillStyle='#4FB36A';c.fillRect(x+2,y-6,10,2);}
+    if(G.geo>0){const ng=Math.min(5,Math.ceil(G.geo*12));for(let k=0;k<ng;k++){const x=250+k*36,by=300;
+      c.fillStyle=P.concrete;c.fillRect(x-12,by-14,24,14);c.fillStyle=P.steel;c.fillRect(x+6,by-24,4,10);this.puffs(x+8,by-26,P.steam,4,t+k*.7,.55);}}
+    const nw=Math.min(14,Math.round(G.wind*30));
+    for(let k=0;k<nw;k++){const x=290+((k*167)%640)+(k%2)*20,by=290+Math.sin(x/90)*12,H=95+(k*37%40);this.turbine(x,by,H,t*1.6+k,P);}
+    if(G.nuclear>0){const nn=G.nuclear>.15?2:1;for(let k=0;k<nn;k++){const x=935-k*40,by=304;
       c.fillStyle=P.concrete;c.beginPath();c.moveTo(x-18,by);c.quadraticCurveTo(x-8,by-30,x-12,by-58);c.lineTo(x+12,by-58);c.quadraticCurveTo(x+8,by-30,x+18,by);c.fill();
       this.puffs(x,by-62,P.steam,5,t+k*.3,.7);}}
-    // gas plants
-    const ng=Math.ceil(E[4]*4);
-    for(let k=0;k<ng;k++){const x=850-k*26,by=306,H=78;
-      c.fillStyle=P.concrete;c.fillRect(x-12,by-22,24,22);c.fillStyle=P.steel;c.fillRect(x-3,by-H,6,H);
-      this.puffs(x,by-H,P.smoke,5,t+k*.5,.35+E[4]*.3);}
-    // coal plants
-    const nc=Math.ceil(E[5]*6);
-    for(let k=0;k<nc;k++){const x=760-k*30,by=308,H=108;
-      c.fillStyle=P.steel;c.fillRect(x-14,by-26,28,26);c.fillStyle='#4A4540';c.beginPath();c.moveTo(x-5,by-26);c.lineTo(x-3,by-H);c.lineTo(x+3,by-H);c.lineTo(x+5,by-26);c.fill();
+    const ng=Math.ceil(G.gas*4);
+    for(let k=0;k<ng;k++){const x=850-k*26,by=306,H=78;c.fillStyle=P.concrete;c.fillRect(x-12,by-22,24,22);c.fillStyle=P.steel;c.fillRect(x-3,by-H,6,H);
+      this.puffs(x,by-H,P.smoke,5,t+k*.5,.35+G.gas*.3);}
+    const no=Math.ceil(G.oil*8);
+    for(let k=0;k<no;k++){const x=745-k*34,by=308;c.fillStyle='#A0522D';c.beginPath();c.ellipse(x,by-12,13,5,0,0,7);c.fill();c.fillRect(x-13,by-12,26,12);
+      c.fillStyle=P.steel;c.fillRect(x+10,by-70,5,58);this.puffs(x+12,by-72,'#3A332C',5,t+k*.4,.6);}
+    const nc=Math.ceil(G.coal*6);
+    for(let k=0;k<nc;k++){const x=680-k*30,by=308,H=108;c.fillStyle=P.steel;c.fillRect(x-14,by-26,28,26);c.fillStyle='#4A4540';c.beginPath();c.moveTo(x-5,by-26);c.lineTo(x-3,by-H);c.lineTo(x+3,by-H);c.lineTo(x+5,by-26);c.fill();
       this.puffs(x,by-H,'#2E2A26',6,t+k*.4,.75);}
   }
   turbine(x,by,H,a,P){const c=this.ctx;c.strokeStyle=P.concrete;c.lineWidth=2.4;c.beginPath();c.moveTo(x,by);c.lineTo(x,by-H);c.stroke();
@@ -556,10 +618,11 @@ class Scene{
   building(b,P,dark,k,solarShare,solarIdx){
     const c=this.ctx,x=b.x,w=b.w,h=b.h,y=GY-h,q=b.q;
     const body=b.type==='house'?P.house:b.type==='office'?P.glass:b.type==='parking'?P.concrete:P.bld[k%3];
+    const hasSolar=solarIdx/(this.items.length*.6)<solarShare;
     c.fillStyle=body;
     if(b.type==='house'){c.fillRect(x,y,w,h);c.fillStyle=P.roof;c.beginPath();c.moveTo(x-3,y);c.lineTo(x+w/2,y-h*.55);c.lineTo(x+w+3,y);c.fill();
       c.fillStyle=dark?(q[3]>.4?P.lit:P.win):P.win;c.fillRect(x+5,y+7,8,8);c.fillRect(x+w-13,y+7,8,8);c.fillStyle=P.roof;c.fillRect(x+w/2-4,GY-13,8,13);
-      if(solarIdx/ (this.items.length*.6) < solarShare){c.fillStyle=P.panel;c.beginPath();c.moveTo(x+w/2+2,y-h*.45);c.lineTo(x+w-2,y-3);c.lineTo(x+w/2+8,y-3);c.lineTo(x+w/2-1,y-h*.3);c.fill();}
+      if(hasSolar){c.fillStyle=P.panel;c.beginPath();c.moveTo(x+w/2+2,y-h*.45);c.lineTo(x+w-2,y-3);c.lineTo(x+w/2+8,y-3);c.lineTo(x+w/2-1,y-h*.3);c.fill();}
     } else {
       c.fillRect(x,y,w,h);
       const win=(cx,cy,ww,hh,seed)=>{c.fillStyle=dark?((Math.sin(seed*12.9898)*43758.5453%1+1)%1>.55?P.lit:P.win):P.win;c.fillRect(cx,cy,ww,hh)};
@@ -571,18 +634,18 @@ class Scene{
         c.fillStyle='#E07B2E';c.fillRect(x-2,GY-22,w+4,6);c.fillStyle=dark?P.lit:P.win;c.fillRect(x+4,GY-15,w-8,13);}
       else if(b.type==='retail'){c.fillStyle='#E8837A';for(let xx=x;xx<x+w;xx+=8){c.fillRect(xx,y+12,4,7)}c.fillStyle=dark?P.lit:P.win;c.fillRect(x+4,y+22,w-8,h-26);
         c.fillStyle='#C8443A';c.fillRect(x,y+2,w,8);}
-      else if(b.type==='industrial'){c.fillStyle=body;c.beginPath();c.moveTo(x,y);for(let xx=x;xx<x+w;xx+=16){c.lineTo(xx+12,y-10);c.lineTo(xx+12,y);c.lineTo(xx+16,y)}c.lineTo(x+w,y);c.fill();
+      else if(b.type==='industrial'){c.beginPath();c.moveTo(x,y);for(let xx=x;xx<x+w;xx+=16){c.lineTo(xx+12,y-10);c.lineTo(xx+12,y);c.lineTo(xx+16,y)}c.lineTo(x+w,y);c.fill();
         c.fillStyle='#7B5EA7';c.globalAlpha=.5;c.fillRect(x+6,y+12,w-12,6);c.globalAlpha=1;c.fillStyle=P.win;c.fillRect(x+8,GY-18,14,18);}
       else if(b.type==='parking'){c.fillStyle=dark?'#232A31':'#8F979F';for(let yy=y+8;yy<GY-4;yy+=12)c.fillRect(x+3,yy,w-6,6);
         c.fillStyle=P.car[2];for(let yy=y+10;yy<GY-4;yy+=12)for(let xx=x+6;xx<x+w-12;xx+=17)if((xx+yy)%3)c.fillRect(xx,yy,9,4);}
       if(b.green){c.fillStyle=P.grass;c.fillRect(x-1,y-4,w+2,5);c.fillStyle=P.tree[1];
         for(let xx=x+5;xx<x+w-4;xx+=11){c.beginPath();c.arc(xx,y-5,3.5+((xx|0)%3),0,7);c.fill();}}
-      else if(b.type!=='parking'&&b.type!=='industrial'&&solarIdx/(this.items.length*.6)<solarShare){c.fillStyle=P.panel;
+      else if(b.type!=='parking'&&b.type!=='industrial'&&hasSolar){c.fillStyle=P.panel;
         for(let xx=x+4;xx<x+w-10;xx+=12){c.beginPath();c.moveTo(xx,y);c.lineTo(xx+10,y);c.lineTo(xx+7,y-5);c.lineTo(xx-2,y-5);c.fill();}}
     }
     c.fillStyle=ZCOL[b.type];c.fillRect(x,GY-3,w,3);
   }
-  parkSlot(it,P,t,k){
+  parkSlot(it,P){
     const c=this.ctx,x=it.x,w=it.w;
     c.fillStyle=it.type==='farm'?P.farm:P.grass;c.globalAlpha=.85;c.fillRect(x-2,GY-8,w+4,8);c.globalAlpha=1;
     if(it.type==='park'){this.tree(x+w*.25,GY-4,13,P.tree[0],P);this.tree(x+w*.72,GY-4,16,P.tree[2],P);
@@ -602,40 +665,120 @@ class Scene{
       c.fillStyle=P[id];c.fillRect(0,y,SW,h);
       const mid=y+h/2, s=Math.min(1,h/18);
       const run=(n,speed,fn)=>{for(let j=0;j<n;j++){const dir=(j%2&&id==='side')?-1:1;const base=(j/n)*(SW+140)+(j*37%23);
-        let xx=((base+dir*speed*t)%(SW+140)+(SW+140))%(SW+140)-70;fn(xx,j,dir)}};
-      if(id==='side')run(Math.round(T[i]*40)+1,14,(xx,j)=>{c.fillStyle=P.person;const hh=14*s;c.fillRect(xx-1.5*s,mid-hh/2+3*s,3*s,hh-3*s);c.beginPath();c.arc(xx,mid-hh/2+1.5*s,2.2*s,0,7);c.fill();});
-      if(id==='bike'){run(Math.round(T[i]*40+M.tw('bike')*12)+1,38,(xx)=>{c.strokeStyle=P.person;c.lineWidth=1.3;const r=3.6*s;c.beginPath();c.arc(xx-5*s,mid+3*s,r,0,7);c.arc(xx+5*s,mid+3*s,r,0,7);c.moveTo(xx-5*s,mid+3*s);c.lineTo(xx,mid-3*s);c.lineTo(xx+5*s,mid+3*s);c.stroke();c.fillStyle=P.person;c.beginPath();c.arc(xx,mid-7*s,2*s,0,7);c.fill();});}
+        const xx=((base+dir*speed*t)%(SW+140)+(SW+140))%(SW+140)-70;fn(xx,j)}};
+      if(id==='side')run(Math.round(T[i]*40)+1,14,(xx)=>{c.fillStyle=P.person;const hh=14*s;c.fillRect(xx-1.5*s,mid-hh/2+3*s,3*s,hh-3*s);c.beginPath();c.arc(xx,mid-hh/2+1.5*s,2.2*s,0,7);c.fill();});
+      if(id==='bike')run(Math.round(T[i]*40+M.tw('bike')*12)+1,38,(xx)=>{c.strokeStyle=P.person;c.lineWidth=1.3;const r=3.6*s;c.beginPath();c.arc(xx-5*s,mid+3*s,r,0,7);c.moveTo(xx+5*s+r,mid+3*s);c.arc(xx+5*s,mid+3*s,r,0,7);c.moveTo(xx-5*s,mid+3*s);c.lineTo(xx,mid-3*s);c.lineTo(xx+5*s,mid+3*s);c.stroke();c.fillStyle=P.person;c.beginPath();c.arc(xx,mid-7*s,2*s,0,7);c.fill();});
       if(id==='road'){c.strokeStyle=P.line;c.setLineDash([14,12]);c.lineWidth=1.5;c.beginPath();c.moveTo(0,mid);c.lineTo(SW,mid);c.stroke();c.setLineDash([]);
-        const nCar=Math.round(M.car*18)+1;
-        run(nCar,62,(xx,j)=>{const lane=j%2?mid+h*.22:mid-h*.22;const sc=Math.min(1,h/26);const cw=24*sc,ch=8*sc;
+        run(Math.round(M.car*18)+1,62,(xx,j)=>{const lane=j%2?mid+h*.22:mid-h*.22;const sc=Math.min(1,h/26);const cw=24*sc,ch=8*sc;
           c.fillStyle=P.car[j%4];c.beginPath();c.roundRect(xx-cw/2,lane-ch/2,cw,ch,3*sc);c.fill();c.fillRect(xx-cw/4,lane-ch,cw/2,ch/2+1);
           c.fillStyle='#1B1F23';c.beginPath();c.arc(xx-cw/3,lane+ch/2,2.4*sc,0,7);c.arc(xx+cw/3,lane+ch/2,2.4*sc,0,7);c.fill();
           if((j*0.618)%1<M.tw('av')*2.5){c.fillStyle='#E9B308';c.beginPath();c.arc(xx,lane-ch-1.5,1.6*sc,0,7);c.fill();}
-          if((j*0.381)%1>M.evAdopt){c.fillStyle=P.smoke;c.globalAlpha=.35;c.beginPath();c.arc(xx-cw/2-4-(t*20+j*5)%8,lane+ch/4,2.5+((t*20+j*5)%8)/3,0,7);c.fill();c.globalAlpha=1;}});}
+          if((j*0.381)%1>M.evAdopt){c.fillStyle=P.smoke;c.globalAlpha=.35;const ph=(t*20+j*5)%8;c.beginPath();c.arc(xx-cw/2-4-ph,lane+ch/4,2.5+ph/3,0,7);c.fill();c.globalAlpha=1;}});}
       if(id==='bus')run(Math.max(1,Math.round(T[i]*10)),45,(xx)=>{const sc=Math.min(1,h/20);const bw=58*sc,bh=13*sc;c.fillStyle=P.busBody;c.beginPath();c.roundRect(xx-bw/2,mid-bh/2,bw,bh,3*sc);c.fill();
         c.fillStyle=dark?P.lit:'#F4F7FA';for(let wx=xx-bw/2+4*sc;wx<xx+bw/2-6*sc;wx+=8*sc)c.fillRect(wx,mid-bh/2+2*sc,5*sc,4*sc);});
       if(id==='rail'){c.strokeStyle=P.steel;c.lineWidth=1.4;c.beginPath();c.moveTo(0,mid+h*.25);c.lineTo(SW,mid+h*.25);c.stroke();
-        run(T[i]>.2?2:1,95,(xx)=>{const sc=Math.min(1,h/20);const car=34*sc,th=12*sc;for(let k2=0;k2<4;k2++){const cx=xx-k2*(car+2);c.fillStyle=P.train;c.beginPath();c.roundRect(cx-car/2,mid-th/2,car,th,k2===0?[2,6*sc,2,2]:2);c.fill();
-          c.fillStyle=dark?P.lit:'#F4F7FA';c.fillRect(cx-car/2+3,mid-th/2+2*sc,car-8,3.5*sc);}});}
+        run(T[i]>.2?2:1,95,(xx)=>{const sc=Math.min(1,h/20);const cl=34*sc,th=12*sc;for(let k2=0;k2<4;k2++){const cx=xx-k2*(cl+2);c.fillStyle=P.train;c.beginPath();c.roundRect(cx-cl/2,mid-th/2,cl,th,2);c.fill();
+          c.fillStyle=dark?P.lit:'#F4F7FA';c.fillRect(cx-cl/2+3,mid-th/2+2*sc,cl-8,3.5*sc);}});}
       y+=h;
     });
+  }
+
+  /* ---------- model-table map: a white massing model with zoning colors projected onto it ---------- */
+  mapLayout(st){
+    const key=JSON.stringify([st.city,st.buildings.mix,st.buildings.green,st.buildings.live,st.buildings.work,st.green.mix,st.green.roofs,Math.round(M.en.gen.solar*50)]);
+    if(key===this.mkey)return;this.mkey=key;
+    const A=12,B=8,rnd=mulberry32(hash(st.city)+11);
+    const cells=[];for(let i=0;i<A;i++)for(let j=0;j<B;j++){const du=(i+.5-A/2)/(A/2),dv=(j+.5-B/2)/(B/2);cells.push({i,j,d:Math.hypot(du,dv)/1.414,r:rnd(),r2:rnd(),r3:rnd()});}
+    const N=cells.length,g=st.buildings.green/100;
+    const gk=alloc(Math.round(N*g),st.green.mix);
+    // wild land and farms sit at the edges; parks are scattered through the city
+    const byEdge=[...cells].sort((a,b)=>(b.d+b.r*.25)-(a.d+a.r*.25));
+    let gi=0;for(let k=0;k<gk[1];k++)byEdge[gi++].use='habitat';for(let k=0;k<gk[2];k++)byEdge[gi++].use='farm';
+    const free=cells.filter(c=>!c.use).sort((a,b)=>a.r2-b.r2);
+    for(let k=0;k<gk[0]&&k<free.length;k++)free[k].use='park';
+    const built=cells.filter(c=>!c.use).sort((a,b)=>a.d-b.d);
+    const [res,mixed,com]=st.buildings.mix, [a1,b1,c1]=st.buildings.live, [o,r,i2,p]=st.buildings.work;
+    const ck=alloc(built.length,[com,mixed,res]);
+    const comCells=built.slice(0,ck[0]),mixCells=built.slice(ck[0],ck[0]+ck[1]),resCells=built.slice(ck[0]+ck[1]);
+    const wk=alloc(comCells.length,[o,r,i2,p]);
+    comCells.forEach((c,k)=>c.use=k<wk[0]?'office':k<wk[0]+wk[1]?'retail':k<wk[0]+wk[1]+wk[2]?'industrial':'parking');
+    const tail=comCells.slice(wk[0]),uses=tail.map(c=>c.use);tail.sort((a,b)=>a.r3-b.r3).forEach((c,k)=>c.use=uses[k]);
+    mixCells.forEach(c=>c.use='mixed');
+    const hk=alloc(resCells.length,[c1,b1,a1]);
+    resCells.forEach((c,k)=>c.use=k<hk[0]?'tower':k<hk[0]+hk[1]?'mid':'house');
+    const boxes=[];
+    cells.forEach(c=>{const f=Math.max(.45,1.25-c.d*.9);const add=(x0,y0,w,dd,h)=>boxes.push({u:c.i+x0,v:c.j+y0,w,d:dd,h,use:c.use,seed:Math.floor(c.r*1e6)+Math.round(x0*100)*7+Math.round(y0*100)*13});
+      switch(c.use){
+        case 'house':for(const [x0,y0] of [[.16,.16],[.56,.16],[.16,.56],[.56,.56]])add(x0,y0,.28,.28,7+c.r*4);break;
+        case 'mid':add(.15,.15,.7,.28,(20+c.r*10)*f);add(.15,.57,.7,.28,(18+c.r2*10)*f);break;
+        case 'tower':add(.25,.25,.5,.5,(55+c.r*45)*f);break;
+        case 'mixed':add(.14,.14,.72,.72,(26+c.r*16)*f);break;
+        case 'office':add(.22,.22,.56,.56,(70+c.r*70)*f);if(c.r2>.5)add(.14,.62,.3,.24,14);break;
+        case 'retail':add(.12,.2,.76,.6,11+c.r*4);break;
+        case 'industrial':add(.1,.15,.8,.7,13+c.r*4);break;
+      }});
+    const roofs=st.green.roofs/100,sol=c01(M.en.gen.solar/.5)*.55;
+    boxes.forEach(b=>{const r1=(hash(b.seed)%1000)/1000,r2=(hash(b.seed+5)%1000)/1000;b.green=b.use!=='house'&&b.use!=='industrial'&&r1<roofs;b.solar=!b.green&&r2<sol;});
+    boxes.sort((a,b)=>(a.u+a.w/2+a.v+a.d/2)-(b.u+b.w/2+b.v+b.d/2));
+    this.map={A,B,cells,boxes};
+    const tr=mulberry32(hash(st.city)+21);this.mapTrees=Array.from({length:140},()=>[tr(),tr(),tr()]);
+    this.mapDots=Array.from({length:240},()=>[tr(),tr(),tr()]);
+  }
+  drawMap(t){
+    this.mapLayout(S);
+    const c=this.ctx,{A,B,cells,boxes}=this.map;
+    const tw=86,th=34,ox=500-(A/2-B/2)*tw/2,oy=244-(A/2+B/2)*th/2;
+    const P=(u,v,z=0)=>[ox+(u-v)*tw/2,oy+(u+v)*th/2-z];
+    const poly=(pts,fill)=>{c.beginPath();pts.forEach(([x,y],k)=>k?c.lineTo(x,y):c.moveTo(x,y));c.closePath();c.fillStyle=fill;c.fill();};
+    const bg=c.createRadialGradient(500,240,60,500,240,620);bg.addColorStop(0,'#1B2633');bg.addColorStop(1,'#0B1118');
+    c.fillStyle=bg;c.fillRect(0,0,SW,SH);
+    poly([P(0,B),P(A,B),P(A,B,-10),P(0,B,-10)],'#2A3542');poly([P(A,0),P(A,B),P(A,B,-10),P(A,0,-10)],'#202A35');
+    poly([P(0,0),P(A,0),P(A,B),P(0,B)],'#3A4654');
+    const G=M.en.gen,T=M.T;
+    cells.forEach(cl=>{const z=ZCOL[cl.use]||'#888';const pad=.08;
+      poly([P(cl.i+pad,cl.j+pad),P(cl.i+1-pad,cl.j+pad),P(cl.i+1-pad,cl.j+1-pad),P(cl.i+pad,cl.j+1-pad)],cl.use==='parking'?'#56606B':z);
+      if(cl.use==='parking'){c.strokeStyle='#C9CFD5';c.lineWidth=.8;for(let k=1;k<5;k++){const [x1,y1]=P(cl.i+.15,cl.j+k*.2),[x2,y2]=P(cl.i+.85,cl.j+k*.2);c.beginPath();c.moveTo(x1,y1);c.lineTo(x2,y2);c.stroke();}}
+      if(cl.use==='farm'){c.strokeStyle='#6E7A20';c.lineWidth=1.2;for(let k=1;k<6;k++){const [x1,y1]=P(cl.i+k/6,cl.j+.12),[x2,y2]=P(cl.i+k/6,cl.j+.88);c.beginPath();c.moveTo(x1,y1);c.lineTo(x2,y2);c.stroke();}}
+    });
+    const nT=Math.round(S.green.canopy*2.2);
+    this.mapTrees.slice(0,nT).forEach(([a,b,s])=>{const onU=s>.5;const u=onU?Math.round(a*A):a*A,v=onU?b*B:Math.round(b*B);const [x,y]=P(u,v);c.fillStyle='#2F7A45';c.beginPath();c.arc(x,y-3,3.2,0,7);c.fill();c.fillStyle='#5DBB6B';c.beginPath();c.arc(x-.8,y-4,1.8,0,7);c.fill();});
+    cells.forEach(cl=>{if(cl.use!=='park'&&cl.use!=='habitat')return;const n=cl.use==='habitat'?9:5;for(let k=0;k<n;k++){const a=(hash(cl.i*31+cl.j*7+k)%100)/100,b=(hash(cl.j*17+cl.i*3+k*5+1)%100)/100;
+      const [x,y]=P(cl.i+.18+a*.64,cl.j+.18+b*.64);const r=cl.use==='habitat'?4.5:4;c.fillStyle=cl.use==='habitat'?'#1E5A33':'#3E9A4E';c.beginPath();c.arc(x,y-r,r,0,7);c.fill();}});
+    if(T[4]>0){c.save();c.lineCap='round';const lines=[[[0,B/2],[A,B/2]],[[A/2,0],[A/2,B]]];
+      lines.forEach(([a,b])=>{const [x1,y1]=P(...a),[x2,y2]=P(...b);c.strokeStyle='rgba(111,179,255,.25)';c.lineWidth=7;c.beginPath();c.moveTo(x1,y1);c.lineTo(x2,y2);c.stroke();c.strokeStyle='#6FB3FF';c.lineWidth=2;c.stroke();});
+      const nTr=T[4]>.15?2:1;for(let k=0;k<nTr;k++)lines.forEach(([a,b],li)=>{const f=((t*.06+k*.5+li*.25)%1);const u=a[0]+(b[0]-a[0])*f,v=a[1]+(b[1]-a[1])*f;
+        for(let s=0;s<4;s++){const [x,y]=P(u-(li?0:s*.18),v-(li?s*.18:0));c.fillStyle='#DDEEFF';c.beginPath();c.arc(x,y,2.6,0,7);c.fill();}});c.restore();}
+    const modes=[['#FFC857',Math.round(M.car*110),.05],['#FF6B5B',T[3]>0?Math.round(T[3]*60)+2:0,.035],['#7CF29A',Math.round(M.active*90),.02]];
+    let di=0;
+    modes.forEach(([col,n,spd])=>{for(let k=0;k<n&&di<this.mapDots.length;k++,di++){const [a,b,s]=this.mapDots[di];const along=s>.5;const dir=b>.5?1:-1;
+      const f=((a+dir*spd*t*(1+b))%1+1)%1;let u,v;if(along){v=Math.round(b*B);u=f*A;}else{u=Math.round(a*A);v=f*B;}
+      const off=dir>0?.06:-.06;const [x,y]=P(u+(along?0:off),v+(along?off:0));c.fillStyle=col;c.globalAlpha=.25;c.beginPath();c.arc(x,y,4,0,7);c.fill();c.globalAlpha=1;c.beginPath();c.arc(x,y,1.7,0,7);c.fill();}});
+    boxes.forEach(b=>{const u0=b.u,v0=b.v,u1=b.u+b.w,v1=b.v+b.d,h=b.h;const z=ZCOL[b.use];
+      poly([P(u0,v1),P(u1,v1),P(u1,v1,h),P(u0,v1,h)],mixHex('#C2CBD4',z,.12));
+      poly([P(u1,v0),P(u1,v1),P(u1,v1,h),P(u1,v0,h)],mixHex('#98A4B0',z,.12));
+      poly([P(u0,v0,h),P(u1,v0,h),P(u1,v1,h),P(u0,v1,h)],b.green?'#58B866':b.solar?'#2B4F8A':mixHex('#F4F6F8',z,.55));
+      if(b.solar){c.strokeStyle='#8FB2E6';c.lineWidth=.6;const [x1,y1]=P(u0+b.w/2,v0,h),[x2,y2]=P(u0+b.w/2,v1,h);c.beginPath();c.moveTo(x1,y1);c.lineTo(x2,y2);c.stroke();}
+      if(h>30){c.fillStyle='rgba(255,236,170,.55)';for(let zz=8;zz<h-4;zz+=9){if((zz*7+b.seed)%3)continue;const [x,y]=P(u0+b.w*.5,v1,zz);c.fillRect(x-2,y-1.5,4,3);}}
+    });
+    const edge=[];if(G.coal>.005)edge.push(['#4A4540',G.coal]);if(G.oil>.005)edge.push(['#A0522D',G.oil]);if(G.gas>.005)edge.push(['#8E959C',G.gas]);if(G.nuclear>.005)edge.push(['#8A6FC9',G.nuclear]);
+    edge.forEach(([col,sh],k)=>{const [x,y]=P(A+.35,1+k*1.6);c.fillStyle=col;c.fillRect(x-7,y-16,14,16);c.fillStyle='#C2CBD4';c.fillRect(x+2,y-30,4,14);
+      for(let q=0;q<4;q++){const ph=(t*.25+q/4)%1;c.globalAlpha=(1-ph)*.5*Math.min(1,sh*3);c.fillStyle=col==='#8A6FC9'?'#E8EEF5':'#7E776C';c.beginPath();c.arc(x+4+ph*16,y-32-ph*30,3+ph*7,0,7);c.fill();}c.globalAlpha=1;});
+    const nw=Math.round(G.wind*16);for(let k=0;k<nw;k++){const [x,y]=P(-.4,.4+k*(B-.8)/Math.max(1,nw-1));this.turbine(x,y,34,t*1.6+k,{concrete:'#D7DEE5'});}
+    c.fillStyle='rgba(233,240,247,.75)';c.font='500 12px "IBM Plex Mono",monospace';c.fillText('MODEL TABLE · LAND USE PROJECTED ON BUILDINGS',20,428);
   }
 }
 
 /* ================= controls ================= */
 let infoFor=null;
 function legend(items,values,onInfo){
-  const lg=el('div','legend');
-  const vals=[];
+  const lg=el('div','legend');const vals=[];
   items.forEach((it,i)=>{const r=el('div','lg');r.innerHTML=`<span class="chip" style="background:${it.color}"></span><span class="nm">${esc(it.name)}</span><span class="val">${values[i]}%</span>`;
-    const b=infoButton(it,onInfo);r.append(b);lg.append(r);vals.push(r.querySelector('.val'));});
+    r.append(infoButton(it,onInfo));lg.append(r);vals.push(r.querySelector('.val'));});
   lg.update=v=>v.forEach((x,i)=>vals[i].textContent=x+'%');
   return lg;
 }
-function infoButton(it,onInfo){const b=el('button','info-btn','i');b.type='button';b.setAttribute('aria-label',`About ${it.name}`);b.setAttribute('aria-pressed',infoFor===it?'true':'false');
+function infoButton(it,onInfo){const b=el('button','info-btn','i');b.type='button';b.dataset.for=it.id||it.name;b.setAttribute('aria-label',`About ${it.name}`);b.setAttribute('aria-pressed',infoFor===it?'true':'false');
   b.onclick=()=>onInfo(it);return b;}
-
-/* shared partition logic: values are integers summing to 100 */
 function makeModel(values,onChange){
   const n=values.length;
   const cum=()=>{const c=[];let s=0;for(let i=0;i<n-1;i++){s+=values[i];c.push(s)}return c};
@@ -644,6 +787,7 @@ function makeModel(values,onChange){
   function pick(k,dir){const c=cum();let a=k,b=k;while(a>0&&c[a-1]===c[k])a--;while(b<n-2&&c[b+1]===c[k])b++;return dir<0?a:b;}
   return {cum,set,pick};
 }
+const KEYDIR={ArrowLeft:-1,ArrowDown:-1,ArrowRight:1,ArrowUp:1};
 function partitionBar(items,values,onChange,onInfo){
   const wrap=el('div','pbar');
   const track=el('div','pbar-track'),segsEl=el('div','pbar-segs');track.append(segsEl);wrap.append(track);
@@ -653,7 +797,7 @@ function partitionBar(items,values,onChange,onInfo){
   const hs=[];
   for(let i=0;i<items.length-1;i++){const h=el('button','handle');h.type='button';h.setAttribute('role','slider');
     h.setAttribute('aria-label',`Divider between ${items[i].name} and ${items[i+1].name}`);h.setAttribute('aria-valuemin','0');h.setAttribute('aria-valuemax','100');
-    h.addEventListener('keydown',e=>{const dir={ArrowLeft:-1,ArrowDown:-1,ArrowRight:1,ArrowUp:1}[e.key];if(!dir)return;e.preventDefault();const k=model.pick(i,dir);model.set(k,model.cum()[k]+dir*(e.shiftKey?5:1));hs[k].focus();});
+    h.addEventListener('keydown',e=>{const dir=KEYDIR[e.key];if(!dir)return;e.preventDefault();const k=model.pick(i,dir);model.set(k,model.cum()[k]+dir*(e.shiftKey?5:1));hs[k].focus();});
     track.append(h);hs.push(h);}
   let drag=null;
   track.addEventListener('pointerdown',e=>{const h=e.target.closest('.handle');if(!h)return;e.preventDefault();h.setPointerCapture(e.pointerId);drag={k:hs.indexOf(h),x:e.clientX,chosen:null,h};h.classList.add('drag')});
@@ -679,7 +823,7 @@ function fanSlider(items,values,onChange,onInfo){
   for(let i=0;i<items.length-1;i++){const g=document.createElementNS(NS,'g');g.setAttribute('class','fh');g.setAttribute('tabindex','0');g.setAttribute('role','slider');
     g.setAttribute('aria-label',`Divider between ${items[i].name} and ${items[i+1].name}`);
     g.innerHTML=`<line stroke="var(--ink)" stroke-width="2"/><circle r="15" fill="var(--surface)" stroke="var(--ink)" stroke-width="2"/><path d="M-4,-5 L-8,0 L-4,5 M4,-5 L8,0 L4,5" fill="none" stroke="var(--ink)" stroke-width="2"/>`;
-    g.addEventListener('keydown',e=>{const dir={ArrowLeft:-1,ArrowDown:-1,ArrowRight:1,ArrowUp:1}[e.key];if(!dir)return;e.preventDefault();const k=model.pick(i,dir);model.set(k,model.cum()[k]+dir*(e.shiftKey?5:1));hs[k].focus();});
+    g.addEventListener('keydown',e=>{const dir=KEYDIR[e.key];if(!dir)return;e.preventDefault();const k=model.pick(i,dir);model.set(k,model.cum()[k]+dir*(e.shiftKey?5:1));hs[k].focus();});
     svg.append(g);hs.push(g);}
   let drag=null;
   const toPct=e=>{const m=svg.getScreenCTM().inverse();const x=e.clientX*m.a+e.clientY*m.c+m.e,y=e.clientX*m.b+e.clientY*m.d+m.f;
@@ -695,11 +839,11 @@ function fanSlider(items,values,onChange,onInfo){
       g.setAttribute('aria-valuenow',c[i]);g.setAttribute('aria-valuetext',`${items[i].name} ends at ${c[i]}%`);});}
   paint();wrap.append(svg,lg);return wrap;
 }
-function rankList(items,order,onChange,onInfo){
+function rankList(items,order,onChange,onInfo,hasExtra){
   const by=Object.fromEntries(items.map(i=>[i.id,i]));
   const ol=el('ol','rank');
   function row(id){const it=by[id];const li=el('li','rk');li.dataset.id=id;
-    li.innerHTML=`<span class="num"></span><button class="grip" type="button" aria-label="Drag ${esc(it.name)} to reorder"></button><div class="t"><b>${esc(it.name)}</b><span>${esc(it.hint)}</span></div><div class="acts"><button class="mini up" type="button" aria-label="Move ${esc(it.name)} up">▲</button><button class="mini dn" type="button" aria-label="Move ${esc(it.name)} down">▼</button></div>`;
+    li.innerHTML=`<span class="num"></span><button class="grip" type="button" aria-label="Drag ${esc(it.name)} to reorder"></button><div class="t"><b>${esc(it.name)}</b><span>${esc(it.hint)}</span></div><div class="acts"><button class="mini up" type="button" aria-label="Move ${esc(it.name)} up">▲</button><button class="mini dn" type="button" aria-label="Move ${esc(it.name)} down">▼</button></div>${hasExtra?'<div class="ex"></div>':''}`;
     li.querySelector('.acts').prepend(infoButton(it,onInfo));
     li.querySelector('.up').onclick=()=>move(id,-1);li.querySelector('.dn').onclick=()=>move(id,1);
     return li;}
@@ -714,7 +858,36 @@ function rankList(items,order,onChange,onInfo){
     if(prev){const r=prev.getBoundingClientRect();if(e.clientY<r.top+r.height/2){ol.insertBefore(drag,prev);sync();return}}
     if(next){const r=next.getBoundingClientRect();if(e.clientY>r.top+r.height/2){ol.insertBefore(next,drag);sync();}}});
   const end=()=>{if(drag){drag.classList.remove('lift');drag=null}};ol.addEventListener('pointerup',end);ol.addEventListener('pointercancel',end);
-  sync();return ol;
+  [...ol.children].forEach((li,i)=>{li.querySelector('.num').textContent=i+1;li.querySelector('.up').disabled=i===0;li.querySelector('.dn').disabled=i===order.length-1;});
+  return ol;
+}
+function gauge(v,max){const f=c01(v/max),a=Math.PI*(1-f);const x=31+24*Math.cos(a),y=32-24*Math.sin(a);
+  const col=f<.35?'#3FA66B':f<.6?'#E0A526':'#D0574B';
+  return `<svg viewBox="0 0 62 36" aria-hidden="true"><path d="M7 32 A24 24 0 0 1 55 32" fill="none" stroke="var(--line)" stroke-width="6"/><path d="M7 32 A24 24 0 0 1 ${x.toFixed(1)} ${y.toFixed(1)}" fill="none" stroke="${col}" stroke-width="6"/><line x1="31" y1="32" x2="${(31+20*Math.cos(a)).toFixed(1)}" y2="${(32-20*Math.sin(a)).toFixed(1)}" stroke="var(--ink)" stroke-width="2.5" stroke-linecap="round"/><circle cx="31" cy="32" r="3" fill="var(--ink)"/></svg>`;}
+function sourceExtra(id){
+  const en=M.en,s=en.src[id],sh=en.share[id],cap=s.cap,it=SRC_BY[id];
+  return `${gauge(s.cost,25)}<span><span class="c">${s.cost.toFixed(1)}¢</span> per kWh</span><span><span class="c">${Math.round(s.co2)}</span> g CO₂/kWh</span>
+   <span class="supply" style="--sc:${it.color}" title="Supplies ${Math.round(sh*100)}% of a possible ${Math.round(cap*100)}%"><span class="sb"><i style="width:${sh*100}%"></i><s style="left:${sh*100}%;width:${Math.max(0,cap-sh)*100}%"></s></span><span class="c">${Math.round(sh*100)}%</span></span>`;
+}
+function levelSliders(items,obj,onChange,onInfo){
+  const wrap=el('div','levels');
+  items.forEach(it=>{
+    const box=el('div','lvl');box.style.setProperty('--lc',it.color);
+    const tank=el('div','tank');tank.innerHTML=`<div class="fill"></div><div class="icon">${it.icon}</div>`;
+    const h=el('button','lvh');h.type='button';h.setAttribute('role','slider');h.setAttribute('aria-label',it.name);h.setAttribute('aria-valuemin','0');h.setAttribute('aria-valuemax','100');tank.append(h);
+    const cap=el('div','cap',`<b>${esc(it.name)}</b><span class="v"></span>`);cap.append(infoButton(it,onInfo));
+    box.append(tank,cap,el('div','note',esc(it.note)));wrap.append(box);
+    const fill=tank.querySelector('.fill'),val=cap.querySelector('.v');
+    const paint=()=>{const v=obj[it.id];fill.style.height=v+'%';h.style.top=(100-v)+'%';val.textContent=v+'%';h.setAttribute('aria-valuenow',v);};
+    const set=v=>{obj[it.id]=Math.round(Math.max(0,Math.min(100,v)));paint();onChange();};
+    let drag=false;
+    tank.addEventListener('pointerdown',e=>{e.preventDefault();tank.setPointerCapture(e.pointerId);drag=true;const r=tank.getBoundingClientRect();set((r.bottom-e.clientY)/r.height*100);h.focus({preventScroll:true});});
+    tank.addEventListener('pointermove',e=>{if(!drag)return;const r=tank.getBoundingClientRect();set((r.bottom-e.clientY)/r.height*100);});
+    const end=()=>drag=false;tank.addEventListener('pointerup',end);tank.addEventListener('pointercancel',end);
+    h.addEventListener('keydown',e=>{const dir=KEYDIR[e.key];if(!dir)return;e.preventDefault();set(obj[it.id]+dir*(e.shiftKey?10:1));});
+    paint();
+  });
+  return wrap;
 }
 function slider(id,value,max,startVal,goal,onChange){
   const w=el('div','range-wrap');
@@ -728,8 +901,8 @@ function slider(id,value,max,startVal,goal,onChange){
 
 /* ================= views ================= */
 const scene=new Scene($('#scene'));
-let reportEls=null;
-function update(){M=compute(S);updateReport();save();if(reduceMotion.matches||document.hidden)scene.draw(0);}
+let reportEls=null, stepRefresh=null;
+function update(){M=compute(S);updateReport();renderVoices();if(stepRefresh)stepRefresh();save();if(reduceMotion.matches||document.hidden)scene.draw(0);}
 
 function renderTop(){
   $('#cityBtn').hidden=!S;$('#restart').hidden=!S;$('#chapters').hidden=!S;
@@ -738,16 +911,14 @@ function renderTop(){
   const nav=$('#chapters');nav.innerHTML='';
   const cur=STEPS[S.step].ch;
   CHAPTERS.forEach((c,i)=>{const b=el('button','chap',`<span class="n">${i+1}</span>${c.name}`);b.type='button';b.style.setProperty('--chap-col',c.col);
-    b.setAttribute('aria-current',i===cur?'true':'false');
-    const firstStep=STEPS.findIndex(s=>s.ch===i);
-    if(i<cur)b.classList.add('done');
-    b.onclick=()=>go(firstStep);nav.append(b);});
+    b.setAttribute('aria-current',i===cur?'true':'false');if(i<cur)b.classList.add('done');
+    b.onclick=()=>go(STEPS.findIndex(s=>s.ch===i));nav.append(b);});
 }
-function go(i){S.step=Math.max(0,Math.min(STEPS.length-1,i));infoFor=null;renderTop();renderPanel();save();
+function go(i){S.step=Math.max(0,Math.min(STEPS.length-1,i));infoFor=null;renderTop();renderPanel();renderVoices();save();
   const p=$('#panel');if(p.getBoundingClientRect().top<0)p.scrollIntoView({block:'start'});}
 
 function renderPanel(){
-  const st=STEPS[S.step],panel=$('#panel');panel.innerHTML='';
+  const st=STEPS[S.step],panel=$('#panel');panel.innerHTML='';stepRefresh=null;
   if(st.kind==='results'){renderResults(panel);return;}
   const chSteps=STEPS.map((s,i)=>[s,i]).filter(([s])=>s.ch===st.ch);
   const eb=el('div','eyebrow');eb.append(el('span','',`${CHAPTERS[st.ch].name} · step ${chSteps.findIndex(([,i])=>i===S.step)+1} of ${chSteps.length}`));
@@ -755,12 +926,26 @@ function renderPanel(){
   eb.append(chips);
   panel.append(eb,el('h2','',esc(st.title)),el('p','lede',esc(st.lede)));
   const ctl=el('div','control');panel.append(ctl);
-  const info=el('div','info');info.hidden=true;info.setAttribute('aria-live','polite');
-  const onInfo=it=>{infoFor=infoFor===it?null:it;ctl.querySelectorAll('.info-btn').forEach(b=>b.setAttribute('aria-pressed',b.getAttribute('aria-label')===`About ${it.name}`&&infoFor?'true':'false'));
-    info.hidden=!infoFor;if(infoFor)info.innerHTML=`<b>${esc(it.name)}.</b> ${esc(it.fact)}`;};
+  const info=el('div','info');info.hidden=true;
+  const onInfo=it=>{infoFor=infoFor===it?null:it;const key=it.id||it.name;ctl.querySelectorAll('.info-btn').forEach(b=>b.setAttribute('aria-pressed',infoFor&&b.dataset.for===key?'true':'false'));
+    info.hidden=!infoFor;if(infoFor){let f=factOf(it);if(st.cityFit)f+=` For ${M.city.name} it is ${fitWord(M.city.pot[it.id])}.`;info.innerHTML=`<b>${esc(it.name)}.</b> ${esc(f)}`;}};
   if(st.kind==='bar')ctl.append(partitionBar(st.items,getP(st.path),v=>{setP(st.path,v);update()},onInfo));
-  if(st.kind==='fan')ctl.append(fanSlider(st.items,getP(st.path),v=>{setP(st.path,v);update()},onInfo));
-  if(st.kind==='rank')ctl.append(rankList(st.items,getP(st.path),v=>{setP(st.path,v);update()},onInfo));
+  if(st.kind==='fan'){ctl.append(fanSlider(st.items,getP(st.path),v=>{setP(st.path,v);update()},onInfo));
+    if(st.cityFit){const n=el('div','muted');ctl.append(n);stepRefresh=()=>{const en=M.en;n.innerHTML=`Your renewables cost about <b>${en.src.renew.cost.toFixed(1)}¢</b> per kWh in ${esc(M.city.name)} and can supply up to <b>${Math.round(en.renewCap*100)}%</b> of the grid. Steady sources like geothermal and hydro raise that limit.`;};stepRefresh();}}
+  if(st.kind==='rank'){
+    const isSrc=st.extra==='sources';
+    const list=rankList(st.items,getP(st.path),v=>{setP(st.path,v);update()},onInfo,isSrc);ctl.append(list);
+    if(isSrc){const sum1=el('div','muted');ctl.append(sum1);
+      stepRefresh=()=>{[...list.children].forEach(li=>li.querySelector('.ex').innerHTML=sourceExtra(li.dataset.id));
+        const en=M.en;sum1.innerHTML=`Your grid: <b>${Math.round(en.share.renew*100)}%</b> renewables, <b>${Math.round((en.share.gas+en.share.oil+en.share.coal)*100)}%</b> fossil fuels, <b>${Math.round(en.share.nuclear*100)}%</b> nuclear${en.imports>.005?`, <b>${Math.round(en.imports*100)}%</b> imported at high prices`:''}. The striped part of a bar is capacity your list never reaches. With your current storage, renewables can supply up to ${Math.round(en.renewCap*100)}%.`;};
+      stepRefresh();}
+  }
+  if(st.kind==='levels'){const obj=S[st.obj];ctl.append(levelSliders(st.items,obj,()=>update(),onInfo));
+    const n=el('div','muted');ctl.append(n);
+    stepRefresh=st.obj==='energy'
+      ?()=>{n.innerHTML=`With this much storage, renewables can supply up to <b>${Math.round(M.en.renewCap*100)}%</b> of your power. Storage adds about ${(M.en.bat*2+M.en.mic*1.2).toFixed(1)}¢ to each kWh.`;}
+      :()=>{n.innerHTML=`Heating buildings with gas now adds <b>${M.em.heating.toFixed(1)} t</b> of CO₂ per resident each year${M.city.cold<.2?` (${esc(M.city.name)} rarely needs heating, so the gain here is mostly lower cooling bills)`:''}.`;};
+    stepRefresh();}
   if(st.kind==='single'){
     const start=CITY[S.city].start[st.key];
     const box=el('div','single');const row=el('div','row');const out=el('output','',S.green[st.key]+'%');out.setAttribute('for','sl-'+st.key);
@@ -770,7 +955,7 @@ function renderPanel(){
     ctl.append(box);
   }
   if(st.extra==='green'){
-    const sub=el('div','sub-slider');const lab=el('div','lab','<span class="chip" style="width:14px;height:14px;border-radius:4px;background:#6DB865;display:inline-block"></span>Green space, share of all land');
+    const sub=el('div','sub-slider');const lab=el('div','lab','<span style="width:14px;height:14px;border-radius:4px;background:#6DB865;display:inline-block"></span>Greenspace, share of all land');
     const out=el('output','',S.buildings.green+'%');lab.append(out);
     sub.append(lab,slider('sl-green',S.buildings.green,40,CITY[S.city].start.green,null,v=>{S.buildings.green=v;out.textContent=v+'%';update()}));
     ctl.append(sub);
@@ -784,48 +969,103 @@ function renderPanel(){
 
 function renderReport(){
   const r=$('#report');r.innerHTML='';
-  r.append(el('h3','','City report <span class="muted" style="font-family:var(--f-body);font-weight:400">live</span>'));
-  const co2=el('div','co2');co2.innerHTML=`<div class="v" id="rCo2"></div><div class="u">tonnes CO₂ per resident each year <span id="rCo2d"></span></div>`;r.append(co2);
-  const ms=el('div','meters');
-  reportEls={};
+  r.append(el('h3','','Sustainability <span class="muted" style="font-family:var(--f-body);font-weight:400">live</span>'));
+  const rr=el('div','ringrow');
+  rr.innerHTML=`<svg class="ring" viewBox="0 0 84 84" aria-hidden="true"><circle cx="42" cy="42" r="34" fill="none" stroke="var(--surface-2)" stroke-width="9"/><circle id="ringArc" cx="42" cy="42" r="34" fill="none" stroke-width="9" stroke-linecap="round" transform="rotate(-90 42 42)" stroke-dasharray="0 999"/><text id="ringTx" x="42" y="50" text-anchor="middle" font-size="24" fill="var(--ink)"></text></svg>
+    <div class="co2"><div class="v" id="rCo2"></div><div class="u">tonnes CO₂ per resident each year<br><span id="rCo2d"></span></div></div>`;
+  r.append(rr);
+  const ms=el('div','meters');reportEls={};
   METERS.forEach(m=>{const d=el('div','meter');d.style.setProperty('--mcol',m.col);d.title=m.desc;
     d.innerHTML=`<div class="lbl"><span>${m.name}</span><span><b></b><span class="delta"></span></span></div><div class="bar"><i></i><s></s></div>`;
     ms.append(d);reportEls[m.k]=d;});
-  r.append(ms);
-  r.append(el('div','keynote','<s></s> marks where the city started'));
-  const ov=el('div','co2');ov.style.marginTop='14px';ov.innerHTML=`<div class="u">Overall</div><div class="v" id="rOv"></div>`;r.append(ov);
+  r.append(ms,el('div','keynote','<s></s> marks where the city started'));
 }
 function updateReport(){
   if(!reportEls)return;
+  const ov=M.overall,[,gc]=grade(ov),C=2*Math.PI*34;
+  const arc=$('#ringArc');arc.setAttribute('stroke',gc);arc.setAttribute('stroke-dasharray',`${(ov/100*C).toFixed(1)} ${C.toFixed(1)}`);
+  $('#ringTx').textContent=Math.round(ov);
   $('#rCo2').textContent=M.total.toFixed(1);
-  const dd=M.total-BASE.total;$('#rCo2d').innerHTML=Math.abs(dd)<.05?'· same as today':`· <b style="color:var(--${dd<0?'good':'bad'})">${dd<0?'−':'+'}${Math.abs(dd).toFixed(1)}</b> vs today`;
+  const dd=M.total-BASE.total;$('#rCo2d').innerHTML=Math.abs(dd)<.05?'Same as today':`<b style="color:var(--${dd<0?'good':'bad'})">${dd<0?'−':'+'}${Math.abs(dd).toFixed(1)}</b> vs today`;
   METERS.forEach(m=>{const d=reportEls[m.k],v=M.scores[m.k],b=BASE.scores[m.k];
     d.querySelector('b').textContent=Math.round(v);d.querySelector('.bar i').style.width=v+'%';d.querySelector('.bar s').style.left=b+'%';
     const df=Math.round(v)-Math.round(b),de=d.querySelector('.delta');de.textContent=df===0?'':(df>0?'+':'−')+Math.abs(df);de.className='delta '+(df>0?'up':'down');});
-  const [g]=grade(M.overall);$('#rOv').textContent=`${g} · ${Math.round(M.overall)}`;
+}
+
+/* ---------- residents react ---------- */
+function voices(m){
+  const V=[],E=m.en,T=m.T,c=m.city;
+  const add=(w,who,mood,text)=>V.push({w,who,mood,text});
+  if(m.parkLand<.012)add(30,'Commuter','meh','Very little parking available. I guess I’ll take the bus.');
+  else if(m.parkLand>.07)add(m.parkLand*500,'Shop owner','bad','Plenty of parking downtown, but the lots bake in the sun and nobody walks past my store.');
+  if(m.D>5)add(m.D*6,'Young family','good','Lots of housing available. We found a place near school without a long commute.');
+  else if(m.D<2.4)add(40,'Nurse','bad','Rents keep climbing and there’s nothing near the hospital. I drive an hour each way.');
+  const smog=E.gen.coal+E.gen.oil+E.gen.gas*.4+m.car*.2;
+  if(smog>.35)add(smog*90,'Grandparent','bad','Hazy skies again. My doctor says to stay inside on days like this.');
+  else if(smog<.15)add(35,'Runner','good','You can see the hills from downtown now. The air feels so clean.');
+  if(E.imports>.01)add(70,'Factory manager','bad','We’re buying power from other states at crazy prices. Our bills went way up.');
+  if(E.reliab<60)add(60-E.reliab+20,'Night-shift worker','bad','The power flickered again during last night’s calm spell.');
+  if(E.mic>=.4)add(E.mic*60,'Neighbor','good','A storm knocked out the main grid, but our block’s microgrid kept the lights on.');
+  if(E.share.renew>.75)add(E.share.renew*45,'Engineer','good',`${Math.round(E.share.renew*100)}% of our power is renewable now. Not bad for ${c.name}!`);
+  if(E.gen.coal>.04)add(E.gen.coal*300,'Teacher','bad','Kids near the coal plant keep missing school with asthma.');
+  if(m.car>.55)add(m.car*55,'Delivery driver','bad','Stuck in traffic for 40 minutes on a 3-mile trip.');
+  if(T[1]>.1&&m.tw('bike')>=.2)add(T[1]*250,'Student','good','Biked to class on the new protected lane. Grabbed a share bike on the way back.');
+  else if(m.tw('bike')>=.26&&T[1]<.05)add(30,'Student','meh','There are share bikes everywhere, but riding next to the trucks is terrifying.');
+  if(T[4]>.12&&m.D<3)add(40,'Train conductor','meh','The new train is fast, but most seats are empty. Not many people live near the stations.');
+  else if(m.transit>.25)add(m.transit*110,'Office worker','good','The train was packed, but I was downtown in 12 minutes.');
+  if(m.tw('av')>=.26)add(28,'Retiree','meh','Empty robotaxis keep circling my block waiting for riders.');
+  if(m.tw('hsr')>=.26)add(28,'College student','good','Took the fast train home for the weekend instead of flying. Faster than airport security!');
+  if(m.canopy<18&&c.heat>.5)add((18-m.canopy)*5,'Mail carrier','bad','The sidewalk is too hot to walk on by noon.');
+  else if(m.canopy>=30)add(m.canopy,'Dog walker','good','The shady streets made this week’s heat wave bearable.');
+  if(m.g*m.gh>.05)add(m.g*m.gh*600,'Kid','good','I saw a deer by the creek on the way to school!');
+  if(m.g*m.gf>.025)add(m.g*m.gf*800,'Chef','good','Bought tomatoes grown two blocks from my restaurant.');
+  if(m.roofs>=40)add(m.roofs*.6,'Apartment tenant','good','Our roof garden has bees now, and the top floor stays cool.');
+  if(m.g<.08)add(30,'Parent','bad','The nearest playground is a 20-minute drive.');
+  if(m.retro>=.5&&c.cold>.3)add(m.retro*50,'Landlord','good','The old building finally has real insulation and heat pumps. No more drafty winters.');
+  else if(m.retro<.2&&c.cold>.5)add(35,'Renter','bad','Our old apartment leaks heat everywhere and the gas bill is huge.');
+  if(m.scores.afford<40)add(45-m.scores.afford+20,'City budget office','bad','This plan costs a lot. Taxes and bills are going up.');
+  if(m.Mx>.4)add(m.Mx*50,'Barista','good','Everyone in the apartments upstairs comes down for coffee. Great for business.');
+  return V.sort((a,b)=>b.w-a.w).slice(0,5);
+}
+let lastVoices='';
+function renderVoices(){
+  const box=$('#voices');if(!S||!M)return;
+  const list=voices(M),sig=list.map(v=>v.text).join('|')+S.step;
+  if(sig===lastVoices&&box.childElementCount)return;lastVoices=sig;
+  const MOOD={good:'#7CCB91',meh:'#E8C46A',bad:'#EF8F80'};
+  box.innerHTML=`<h3>What residents are saying <span class="muted" style="font-family:var(--f-mono);font-weight:500">${yearAt(S.step)}</span></h3>`;
+  const ul=el('ul','feed');
+  list.forEach(v=>{const li=el('li');li.style.setProperty('--mood',MOOD[v.mood]);li.innerHTML=`<span class="av">${esc(v.who.split(' ').map(w=>w[0].toUpperCase()).join('').slice(0,2))}</span><div><div class="who">${esc(v.who)}</div><div class="tx">“${esc(v.text)}”</div></div>`;ul.append(li);});
+  if(!list.length){const li=el('li','',`<span class="av">…</span><div class="tx">The city is quiet. Make a change and see how people react.</div>`);li.style.setProperty('--mood','#C9D2DA');ul.append(li);}
+  box.append(ul);
 }
 
 function feedback(m){
-  const city=m.city.name, wins=[], fixes=[], E=m.E, T=m.T;
+  const city=m.city.name, wins=[], fixes=[], E=m.en, T=m.T;
   const P=v=>Math.round(v*100)+'%';
-  if(E[5]>.03)fixes.push([E[5]*300,`Coal still makes ${P(E[5])} of your power. Each kWh from coal emits about 75 times more CO₂ than wind.`]);
-  if(E[4]>.25)fixes.push([E[4]*120,`Natural gas supplies ${P(E[4])} of your electricity and is the largest source of power-sector CO₂ in your plan.`]);
-  if(m.shortfall>.03)fixes.push([m.shortfall*500,`Solar and wind make ${P(m.variable)} of your power, but your grid can only balance about ${P(m.coverage)}. Expect shortages on calm nights. Add hydro or nuclear, or rank storage that suits ${city} higher.`]);
-  if(E[3]>.3)fixes.push([E[3]*60,`Nuclear at ${P(E[3])} keeps the grid clean and steady, but it is the most expensive power on the list and raises bills.`]);
+  if(E.share.coal>.03)fixes.push([E.share.coal*300,`Coal still makes ${P(E.share.coal)} of your power. Move it to the bottom of your list so other sources go first.`]);
+  if(E.share.oil>.02)fixes.push([E.share.oil*250,`Oil supplies ${P(E.share.oil)} of your power. It is both the most expensive and one of the dirtiest options.`]);
+  if(E.share.gas>.25)fixes.push([E.share.gas*120,`Natural gas fills ${P(E.share.gas)} of demand and is the biggest source of power-sector CO₂ in your plan.`]);
+  if(E.imports>.01)fixes.push([E.imports*400,`Your sources only cover ${P(1-E.imports)} of demand. The rest is imported at high prices. Add more storage so renewables can supply more.`]);
+  if(E.renewCap<.65)fixes.push([(.65-E.renewCap)*150,`Renewables can only supply ${P(E.renewCap)} with your storage. More batteries, microgrids, or steady renewables like geothermal and hydro raise that limit.`]);
+  const badFit=RENEW.map((r,k)=>[r,E.R[k],E.p[k]]).filter(([,s,p])=>s>.1&&p<.4);
+  if(badFit.length)fixes.push([45,`${badFit.map(([r])=>r.name).join(' and ')} ${badFit.length>1?'are':'is'} a poor fit for ${city}, which makes your renewables expensive.`]);
   if(m.car>.5)fixes.push([m.car*80,`About ${P(m.car)} of trips still happen by car. Give more street space to buses, bikes and sidewalks, or build denser homes so transit has riders.`]);
   if(T[4]>.15&&m.D<3)fixes.push([40,`Rail gets ${P(T[4])} of the street, but with mostly single-family homes too few people live near stations to fill the trains.`]);
   if(m.tw('bike')>=.2&&T[1]<.06)fixes.push([35,`Bikeshare is near the top of your list, but bike lanes get only ${P(T[1])} of the street. Without safe lanes, few people ride.`]);
   if(m.parkLand>.04)fixes.push([m.parkLand*700,`Parking lots cover about ${P(m.parkLand)} of the city. That land traps heat and could hold homes or parks.`]);
   if(m.canopy<20&&m.city.heat>.5)fixes.push([(20-m.canopy)*3,`Tree canopy is only ${m.canopy}%. In ${city}’s heat, shade trees are one of the cheapest ways to protect people.`]);
   if(m.g<.1)fixes.push([(0.1-m.g)*400,`Only ${P(m.g)} of the land is green space, so many residents live far from a park.`]);
+  if(m.retro<.35&&m.city.cold>.3)fixes.push([m.city.cold*60,`Only ${P(m.retro)} of older buildings are retrofitted. Gas heating in old buildings is a big source of CO₂ in a city with cold winters.`]);
   if(m.tw('av')>=.26)fixes.push([25,`Ranking self-driving cars so high adds driving: empty cars cruising between rides mean more traffic and emissions.`]);
-  if(m.scores.afford<45)fixes.push([60-m.scores.afford,`This plan is expensive. The biggest costs are ${m.eCost>80?'power generation':'transport infrastructure and car ownership'}.`]);
-  if(m.D>6.8)fixes.push([20,`With so many towers, some residents will miss having private outdoor space. Parks and green roofs help make up for it.`]);
+  if(m.scores.afford<45)fixes.push([60-m.scores.afford,`This plan is expensive. The biggest costs are ${E.cost>9?'electricity':'transport infrastructure and car ownership'}.`]);
 
-  if(m.co2<120)wins.push([(120-m.co2)/2,`Your grid emits about ${Math.round(m.co2)} g CO₂ per kWh. That is cleaner than almost every country's grid today.`]);
-  if(m.reliab>=95&&m.variable>.45)wins.push([45,`${P(m.variable)} of your power comes from solar and wind, and your storage choices keep the lights on.`]);
+  if(E.co2<120)wins.push([(120-E.co2)/2,`Your grid emits about ${Math.round(E.co2)} g CO₂ per kWh, cleaner than almost every country’s grid today.`]);
+  if(E.share.renew>.7)wins.push([E.share.renew*50,`${P(E.share.renew)} of your power is renewable, backed by enough storage to keep the lights on.`]);
+  if(E.mic>=.4)wins.push([E.mic*40,`Microgrids in ${P(E.mic)} of neighborhoods keep homes powered through storms and heat waves.`]);
   if(m.active>.3)wins.push([m.active*120,`About ${P(m.active)} of trips are on foot, by bike or by scooter. That is good for health and for the air.`]);
   if(m.transit>.22)wins.push([m.transit*120,`Transit carries about ${P(m.transit)} of trips, helped by homes dense enough to fill buses and trains.`]);
+  if(m.retro>=.5)wins.push([m.retro*50,`Retrofitting ${P(m.retro)} of older buildings cuts heating and cooling energy across the city.`]);
   if(m.canopy>=30)wins.push([m.canopy,`A ${m.canopy}% tree canopy cools streets and cuts air-conditioning demand.`]);
   if(m.roofs>=40)wins.push([m.roofs*.6,`Green roofs on ${m.roofs}% of buildings soak up rain and give pollinators places to live.`]);
   if(m.g*m.gh>.06)wins.push([m.g*m.gh*500,`Protected habitat covers about ${P(m.g*m.gh)} of the city, enough to keep birds and other wildlife in town.`]);
@@ -841,23 +1081,30 @@ function renderResults(panel){
   panel.append(el('div','eyebrow',`Report · ${esc(m.city.name)} in 2050`));
   const head=el('div','grade-row');
   head.innerHTML=`<div class="grade" style="--gcol:${gc}">${g}</div><div><h2 style="margin:0">${g==='A'?'A model city':g==='B'?'A strong plan':g==='C'?'A solid start':g==='D'?'Needs more work':'Back to the drawing board'}</h2>
-    <p class="lede" style="margin:4px 0 0">Overall score ${Math.round(m.overall)} out of 100. ${esc(m.city.name)} started at ${Math.round(b.overall)} (${bg}). Emissions went from ${b.total.toFixed(1)} to ${m.total.toFixed(1)} tonnes of CO₂ per resident each year.</p></div>`;
+    <p class="lede" style="margin:4px 0 0">Sustainability score ${Math.round(m.overall)} out of 100. ${esc(m.city.name)} started at ${Math.round(b.overall)} (${bg}). Emissions went from ${b.total.toFixed(1)} to ${m.total.toFixed(1)} tonnes of CO₂ per resident each year.</p></div>`;
   panel.append(head);
   const tw=el('div','tblwrap');
   const rows=METERS.map(mt=>{const v=Math.round(m.scores[mt.k]),o=Math.round(b.scores[mt.k]),d=v-o;
     return `<tr><td>${mt.name}<div class="muted">${mt.desc}</div></td><td>${o}</td><td><b>${v}</b></td><td style="color:var(--${d>0?'good':d<0?'bad':'ink-2'})">${d>0?'+':d<0?'−':''}${Math.abs(d)}</td></tr>`}).join('');
   tw.innerHTML=`<table class="cmp"><thead><tr><th>Score</th><th>Today</th><th>Your plan</th><th>Change</th></tr></thead><tbody>${rows}</tbody></table>`;
   panel.append(tw);
-  const parts=[['power','Electricity','#E9B308'],['cars','Cars','#6E757C'],['transit','Buses and trains','#2F6DB5'],['trips','Trips to other cities','#8A6FC9'],['industry','Industry','#7B5EA7']];
+  const G=m.en.gen,sh=m.en.share;
+  const gen=[['Solar','#E9B308',G.solar],['Wind','#6CB8DC',G.wind],['Geothermal','#C8643A',G.geo],['Wave','#2BA3A0',G.wave],['Hydro','#2F6DB5',G.hydro],
+    ['Nuclear','#8A6FC9',sh.nuclear],['Gas','#8E959C',sh.gas],['Oil','#A0522D',sh.oil],['Coal','#4A4540',sh.coal],['Imports','#D0574B',m.en.imports]].filter(x=>x[2]>.004);
+  const gm=el('div');gm.style.marginTop='18px';
+  gm.innerHTML=`<h3 style="font-size:1.05rem">Where your electricity comes from</h3><div class="stack">${gen.map(([,c,v])=>`<span style="width:${v*100}%;background:${c}"></span>`).join('')}</div>
+    <div class="legend">${gen.map(([n,c,v])=>`<div class="lg"><span class="chip" style="background:${c}"></span><span class="nm">${n}</span><span class="val">${Math.round(v*100)}%</span></div>`).join('')}</div>`;
+  panel.append(gm);
+  const parts=[['power','Electricity','#E9B308'],['heating','Gas heating','#C8643A'],['cars','Cars','#6E757C'],['transit','Buses and trains','#2F6DB5'],['trips','Trips to other cities','#8A6FC9'],['industry','Industry','#7B5EA7']];
   const em=el('div');em.style.marginTop='18px';
-  em.innerHTML=`<h3 style="font-size:1.05rem">Where your ${m.total.toFixed(1)} tonnes come from</h3><div class="stack">${parts.map(([k,,c])=>`<span style="width:${m.em[k]/m.total*100}%;background:${c}" title="${k}"></span>`).join('')}</div>
+  em.innerHTML=`<h3 style="font-size:1.05rem">Where your ${m.total.toFixed(1)} tonnes come from</h3><div class="stack">${parts.map(([k,,c])=>`<span style="width:${m.em[k]/m.total*100}%;background:${c}"></span>`).join('')}</div>
     <div class="legend">${parts.map(([k,n,c])=>`<div class="lg"><span class="chip" style="background:${c}"></span><span class="nm">${n}</span><span class="val">${m.em[k].toFixed(1)} t</span></div>`).join('')}</div>`;
   panel.append(em);
   const fb=feedback(m),f=el('div','fb');
-  f.innerHTML=`<div><h3>What works</h3><ul>${(fb.wins.length?fb.wins:['Nothing stands out yet. Try changing one chapter at a time and watch the report.']).map(t=>`<li style="--c:var(--good)">${esc(t)}</li>`).join('')}</ul></div>
+  f.innerHTML=`<div><h3>What works</h3><ul>${(fb.wins.length?fb.wins:['Nothing stands out yet. Try changing one chapter at a time and watch the score.']).map(t=>`<li style="--c:var(--good)">${esc(t)}</li>`).join('')}</ul></div>
     <div><h3>What to try next</h3><ul>${(fb.fixes.length?fb.fixes:['No major weak spots. Try another city to see how geography changes the best plan.']).map(t=>`<li style="--c:var(--warn)">${esc(t)}</li>`).join('')}</ul></div>`;
   panel.append(f);
-  panel.append(el('p','muted','Scores come from a simplified model built for this game. Emission factors for power sources use published lifecycle medians; everything else is a rough estimate meant to show trade-offs, not to predict a real city.'));
+  panel.append(el('p','muted','Scores come from a simplified model built for this game. Emission factors for power sources use published lifecycle estimates; everything else is a rough estimate meant to show trade-offs, not to predict a real city.'));
   const nav=el('div','navrow');
   const back=el('button','btn','Revise my plan');back.type='button';back.onclick=()=>go(0);
   const nc=el('button','btn primary','Try another city');nc.type='button';nc.onclick=()=>showStart();
@@ -866,41 +1113,45 @@ function renderResults(panel){
 
 function showStart(){
   const st=$('#start');$('#main').hidden=true;st.hidden=false;
-  st.innerHTML=`<h1>Plan a city that can thrive in 2050</h1><p>Pick a city. You will choose its power sources, buildings, streets and green space, and watch the city change as you go. At the end you get a report on climate, cost, livability and nature.</p>`;
+  st.innerHTML=`<h1>Plan a city that can thrive in 2050</h1><p>Pick a city. You will choose its energy, buildings, streets and green space, and watch the city change as you go. Residents will tell you what they think, and at the end you get a sustainability report.</p>`;
   const grid=el('div','cities');
   CITIES.forEach(c=>{const b=el('button','cityc');b.type='button';
-    const tr=[['Sun',c.sun/1.3],['Wind',c.wind/1.1],['Rivers',c.hydro/1.4],['Heat',c.heat],['Flooding',c.flood],['Land cost',c.land/1.5]];
+    const tr=[['Sun',c.pot.solar/1.3],['Wind',c.pot.wind/1.1],['Rivers',c.pot.hydro/1.4],['Geothermal',c.pot.geo],['Waves',c.pot.wave],['Heat',c.heat],['Cold',c.cold],['Flooding',c.flood],['Land cost',c.land/1.5]];
     b.innerHTML=`<b>${esc(c.name)}</b><span class="tg">${esc(c.tag)}</span><div class="traits">${tr.map(([n,v])=>`<span>${n}</span><i style="--w:${Math.round(c01(v)*100)}%"></i>`).join('')}</div>`;
     b.onclick=()=>startCity(c.id);grid.append(b);});
   st.append(grid);
   if(S){const back=el('button','btn',`Keep planning ${esc(CITY[S.city].name)}`);back.type='button';back.style.justifySelf='start';back.onclick=()=>{st.hidden=true;$('#main').hidden=false};st.append(back);}
-  $('#stageTag').textContent=S?`${CITY[S.city].name} in 2050`:'Your city in 2050';
 }
 function startCity(id){S=newState(id);begin();}
 function begin(){
   BASE=compute(newState(S.city));
   $('#start').hidden=true;$('#main').hidden=false;
   $('#stageTag').textContent=`${CITY[S.city].name} in 2050`;
-  renderReport();update();renderTop();renderPanel();scene.layout(S);scene.draw(scene.now());
+  lastVoices='';renderReport();update();renderTop();renderPanel();scene.key='';scene.mkey='';scene.draw(scene.now());
 }
-
+function setView(v){VIEW=v;$('#vStreet').setAttribute('aria-pressed',String(v==='street'));$('#vMap').setAttribute('aria-pressed',String(v==='map'));
+  $('#mapLegend').hidden=v!=='map';scene.draw(scene.now());if(S)save();}
+$('#mapLegend').innerHTML=[['Homes','#E1AE22'],['Mixed-use','#E07B2E'],['Office & retail','#C8443A'],['Industrial','#7B5EA7'],['Parking','#56606B'],['Parks','#6DB865'],['Habitat','#2F7A45'],['Farms','#B3BE3A'],['Green roofs','#58B866'],['Solar roofs','#2B4F8A']]
+  .map(([n,c])=>`<span><i style="background:${c}"></i>${n}</span>`).join('')+[['Cars','#FFC857'],['Buses','#FF6B5B'],['Walking & biking','#7CF29A'],['Trains','#6FB3FF']].map(([n,c])=>`<span><i class="dot" style="background:${c}"></i>${n}</span>`).join('');
+$('#vStreet').onclick=()=>setView('street');$('#vMap').onclick=()=>setView('map');
 $('#cityBtn').onclick=showStart;
 $('#restart').onclick=()=>{if(S)startCity(S.city)};
 matchMedia('(prefers-color-scheme: dark)').addEventListener('change',()=>scene.draw(scene.now()));
 new MutationObserver(()=>scene.draw(scene.now())).observe(document.documentElement,{attributes:true,attributeFilter:['data-theme']});
 reduceMotion.addEventListener('change',()=>scene.loop());
 
+// Before a city is chosen, the scene previews San Francisco so the page is never empty.
+const _draw=scene.draw.bind(scene);let preview=null;
+scene.draw=function(t){if(!S){if(!preview)preview=newState('sf');S=preview;M=M||compute(preview);_draw(t);S=null;return;}_draw(t);};
 function boot(data){
   S=(data&&data.S)||load();
+  if(data&&data.VIEW)VIEW=data.VIEW;
   if(!S){M=compute(newState('sf'));BASE=M;showStart();renderTop();}
   else begin();
+  setView(VIEW);
   scene.resize();scene.loop();
 }
-// Before a city is chosen, the scene previews San Francisco so the page is never empty.
-const _draw=scene.draw.bind(scene);
-let preview=null;
-scene.draw=function(t){if(!S){if(!preview){preview=newState('sf');}const keep=S;S=preview;M=M||compute(preview);_draw(t);S=keep;return;}_draw(t);};
-window.claude?.hot?.snapshot?.(()=>({S}));
+window.claude?.hot?.snapshot?.(()=>({S,VIEW}));
 window.claude?.hot?.ready?window.claude.hot.ready(boot):boot(window.claude?.hot?.data??{});
 </script>
 </body>
