@@ -4,6 +4,10 @@ A SimCity-style city planning game set in **Saratoga, California**. You are the 
 director: rezone land, decide on development projects, balance the budget and meet the state's
 housing target, on a map built from Saratoga's real streets and building footprints.
 
+The city is shown in **3D**: every footprint is extruded to its number of stories, homes get
+pitched roofs, the foothills rise toward the Santa Cruz Mountains, and lots and hillsides are
+planted with trees, lit by an afternoon sun with shadows. A flat 2D map is one click away.
+
 ## Play
 
 Open `index.html` through any static web server:
@@ -19,7 +23,9 @@ No build step and no dependencies. The game saves to your browser's local storag
 
 | Action | How |
 | --- | --- |
-| Pan | Drag with the Inspect tool, right-drag, or hold Space and drag |
+| Pan | Drag with the Inspect tool, middle-drag, or hold Space and drag |
+| Rotate / tilt (3D) | Right-drag or Shift-drag, `Q`/`E` and `R`/`F`, two-finger twist, or the buttons on the right |
+| Switch 3D / 2D | `V` or the 2D/3D button |
 | Zoom | Mouse wheel, pinch, or `+` / `-` |
 | Inspect | Click a building, street or lot |
 | Pause / resume | Space |
@@ -77,6 +83,12 @@ streets and houses in it are generated, so it is not building-for-building accur
 
 ### Accuracy notes
 
+- **Terrain is approximate.** OpenStreetMap has no elevations, so the 3D view uses a modeled
+  surface: a gently sloping valley floor in the north-east and foothills rising south-west of a
+  line from Prospect Road past the Village toward Montalvo (`World.buildTerrain` in `js/world.js`).
+- **Building heights** come from OSM `building:levels` where mapped; otherwise from the building
+  type and size. Roof shapes are generic (gables on simple four-sided homes, flat elsewhere).
+
 - **Building footprints and streets** are as accurate as OpenStreetMap's coverage of Saratoga.
 - **Zoning is inferred**, not copied from the official zoning map. Each 20 m cell gets a district
   from what is built around it: lot size estimated from house density, commercial and apartment
@@ -96,7 +108,9 @@ Map data © OpenStreetMap contributors, available under the Open Database Licens
 | `js/rules.js` | Zoning districts, building types, buildable projects, economy constants |
 | `js/world.js` | Map loading, spatial indexes, zoning grid inference, building placement |
 | `js/sim.js` | Monthly simulation: growth, applications, budget, approval, housing law, save/load |
-| `js/render.js` | Canvas renderer and overlays (zoning, vacant lots, street access, fire coverage) |
+| `js/render3d.js` | 3D renderer (three.js): terrain, extruded buildings, streets, creeks, trees, shadows, labels |
+| `js/render.js` | Flat 2D map renderer and the overlays (zoning, vacant lots, street access, fire coverage) |
+| `js/vendor/three.min.js` | three.js r149 (MIT), bundled so the game works offline |
 | `js/ui.js` | Tools, input, inspector, Planning Commission and budget panels |
 | `js/main.js` | Boot, main loop, persistence |
 | `tools/fetch_osm.py` | OpenStreetMap → `data/saratoga.js` |

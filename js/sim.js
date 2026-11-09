@@ -258,6 +258,7 @@ SG.Sim = class Sim {
     if (a.replace && !a.replace.removed) for (const id of this.w.lotGroup(a.replace)) this.w.removeBuilding(this.w.buildings[id]);
     const b = this.w.placeBuilding(a.x, a.y, spec, { built: null, construction: true, appId: a.id });
     b.months = a.build === 'adu' ? 4 : a.build === 'house' || a.build === 'duplex' ? 10 : a.build === 'mixeduse' ? 26 : 18;
+    b.totalMonths = b.months;
     b.unitsWhenDone = b.units; b.jobsWhenDone = b.jobs; b.units = 0; b.jobs = 0;
     this.construction.push(b);
     if (a.units) this.rhnaPermitted += a.units;
@@ -296,6 +297,7 @@ SG.Sim = class Sim {
         b.units = b.unitsWhenDone; b.jobs = b.jobsWhenDone;
       }
     }
+    if (this.construction.length) this.w.version++; // building heights grow as they go up
     this.construction = this.construction.filter(b => b.construction && !b.removed);
 
     this.proposeProjects();

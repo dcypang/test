@@ -26,11 +26,58 @@ SG.World = class World {
     this.pois = map.pois.map(([name, kind, x, y]) => ({ name, kind, x: x * d, y: y * d }));
     this.playerParks = [];
 
+    this.version = 0; this.roadVersion = 0; this.areaVersion = 0;
+    this.buildTerrain();
     this.buildIndexes();
     this.rasterize();
     this.inferZoning();
     for (const b of this.buildings) this.initBuilding(b);
     this.computeClaims();
+  }
+
+  // ---------- terrain ----------
+  // Saratoga has no elevation data in OSM. This is an approximation: a gently sloping
+  // valley floor in the north-east and foothills rising to the south-west of a line
+  // running from Prospect Road past the Village toward Montalvo.
+  buildTerrain() {
+    const [lat0, lon0] = this.map.origin;
+    const KX = 111320 * Math.cos(lat0 * Math.PI / 180), KY = 110540;
+    const P = (lat, lon) => [(lon - lon0) * KX, (lat0 - lat) * KY];
+    const line = [[37.302, -122.070], [37.292, -122.060], [37.280, -122.052], [37.268, -122.045], [37.258, -122.036],
+      [37.252, -122.026], [37.246, -122.012], [37.240, -121.998], [37.235, -121.983]].map(([a, b]) => P(a, b));
+    const signed = (x, y) => {
+      let best = Infinity, side = 1;
+      for (let i = 1; i < line.length; i++) {
+        const [ax, ay] = line[i - 1], [bx, by] = line[i];
+        const d2 = World.segDist2(x, y, ax, ay, bx, by);
+        if (d2 < best) { best = d2; side = Math.sign((bx - ax) * (y - ay) - (by - ay) * (x - ax)) || 1; }
+      }
+      return [Math.sqrt(best), side];
+    };
+    const ref = signed(...P(37.2529, -122.0434))[1]; // Hakone Gardens is in the hills
+    const smooth = (a, b, t) => { t = Math.max(0, Math.min(1, (t - a) / (b - a))); return t * t * (3 - 2 * t); };
+    this.elevFn = (x, y) => {
+      const [d, side] = signed(x, y);
+      if (side !== ref) return Math.max(72, 128 - d * 0.018) + 4 * Math.sin(x / 900) * Math.sin(y / 700);
+      const ridges = 34 * Math.sin(x / 420 + 1.3 * Math.sin(y / 610)) + 22 * Math.sin(y / 270 - x / 510) + 10 * Math.sin((x + y) / 150);
+      return 128 + smooth(0, 300, d) * (Math.min(520, d * 0.17) + Math.min(1, d / 700) * ridges);
+    };
+    const T = this.TCELL = SG.CELL * 2;
+    this.TW = Math.ceil(this.W * SG.CELL / T) + 1; this.TH = Math.ceil(this.H * SG.CELL / T) + 1;
+    this.hgt = new Float32Array(this.TW * this.TH);
+    for (let j = 0; j < this.TH; j++) for (let i = 0; i < this.TW; i++)
+      this.hgt[j * this.TW + i] = this.elevFn(this.x0 + i * T, this.y0 + j * T);
+  }
+  // Height on the same triangulation the 3D terrain mesh uses.
+  heightAt(x, y) {
+    const T = this.TCELL;
+    let fx = (x - this.x0) / T, fy = (y - this.y0) / T;
+    fx = Math.max(0, Math.min(this.TW - 1.001, fx)); fy = Math.max(0, Math.min(this.TH - 1.001, fy));
+    const i = Math.floor(fx), j = Math.floor(fy); fx -= i; fy -= j;
+    const W = this.TW, h = this.hgt;
+    const h00 = h[j * W + i], h10 = h[j * W + i + 1], h01 = h[(j + 1) * W + i], h11 = h[(j + 1) * W + i + 1];
+    if (fx + fy <= 1) return h00 + fx * (h10 - h00) + fy * (h01 - h00);
+    return h11 + (1 - fx) * (h01 - h11) + (1 - fy) * (h10 - h11);
   }
 
   // ---------- geometry helpers ----------
@@ -405,25 +452,29 @@ SG.World = class World {
     this.initBuilding(b);
     this.indexBuilding(b);
     this.claimFor(b);
+    this.version++;
     return b;
   }
   removeBuilding(b) {
     b.removed = true;
+    this.version++;
     for (let i = 0; i < this.claim.length; i++) if (this.claim[i] === b.id) this.claim[i] = -1;
   }
   addRoad(pts, cls = 3, name = '') {
     const r = this.addRoadRaw({ cls, pts: new Float32Array(pts), name, player: true });
     this.indexRoad(r);
     this.computeRoadDist();
+    this.version++; this.roadVersion++;
     return r;
   }
-  removeRoad(r) { r.removed = true; this.computeRoadDist(); }
+  removeRoad(r) { r.removed = true; this.computeRoadDist(); this.version++; this.roadVersion++; }
   addPark(x, y, w, d) {
     const nr = this.nearestRoad(x, y, 150);
     const pts = World.rect(x, y, w, d, nr ? nr.angle : 0);
     const a = { id: this.areas.length, kind: 'park', pts, name: 'New park', player: true };
     this.areas.push(a); this.playerParks.push(a);
     this.fillPoly(pts, i => { this.areaK[i] = 1; this.claim[i] = -2; });
+    this.version++; this.areaVersion++;
     return a;
   }
 

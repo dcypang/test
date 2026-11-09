@@ -91,13 +91,14 @@ SG.UI = class UI {
       pointers.set(e.pointerId, pos(e));
       if (pointers.size === 2) {
         const [a, b] = [...pointers.values()];
-        pinch = { d: Math.hypot(a[0] - b[0], a[1] - b[1]), m: [(a[0] + b[0]) / 2, (a[1] + b[1]) / 2] };
+        pinch = { d: Math.hypot(a[0] - b[0], a[1] - b[1]), m: [(a[0] + b[0]) / 2, (a[1] + b[1]) / 2], ang: Math.atan2(b[1] - a[1], b[0] - a[0]) };
         drag = null; return;
       }
       const [x, y] = pos(e);
       const panMode = e.button === 1 || e.button === 2 || this.tool === 'inspect' || this.spaceDown;
-      drag = { x, y, sx: x, sy: y, pan: panMode, moved: false, button: e.button };
-      if (!panMode) this.toolDown(...this.r.toWorld(x, y));
+      const orbit = !!this.r.orbit && (e.button === 2 || (e.button === 0 && (e.shiftKey || e.altKey)));
+      drag = { x, y, sx: x, sy: y, pan: panMode || orbit, orbit, moved: false, button: e.button };
+      if (!drag.pan) this.toolDown(...this.r.toWorld(x, y));
     });
     cv.addEventListener('pointermove', e => {
       const p = pos(e);
@@ -105,14 +106,21 @@ SG.UI = class UI {
       if (pinch && pointers.size === 2) {
         const [a, b] = [...pointers.values()];
         const d = Math.hypot(a[0] - b[0], a[1] - b[1]), m = [(a[0] + b[0]) / 2, (a[1] + b[1]) / 2];
+        const ang = Math.atan2(b[1] - a[1], b[0] - a[0]);
         this.r.pan(m[0] - pinch.m[0], m[1] - pinch.m[1]);
         this.r.zoomAt(m[0], m[1], d / pinch.d);
-        pinch = { d, m }; return;
+        if (this.r.orbit) { let da = ang - pinch.ang; if (da > Math.PI) da -= 2 * Math.PI; if (da < -Math.PI) da += 2 * Math.PI; this.r.orbit(da / 0.006, 0); }
+        pinch = { d, m, ang }; return;
       }
-      const [wx, wy] = this.r.toWorld(...p);
+      if (drag && drag.pan) {
+        if (Math.hypot(p[0] - drag.sx, p[1] - drag.sy) > 4) drag.moved = true;
+        if (drag.orbit) this.r.orbit(p[0] - drag.x, p[1] - drag.y);
+        else this.r.pan(p[0] - drag.x, p[1] - drag.y);
+        drag.x = p[0]; drag.y = p[1]; return;
+      }
+      const [wx, wy] = this.worldAt(p);
       if (drag) {
         if (Math.hypot(p[0] - drag.sx, p[1] - drag.sy) > 4) drag.moved = true;
-        if (drag.pan) { this.r.pan(p[0] - drag.x, p[1] - drag.y); drag.x = p[0]; drag.y = p[1]; return; }
         this.toolDrag(wx, wy);
       } else this.toolHover(wx, wy);
     });
@@ -121,7 +129,7 @@ SG.UI = class UI {
       if (pointers.size < 2) pinch = null;
       if (!drag) return;
       const p = pos(e);
-      const [wx, wy] = this.r.toWorld(...p);
+      const [wx, wy] = this.worldAt(p, drag.pan);
       if (drag.pan && !drag.moved && drag.button === 0) this.inspect(wx, wy);
       else if (!drag.pan) this.toolUp(wx, wy);
       drag = null;
@@ -138,6 +146,13 @@ SG.UI = class UI {
       if (e.key === '+' || e.key === '=') this.r.zoomAt(this.r.vw / 2, this.r.vh / 2, 1.3);
       if (e.key === '-') this.r.zoomAt(this.r.vw / 2, this.r.vh / 2, 1 / 1.3);
       if (e.key === 'z') this.setOverlay(this.r.overlay === 'zoning' ? 'none' : 'zoning');
+      if (e.key === 'v') this.g.toggleView();
+      if (this.r.orbit) {
+        if (e.key === 'q') this.r.orbit(-40, 0);
+        if (e.key === 'e') this.r.orbit(40, 0);
+        if (e.key === 'r') this.r.orbit(0, 25);
+        if (e.key === 'f') this.r.orbit(0, -25);
+      }
     });
 
     const mm = this.$('minimap');
@@ -147,6 +162,11 @@ SG.UI = class UI {
     mm.addEventListener('pointerup', () => { mm._d = false; });
   }
 
+  // Ground point under the cursor; inspecting and bulldozing hit buildings first in 3D.
+  worldAt(p, inspecting) {
+    const pick = (inspecting || this.tool === 'bulldoze' || this.tool === 'inspect') && this.r.pickWorld;
+    return pick ? this.r.pickWorld(...p) : this.r.toWorld(...p);
+  }
   toolHover(x, y) {
     const t = this.tool;
     if (t.startsWith('zone:')) {
@@ -157,7 +177,7 @@ SG.UI = class UI {
       const nr = this.w.nearestRoad(px, py, 120);
       const pts = SG.World.rect(px, py, spec.w, spec.d, nr ? nr.angle : 0);
       const ok = this.canPlace(spec, px, py, pts).ok;
-      this.r.ghost = { type: 'poly', pts, ok };
+      this.r.ghost = { type: 'poly', pts, ok, h: spec.area ? 0.6 : (spec.levels || 1) * 3.3 };
     } else if (t === 'bulldoze') {
       const target = this.w.buildingAt(x, y) || this.roadAt(x, y);
       this.r.selected = target; this.r.ghost = null;
@@ -395,6 +415,13 @@ SG.UI = class UI {
   bindChrome() {
     document.querySelectorAll('.speed button[data-speed]').forEach(b => b.onclick = () => this.g.setSpeed(+b.dataset.speed));
     this.$('menu-btn').onclick = () => this.menu();
+    document.querySelectorAll('#camctl button').forEach(b => b.onclick = () => {
+      const c = b.dataset.cam, r = this.r;
+      if (c === 'view') return this.g.toggleView();
+      if (!r.orbit) return;
+      if (c === 'rotl') r.orbit(-60, 0); if (c === 'rotr') r.orbit(60, 0);
+      if (c === 'up') r.orbit(0, 35); if (c === 'down') r.orbit(0, -35);
+    });
     this.$('auto-approve').onchange = e => { this.sim.autoApprove = e.target.checked; };
     this.$('modal').addEventListener('click', e => { if (e.target.id === 'modal') this.closeModal(); });
   }
@@ -430,7 +457,7 @@ SG.UI = class UI {
       d.querySelector('.go').onclick = () => {
         this.r.cx = a.x; this.r.cy = a.y; this.r.scale = Math.max(this.r.scale, 2.5);
         const nr = this.w.nearestRoad(a.x, a.y, 120);
-        this.r.ghost = { type: 'poly', pts: SG.World.rect(a.x, a.y, spec.w, spec.d, nr ? nr.angle : 0), ok: a.check.ok };
+        this.r.ghost = { type: 'poly', pts: SG.World.rect(a.x, a.y, spec.w, spec.d, nr ? nr.angle : 0), ok: a.check.ok, h: (spec.levels || 1) * 3.3 };
         this.r.dirty = true;
       };
       el.appendChild(d);
@@ -471,6 +498,7 @@ SG.UI = class UI {
         <li><b>Zoning</b> tools paint districts: R-1-40,000 hillside lots, the Village (C-H), mixed-use housing sites (MU)…</li>
         <li><b>Private</b> tools file projects. ADUs and SB 9 duplexes must be approved by state law.</li>
         <li><b>City</b> tools build parks, fire stations and libraries with city money.</li>
+        <li><b>3D view</b>: right-drag (or Shift-drag) to rotate and tilt, Q/E and R/F from the keyboard, two-finger twist on touch. V or the 2D button switches to the flat map.</li>
         <li>Space pauses. Press Z for the zoning map. <b>[</b> and <b>]</b> change the brush size.</li>
       </ul>
       <div class="row"><button class="btn" id="m-start">Start planning</button></div>`);

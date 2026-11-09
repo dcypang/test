@@ -31,7 +31,15 @@
   <aside id="toolbar"></aside>
 
   <main id="viewport">
+    <canvas id="gl"></canvas>
     <canvas id="map"></canvas>
+    <div id="camctl" title="Camera">
+      <button data-cam="rotl" title="Rotate left (Q)">⟲</button>
+      <button data-cam="rotr" title="Rotate right (E)">⟳</button>
+      <button data-cam="up" title="Tilt toward top-down (R)">⤒</button>
+      <button data-cam="down" title="Tilt toward the horizon (F)">⤓</button>
+      <button data-cam="view" id="view-btn" title="Switch between 3D and the flat map (V)">2D</button>
+    </div>
     <div id="demand" title="Development demand">
       <div><span>R</span><i id="d-r"></i></div>
       <div><span>C</span><i id="d-c"></i></div>
@@ -60,7 +68,9 @@
 <script src="js/rules.js"></script>
 <script src="js/world.js"></script>
 <script src="js/sim.js"></script>
+<script src="js/vendor/three.min.js"></script>
 <script src="js/render.js"></script>
+<script src="js/render3d.js"></script>
 <script src="js/ui.js"></script>
 <script src="js/main.js"></script>
 </body>

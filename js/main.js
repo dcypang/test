@@ -10,10 +10,17 @@ SG.Game = class Game {
     this.speed = 0; this.lastSpeed = 1;
     this.world = new SG.World(window.SARATOGA_MAP);
     this.sim = new SG.Sim(this.world);
-    this.renderer = new SG.Renderer(document.getElementById('map'), this.world, this.sim);
+    this.r2d = new SG.Renderer(document.getElementById('map'), this.world, this.sim);
+    this.r3d = null;
+    if (SG.Renderer3D.supported()) {
+      try { this.r3d = new SG.Renderer3D(document.getElementById('gl'), document.getElementById('map'), this.world, this.sim); }
+      catch (e) { console.warn('3D view unavailable', e); }
+    }
+    this.renderer = this.r3d || this.r2d;
+    this.setViewClass();
     this.ui = new SG.UI(this);
     this.hook();
-    window.addEventListener('resize', () => { this.renderer.resize(); });
+    window.addEventListener('resize', () => { this.r2d.resize(); if (this.r3d) this.r3d.resize(); });
     document.getElementById('loading').style.display = 'none';
     this.acc = 0; this.last = performance.now();
     requestAnimationFrame(t => this.frame(t));
@@ -26,6 +33,24 @@ SG.Game = class Game {
     this.sim.onChange = () => { this.renderer.dirty = true; };
     this.sim.onCrisis = () => { if (!this._crisis) { this._crisis = true; this.ui.ticker('Saratoga is broke! Cut spending or ask voters for a parcel tax.', true); } };
     this.sim.autoApprove = document.getElementById('auto-approve').checked;
+  }
+  setViewClass() {
+    document.getElementById('viewport').classList.toggle('flat', this.renderer === this.r2d);
+    const b = document.getElementById('view-btn');
+    if (b) { b.textContent = this.renderer === this.r2d ? '3D' : '2D'; b.style.display = this.r3d ? '' : 'none'; }
+  }
+  toggleView() {
+    if (!this.r3d) return;
+    const from = this.renderer, to = from === this.r2d ? this.r3d : this.r2d;
+    const s = from.scale;
+    to.cx = from.cx; to.cy = from.cy;
+    to.scale = Math.max(to.minScale || 0, s);
+    to.overlay = from.overlay; to.selected = from.selected; to.ghost = null;
+    to.dirty = to.zoneDirty = true; to._miniDirty = true;
+    if (to === this.r2d) { const c = this.r2d.ctx; c.setTransform(1, 0, 0, 1, 0, 0); }
+    this.renderer = to;
+    this.setViewClass();
+    if (to === this.r3d) to.resize(); else to.resize();
   }
   setSpeed(s) {
     this.speed = s; if (s) this.lastSpeed = s;
@@ -56,7 +81,7 @@ SG.Game = class Game {
   onWorldChange() {
     this.sim.recount();
     this.sim.budget = this.sim.computeBudget();
-    this.renderer.dirty = true; this.renderer.zoneDirty = true; this.renderer._miniDirty = true;
+    for (const r of [this.r2d, this.r3d]) if (r) { r.dirty = true; r.zoneDirty = true; r._miniDirty = true; }
     this.refreshPanels();
   }
 
@@ -85,8 +110,7 @@ SG.Game = class Game {
     this.setSpeed(1);
   }
   rebind() {
-    const r = this.renderer;
-    r.w = this.world; r.setSim(this.sim); r._miniDirty = true; r.selected = null;
+    for (const r of [this.r2d, this.r3d]) if (r) { r.w = this.world; r.setSim(this.sim); r._miniDirty = true; r.selected = null; }
     this.hook();
     this.ui.select(null);
     this.refreshPanels();
