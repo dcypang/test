@@ -220,6 +220,7 @@ const UI = (() => {
           return;
         }
       }
+      if (m.x !== ui.mouse.x || m.y !== ui.mouse.y) ui.mouse.moved = true;
       ui.mouse.x = m.x; ui.mouse.y = m.y; ui.mouse.inside = true; ui.mouse.touch = e.pointerType === 'touch';
       if (ui.mode && ui.mode.t === 'place') {
         const d = BUILDINGS[ui.mode.type], w = s2w(m.x, m.y);
@@ -488,7 +489,7 @@ const UI = (() => {
       let dx = 0, dy = 0;
       if (k.ArrowLeft) dx -= 1; if (k.ArrowRight) dx += 1; if (k.ArrowUp) dy -= 1; if (k.ArrowDown) dy += 1;
       const m = ui.mouse;
-      if (m.inside && !m.touch && !P && document.hasFocus()) {
+      if (m.inside && m.moved && !m.touch && !P && document.hasFocus()) {
         const E = 10;
         if (m.x < E) dx -= 1; else if (m.x > View.W - E) dx += 1;
         if (m.y < E) dy -= 1; else if (m.y > View.H - E) dy += 1;
@@ -508,7 +509,7 @@ const UI = (() => {
     Sfx.setListener(() => { const c = s2w(View.W / 2, View.H / 2); return { x: c.x, y: c.y, r: Math.max(8, View.W / View.zoom / 64) }; });
   }
   function reset() {
-    setSel([]); setMode(null); ui.groups = {}; ui.markers.length = 0; ui.box = null; gridSig = ''; msgSig = ''; selSig = ''; timerSig = '';
+    setSel([]); setMode(null); ui.mouse.moved = false; ui.groups = {}; ui.markers.length = 0; ui.box = null; gridSig = ''; msgSig = ''; selSig = ''; timerSig = '';
     setTab('build'); tip('Hover an icon for details. Start with a <b>Windmill</b>, then a <b>Mint</b>.');
   }
 

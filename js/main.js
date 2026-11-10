@@ -33,7 +33,7 @@ const App = (() => {
     ended = true;
     const win = G.over.winner === G.human, demo = G.opts.demo;
     $('endtitle').textContent = demo ? G.players[G.over.winner].col.name + ' wins' : win ? 'Victory' : 'Defeat';
-    $('endsub').textContent = (demo ? 'The battle is over' : win ? 'The enemy’s holdings lie in ruin.' : 'Your last building has fallen.') + ' Time ' + fmtTime(G.over.time) + '.';
+    $('endsub').textContent = (demo ? 'The battle is over.' : win ? 'The enemy’s holdings lie in ruin.' : 'Your last building has fallen.') + ' Time ' + fmtTime(G.over.time) + '.';
     const a = G.players[0], b = G.players[1], row = (l, k) => `<tr><td>${l}</td><td>${Math.round(a.stats[k])}</td><td>${Math.round(b.stats[k])}</td></tr>`;
     $('endstats').innerHTML = `<tr><th></th><th>${demo ? a.col.name : 'You'}</th><th>${demo ? b.col.name : 'Enemy'}</th></tr>` +
       row('Coin earned', 'earned') + row('Buildings raised', 'built') + row('Troops trained', 'trained') + row('Enemies slain', 'kills') + row('Buildings razed', 'razed') + row('Losses', 'lost');
@@ -74,7 +74,7 @@ const App = (() => {
     });
     $('startbtn').onclick = () => start();
     $('resumebtn').onclick = () => togglePause();
-    $('againbtn').onclick = () => { $('endscreen').hidden = true; $('menu').hidden = false; app.paused = true; };
+    $('againbtn').onclick = () => { $('endscreen').hidden = true; $('menu').hidden = false; $('resumebtn').hidden = true; app.paused = true; };
     $('demobtn').onclick = () => start({ demo: true, reveal: true });
     $('musicbtn').onclick = () => { Sfx.init(); toggleMusic(); };
     $('sfxbtn').onclick = () => { Sfx.init(); Sfx.setSfx(!Sfx.sfxOn); $('sfxbtn').textContent = 'Sound: ' + (Sfx.sfxOn ? 'on' : 'off'); };

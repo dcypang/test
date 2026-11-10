@@ -71,7 +71,8 @@ class GameMap {
       else if ((f > 0.62 || edge < 1) && dB > 10) t = T_FOREST;
       else if (nB(x / 5 + 7.3, y / 5 + 3.1) > 0.7) t = T_DIRT;
       this.terrain[i] = t;
-      this.variant[i] = (rng() * 256) | 0;
+      // low nibble: random detail; high bits: smooth shade band so terrain reads as patches, not a checkerboard
+      this.variant[i] = ((rng() * 16) | 0) | (Math.min(3, Math.floor((nD(x / 6 + 11.7, y / 6 + 4.2) * 0.7 + nA(x / 2.5, y / 2.5) * 0.3) * 4.6)) << 4);
     }
     // gold fields (placed on the whole grid, then mirrored from the canonical half)
     const fields = [
@@ -123,7 +124,8 @@ class GameMap {
       if (t === T_WATER || t === T_FOREST || t === T_ROCK) { this.solid[i] = 1; this.gold[i] = 0; this.goldKind[i] = 0; }
       if (t === T_FOREST) {
         const v = this.variant[i];
-        this.trees.push({ x: x + 0.3 + (v % 16) / 40, y: y + 0.3 + ((v >> 4) % 16) / 40, v: v % 3, s: 0.85 + (v % 7) / 20 });
+        const h = (x * 73856093 ^ y * 19349663) >>> 0;
+        this.trees.push({ x: x + 0.3 + (h % 16) / 40, y: y + 0.3 + ((h >> 4) % 16) / 40, v: (h >> 8) % 3, s: 0.85 + ((h >> 10) % 7) / 20 });
       } else if (t === T_ROCK) {
         let kind = 1;
         for (let dy = -2; dy <= 2; dy++) for (let dx = -2; dx <= 2; dx++) {

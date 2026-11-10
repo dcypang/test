@@ -133,9 +133,8 @@ const Render = (() => {
       const px = (x - y) * HW, py = (x + y + 1) * HH;
       if (px < L || px > R || py < T || py > B) continue;
       const i = y * n + x;
-      if (!ex[i]) continue;
       const t = m.terrain[i];
-      const s = Art.tile(t, t === T_WATER ? m.variant[i] + wt : m.variant[i]);
+      const s = Art.tile(t, t === T_WATER ? m.variant[i] + ((wt + x * 3 + y * 5) % 4 << 4) : m.variant[i]);
       ctx.drawImage(s.c, px - s.ox, py - s.oy, s.w, s.h);
       const g = m.gold[i];
       if (g > 0) { const gs = Art.gold(m.goldKind[i] || 1, clamp(Math.ceil(g / 150), 1, 4), m.variant[i]); ctx.drawImage(gs.c, px - gs.ox, py - gs.oy, gs.w, gs.h); }
@@ -189,11 +188,13 @@ const Render = (() => {
     for (const t of m.trees) {
       const px = (t.x - t.y) * HW, py = (t.x + t.y) * HH;
       if (px < L || px > R || py < T || py > B + 70) continue;
+      if (!ex[Math.floor(t.y) * n + Math.floor(t.x)]) continue;
       list.push({ d: t.x + t.y, e: t, k: 2 });
     }
     for (const l of m.lodes) {
       const px = (l.x - l.y) * HW, py = (l.x + l.y) * HH;
       if (px < L || px > R || py < T || py > B + 40) continue;
+      if (!ex[l.ty * n + l.tx]) continue;
       list.push({ d: l.x + l.y, e: l, k: 3 });
     }
     list.sort((a, b) => a.d - b.d);

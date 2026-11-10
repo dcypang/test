@@ -24,6 +24,7 @@ function rectDist(px, py, x0, y0, x1, y1) {
 }
 
 function hexToRgb(h) {
+  if (h[0] !== '#') { const m = h.match(/\d+/g); return [+m[0], +m[1], +m[2]]; }
   const n = parseInt(h.slice(1), 16);
   return [n >> 16 & 255, n >> 8 & 255, n & 255];
 }

@@ -25,7 +25,7 @@ const AGES = [
 // damage type -> armour class multiplier
 const DMG = {
   melee:  { foot: 1.0, mounted: 0.9,  engine: 1.1,  building: 0.30, wall: 0.25 },
-  spear:  { foot: 0.9, mounted: 2.4,  engine: 1.0,  building: 0.25, wall: 0.20 },
+  spear:  { foot: 0.9, mounted: 1.9,  engine: 1.0,  building: 0.25, wall: 0.20 },
   pierce: { foot: 1.0, mounted: 0.75, engine: 0.35, building: 0.10, wall: 0.04 },
   bolt:   { foot: 0.8, mounted: 1.7,  engine: 1.4,  building: 0.22, wall: 0.10 },
   shot:   { foot: 1.6, mounted: 1.1,  engine: 0.7,  building: 0.25, wall: 0.15 },
@@ -124,7 +124,7 @@ const UNITS = {
 };
 
 (function finalizeDefs() {
-  for (const k in BUILDINGS) { const d = BUILDINGS[k]; d.id = k; d.kind = 'b'; d.time = Math.max(5, d.cost / 48); d.sight = d.sight || 6; }
+  for (const k in BUILDINGS) { const d = BUILDINGS[k]; d.id = k; d.kind = 'b'; d.time = d.armor === 'wall' ? 2.5 : Math.max(5, d.cost / 48); d.sight = d.sight || 6; }
   for (const k in UNITS) { const d = UNITS[k]; d.id = k; d.kind = 'u'; d.time = Math.max(3.5, d.cost / 40); }
 })();
 

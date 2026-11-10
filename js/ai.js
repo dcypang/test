@@ -165,7 +165,20 @@ class AIPlayer {
   manageUnits() {
     const p = this.p, q = p.queues, armyN = this.army().length;
     const mints = p.has.mint || 0;
-    if (p.has.stable && mints && this.countUnits('oxcart') < Math.min(mints * 2, 5) && !q.mount.items.some(i => i.type === 'oxcart')) queueItem(p, 'oxcart');
+    const carts = this.countUnits('oxcart');
+    if (p.has.stable && mints && carts < Math.min(mints * 2, 5) && !q.mount.items.some(i => i.type === 'oxcart')) queueItem(p, 'oxcart');
+    // broke with nothing hauling gold: drop everything else and, if need be, sell a building to fund a cart
+    if (mints && p.has.stable && !G.units.some(u => u.owner === p.id && u.def.cart)) {
+      for (const c of CATS) for (const it of q[c].items.slice()) if (it.type !== 'oxcart') cancelItem(p, it.type);
+      if (p.ageUp) { p.coin += p.ageUp.paid; p.ageUp = null; }
+      if (p.coin < UNITS.oxcart.cost) {
+        for (const t of ['skyfire', 'academy', 'bombardtower', 'bolttower', 'watchtower', 'beacon', 'siegeworks']) {
+          const b = G.blds.find(x => x.owner === p.id && x.type === t && x.built >= 1);
+          if (b) { sellBuilding(b); break; }
+        }
+      }
+      return;
+    }
     if (armyN >= this.diff.cap) return;
     if (p.coin < 350 && armyN > 4) return;
     // do not starve an age advance or a big building

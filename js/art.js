@@ -548,17 +548,17 @@ const Art = (() => {
     ctx.beginPath(); ctx.moveTo(0, -HH - g / 2); ctx.lineTo(HW + g, 0); ctx.lineTo(0, HH + g / 2); ctx.lineTo(-HW - g, 0); ctx.closePath();
   }
   const TILE_BASE = {
-    [T_GRASS]: ['#5f8f3e', '#659643', '#5a8a3c', '#6a9a47'],
-    [T_SAND]: ['#cdbb85', '#c6b47e'],
-    [T_DIRT]: ['#9a8358', '#93794f', '#a18a5f'],
-    [T_WATER]: ['#2f6f9e', '#2b6996', '#3275a4', '#2e6d9b'],
-    [T_FOREST]: ['#456e31', '#3f672d'],
+    [T_GRASS]: ['#598a3a', '#5e8f3d', '#639541', '#689a45'],
+    [T_SAND]: ['#c8b680', '#cdbb85'],
+    [T_DIRT]: ['#93794f', '#987f54', '#9d855a', '#a18a5f'],
+    [T_WATER]: ['#2b6996', '#2e6d9b', '#3072a1', '#3376a6'],
+    [T_FOREST]: ['#3f672d', '#456e31'],
     [T_ROCK]: ['#8a7f6a'],
   };
   function tile(t, v) {
-    const bases = TILE_BASE[t], k = v % bases.length;
-    return cached('t:' + t + ':' + (v % (bases.length * 2)), () => mk(TW + 4, TH + 4, HW + 2, HH + 2, ctx => {
-      const rng = mulberry32(t * 977 + (v % (bases.length * 2)) * 131 + 5);
+    const bases = TILE_BASE[t], k = (v >> 4) % bases.length, sp = v & 3;
+    return cached('t:' + t + ':' + k + ':' + sp, () => mk(TW + 4, TH + 4, HW + 2, HH + 2, ctx => {
+      const rng = mulberry32(t * 977 + k * 131 + sp * 17 + 5);
       diamond(ctx, 1.2); ctx.fillStyle = bases[k]; ctx.fill();
       ctx.save(); diamond(ctx, 0); ctx.clip();
       const dots = t === T_WATER ? 7 : 22;

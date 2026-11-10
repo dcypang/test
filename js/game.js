@@ -368,7 +368,7 @@ function launchSkyfire(p, b, x, y) {
   for (let i = 0; i < 14; i++) {
     const a = G.rng() * 6.28, r = Math.sqrt(G.rng()) * 2.7;
     G.projs.push({ kind: 'rocket', delay: i * 0.16, x0: b.x, y0: b.y, z0: 50, x: b.x, y: b.y, z: 50, tx: x + Math.cos(a) * r, ty: y + Math.sin(a) * r, tz: 0,
-      tid: 0, dmg: 230, type: 'fire', splash: 1.7, owner: p.id, src: b.id, t: 0, dur: 3.4, arcPx: 260 });
+      tid: 0, dmg: 115, type: 'fire', splash: 1.7, owner: p.id, src: b.id, t: 0, dur: 3.4, arcPx: 260 });
   }
   Sfx.play('siren');
   const other = G.players[1 - p.id];
@@ -439,6 +439,12 @@ function followPath(u, dt) {
   const wp = u.path[u.pi];
   if (m.solidAt(wp.x, wp.y) && !m.solidAt(u.x, u.y)) { u.path = null; return false; }
   const dx = wp.x - u.x, dy = wp.y - u.y, dd = Math.hypot(dx, dy), sp = unitSpeed(u) * dt;
+  // crowded destination: if others keep shoving us back from the final waypoint, call it arrived
+  if (u.pi === u.path.length - 1 && dd < 1.6) {
+    if (u.lastDD !== undefined && dd > u.lastDD - sp * 0.35) u.stallT = (u.stallT || 0) + dt; else u.stallT = 0;
+    u.lastDD = dd;
+    if (u.stallT > 0.35) { u.pi = u.path.length; u.stallT = 0; u.lastDD = undefined; return true; }
+  } else { u.stallT = 0; u.lastDD = undefined; }
   if (dd <= sp) { u.x = wp.x; u.y = wp.y; u.pi++; if (u.pi < u.path.length) smoothPath(u); }
   else {
     u.x += dx / dd * sp; u.y += dy / dd * sp;
@@ -708,9 +714,10 @@ function unitHarvest(u, dt) {
     }
     case 'go': {
       if (m.gold[o.tile] <= 0) { o.s = 'seek'; return; }
+      const tx = (o.tile % n) + 0.5, ty = ((o.tile / n) | 0) + 0.5;
+      if (Math.hypot(u.x - tx, u.y - ty) < 0.55) { o.s = 'mine'; u.path = null; u.goal = null; return; }
       if (followPath(u, dt)) {
-        const tx = (o.tile % n) + 0.5, ty = ((o.tile / n) | 0) + 0.5;
-        if (Math.hypot(u.x - tx, u.y - ty) < 0.9) o.s = 'mine';
+        if (Math.hypot(u.x - tx, u.y - ty) < 1.2) o.s = 'mine';
         else { (u.bad || (u.bad = new Set())).add(o.tile); o.s = 'seek'; o.wait = 0.5; }
       }
       return;
@@ -722,7 +729,7 @@ function unitHarvest(u, dt) {
       m.gold[o.tile] -= take; u.cargo += take; u.cargoVal += take * (m.goldKind[o.tile] === 2 ? 2 : 1);
       u.mining = G.time;
       if (G.tickN % 12 === 0) part('dust', u.x + 0.3 * u.dir, u.y, 2, { vz: 8, max: 0.5, size: 3 });
-      if (u.cargo >= CART_CAP - 0.5) { o.pref = o.tile; G.claims.delete(o.tile); o.s = 'return'; u.goal = null; u.path = null; }
+      if (u.cargo >= CART_CAP - 0.5) { o.pref = o.tile; G.claims.delete(o.tile); o.s = 'return'; o.mint = 0; u.goal = null; u.path = null; }
       return;
     }
     case 'return': {
@@ -733,10 +740,11 @@ function unitHarvest(u, dt) {
         if (!mint) { o.wait = 1; return; }
         o.mint = mint.id; u.goal = null;
       }
+      if (entDist(u, mint) < 1.15) { o.s = 'unload'; face(u, mint); u.path = null; u.goal = null; return; }
       if (!u.goal) setGoalEnt(u, mint, 0.9);
       if (followPath(u, dt)) {
-        if (entDist(u, mint) < 1.7) { o.s = 'unload'; face(u, mint); }
-        else if (G.time - u.pathT > 1) u.goal = null;
+        if (entDist(u, mint) < 1.9) { o.s = 'unload'; face(u, mint); }
+        else if (G.time - u.pathT > 1) { u.goal = null; o.mint = 0; }
       }
       return;
     }
