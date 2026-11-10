@@ -41,6 +41,7 @@ SG.Game = class Game {
   }
   toggleView() {
     if (!this.r3d) return;
+    if (this.photo) this.setPhoto(false);
     const from = this.renderer, to = from === this.r2d ? this.r3d : this.r2d;
     const s = from.scale;
     to.cx = from.cx; to.cy = from.cy;
@@ -51,6 +52,14 @@ SG.Game = class Game {
     this.renderer = to;
     this.setViewClass();
     if (to === this.r3d) to.resize(); else to.resize();
+  }
+  setPhoto(on) {
+    if (!this.r3d || this.renderer !== this.r3d) on = false;
+    this.photo = on;
+    document.getElementById('app').classList.toggle('photo', on);
+    document.getElementById('photo-btn').classList.toggle('on', on);
+    if (this.r3d) { this.r3d.setPhoto(on); this.r3d.resize(); }
+    this.r2d.resize();
   }
   setSpeed(s) {
     this.speed = s; if (s) this.lastSpeed = s;

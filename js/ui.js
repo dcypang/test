@@ -141,7 +141,7 @@ SG.UI = class UI {
     window.addEventListener('keydown', e => {
       if (e.target.tagName === 'INPUT' || e.target.tagName === 'SELECT') return;
       if (e.code === 'Space') { e.preventDefault(); this.g.setSpeed(this.g.speed ? 0 : (this.g.lastSpeed || 1)); }
-      if (e.key === 'Escape') { this.setTool('inspect'); this.select(null); }
+      if (e.key === 'Escape') { this.setTool('inspect'); this.select(null); if (this.g.photo) this.g.setPhoto(false); }
       if (e.key === '[') { this.brush = Math.max(0, this.brush - 1); }
       if (e.key === ']') { this.brush = Math.min(12, this.brush + 1); }
       if (e.key === '+' || e.key === '=') this.r.zoomAt(this.r.vw / 2, this.r.vh / 2, 1.3);
@@ -155,6 +155,7 @@ SG.UI = class UI {
         if (e.key === 'f') this.r.orbitSmooth(0, -40);
         if (e.key === 't') this.camAction('tod');
         if (e.key === 'c') this.camAction('spin');
+        if (e.key === 'p') this.camAction('photo');
       }
     });
 
@@ -431,6 +432,8 @@ SG.UI = class UI {
     if (c === 'up') r.orbitSmooth(0, 60);
     if (c === 'down') r.orbitSmooth(0, -60);
     if (c === 'tod') { const t = r.cycleTod(); this.$('tod-btn').textContent = t.icon; this.ticker(`Time of day: ${t.label.toLowerCase()}.`); }
+    if (c === 'photo') this.g.setPhoto(!this.g.photo);
+    if (c === 'save') r.savePhoto(`simsaratoga-${this.sim.monthKey().replace(' ', '-').toLowerCase()}.png`);
     if (c === 'spin') { r.autoOrbit = !r.autoOrbit; this.$('spin-btn').classList.toggle('on', r.autoOrbit); }
   }
   renderStats() {
@@ -507,6 +510,7 @@ SG.UI = class UI {
         <li><b>Private</b> tools file projects. ADUs and SB 9 duplexes must be approved by state law.</li>
         <li><b>City</b> tools build parks, fire stations and libraries with city money.</li>
         <li><b>3D view</b>: right-drag (or Shift-drag) to rotate and tilt, Q/E and R/F from the keyboard, two-finger twist on touch. Zoom all the way in and tilt down for street-level views.</li>
+        <li><b>P</b> is photo mode: the interface steps aside and the lens gets a shallower focus. 💾 saves the picture.</li>
         <li><b>T</b> changes the time of day (sunset and night light up the town), <b>C</b> circles the camera, <b>V</b> switches to the flat map.</li>
         <li>Space pauses. Press Z for the zoning map. <b>[</b> and <b>]</b> change the brush size.</li>
       </ul>

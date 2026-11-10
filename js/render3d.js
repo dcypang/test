@@ -10,14 +10,14 @@
 'use strict';
 
 SG.TOD = {
-  morning: { icon: '🌅', label: 'Morning', sun: [0.78, 0.42, 0.3], sunCol: '#ffe2b8', sunI: 0.8, skyTop: '#6fa8e2', skyHor: '#f0dcc8',
-    hemiSky: '#eaf2ff', hemiGnd: '#6f7d50', hemiI: 0.55, fog: '#e6ddd2', lit: 0.06, night: 0, glass: '#465c74' },
-  day: { icon: '☀️', label: 'Afternoon', sun: [-0.5, 0.78, 0.38], sunCol: '#fff1d6', sunI: 0.74, skyTop: '#4f93dc', skyHor: '#cfe4f4',
-    hemiSky: '#eef6ff', hemiGnd: '#6f7d50', hemiI: 0.52, fog: '#cfe2f1', lit: 0, night: 0, glass: '#41566e' },
-  sunset: { icon: '🌇', label: 'Sunset', sun: [-0.93, 0.16, 0.2], sunCol: '#ffa868', sunI: 0.72, skyTop: '#44589a', skyHor: '#ffb884',
-    hemiSky: '#e9c0a6', hemiGnd: '#4d4f4c', hemiI: 0.42, fog: '#eab592', lit: 0.42, night: 0.35, glass: '#2c3950' },
-  night: { icon: '🌙', label: 'Night', sun: [0.35, 0.8, -0.45], sunCol: '#93a9de', sunI: 0.2, skyTop: '#050918', skyHor: '#17223f',
-    hemiSky: '#2a3a66', hemiGnd: '#0d1220', hemiI: 0.42, fog: '#121a33', lit: 0.72, night: 1, glass: '#121927' },
+  morning: { icon: '🌅', label: 'Morning', sun: [0.78, 0.42, 0.3], sunCol: '#ffdcae', sunI: 1.6, skyTop: '#4f8fd8', skyHor: '#f2dcc4',
+    hemiSky: '#eaf2ff', hemiGnd: '#77805c', hemiI: 0.05, fog: '#ecdccb', lit: 0.06, night: 0, glass: '#8496aa', exposure: 0.95, env: 0.3 },
+  day: { icon: '☀️', label: 'Afternoon', sun: [-0.62, 0.56, 0.45], sunCol: '#fff3df', sunI: 1.75, skyTop: '#3f86da', skyHor: '#c6ddf2',
+    hemiSky: '#eef6ff', hemiGnd: '#77805c', hemiI: 0.05, fog: '#cbdef0', lit: 0, night: 0, glass: '#8194a8', exposure: 0.95, env: 0.3 },
+  sunset: { icon: '🌇', label: 'Sunset', sun: [-0.93, 0.16, 0.2], sunCol: '#ff9a56', sunI: 1.7, skyTop: '#3f5596', skyHor: '#ffad73',
+    hemiSky: '#e9c0a6', hemiGnd: '#55524a', hemiI: 0.05, fog: '#eaa882', lit: 0.42, night: 0.35, glass: '#59606e', exposure: 1.0, env: 0.4 },
+  night: { icon: '🌙', label: 'Night', sun: [0.35, 0.8, -0.45], sunCol: '#93a9de', sunI: 0.3, skyTop: '#040816', skyHor: '#131d3a',
+    hemiSky: '#2a3a66', hemiGnd: '#0d1220', hemiI: 0.18, fog: '#0f1730', lit: 0.72, night: 1, glass: '#1c2433', exposure: 1.3, env: 0.9 },
 };
 SG.TOD_ORDER = ['day', 'sunset', 'night', 'morning'];
 
@@ -30,6 +30,7 @@ SG.Renderer3D = class Renderer3D {
 
   constructor(glCanvas, hudCanvas, world, sim) {
     const T = THREE;
+    T.ColorManagement.legacyMode = false; // colours are authored in sRGB and lit in linear light
     this.gl = glCanvas; this.hud = hudCanvas; this.ctx = hudCanvas.getContext('2d');
     this.sim = sim;
     this.overlay = 'none';
@@ -39,7 +40,7 @@ SG.Renderer3D = class Renderer3D {
     this.fov = 45;
     this.time = 0; this.lastT = 0;
     this.pz = 0; this.pzx = 0; this.pzy = 0; this.pyaw = 0; this.ppitch = 0;
-    this.autoOrbit = false;
+    this.autoOrbit = false; this.photo = false;
 
     // graphics quality: 0 full, 1 lower resolution, 2 no shadows, 3 static (no animation, no building detail)
     let mode = 'auto';
@@ -54,11 +55,18 @@ SG.Renderer3D = class Renderer3D {
     this.renderer.shadowMap.type = T.PCFSoftShadowMap;
     this.renderer.shadowMap.autoUpdate = false;
     this.scene = new T.Scene();
-    this.scene.fog = new T.Fog('#cfe2f1', 4000, 16000);
+    // With WebGL2 the frame is finished in screen space (see post3d.js). Without it we fall
+    // back to three's built-in tone mapping and plain distance fog.
+    this.post = this.renderer.capabilities.isWebGL2 && SG.Post ? new SG.Post(this.renderer) : null;
+    if (!this.post) {
+      this.renderer.outputEncoding = T.sRGBEncoding;
+      this.renderer.toneMapping = T.ACESFilmicToneMapping;
+      this.scene.fog = new T.Fog('#cfe2f1', 4000, 16000);
+    }
     this.camera = new T.PerspectiveCamera(this.fov, 1, 5, 40000);
 
-    this.hemi = new T.HemisphereLight('#eef6ff', '#6f7d50', 0.62);
-    this.sun = new T.DirectionalLight('#fff1d6', 0.8);
+    this.hemi = new T.HemisphereLight('#eef6ff', '#6f7d50', 0.1);
+    this.sun = new T.DirectionalLight('#fff1d6', 2.8);
     this.sun.castShadow = true;
     this.sun.shadow.mapSize.set(2048, 2048);
     this.sun.shadow.bias = -0.0004;
@@ -83,56 +91,91 @@ SG.Renderer3D = class Renderer3D {
   // ---------- materials, sky, time of day ----------
   makeMaterials() {
     const T = THREE;
-    this.bldMat = new T.MeshLambertMaterial({ vertexColors: true });
-    this.detailMat = new T.MeshLambertMaterial({ vertexColors: true, side: T.DoubleSide });
-    // windows: glass by day; at dusk and night each window lights up when its random
-    // threshold (stored in the colour's alpha) falls below uLit
-    this.winMat = new T.MeshBasicMaterial({ vertexColors: true });
+    const NOISE = Renderer3D.NOISE;
+    // Surface detail is generated in the fragment shader from world position, so the merged,
+    // vertex-coloured meshes need no texture coordinates. It fades out with distance.
+    const detail = (mat, code) => {
+      mat.extensions = { derivatives: true };
+      mat.onBeforeCompile = sh => {
+        sh.uniforms.uTime = this.uTime;
+        sh.vertexShader = 'varying vec3 vWp;\n' + sh.vertexShader.replace('#include <begin_vertex>', '#include <begin_vertex>\n vWp = (modelMatrix * vec4(transformed, 1.0)).xyz;');
+        sh.fragmentShader = 'varying vec3 vWp;\nuniform float uTime;\n' + NOISE + '\n' + sh.fragmentShader.replace('#include <color_fragment>', '#include <color_fragment>\n' + code);
+      };
+      return mat;
+    };
+    const std = o => new T.MeshStandardMaterial(Object.assign({ roughness: 0.9, metalness: 0 }, o));
+    this.groundDetail = `
+      float px = length(dFdx(vWp)) + length(dFdy(vWp));
+      float g1 = vn(vWp.xz * 0.06), g2 = vn(vWp.xz * 0.8), g3 = vn(vWp.xz * 6.0);
+      diffuseColor.rgb *= (0.9 + 0.2 * g1) * mix(1.0, 0.84 + 0.32 * g2, 1.0 - smoothstep(1.5, 12.0, px)) * mix(1.0, 0.86 + 0.28 * g3, 1.0 - smoothstep(0.25, 2.5, px));`;
+    // walls: stucco mottling and faint siding; pitched roofs: staggered shingle courses; flat roofs: gravel
+    this.bldMat = detail(std({ vertexColors: true, roughness: 0.88 }), `
+      vec3 fdx = dFdx(vWp), fdy = dFdy(vWp);
+      vec3 wn = normalize(cross(fdx, fdy));
+      float upf = abs(wn.y), px = length(fdx) + length(fdy);
+      float nearF = 1.0 - smoothstep(0.06, 0.45, px), var = 1.0;
+      if (upf > 0.2 && upf < 0.985) {
+        float sl = vWp.y / max(0.2, sqrt(1.0 - upf * upf));
+        float al = dot(vWp.xz, normalize(vec2(-wn.z, wn.x) + 1e-5));
+        float row = floor(sl / 0.38), c = fract(sl / 0.38);
+        float tile = h21(vec2(row, floor(al / 0.55 + mod(row, 2.0) * 0.5)));
+        var = (0.84 + 0.24 * tile) * (0.78 + 0.22 * smoothstep(0.0, 0.3, c));
+      } else if (upf <= 0.2) {
+        var = (0.92 + 0.16 * vn(vWp.xz * 5.0 + vWp.y * 3.1)) * (0.965 + 0.035 * step(0.5, fract(vWp.y * 4.0)));
+      } else var = 0.88 + 0.24 * vn(vWp.xz * 7.0);
+      diffuseColor.rgb *= mix(1.0, var, nearF) * (0.93 + 0.14 * vn(vWp.xz * 0.35 + vWp.y * 0.2));`);
+    this.detailMat = std({ vertexColors: true, side: T.DoubleSide, roughness: 0.7 });
+    // windows: reflective glass by day; at dusk and night each window lights up when its random
+    // threshold (stored in the colour's alpha) falls below uLit, bright enough to bloom
+    this.winMat = std({ vertexColors: true, roughness: 0.06, metalness: 0.8, envMapIntensity: 1.25 });
     this.winMat.onBeforeCompile = sh => {
       sh.uniforms.uLit = this.uLit; sh.uniforms.uGlass = this.uGlass;
-      sh.fragmentShader = 'uniform float uLit;\nuniform vec3 uGlass;\n' + sh.fragmentShader.replace('#include <color_fragment>',
-        'float lit = step(vColor.a, uLit);\n diffuseColor.rgb = mix(uGlass * (0.8 + 0.4 * fract(vColor.a * 7.0)), vColor.rgb, lit);');
+      sh.fragmentShader = 'uniform float uLit;\nuniform vec3 uGlass;\n' + sh.fragmentShader
+        .replace('#include <color_fragment>', 'float lit = step(vColor.a, uLit);\n diffuseColor.rgb = uGlass * (0.8 + 0.4 * fract(vColor.a * 7.0)) * (1.0 - lit);')
+        .replace('#include <emissivemap_fragment>', '#include <emissivemap_fragment>\n totalEmissiveRadiance += vColor.rgb * lit * 2.6;');
     };
     const off = (f) => ({ polygonOffset: true, polygonOffsetFactor: f, polygonOffsetUnits: f });
-    this.walkMat = new T.MeshLambertMaterial(Object.assign({ vertexColors: true }, off(-2)));
-    this.roadMat = new T.MeshLambertMaterial(Object.assign({ vertexColors: true }, off(-4)));
-    this.markMat = new T.MeshLambertMaterial(Object.assign({ vertexColors: true }, off(-6)));
-    // creek with a little moving shimmer
-    this.waterMat = new T.MeshLambertMaterial(Object.assign({ color: '#4f93c8' }, off(-3)));
-    this.waterMat.onBeforeCompile = sh => {
-      sh.uniforms.uTime = this.uTime;
-      sh.vertexShader = 'varying vec3 vWp;\n' + sh.vertexShader.replace('#include <begin_vertex>', '#include <begin_vertex>\n vWp = (modelMatrix * vec4(transformed, 1.0)).xyz;');
-      sh.fragmentShader = 'uniform float uTime;\nvarying vec3 vWp;\n' + sh.fragmentShader.replace('#include <color_fragment>',
-        '#include <color_fragment>\n diffuseColor.rgb += 0.07 * sin(vWp.x * 0.9 + vWp.z * 0.7 - uTime * 2.2) + 0.05 * sin(vWp.x * 0.31 - vWp.z * 0.43 + uTime * 1.3);');
-    };
+    this.walkMat = detail(std(Object.assign({ vertexColors: true, roughness: 0.95 }, off(-2))), `
+      diffuseColor.rgb *= 0.9 + 0.2 * vn(vWp.xz * 3.0);
+      float pxw = length(dFdx(vWp)) + length(dFdy(vWp));
+      diffuseColor.rgb *= mix(1.0, 0.86 + 0.14 * step(0.06, fract((vWp.x + vWp.z) * 0.33)), 1.0 - smoothstep(0.05, 0.4, pxw));`);
+    this.roadMat = detail(std(Object.assign({ vertexColors: true, roughness: 0.92 }, off(-4))), `
+      float pxr = length(dFdx(vWp)) + length(dFdy(vWp));
+      diffuseColor.rgb *= (0.9 + 0.2 * vn(vWp.xz * 0.4)) * mix(1.0, 0.82 + 0.36 * vn(vWp.xz * 9.0), 1.0 - smoothstep(0.05, 0.6, pxr));`);
+    this.markMat = std(Object.assign({ vertexColors: true, roughness: 0.8 }, off(-6)));
+    // creek: glossy, reflects the sky, with a little moving shimmer
+    this.waterMat = detail(std(Object.assign({ color: '#2f5f7a', roughness: 0.08, metalness: 0.35, envMapIntensity: 1.4 }, off(-3))), `
+      diffuseColor.rgb *= 1.0 + 0.25 * sin(vWp.x * 0.9 + vWp.z * 0.7 - uTime * 2.2) + 0.18 * sin(vWp.x * 0.31 - vWp.z * 0.43 + uTime * 1.3);`);
     // trees sway a little in the wind
-    this.treeMat = new T.MeshLambertMaterial({ vertexColors: true });
+    this.treeMat = std({ vertexColors: true, roughness: 1 });
     this.treeMat.onBeforeCompile = sh => {
       sh.uniforms.uTime = this.uTime;
       sh.vertexShader = 'uniform float uTime;\n' + sh.vertexShader.replace('#include <begin_vertex>',
         '#include <begin_vertex>\n#ifdef USE_INSTANCING\n float ph = instanceMatrix[3][0] * 0.07 + instanceMatrix[3][2] * 0.05;\n float sw = sin(uTime * 1.4 + ph) * 0.03 * transformed.y;\n transformed.x += sw; transformed.z += sw * 0.6;\n#endif');
     };
-    this.carMat = new T.MeshLambertMaterial({ vertexColors: true });
-    this.carLightMat = new T.MeshBasicMaterial({ vertexColors: true });
-    this.poleMat = new T.MeshLambertMaterial({ color: '#6a6f73' });
-    this.lampMat = new T.MeshBasicMaterial({ color: '#fff0c0' });
+    this.carMat = std({ vertexColors: true, roughness: 0.32, metalness: 0.55, envMapIntensity: 1.2 });
+    this.carLightMat = new T.MeshBasicMaterial({ vertexColors: true }); this.carLightMat.color.setRGB(5, 5, 5);
+    this.poleMat = std({ color: '#70757a', roughness: 0.6, metalness: 0.5 });
+    this.lampMat = new T.MeshBasicMaterial(); this.lampMat.color.setRGB(7, 5.6, 3.4);
     const gc = document.createElement('canvas'); gc.width = gc.height = 64;
     const g = gc.getContext('2d'), grad = g.createRadialGradient(32, 32, 0, 32, 32, 32);
     grad.addColorStop(0, 'rgba(255,255,255,1)'); grad.addColorStop(0.4, 'rgba(255,255,255,.35)'); grad.addColorStop(1, 'rgba(255,255,255,0)');
     g.fillStyle = grad; g.fillRect(0, 0, 64, 64);
-    this.glowMat = new T.MeshBasicMaterial(Object.assign({ map: new T.CanvasTexture(gc), color: '#ffc46a', transparent: true, opacity: 0,
+    this.glowMat = new T.MeshBasicMaterial(Object.assign({ map: new T.CanvasTexture(gc), transparent: true, opacity: 0,
       blending: T.AdditiveBlending, depthWrite: false }, off(-8)));
-    this.cityLightMat = new T.PointsMaterial({ color: '#ffd58a', size: 2.2, sizeAttenuation: false, transparent: true, opacity: 0, depthWrite: false });
+    this.glowMat.color.setRGB(0.42, 0.25, 0.09);
+    this.cityLightMat = new T.PointsMaterial({ size: 2.2, sizeAttenuation: false, transparent: true, opacity: 0, depthWrite: false });
+    this.cityLightMat.color.setRGB(1.6, 1.15, 0.55);
   }
   makeSky() {
     const T = THREE;
     this.skyU = { top: { value: new T.Color() }, hor: { value: new T.Color() }, sunDir: { value: new T.Vector3(0, 1, 0) },
-      sunCol: { value: new T.Color() }, night: { value: 0 }, time: this.uTime };
+      sunCol: { value: new T.Color() }, gnd: { value: new T.Color() }, night: { value: 0 }, time: this.uTime };
     const mat = new T.ShaderMaterial({
       uniforms: this.skyU, side: T.BackSide, depthWrite: false, depthTest: false, fog: false,
       vertexShader: 'varying vec3 vDir;\nvoid main(){ vDir = position; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }',
       fragmentShader: `
-        uniform vec3 top, hor, sunDir, sunCol; uniform float night, time; varying vec3 vDir;
+        uniform vec3 top, hor, sunDir, sunCol, gnd; uniform float night, time; varying vec3 vDir;
         float hash(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }
         float noise(vec2 p){ vec2 i = floor(p), f = fract(p); f = f * f * (3.0 - 2.0 * f);
           return mix(mix(hash(i), hash(i + vec2(1.0, 0.0)), f.x), mix(hash(i + vec2(0.0, 1.0)), hash(i + vec2(1.0, 1.0)), f.x), f.y); }
@@ -149,18 +192,25 @@ SG.Renderer3D = class Renderer3D {
             float st = step(0.988, hash(floor(d.xz / (d.y + 0.35) * 110.0))) * night * smoothstep(0.03, 0.3, d.y);
             col += vec3(st) * 0.85 * (1.0 - c);
             col = mix(col, cloud, c * 0.86);
-          } else col = mix(hor, hor * 0.55, clamp(-d.y * 5.0, 0.0, 1.0));
+          } else col = mix(hor, gnd, clamp(-d.y * 6.0, 0.0, 1.0));
           gl_FragColor = vec4(col, 1.0);
         }`,
     });
     this.sky = new T.Mesh(new T.SphereGeometry(1, 32, 18), mat);
     this.sky.renderOrder = -10; this.sky.frustumCulled = false;
     this.scene.add(this.sky);
+    // the same sky, rendered into a prefiltered cube map, lights every material (ambient and reflections)
+    this.pmrem = new T.PMREMGenerator(this.renderer);
+    this.envScene = new T.Scene();
+    const es = new T.Mesh(this.sky.geometry, mat); es.scale.setScalar(100); es.frustumCulled = false;
+    this.envScene.add(es);
+    this.envDirty = true;
   }
   todParse(d) {
     const T = THREE, c = h => new T.Color(h);
     return { sun: new T.Vector3(...d.sun).normalize(), sunCol: c(d.sunCol), sunI: d.sunI, skyTop: c(d.skyTop), skyHor: c(d.skyHor),
-      hemiSky: c(d.hemiSky), hemiGnd: c(d.hemiGnd), hemiI: d.hemiI, fog: c(d.fog), lit: d.lit, night: d.night, glass: c(d.glass) };
+      hemiSky: c(d.hemiSky), hemiGnd: c(d.hemiGnd), hemiI: d.hemiI, fog: c(d.fog), lit: d.lit, night: d.night, glass: c(d.glass),
+      exposure: d.exposure, env: d.env };
   }
   todLerp(a, b, t) {
     const o = {};
@@ -175,13 +225,37 @@ SG.Renderer3D = class Renderer3D {
     this.todCur = s;
     this.sun.color.copy(s.sunCol); this.sun.intensity = s.sunI;
     this.hemi.color.copy(s.hemiSky); this.hemi.groundColor.copy(s.hemiGnd); this.hemi.intensity = s.hemiI;
-    this.scene.fog.color.copy(s.fog);
+    if (this.scene.fog) this.scene.fog.color.copy(s.fog);
+    if (!this.post) this.renderer.toneMappingExposure = s.exposure;
     this.skyU.top.value.copy(s.skyTop); this.skyU.hor.value.copy(s.skyHor); this.skyU.sunDir.value.copy(s.sun);
     this.skyU.sunCol.value.copy(s.sunCol); this.skyU.night.value = s.night;
+    // light bouncing up off the ground: its colour, scaled by how much sun there is
+    this.skyU.gnd.value.copy(s.hemiGnd).multiplyScalar(0.25 + 0.12 * s.sunI * Math.max(0.1, s.sun.y));
     this.uLit.value = s.lit; this.uGlass.value.copy(s.glass);
-    this.glowMat.opacity = Math.min(1, s.night * 1.4) * 0.85;
+    this.glowMat.opacity = Math.min(1, s.night * 1.4) * 0.9;
     this.cityLightMat.opacity = s.night * 0.9;
+    this.envDirty = true;
     this.dirty = true;
+  }
+  updateEnv() {
+    this.envDirty = false;
+    const old = this.envRT;
+    this.envRT = this.pmrem.fromScene(this.envScene, 0.03, 0.1, 1000);
+    this.scene.environment = this.envRT.texture;
+    if (old) old.dispose();
+    const k = this.todCur.env;
+    for (const m of [this.bldMat, this.detailMat, this.walkMat, this.roadMat, this.markMat, this.treeMat, this.poleMat, this.terrainMat, this.skirtMat])
+      if (m) m.envMapIntensity = k;
+    this.winMat.envMapIntensity = k * 1.1; this.waterMat.envMapIntensity = k * 1.2; this.carMat.envMapIntensity = k;
+  }
+  setPhoto(on) { this.photo = on; this.dirty = this.hudDirty = true; }
+  savePhoto(name = 'simsaratoga.png') {
+    this.dirty = true; this.draw(performance.now()); // the drawing buffer is only readable right after a render
+    this.gl.toBlob(b => {
+      if (!b) return;
+      const a = document.createElement('a'); a.href = URL.createObjectURL(b); a.download = name; a.click();
+      setTimeout(() => URL.revokeObjectURL(a.href), 2000);
+    }, 'image/png');
   }
   setTod(name) {
     if (!SG.TOD[name]) return;
@@ -206,7 +280,7 @@ SG.Renderer3D = class Renderer3D {
     this.disposeChunks();
     for (const k of ['terrain', 'overlayMesh', 'skirt', 'walkMesh', 'roadMesh', 'markMesh', 'waterMesh', 'cityLights'])
       if (this[k]) { this.scene.remove(this[k]); this[k].geometry.dispose(); this[k] = null; }
-    if (this.treeTiles) for (const t of this.treeTiles) for (const m of t.meshes) this.scene.remove(m);
+    if (this.treeTiles) for (const t of this.treeTiles) for (const m of t.meshes.concat(t.hi)) this.scene.remove(m);
     this.buildTerrain();
     this.buildSkirt();
     this.buildRoads();
@@ -239,8 +313,10 @@ SG.Renderer3D = class Renderer3D {
     this.vw = Math.max(1, r.width); this.vh = Math.max(1, r.height);
     const dev = window.devicePixelRatio || 1;
     this.dpr = Math.min(2, dev);
-    this.renderer.setPixelRatio(this.q === 0 ? this.dpr : this.q === 1 ? Math.min(1.25, dev) : 1);
+    this.pr = this.q === 0 ? this.dpr : this.q === 1 ? Math.min(1.25, dev) : 1;
+    this.renderer.setPixelRatio(this.pr);
     this.renderer.setSize(this.vw, this.vh, false);
+    if (this.post) { this.post.opts.msaa = this.q < 2 ? 4 : 0; this.post.setSize(this.vw * this.pr, this.vh * this.pr); }
     this.camera.aspect = this.vw / this.vh;
     this.camera.updateProjectionMatrix();
     this.hud.width = Math.round(this.vw * this.dpr); this.hud.height = Math.round(this.vh * this.dpr);
@@ -267,7 +343,7 @@ SG.Renderer3D = class Renderer3D {
     cam.near = Math.max(0.6, this.dist / 300); cam.far = this.dist * 6 + 45000;
     cam.updateProjectionMatrix();
     cam.updateMatrixWorld();
-    this.scene.fog.near = this.dist * 1.6 + 300; this.scene.fog.far = this.dist * 5 + 9000;
+    if (this.scene.fog) { this.scene.fog.near = this.dist * 1.6 + 300; this.scene.fog.far = this.dist * 5 + 9000; }
     this.sky.position.copy(cam.position); this.sky.scale.setScalar(cam.far * 0.5);
 
     // the shadow box follows the view
@@ -389,9 +465,17 @@ SG.Renderer3D = class Renderer3D {
     this.groundCanvas.width = Math.round(EW * k); this.groundCanvas.height = Math.round(EH * k);
     this.groundK = k;
     this.groundTex = new T.CanvasTexture(this.groundCanvas);
+    this.groundTex.encoding = T.sRGBEncoding;
     this.groundTex.anisotropy = this.renderer.capabilities.getMaxAnisotropy();
     this.paintGround();
-    this.terrain = new T.Mesh(g, new T.MeshLambertMaterial({ map: this.groundTex }));
+    if (this.terrainMat) this.terrainMat.dispose();
+    this.terrainMat = new T.MeshStandardMaterial({ map: this.groundTex, roughness: 1, metalness: 0 });
+    this.terrainMat.extensions = { derivatives: true };
+    this.terrainMat.onBeforeCompile = sh => {
+      sh.vertexShader = 'varying vec3 vWp;\n' + sh.vertexShader.replace('#include <begin_vertex>', '#include <begin_vertex>\n vWp = (modelMatrix * vec4(transformed, 1.0)).xyz;');
+      sh.fragmentShader = 'varying vec3 vWp;\n' + Renderer3D.NOISE + '\n' + sh.fragmentShader.replace('#include <color_fragment>', '#include <color_fragment>\n' + this.groundDetail);
+    };
+    this.terrain = new T.Mesh(g, this.terrainMat);
     this.terrain.receiveShadow = true;
     this.scene.add(this.terrain);
 
@@ -421,7 +505,7 @@ SG.Renderer3D = class Renderer3D {
       const o = (k * N + i) * 3;
       pos[o] = x; pos[o + 1] = h; pos[o + 2] = y;
       const c = this.tintFor(h);
-      col[o] = c[0] / 255; col[o + 1] = c[1] / 255; col[o + 2] = c[2] / 255;
+      col[o] = Math.pow(c[0] / 255, 2.2); col[o + 1] = Math.pow(c[1] / 255, 2.2); col[o + 2] = Math.pow(c[2] / 255, 2.2);
     }
     const idx = [];
     const up = (a, b, c) => { // wind each triangle so it faces up
@@ -437,7 +521,11 @@ SG.Renderer3D = class Renderer3D {
     g.setAttribute('color', new T.BufferAttribute(col, 3));
     g.setIndex(idx);
     g.computeVertexNormals();
-    this.skirt = new T.Mesh(g, new T.MeshLambertMaterial({ vertexColors: true }));
+    if (this.skirtMat) this.skirtMat.dispose();
+    this.skirtMat = new T.MeshStandardMaterial({ vertexColors: true, roughness: 1, metalness: 0 });
+    this.skirtMat.extensions = { derivatives: true };
+    this.skirtMat.onBeforeCompile = this.terrainMat.onBeforeCompile;
+    this.skirt = new T.Mesh(g, this.skirtMat);
     this.scene.add(this.skirt);
   }
   driveway(b) { // closest point on a street, cached per building
@@ -475,7 +563,7 @@ SG.Renderer3D = class Renderer3D {
     g.drawImage(tc, 0, 0, w.TW - 1, w.TH - 1, 0, 0, c.width, c.height);
     // city land a little lighter and warmer than the surrounding country
     g.beginPath(); for (const r of w.boundary) path(r);
-    g.fillStyle = 'rgba(186,188,150,0.55)'; g.fill('evenodd');
+    g.fillStyle = 'rgba(176,180,136,0.4)'; g.fill('evenodd');
     // lawns and driveways
     for (const b of w.buildings) {
       if (b.removed || (b.kind !== 'house' && b.kind !== 'duplex')) continue;
@@ -544,6 +632,7 @@ SG.Renderer3D = class Renderer3D {
     g.drawImage(this.overlayCanvas, 0, 0);
     if (!this.overlayTex) {
       this.overlayTex = new T.CanvasTexture(c);
+      this.overlayTex.encoding = T.sRGBEncoding;
       this.overlayTex.magFilter = T.NearestFilter; this.overlayTex.minFilter = T.LinearFilter;
       this.overlayMesh.material.map = this.overlayTex;
       this.overlayMesh.material.needsUpdate = true;
@@ -634,24 +723,54 @@ SG.Renderer3D = class Renderer3D {
   }
   buildWater() {
     if (this.waterMesh) { this.scene.remove(this.waterMesh); this.waterMesh.geometry.dispose(); }
-    const g = this.ribbon(this.w.water, { width: () => 7, color: () => '#4f93c8', lift: 0.2 });
+    const g = this.ribbon(this.w.water, { width: () => 7, color: () => '#2f5f7a', lift: 0.2 });
     this.waterMesh = new THREE.Mesh(g, this.waterMat);
     this.waterMesh.receiveShadow = true;
     this.scene.add(this.waterMesh);
   }
-  partsGeo(parts) { // [[geometry, colourHex]] -> one non-indexed geometry with vertex colours
+  // [[geometry, colourHex, mode]] -> one non-indexed geometry with vertex colours.
+  // mode 'smooth' keeps smooth normals and shades the part darker toward its base;
+  // a part with no colour brings its own colour and normal attributes.
+  partsGeo(parts) {
     const T = THREE, pos = [], nor = [], col = [];
-    for (const [g0, hex] of parts) {
-      const g = g0.index ? g0.toNonIndexed() : g0;
-      g.computeVertexNormals();
+    for (const [g0, hex, mode] of parts) {
+      let g = g0;
+      if (hex != null && mode !== 'smooth') { g = g0.index ? g0.toNonIndexed() : g0; g.computeVertexNormals(); }
+      else if (g0.index) g = g0.toNonIndexed();
+      const P = g.attributes.position;
+      pos.push(...P.array); nor.push(...g.attributes.normal.array);
+      if (hex == null) { col.push(...g.attributes.color.array); continue; }
       const c = new T.Color(hex);
-      pos.push(...g.attributes.position.array); nor.push(...g.attributes.normal.array);
-      for (let i = 0; i < g.attributes.position.count; i++) col.push(c.r, c.g, c.b);
+      let lo = Infinity, hi = -Infinity;
+      if (mode === 'smooth') for (let i = 0; i < P.count; i++) { const y = P.getY(i); if (y < lo) lo = y; if (y > hi) hi = y; }
+      for (let i = 0; i < P.count; i++) {
+        const k = mode === 'smooth' ? 0.55 + 0.6 * (P.getY(i) - lo) / (hi - lo || 1) : 1;
+        col.push(c.r * k, c.g * k, c.b * k);
+      }
     }
     const g = new T.BufferGeometry();
     g.setAttribute('position', new T.Float32BufferAttribute(pos, 3));
     g.setAttribute('normal', new T.Float32BufferAttribute(nor, 3));
     g.setAttribute('color', new T.Float32BufferAttribute(col, 3));
+    return g;
+  }
+  // A lumpy, smooth-shaded ball of foliage: darker underneath and inside, lighter on top.
+  blob(x, y, z, r, hex, seed) {
+    const T = THREE, g = new T.IcosahedronGeometry(r, 1), P = g.attributes.position, c = new T.Color(hex);
+    const nor = new Float32Array(P.count * 3), col = new Float32Array(P.count * 3), v = new T.Vector3();
+    for (let i = 0; i < P.count; i++) {
+      v.fromBufferAttribute(P, i);
+      const h = Renderer3D.hash((Math.round(v.x * 40) * 73856093) ^ (Math.round(v.y * 40) * 19349663) ^ (Math.round(v.z * 40) * 83492791) ^ (seed * 7919));
+      const n = v.clone().normalize();
+      v.multiplyScalar(0.82 + h * 0.36); v.y *= 0.86;
+      P.setXYZ(i, v.x + x, v.y + y, v.z + z);
+      n.y += 0.3; n.normalize();
+      nor[3 * i] = n.x; nor[3 * i + 1] = n.y; nor[3 * i + 2] = n.z;
+      const k = (0.5 + 0.62 * (n.y * 0.5 + 0.5)) * (0.9 + 0.2 * h);
+      col[3 * i] = c.r * k; col[3 * i + 1] = c.g * k; col[3 * i + 2] = c.b * k;
+    }
+    g.setAttribute('normal', new T.BufferAttribute(nor, 3));
+    g.setAttribute('color', new T.BufferAttribute(col, 3));
     return g;
   }
   buildStreetlights(roads) {
@@ -690,7 +809,7 @@ SG.Renderer3D = class Renderer3D {
       m4.compose(v.set(x, h, y), q, one); poles.setMatrixAt(i, m4);
       const lx = x + tx * 1.75, ly = y + ty * 1.75;
       m4.compose(v.set(lx, h + 6.9, ly), q, one); lamps.setMatrixAt(i, m4);
-      m4.compose(v.set(lx, w.heightAt(lx, ly) + 0.55, ly), q.identity(), sc.set(30, 1, 30)); glows.setMatrixAt(i, m4);
+      m4.compose(v.set(lx, w.heightAt(lx, ly) + 0.55, ly), q.identity(), sc.set(26, 1, 26)); glows.setMatrixAt(i, m4);
     });
     this.lightMeshes = [poles, lamps, glows];
     for (const m of this.lightMeshes) { m.frustumCulled = false; this.scene.add(m); }
@@ -723,9 +842,11 @@ SG.Renderer3D = class Renderer3D {
     }
     if (cars.length > 1800) cars.length = 1800;
     this.cars = cars;
-    const body = new T.BoxGeometry(4.3, 0.8, 1.8); body.translate(0, 0.65, 0);
-    const cabin = new T.BoxGeometry(2.3, 0.62, 1.62); cabin.translate(-0.25, 1.32, 0);
-    const carGeo = this.partsGeo([[body, '#ffffff'], [cabin, '#404852']]);
+    const body = new T.BoxGeometry(4.4, 0.62, 1.82); body.translate(0, 0.66, 0);
+    const cabin = new T.BoxGeometry(2.3, 0.56, 1.6); cabin.translate(-0.25, 1.25, 0);
+    const carParts = [[body, '#ffffff'], [cabin, '#20252c']];
+    for (const x of [-1.4, 1.4]) for (const z of [-0.86, 0.86]) { const wh = new T.BoxGeometry(0.66, 0.66, 0.24); wh.translate(x, 0.33, z); carParts.push([wh, '#0c0c0d']); }
+    const carGeo = this.partsGeo(carParts);
     const lightParts = [];
     for (const z of [-0.6, 0.6]) {
       const f = new T.BoxGeometry(0.12, 0.2, 0.36); f.translate(2.17, 0.72, z); lightParts.push([f, '#fff4d0']);
@@ -760,7 +881,7 @@ SG.Renderer3D = class Renderer3D {
       let dx = (p[2 * i] - p[2 * i - 2]) / seg * c.dir, dy = (p[2 * i + 1] - p[2 * i - 1]) / seg * c.dir;
       const x = p[2 * i - 2] + (p[2 * i] - p[2 * i - 2]) * t - dy * c.lane, y = p[2 * i - 1] + (p[2 * i + 1] - p[2 * i - 1]) * t + dx * c.lane;
       q.setFromAxisAngle(up, Math.atan2(-dy, dx));
-      m4.compose(v.set(x, w.heightAt(x, y) + 0.32, y), q, r.removed ? v.clone().set(0, 0, 0) : sc);
+      m4.compose(v.set(x, w.heightAt(x, y) + 0.3, y), q, r.removed ? v.clone().set(0, 0, 0) : sc);
       this.carMesh.setMatrixAt(n, m4);
     }
     this.carMesh.instanceMatrix.needsUpdate = true;
@@ -887,15 +1008,15 @@ SG.Renderer3D = class Renderer3D {
   }
   // Windows, doors, awnings, chimneys, solar panels, parapets, rooftop units and cranes.
   details(b, f, D, Wn) {
-    const { p, n, floorY, top, levels, levelH, kind, hsh, hsh2, hsh3 } = f, P = Renderer3D.PAL, w = this.w;
+    const { p, n, floorY, top, levels, levelH, kind, hsh, hsh2, hsh3 } = f, C = Renderer3D.colors(), w = this.w;
     const up = [0, 1, 0];
     if (f.cons) {
       if (levels >= 3) { // tower crane
         const full = levels * levelH, yaw = hsh * 6.28, y = f.floorY;
-        this.box(D, b.cx, y, b.cy, 1.3, full + 14, 1.3, yaw, [0.88, 0.69, 0.13]);
+        this.box(D, b.cx, y, b.cy, 1.3, full + 14, 1.3, yaw, C.crane);
         const cs = Math.cos(yaw), sn = Math.sin(yaw);
-        this.box(D, b.cx + cs * 8, y + full + 13, b.cy + sn * 8, 30, 0.8, 0.8, yaw, [0.88, 0.69, 0.13]);
-        this.box(D, b.cx - cs * 6, y + full + 11.6, b.cy - sn * 6, 3, 1.4, 1.6, yaw, [0.45, 0.45, 0.45]);
+        this.box(D, b.cx + cs * 8, y + full + 13, b.cy + sn * 8, 30, 0.8, 0.8, yaw, C.crane);
+        this.box(D, b.cx - cs * 6, y + full + 11.6, b.cy - sn * 6, 3, 1.4, 1.6, yaw, C.craneCab);
       }
       return;
     }
@@ -913,21 +1034,21 @@ SG.Renderer3D = class Renderer3D {
       }
     }
     const dark = hsh2 > 0.72; // nobody home tonight
-    const litCol = P.lit[Math.floor(hsh3 * P.lit.length)];
+    const litCol = C.lit[Math.floor(hsh3 * C.lit.length)];
     for (let i = 0; i < n; i++) {
       const j = (i + 1) % n, L = lens[i];
       if (L < 2.6) continue;
       const ax = p[2 * i], az = p[2 * i + 1], dx = (p[2 * j] - ax) / L, dz = (p[2 * j + 1] - az) / L, ox = -dz, oz = dx, ref = [ox, 0, oz];
       const at = (t, y, off) => [ax + dx * t + ox * off, y, az + dz * t + oz * off];
       const rect = (out, t, hw, y0, y1, off, col) => this.quad(out, at(t - hw, y0, off), at(t + hw, y0, off), at(t + hw, y1, off), at(t - hw, y1, off), col, ref);
-      if (kind === 'accessory') { if (i === longest && L > 3.4) rect(D, L / 2, Math.min(1.5, L / 2 - 0.4), floorY, floorY + 2.1, 0.06, [0.86, 0.85, 0.8]); continue; }
+      if (kind === 'accessory') { if (i === longest && L > 3.4) rect(D, L / 2, Math.min(1.5, L / 2 - 0.4), floorY, floorY + 2.1, 0.06, C.garage); continue; }
       const slotW = f.resi ? 3.1 : 2.9, slots = Math.max(1, Math.floor((L - 1.2) / slotW));
       for (let lv = 0; lv < levels; lv++) {
         const y = floorY + lv * levelH;
         if (f.shops && lv === 0) {
-          if (L >= 4.5) rect(Wn, L / 2, L / 2 - 0.7, y + 0.45, y + 2.8, 0.06, [1.0, 0.93, 0.78, 0.05 + Renderer3D.hash(b.id * 3 + i) * 0.5]);
+          if (L >= 4.5) rect(Wn, L / 2, L / 2 - 0.7, y + 0.45, y + 2.8, 0.06, [C.store[0], C.store[1], C.store[2], 0.05 + Renderer3D.hash(b.id * 3 + i) * 0.5]);
           if (i === front) {
-            const ac = P.awn[Math.floor(hsh * P.awn.length)];
+            const ac = C.awn[Math.floor(hsh * C.awn.length)];
             this.quad(D, at(0.5, y + 3.0, 0.02), at(L - 0.5, y + 3.0, 0.02), at(L - 0.5, y + 2.5, 1.4), at(0.5, y + 2.5, 1.4), ac, up);
           }
           continue;
@@ -935,8 +1056,8 @@ SG.Renderer3D = class Renderer3D {
         for (let k = 0; k < slots; k++) {
           const t = (k + 0.5) / slots * L;
           if (lv === 0 && i === longest) {
-            if (k === Math.floor(slots / 2)) { rect(D, t, 0.5, y, y + 2.1, 0.06, P.doors[Math.floor(hsh2 * P.doors.length)]); continue; }
-            if (kind === 'house' && k === 0 && slots >= 3) { rect(D, t, 1.25, y, y + 2.15, 0.06, [0.88, 0.87, 0.83]); continue; }
+            if (k === Math.floor(slots / 2)) { rect(D, t, 0.5, y, y + 2.1, 0.06, C.doors[Math.floor(hsh2 * C.doors.length)]); continue; }
+            if (kind === 'house' && k === 0 && slots >= 3) { rect(D, t, 1.25, y, y + 2.15, 0.06, C.garage); continue; }
           }
           const r = Renderer3D.hash(b.id * 131 + i * 17 + lv * 5 + k);
           const hw = f.resi ? 0.65 : 0.75, a = dark ? 0.95 + r * 0.05 : 0.04 + r * 0.92;
@@ -950,11 +1071,11 @@ SG.Renderer3D = class Renderer3D {
       const at = (u, v) => [q0[0] + a[0] * u + pv[0] * v, q0[1] + a[1] * u + pv[1] * v];
       if (kind !== 'accessory' && hsh2 < 0.55) { // chimney
         const c = at(L * (0.25 + hsh * 0.5), S * 0.3);
-        this.box(D, c[0], top - 0.2, c[1], 0.8, rf.rh * 0.6 + 1.5, 0.8, Math.atan2(a[1], a[0]), [0.5, 0.33, 0.26]);
+        this.box(D, c[0], top - 0.2, c[1], 0.8, rf.rh * 0.6 + 1.5, 0.8, Math.atan2(a[1], a[0]), C.chimney);
       }
       if (kind === 'house' && !rf.hip && hsh3 > 0.8 && L > 8) { // solar panels on one slope
         const sl = (u, v) => { const e = at(u * L, 0), r = at(u * L, S / 2); return [e[0] + (r[0] - e[0]) * v, top + rf.rh * v + 0.14, e[1] + (r[1] - e[1]) * v]; };
-        this.quad(D, sl(0.22, 0.2), sl(0.78, 0.2), sl(0.78, 0.8), sl(0.22, 0.8), [0.1, 0.15, 0.3], up);
+        this.quad(D, sl(0.22, 0.2), sl(0.78, 0.2), sl(0.78, 0.8), sl(0.22, 0.8), C.solar, up);
       }
       return;
     }
@@ -969,7 +1090,7 @@ SG.Renderer3D = class Renderer3D {
       const k = 1 + Math.floor(hsh * 2.99), s = Math.sqrt(b.area) * 0.22;
       for (let m = 0; m < k; m++) {
         const x = b.cx + (Renderer3D.hash(b.id * 5 + m) - 0.5) * 2 * s, z = b.cy + (Renderer3D.hash(b.id * 11 + m) - 0.5) * 2 * s;
-        if (SG.World.pointInPoly(x, z, b.pts)) this.box(D, x, top, z, 2.2, 1.2, 1.6, hsh * 3, [0.62, 0.63, 0.64]);
+        if (SG.World.pointInPoly(x, z, b.pts)) this.box(D, x, top, z, 2.2, 1.2, 1.6, hsh * 3, C.hvac);
       }
     }
   }
@@ -1066,15 +1187,19 @@ SG.Renderer3D = class Renderer3D {
     this.treeSpots = spots;
 
     const tr = (g, x, y, z) => { g.translate(x, y, z); return g; };
-    const geos = [
-      this.partsGeo([[tr(new T.CylinderGeometry(0.3, 0.45, 3.2, 5, 1, true), 0, 1.6, 0), '#6b4f36'],
-        [tr(new T.IcosahedronGeometry(2.7, 0), 0, 5.3, 0), '#5e8c47'], [tr(new T.IcosahedronGeometry(2.1, 0), 1.7, 4.4, 0.8), '#689450'],
-        [tr(new T.IcosahedronGeometry(1.9, 0), -1.4, 4.6, -1.0), '#557f41']]),
-      this.partsGeo([[tr(new T.CylinderGeometry(0.28, 0.42, 3, 5, 1, true), 0, 1.5, 0), '#5f4630'],
-        [tr(new T.ConeGeometry(2.9, 5, 6), 0, 5, 0), '#3f6b3d'], [tr(new T.ConeGeometry(2.1, 4.2, 6), 0, 7.8, 0), '#487544']]),
-      this.partsGeo([[tr(new T.CylinderGeometry(0.45, 0.75, 8, 5, 1, true), 0, 4, 0), '#7a4a32'],
-        [tr(new T.ConeGeometry(3.0, 7, 6), 0, 9.5, 0), '#2f5a35'], [tr(new T.ConeGeometry(2.4, 6, 6), 0, 13.5, 0), '#346139'],
-        [tr(new T.ConeGeometry(1.6, 5, 6), 0, 17.5, 0), '#3a6a3f']]),
+    const trunk = (r0, r1, h, hex) => [tr(new T.CylinderGeometry(r0, r1, h, 6, 1, true), 0, h / 2, 0), hex, 'smooth'];
+    const cone = (r, h, y, hex, seg) => [tr(new T.ConeGeometry(r, h, seg, 1, true), 0, y, 0), hex, 'smooth'];
+    // far away: a few dozen triangles per tree; near the camera: fuller, lumpier crowns
+    const lo = [
+      this.partsGeo([trunk(0.3, 0.45, 3.2, '#5d4632'), [tr(new T.IcosahedronGeometry(2.8, 0), 0, 5.2, 0), '#5e8c47', 'smooth']]),
+      this.partsGeo([trunk(0.28, 0.42, 3, '#5a4330'), cone(2.9, 5, 5, '#3f6b3d', 6), cone(2.1, 4.2, 7.8, '#487544', 6)]),
+      this.partsGeo([trunk(0.45, 0.75, 8, '#70462f'), cone(3.0, 7, 9.5, '#2f5a35', 6), cone(2.2, 7, 14.5, '#356339', 6)]),
+    ];
+    const hi = [
+      this.partsGeo([trunk(0.28, 0.5, 3.4, '#5d4632'), [this.blob(0, 5.4, 0, 2.9, '#5c8a45', 1)], [this.blob(1.8, 4.5, 0.9, 2.2, '#679350', 2)],
+        [this.blob(-1.5, 4.7, -1.1, 2.0, '#547e40', 3)], [this.blob(0.3, 4.3, -1.7, 1.7, '#5a8743', 4)]]),
+      this.partsGeo([trunk(0.28, 0.42, 3, '#5a4330'), cone(3.0, 4.2, 4.3, '#3b6639', 10), cone(2.4, 3.8, 6.4, '#42703f', 10), cone(1.7, 3.4, 8.4, '#4a7a46', 10)]),
+      this.partsGeo([trunk(0.45, 0.8, 8, '#70462f'), cone(3.1, 6, 8.5, '#2c5632', 10), cone(2.6, 5.5, 11.8, '#305c36', 10), cone(2.0, 5, 15, '#35643a', 10), cone(1.3, 4.5, 18, '#3b6c40', 10)]),
     ];
     const tiles = new Map(); // 800 m tiles, culled by hand (an InstancedMesh culls as a whole)
     for (const s of spots) {
@@ -1086,46 +1211,48 @@ SG.Renderer3D = class Renderer3D {
     for (const [key, groups] of tiles) {
       const [kx, ky] = key.split(',').map(Number);
       const box = new T.Box3(new T.Vector3(kx * 800, -100, ky * 800), new T.Vector3(kx * 800 + 800, 1200, ky * 800 + 800));
-      const meshes = [];
+      const meshes = [], his = [];
       groups.forEach((list, type) => {
         if (!list.length) return;
-        const im = new T.InstancedMesh(geos[type], this.treeMat, list.length);
+        const im = new T.InstancedMesh(lo[type], this.treeMat, list.length);
         list.forEach((s, i) => {
           q.setFromAxisAngle(v.set(0, 1, 0), s[5] * 6.28);
           sc.set(s[2], s[2] * (0.85 + s[5] * 0.4), s[2]);
           m4.compose(v.set(s[0], w.heightAt(s[0], s[1]) - 0.3, s[1]), q, sc);
           im.setMatrixAt(i, m4);
         });
-        im.castShadow = true; im.frustumCulled = false;
+        im.instanceColor = new T.InstancedBufferAttribute(new Float32Array(list.length * 3).fill(1), 3);
+        const hm = new T.InstancedMesh(hi[type], this.treeMat, list.length); // shares the instance data
+        hm.instanceMatrix = im.instanceMatrix; hm.instanceColor = im.instanceColor;
         im.userData.spots = list;
-        this.scene.add(im);
-        meshes.push(im);
+        for (const m of [im, hm]) { m.castShadow = true; m.receiveShadow = true; m.frustumCulled = false; this.scene.add(m); }
+        hm.visible = false;
+        meshes.push(im); his.push(hm);
       });
-      this.treeTiles.push({ box, meshes });
+      this.treeTiles.push({ box, meshes, hi: his });
     }
   }
   // 0 winter, 1 spring, 2 summer, 3 fall
   static seasonOf(month) { return month <= 1 || month === 11 ? 0 : month <= 4 ? 1 : month <= 8 ? 2 : 3; }
   applySeason(season) {
     this.season = season;
-    const c = new THREE.Color();
+    const T = THREE, c = new T.Color(), base = new T.Color('#5e8c47');
+    const mul = hex => { const t = new T.Color(hex); return [t.r / base.r, t.g / base.g, t.b / base.b]; };
+    const M = Renderer3D._M || (Renderer3D._M = { pink: mul('#f2bccb'), white: mul('#f1e8d6'), bare: mul('#5f5348'),
+      orange: mul('#c8742a'), yellow: mul('#d2a63a'), red: mul('#a8442e'), rust: mul('#a9772f') });
     for (const t of this.treeTiles) for (const im of t.meshes) {
       im.userData.spots.forEach((s, i) => {
-        const r = s[5], v = 0.8 + r * 0.4;
-        c.setRGB(v, v * (0.95 + ((r * 7) % 1) * 0.12), v * 0.95);
-        if (s[4] === 2) { // orchard: blossom in spring, bare in winter
-          if (season === 1) c.setRGB(2.7, 1.5 + r * 0.3, 2.5); else if (season === 0) c.setRGB(1.3, 0.85, 0.9); else if (season === 3) c.setRGB(1.9, 1.15, 0.5);
-        } else if (s[4] === 1) { // deciduous street and yard trees
-          if (season === 3) { if (r < 0.5) c.setRGB(2.3, 0.95, 0.35); else c.setRGB(2.1, 1.35, 0.3); }
-          else if (season === 0) c.setRGB(1.25, 0.82, 0.85);
-          else if (season === 1 && r < 0.3) c.setRGB(2.6, 1.55, 2.5);
-        }
+        const r = s[5], v = 0.75 + r * 0.5;
+        let m = null;
+        if (s[4] === 2) m = season === 1 ? (r < 0.6 ? M.pink : M.white) : season === 0 ? M.bare : season === 3 ? M.rust : null; // orchard
+        else if (s[4] === 1) m = season === 3 ? (r < 0.4 ? M.orange : r < 0.75 ? M.yellow : M.red) : season === 0 ? M.bare : season === 1 && r < 0.3 ? M.pink : null;
+        if (m) c.setRGB(m[0], m[1], m[2]); else c.setRGB(v, v * (0.92 + ((r * 7) % 1) * 0.16), v * 0.9);
         im.setColorAt(i, c);
       });
       im.instanceColor.needsUpdate = true;
     }
     // hills: green after the winter rains, golden by late summer
-    const tint = [[0.93, 1.0, 0.9], [0.95, 1.0, 0.9], [1.0, 0.97, 0.86], [1.0, 0.94, 0.83]][season];
+    const tint = [[0.86, 1.0, 0.8], [0.9, 1.0, 0.8], [1.0, 0.94, 0.72], [1.0, 0.88, 0.68]][season];
     this.terrain.material.color.setRGB(...tint);
     this.skirt.material.color.setRGB(...tint);
   }
@@ -1162,8 +1289,11 @@ SG.Renderer3D = class Renderer3D {
     const far2 = (this.dist * 4 + 1500) ** 2;
     for (const t of this.treeTiles) {
       const cx = (t.box.min.x + t.box.max.x) / 2, cz = (t.box.min.z + t.box.max.z) / 2;
-      const vis = frustum.intersectsBox(t.box) && ((cx - this.tx) ** 2 + (cz - this.ty) ** 2) < far2;
-      for (const m of t.meshes) m.visible = vis;
+      const d2 = (cx - this.tx) ** 2 + (cz - this.ty) ** 2;
+      const vis = frustum.intersectsBox(t.box) && d2 < far2;
+      const near = vis && this.q < 2 && this.dist < 2200 && d2 < 1300 * 1300;
+      for (const m of t.meshes) m.visible = vis && !near;
+      for (const m of t.hi) m.visible = near;
     }
     // windows, doors and roof details only near the camera; built a few chunks per frame
     const R = this.q >= 3 || this.dist > 2600 ? 0 : Math.max(650, Math.min(2300, this.dist * 1.7));
@@ -1211,7 +1341,16 @@ SG.Renderer3D = class Renderer3D {
       this.time += dt; this.uTime.value = this.time;
       if (this.carMesh.visible) this.moveCars(dt);
     }
-    this.renderer.render(this.scene, this.camera);
+    if (this.envDirty && (this.todT >= 1 || (this.envTick = (this.envTick || 0) + 1) % 8 === 0)) this.updateEnv();
+    if (this.post) {
+      const s = this.todCur, fx = this.q < 2;
+      this.post.opts.ao = fx; this.post.opts.bloom = this.q < 3;
+      this.post.render(this.scene, this.camera, {
+        exposure: s.exposure, fogCol: s.fog, sunCol: s.sunCol, sunDir: s.sun, fogFar: this.dist * 8 + 14000,
+        focus: this.camera.position.distanceTo(this.sun.target.position), maxCoC: fx ? (this.photo ? 10 : 1.5) * this.pr : 0,
+        ao: 0.85, bloom: 0.85, vignette: this.photo ? 0.45 : 0.26, time: this.time,
+      });
+    } else this.renderer.render(this.scene, this.camera);
     if (this.hudDirty) { this.hudDirty = false; this.drawHud(); }
     // drop quality if this machine can't keep up
     if (this.gfxMode === 'auto' && anim && dt > 0) {
@@ -1226,6 +1365,7 @@ SG.Renderer3D = class Renderer3D {
     const ctx = this.ctx, w = this.w;
     ctx.setTransform(this.dpr, 0, 0, this.dpr, 0, 0);
     ctx.clearRect(0, 0, this.vw, this.vh);
+    if (this.photo) return; // photo mode: nothing over the picture
     const on = (p) => p[2] < 1 && p[0] > -80 && p[1] > -40 && p[0] < this.vw + 80 && p[1] < this.vh + 40;
     const used = [];
     const free = (x, y, wd, h) => {
@@ -1347,12 +1487,23 @@ SG.Renderer3D = class Renderer3D {
   minimapToWorld(mx, my) { return SG.Renderer.prototype.minimapToWorld.call(this, mx, my); }
 };
 
-// palettes; colours for details are plain [r, g, b] in 0..1
+// palettes (sRGB); Renderer3D.colors() converts the detail colours to linear [r, g, b] once
 SG.Renderer3D.PAL = {
   walls: ['#efe6d6', '#e8dcc4', '#f3efe6', '#ddd0b6', '#e9e3d7', '#d6cfc0', '#cfd6d2', '#e2d2bd'],
   shopWalls: ['#e6d6b8', '#d4b896', '#c48a66', '#efe4d2', '#b9a58c', '#d9c7a0'],
   roofs: ['#a85e45', '#8a8987', '#6d5b4d', '#9b5536', '#77767a', '#94694e', '#5f6466'],
-  doors: [[0.42, 0.23, 0.15], [0.55, 0.14, 0.12], [0.16, 0.24, 0.38], [0.2, 0.33, 0.24], [0.9, 0.88, 0.84], [0.25, 0.2, 0.18]],
-  awn: [[0.61, 0.18, 0.18], [0.18, 0.36, 0.29], [0.15, 0.25, 0.42], [0.79, 0.64, 0.23], [0.48, 0.18, 0.31], [0.9, 0.87, 0.8]],
-  lit: [[1.0, 0.82, 0.48], [1.0, 0.89, 0.66], [1.0, 0.78, 0.39], [0.91, 0.94, 1.0], [1.0, 0.86, 0.55]],
+  doors: ['#6b3b26', '#8c241f', '#293d61', '#33543d', '#e6e0d6', '#40332e'],
+  awn: ['#9c2e2e', '#2e5c4a', '#26406b', '#c9a33b', '#7a2e4f', '#e6ded0'],
+  lit: ['#ffd17a', '#ffe3a8', '#ffc763', '#e8f0ff', '#ffdb8c'],
 };
+SG.Renderer3D.colors = function () {
+  if (SG.Renderer3D._C) return SG.Renderer3D._C;
+  const L = h => { const c = new THREE.Color(h); return [c.r, c.g, c.b]; };
+  const P = SG.Renderer3D.PAL;
+  return (SG.Renderer3D._C = { crane: L('#e0b021'), craneCab: L('#737373'), garage: L('#dddbd1'), chimney: L('#80543f'), solar: L('#1a264d'),
+    hvac: L('#9ea1a3'), store: L('#ffedc7'), doors: P.doors.map(L), awn: P.awn.map(L), lit: P.lit.map(L) });
+};
+SG.Renderer3D.NOISE = `
+  float h21(vec2 p){ p = fract(p * vec2(123.34, 456.21)); p += dot(p, p + 45.32); return fract(p.x * p.y); }
+  float vn(vec2 p){ vec2 i = floor(p), f = fract(p); f = f * f * (3.0 - 2.0 * f);
+    return mix(mix(h21(i), h21(i + vec2(1.0, 0.0)), f.x), mix(h21(i + vec2(0.0, 1.0)), h21(i + vec2(1.0, 1.0)), f.x), f.y); }`;
