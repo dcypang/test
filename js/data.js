@@ -131,7 +131,7 @@ const UNITS = {
 function defOf(type) { return BUILDINGS[type] || UNITS[type]; }
 
 const DIFFS = {
-  easy:   { label: 'Squire',  income: 0.85, build: 0.8,  first: 300, wave: 5, grow: 2, maxWave: 14, cap: 22 },
-  normal: { label: 'Baron',   income: 1.0,  build: 1.0,  first: 200, wave: 6, grow: 3, maxWave: 24, cap: 34 },
-  hard:   { label: 'Warlord', income: 1.3,  build: 1.25, first: 140, wave: 8, grow: 4, maxWave: 34, cap: 50 },
+  easy:   { label: 'Squire',  income: 0.85, build: 0.8,  first: 360, wave: 5, grow: 2, maxWave: 14, cap: 22 },
+  normal: { label: 'Baron',   income: 1.0,  build: 1.0,  first: 240, wave: 6, grow: 3, maxWave: 24, cap: 34 },
+  hard:   { label: 'Warlord', income: 1.3,  build: 1.25, first: 160, wave: 8, grow: 4, maxWave: 34, cap: 50 },
 };

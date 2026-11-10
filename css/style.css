@@ -1,4 +1,5 @@
 :root {
+  color-scheme: dark;
   --side: 256px;
   --ink: #ece3cc;
   --dim: #a89f8a;
@@ -12,9 +13,9 @@
 }
 * { box-sizing: border-box; }
 [hidden] { display: none !important; }
-html, body { margin: 0; height: 100%; background: #0a0d10; color: var(--ink); font: 13px/1.35 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; overflow: hidden; overscroll-behavior: none; }
+html, body { margin: 0; height: 100%; background: #0a0d10; position: relative; color: var(--ink); font: 13px/1.35 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; overflow: hidden; overscroll-behavior: none; }
 button { font: inherit; color: inherit; cursor: pointer; }
-#app { position: fixed; inset: 0; user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; touch-action: none; }
+#app { position: absolute; inset: 0; overflow: hidden; user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; touch-action: none; }
 #view { position: absolute; left: 0; top: 0; width: calc(100% - var(--side)); height: 100%; display: block; touch-action: none; cursor: default; }
 
 /* ---- sidebar ---- */
@@ -132,4 +133,8 @@ body.touch #touchbar { display: flex; }
   #selinfo { bottom: calc(var(--bot) + 8px); }
   #msgs, #paused { width: 100%; }
   .panel { padding: 16px; } .panel h1 { font-size: 30px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  #powers button.go, .item.ready .tag, #timers div.rdy { animation: none; }
 }
