@@ -37,8 +37,13 @@ Both source games are commercial products whose art, audio, names and maps
 are proprietary, so none of it is used here. Everything in this repository is
 original:
 
-- **Art** is drawn procedurally with canvas paths in `js/art.js` (terrain,
-  thirteen buildings, fourteen units, icons) and cached as sprites.
+- **Art** is drawn procedurally with canvas paths and cached as sprites.
+  `js/art.js` builds thirteen buildings from textured isometric solids
+  (stone courses, planks, shingles, thatch), replays the same geometry to
+  cast a soft shadow for each, and draws fourteen outlined, shaded units,
+  five tree species and the particle sprites. `js/terrain.js` paints the
+  ground in cached chunks with blended borders, water depth, shore foam,
+  animated glints and drifting cloud shadows.
 - **Sound and music** are synthesised with Web Audio in `js/audio.js`.
 - **Names, numbers and maps** are this project's own; maps are generated
   from a seed and are mirror-symmetric for fairness.
@@ -67,7 +72,8 @@ css/style.css     sidebar and overlay styling (portrait layout included)
 js/util.js        constants and helpers
 js/data.js        ages, damage table, building and unit definitions
 js/map.js         map generation and A* pathfinding
-js/art.js         all procedural sprites
+js/art.js         procedural sprites: buildings, units, trees, particles
+js/terrain.js     blended ground, water and cloud shadows
 js/audio.js       synthesised effects and music
 js/game.js        simulation: economy, queues, movement, combat, fog
 js/ai.js          computer opponent

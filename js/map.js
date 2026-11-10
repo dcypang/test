@@ -125,7 +125,10 @@ class GameMap {
       if (t === T_FOREST) {
         const v = this.variant[i];
         const h = (x * 73856093 ^ y * 19349663) >>> 0;
-        this.trees.push({ x: x + 0.3 + (h % 16) / 40, y: y + 0.3 + ((h >> 4) % 16) / 40, v: (h >> 8) % 3, s: 0.85 + ((h >> 10) % 7) / 20 });
+        // neighbouring tiles tend to share a species, so woods read as stands of fir, oak or birch
+        const sp = Math.floor(nC(x / 5 + 3.3, y / 5 + 8.1) * 5.99) % 5, v1 = (h >> 8) % 4 === 0 ? (h >> 12) % 5 : sp;
+        this.trees.push({ x: x + 0.28 + (h % 16) / 60, y: y + 0.28 + ((h >> 4) % 16) / 60, v: v1, s: 0.82 + ((h >> 10) % 7) / 18 });
+        if ((h >> 14) % 3) this.trees.push({ x: x + 0.72 + ((h >> 16) % 8) / 40, y: y + 0.66 + ((h >> 19) % 8) / 40, v: (h >> 22) % 3 === 0 ? (h >> 24) % 5 : sp, s: 0.55 + ((h >> 26) % 6) / 20 });
       } else if (t === T_ROCK) {
         let kind = 1;
         for (let dy = -2; dy <= 2; dy++) for (let dx = -2; dx <= 2; dx++) {

@@ -18,6 +18,9 @@ button { font: inherit; color: inherit; cursor: pointer; }
 #app { position: absolute; inset: 0; overflow: hidden; user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; touch-action: none; }
 #view { position: absolute; left: 0; top: 0; width: calc(100% - var(--side)); height: 100%; display: block; touch-action: none; cursor: default; }
 
+#vignette { position: absolute; left: 0; top: 0; width: calc(100% - var(--side)); height: 100%; pointer-events: none;
+  background: radial-gradient(ellipse at 50% 46%, rgba(0,0,0,0) 52%, rgba(6,10,18,.2) 80%, rgba(4,6,12,.5) 100%), linear-gradient(160deg, rgba(255,226,170,.07), rgba(255,226,170,0) 45%, rgba(20,40,80,.07)); }
+
 /* ---- sidebar ---- */
 #sidebar { position: absolute; right: 0; top: 0; width: var(--side); height: 100%; background: linear-gradient(#22262d, #171a1f); border-left: 2px solid #0c0e11; box-shadow: inset 2px 0 0 #343944; display: flex; flex-direction: column; padding: 8px; gap: 6px; }
 #res { background: var(--panel); border: 1px solid var(--edge); border-radius: 6px; padding: 6px 8px; }
@@ -94,9 +97,9 @@ button { font: inherit; color: inherit; cursor: pointer; }
 #touchbar button.on { background: #6b5516; border-color: var(--gold); }
 body.touch #touchbar { display: flex; }
 
-.overlay { position: absolute; inset: 0; background: rgba(6,8,10,.82); display: flex; align-items: center; justify-content: center; padding: 16px; overflow: auto; z-index: 10; }
+.overlay { position: absolute; inset: 0; background: rgba(6,8,10,.5); -webkit-backdrop-filter: blur(3px); backdrop-filter: blur(3px); display: flex; align-items: center; justify-content: center; padding: 16px; overflow: auto; z-index: 10; }
 .overlay[hidden] { display: none; }
-.panel { width: min(620px, 100%); max-height: 100%; overflow: auto; background: linear-gradient(#262a32, #1a1d22); border: 1px solid #4a505c; border-radius: 10px; padding: 22px 26px; box-shadow: 0 20px 60px rgba(0,0,0,.6); }
+.panel { width: min(620px, 100%); max-height: 100%; overflow: auto; background: linear-gradient(rgba(38,42,50,.96), rgba(24,27,32,.96)); border: 1px solid #4a505c; border-radius: 10px; padding: 22px 26px; box-shadow: 0 20px 60px rgba(0,0,0,.6); }
 .panel h1 { margin: 0; font: 700 40px/1.05 Georgia, "Times New Roman", serif; letter-spacing: 2px; color: var(--gold); text-shadow: 0 2px 0 #4a3608; }
 .panel .sub { margin: 4px 0 16px; color: var(--dim); }
 .row { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin: 10px 0; }
@@ -120,7 +123,7 @@ body.touch #touchbar { display: flex; }
 /* ---- portrait / narrow: sidebar becomes a bottom panel ---- */
 @media (max-aspect-ratio: 1/1), (max-width: 620px) {
   :root { --side: 0px; --bot: 232px; }
-  #view { width: 100%; height: calc(100% - var(--bot)); }
+  #view, #vignette { width: 100%; height: calc(100% - var(--bot)); }
   #sidebar { top: auto; bottom: 0; left: 0; width: 100%; height: var(--bot); border-left: none; border-top: 2px solid #0c0e11; display: grid; grid-template-columns: 150px 1fr; grid-template-rows: auto auto auto 1fr; gap: 4px 6px; padding: 6px; }
   #res { grid-column: 1; grid-row: 1; padding: 4px 6px; }
   #coinrow { font-size: 17px; }

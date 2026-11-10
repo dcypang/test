@@ -162,14 +162,21 @@ function alertOnce(p, key, gap, text, kind, x, y, sfx) {
 }
 
 function part(kind, x, y, z, o) {
-  if (G.parts.length > 700) return;
+  if (G.parts.length > 900) return;
   G.parts.push(Object.assign({ kind, x, y, z, vx: 0, vy: 0, vz: 0, life: 0, max: 1, size: 3 }, o));
 }
 function fxExplosion(x, y, size, z) {
+  const r = G.rng, zz = z || 4;
+  part('flash', x, y, zz + 8, { max: 0.28, size: 34 * size });
+  part('ring', x, y, 0, { max: 0.5, size: 36 * size });
+  for (let i = 0; i < 7 * size; i++) part('fire', x + (r() - 0.5) * 0.6 * size, y + (r() - 0.5) * 0.6 * size, zz + r() * 10, { vz: 14 + r() * 30, max: 0.35 + r() * 0.4, size: 5 + r() * 6 * size });
+  for (let i = 0; i < 6 * size; i++) part('smoke', x + (r() - 0.5) * 0.8 * size, y + (r() - 0.5) * 0.8 * size, zz + 8, { vz: 14 + r() * 18, max: 1.1 + r() * 1.0, size: 6 + r() * 7 * size, vx: 0.12, vy: -0.05 });
+  for (let i = 0; i < 6 * size; i++) { const a = r() * 6.28, s = 1 + r() * 2.8; part('debris', x, y, zz + 4, { vx: Math.cos(a) * s, vy: Math.sin(a) * s, vz: 30 + r() * 60, max: 0.8 + r() * 0.6, size: 1.6 + r() * 2, col: r() > 0.5 ? '#3a2e24' : '#7a7468' }); }
+  for (let i = 0; i < 5 * size; i++) { const a = r() * 6.28, s = 1.5 + r() * 3; part('spark', x, y, zz + 6, { vx: Math.cos(a) * s, vy: Math.sin(a) * s, vz: 40 + r() * 60, max: 0.5 + r() * 0.5, size: 2.2, grav: 1 }); }
+}
+function fxHit(x, y, z) {
   const r = G.rng;
-  for (let i = 0; i < 6 * size; i++) part('fire', x + (r() - 0.5) * 0.5 * size, y + (r() - 0.5) * 0.5 * size, (z || 4) + r() * 8, { vz: 14 + r() * 26, max: 0.35 + r() * 0.35, size: 4 + r() * 5 * size });
-  for (let i = 0; i < 5 * size; i++) part('smoke', x + (r() - 0.5) * 0.7 * size, y + (r() - 0.5) * 0.7 * size, (z || 4) + 6, { vz: 16 + r() * 16, max: 0.9 + r() * 0.8, size: 5 + r() * 6 * size });
-  for (let i = 0; i < 5 * size; i++) { const a = r() * 6.28, s = 1 + r() * 2.5; part('debris', x, y, (z || 4) + 4, { vx: Math.cos(a) * s, vy: Math.sin(a) * s, vz: 30 + r() * 50, max: 0.8 + r() * 0.5, size: 1.5 + r() * 1.5 }); }
+  for (let i = 0; i < 3; i++) { const a = r() * 6.28; part('spark', x, y, z, { vx: Math.cos(a) * 1.6, vy: Math.sin(a) * 1.6, vz: 10 + r() * 30, max: 0.22 + r() * 0.15, size: 1.8, grav: 1 }); }
 }
 function fxDust(x, y, n) {
   const r = G.rng;
@@ -504,6 +511,7 @@ function fireWeapon(e, t, w) {
   if (!w.proj) {
     applyDamage(t, dmg, w.type, e);
     Sfx.at(w.sfx || 'sword', e.x, e.y);
+    if (t.kind === 'u') fxHit(lerp(e.x, t.x, 0.7), lerp(e.y, t.y, 0.7), 12);
     if (w.type === 'ram') fxDust(t.kind === 'b' ? lerp(e.x, t.x, 0.4) : t.x, t.kind === 'b' ? lerp(e.y, t.y, 0.4) : t.y, 4);
   } else {
     const z0 = e.kind === 'b' ? (e.def.fireZ || 40) : 12;
@@ -511,7 +519,7 @@ function fireWeapon(e, t, w) {
     G.projs.push({ kind: w.proj, x0: e.x, y0: e.y, z0, x: e.x, y: e.y, z: z0, tx: t.x, ty: t.y, tz: t.kind === 'b' ? 14 : 8,
       tid: w.splash ? 0 : t.id, dmg, type: w.type, splash: w.splash || 0, owner: e.owner, src: e.id, t: 0, dur: Math.max(0.12, d / w.pspeed), arcPx: (w.arc || 0) * d * 32 });
     Sfx.at(w.sfx || (w.proj === 'arrow' ? 'arrow' : 'bolt'), e.x, e.y);
-    if (w.proj === 'shot' || w.proj === 'ball') part('smoke', e.x, e.y, z0, { vz: 10, max: 0.7, size: w.proj === 'ball' ? 9 : 4 });
+    if (w.proj === 'shot' || w.proj === 'ball') { part('flash', e.x, e.y, z0, { max: 0.12, size: w.proj === 'ball' ? 26 : 11 }); part('smoke', e.x, e.y, z0, { vz: 10, max: 0.9, size: w.proj === 'ball' ? 10 : 4.5, vx: 0.1 }); }
   }
 }
 
@@ -571,7 +579,7 @@ function kill(t, src) {
   } else {
     if (t.def.armor === 'engine') { fxExplosion(t.x, t.y, 0.7, 6); Sfx.at('thud', t.x, t.y); }
     else Sfx.at('die', t.x, t.y);
-    G.decals.push({ kind: 'corpse', x: t.x, y: t.y, t: G.time, life: 14, big: t.def.armor !== 'foot', col: p.col.main });
+    G.decals.push({ kind: 'corpse', x: t.x, y: t.y, t: G.time, life: 16, big: t.def.armor === 'engine', type: t.type, owner: t.owner, dir: t.dir });
     if (t.def.cart && t.owner === G.human) notify('Ox cart lost', 'bad', t.x, t.y);
   }
 }
@@ -598,7 +606,7 @@ function updateProjectiles(dt) {
         if (p.kind !== 'stone') G.decals.push({ kind: 'scorch', x: p.tx, y: p.ty, t: G.time, life: 30 });
         Sfx.at(p.kind === 'rocket' ? 'boom' : 'thud', p.tx, p.ty);
         if (p.kind === 'rocket') G.shake = Math.max(G.shake, 0.3);
-      } else if (tgt && !tgt.dead) applyDamage(tgt, p.dmg, p.type, src);
+      } else if (tgt && !tgt.dead) { applyDamage(tgt, p.dmg, p.type, src); if (p.kind === 'shot' || p.kind === 'bolt') fxHit(p.tx, p.ty, p.tz); }
     }
   }
 }
@@ -610,7 +618,7 @@ function updateParticles(dt) {
     p.life += dt;
     if (p.life >= p.max) { ps[i] = ps[ps.length - 1]; ps.pop(); continue; }
     p.x += p.vx * dt; p.y += p.vy * dt; p.z += p.vz * dt;
-    if (p.kind === 'debris') { p.vz -= 160 * dt; if (p.z < 0) { p.z = 0; p.vz *= -0.3; p.vx *= 0.5; p.vy *= 0.5; } }
+    if (p.kind === 'debris' || p.grav) { p.vz -= 160 * dt; if (p.z < 0) { p.z = 0; p.vz *= -0.3; p.vx *= 0.5; p.vy *= 0.5; } }
   }
   for (let i = G.decals.length - 1; i >= 0; i--) if (G.time - G.decals[i].t > G.decals[i].life) G.decals.splice(i, 1);
   for (let i = G.floaters.length - 1; i >= 0; i--) if (G.time - G.floaters[i].t > 1.6) G.floaters.splice(i, 1);
@@ -824,7 +832,9 @@ function updateBuilding(b, dt) {
   }
   if (b.hp < b.maxHp * 0.5 && G.tickN % 6 === 0) {
     const r = G.rng;
-    part(b.hp < b.maxHp * 0.25 ? 'fire' : 'smoke', b.x + (r() - 0.5) * b.w * 0.6, b.y + (r() - 0.5) * b.h * 0.6, d.tall * 0.4 + r() * 10, { vz: 14 + r() * 10, max: 0.8 + r() * 0.6, size: 4 + r() * 4 });
+    const fx = b.x + (r() - 0.5) * b.w * 0.6, fy = b.y + (r() - 0.5) * b.h * 0.6, fz = d.tall * 0.35 + r() * 10;
+    part('smoke', fx, fy, fz + 8, { vz: 16 + r() * 10, max: 1.2 + r() * 0.8, size: 5 + r() * 5, vx: 0.14, vy: -0.05 });
+    if (b.hp < b.maxHp * 0.3) { part('fire', fx, fy, fz, { vz: 12 + r() * 12, max: 0.5 + r() * 0.4, size: 5 + r() * 5 }); if (r() < 0.4) part('spark', fx, fy, fz + 6, { vx: (r() - 0.5) * 1.5, vy: (r() - 0.5) * 1.5, vz: 30 + r() * 30, max: 0.7, size: 1.6, grav: 1 }); }
   }
   if (b.type === 'mint' && !p.lowGrain && G.tickN % 10 === 0) part('smoke', b.x - 0.56, b.y - 0.61, 66, { vz: 12, max: 1.4, size: 4, vx: 0.15 });
   const w = d.weapon;

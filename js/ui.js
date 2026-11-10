@@ -38,7 +38,7 @@ const UI = (() => {
     for (const u of G.units) {
       if (u.owner !== G.human && !G.vis[clamp(Math.floor(u.y), 0, n - 1) * n + clamp(Math.floor(u.x), 0, n - 1)]) continue;
       const q = w2s(u.x, u.y), big = u.def.armor !== 'foot';
-      const dx = sx - q[0], dy = sy - (q[1] - (big ? 12 : 9) * z), r = (big ? 16 : 12) * z;
+      const dx = sx - q[0], dy = sy - (q[1] - (big ? 14 : 11) * z), r = (big ? 19 : 14) * z;
       const d2 = dx * dx + dy * dy;
       if (d2 < r * r && d2 < bd) { bd = d2; best = u; }
     }
