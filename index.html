@@ -1,0 +1,111 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<title>Gildmarch</title>
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+<div id="app">
+  <canvas id="view"></canvas>
+
+  <div id="timers"></div>
+  <div id="msgs"></div>
+  <div id="paused" hidden>Paused</div>
+
+  <div id="selinfo" hidden></div>
+  <div id="touchbar">
+    <button data-act="box" title="Drag a box to select">Box</button>
+    <button data-act="army" title="Select every soldier">Army</button>
+    <button data-act="amove" title="Attack-move">Attack</button>
+    <button data-act="stop" title="Stop">Stop</button>
+    <button data-act="none" title="Clear selection">Clear</button>
+  </div>
+
+  <aside id="sidebar">
+    <div id="res">
+      <div id="coinrow"><span class="coinicon"></span><span id="coin">0</span></div>
+      <div id="grainrow" title="Grain made by Windmills against grain your buildings need">
+        <span class="lbl">Grain</span>
+        <div id="grainbar"><div id="grainuse"></div></div>
+        <span id="graintxt">0/0</span>
+      </div>
+    </div>
+    <div id="mmwrap">
+      <canvas id="minimap" width="416" height="250"></canvas>
+      <div id="mmoff">Minimap dark<br><small>Raise a Beacon Tower</small></div>
+    </div>
+    <div id="powers">
+      <button id="agebtn"><span class="pl">Age</span><span class="pv"></span><i class="pp"></i></button>
+      <button id="hawkbtn" hidden><span class="pl">Hawk&rsquo;s Eye</span><span class="pv"></span><i class="pp"></i></button>
+      <button id="skybtn" hidden><span class="pl">Skyfire</span><span class="pv"></span><i class="pp"></i></button>
+    </div>
+    <div id="cmds">
+      <button id="repairbtn" title="Repair mode (K): click a damaged building">Repair</button>
+      <button id="sellbtn" title="Sell mode (Z): click a building for half its worth">Sell</button>
+      <button id="menubtn" title="Pause / options (P)">Menu</button>
+    </div>
+    <div id="tabs"></div>
+    <div id="grid"></div>
+    <div id="tip"></div>
+  </aside>
+
+  <div id="menu" class="overlay">
+    <div class="panel">
+      <h1>Gildmarch</h1>
+      <p class="sub">A medieval command-sidebar strategy game</p>
+      <div class="row" id="diffrow">
+        <span class="rl">Opponent</span>
+        <button data-diff="easy">Squire</button>
+        <button data-diff="normal" class="on">Baron</button>
+        <button data-diff="hard">Warlord</button>
+      </div>
+      <div class="row" id="colrow"><span class="rl">Banner</span></div>
+      <div class="row">
+        <button id="startbtn" class="big">Start skirmish</button>
+        <button id="resumebtn" class="big" hidden>Resume</button>
+      </div>
+      <div class="row small">
+        <button id="musicbtn">Music: on</button>
+        <button id="sfxbtn">Sound: on</button>
+        <button id="demobtn" title="Watch two computer players fight">Watch a battle</button>
+      </div>
+      <div class="help">
+        <h3>How to play</h3>
+        <ul>
+          <li><b>Build</b> from the sidebar: click an icon, wait for it to finish, then click the map to place it near your other buildings. Right-click an icon to cancel.</li>
+          <li><b>Windmills</b> make grain. Run short and production halves, powered towers and the minimap go dark.</li>
+          <li><b>Mint + Ox Carts</b> turn gold fields into coin &mdash; your only resource.</li>
+          <li><b>Advance the age</b> to unlock stronger troops, engines and the Skyfire Battery.</li>
+          <li><b>Mouse:</b> left-click or drag to select, right-click to move / attack / gather / set rally. Wheel zooms, arrow keys or screen edges scroll.</li>
+          <li><b>Touch:</b> tap to select and to order, drag to scroll, pinch to zoom, long-press an icon to cancel.</li>
+          <li><b>Keys:</b> Q W E R tabs &middot; A attack-move &middot; S stop &middot; D deploy wagon &middot; K repair &middot; Z sell &middot; H home &middot; Space last alert &middot; Ctrl+1&hellip;9 groups &middot; P pause</li>
+        </ul>
+        <p class="goal">Raze every enemy building to win.</p>
+      </div>
+    </div>
+  </div>
+
+  <div id="endscreen" class="overlay" hidden>
+    <div class="panel">
+      <h1 id="endtitle">Victory</h1>
+      <p class="sub" id="endsub"></p>
+      <table id="endstats"></table>
+      <div class="row"><button id="againbtn" class="big">Play again</button></div>
+    </div>
+  </div>
+</div>
+
+<script src="js/util.js"></script>
+<script src="js/data.js"></script>
+<script src="js/map.js"></script>
+<script src="js/art.js"></script>
+<script src="js/audio.js"></script>
+<script src="js/game.js"></script>
+<script src="js/ai.js"></script>
+<script src="js/render.js"></script>
+<script src="js/ui.js"></script>
+<script src="js/main.js"></script>
+</body>
+</html>
