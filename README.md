@@ -16,8 +16,13 @@ The city is shown in **3D**:
   orchard rows and creeks, and about 60,000 trees (broadleaf, pine and redwood) that sway in the
   wind and follow the seasons: blossom in spring, golden hills in late summer, fall colour, bare
   branches in winter.
-- **Sky and light**: a shader sky with drifting clouds and a sun, soft shadows, and four times of
-  day. At sunset and night, windows, streetlights and headlights come on and stars come out.
+- **Sky and light**: a shader sky with drifting clouds and a sun, and four times of day. At
+  sunset and night, windows, streetlights and headlights come on and stars come out.
+- **Rendering**: physically based materials lit by the sky, so glass, cars and water reflect it;
+  soft sun shadows and ambient occlusion; bloom on lights; depth of field; atmospheric haze; and
+  filmic tone mapping. Shingles, stucco, asphalt and grass detail is generated in the shaders.
+- **Photo mode**: hides the interface and narrows the focus for a miniature look, with a button
+  to save the picture.
 - **Camera**: orbit, tilt and zoom from a regional overview down to street level.
 
 A flat 2D map is one click away.
@@ -34,8 +39,9 @@ python3 -m http.server 8000
 No build step and no dependencies. The game saves to your browser's local storage.
 
 The 3D view needs WebGL and falls back to the flat map without it. Graphics quality adapts to the
-device: if frames get slow it lowers the resolution, then turns off shadows, then stops the
-ambient animation. You can pin it from the menu (☰ → 3D graphics) or with `?gfx=high` or
+device: if frames get slow it lowers the resolution, then turns off shadows, ambient occlusion
+and depth of field, then stops the ambient animation. The full effects need WebGL2; older
+browsers get a simpler lighting path. You can pin it from the menu (☰ → 3D graphics) or with `?gfx=high` or
 `?gfx=low` in the URL.
 
 ### Controls
@@ -46,6 +52,7 @@ ambient animation. You can pin it from the menu (☰ → 3D graphics) or with `?
 | Rotate / tilt (3D) | Right-drag or Shift-drag, `Q`/`E` and `R`/`F`, two-finger twist, or the buttons on the right |
 | Time of day (3D) | `T` or the ☀️ button: afternoon, sunset, night, morning |
 | Circle the camera (3D) | `C` or the 🎥 button |
+| Photo mode (3D) | `P` or the 📷 button; 💾 saves a PNG; `Esc` leaves |
 | Switch 3D / 2D | `V` or the 2D/3D button |
 | Zoom | Mouse wheel, pinch, or `+` / `-` |
 | Inspect | Click a building, street or lot |
@@ -130,6 +137,7 @@ Map data © OpenStreetMap contributors, available under the Open Database Licens
 | `js/rules.js` | Zoning districts, building types, buildable projects, economy constants |
 | `js/world.js` | Map loading, spatial indexes, zoning grid inference, building placement |
 | `js/sim.js` | Monthly simulation: growth, applications, budget, approval, housing law, save/load |
+| `js/post3d.js` | Screen-space finish for the 3D view: ambient occlusion, depth of field, haze, bloom, tone mapping |
 | `js/render3d.js` | 3D renderer (three.js): terrain and horizon, buildings and their details, streets, traffic, trees, sky, time of day, labels |
 | `js/render.js` | Flat 2D map renderer and the overlays (zoning, vacant lots, street access, fire coverage) |
 | `js/vendor/three.min.js` | three.js r149 (MIT), bundled so the game works offline |

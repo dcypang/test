@@ -58,7 +58,7 @@ button { font: inherit; color: inherit; cursor: pointer; }
 #gl { display: block; }
 #map { cursor: crosshair; }
 .flat #gl, .flat #camctl button:not(#view-btn) { display: none; }
-#camctl { position: absolute; right: 10px; top: 62px; display: flex; flex-direction: column; gap: 4px; }
+#camctl { position: absolute; right: 10px; top: 62px; display: flex; flex-direction: column; flex-wrap: wrap-reverse; gap: 4px; max-height: calc(100% - 270px); min-height: 72px; }
 #camctl button { width: 34px; height: 30px; background: rgba(21,26,31,.85); border: 1px solid var(--line); border-radius: 7px; font-size: 15px; }
 #camctl #save-btn { display: none; }
 #app.photo { grid-template-columns: 1fr; grid-template-rows: 1fr; grid-template-areas: "view"; }

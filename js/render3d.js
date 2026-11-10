@@ -330,6 +330,11 @@ SG.Renderer3D = class Renderer3D {
     this.ty = (Math.min(...ys) + Math.max(...ys)) / 2 + 500;
     this.dist = Math.max(Math.max(...xs) - Math.min(...xs), Math.max(...ys) - Math.min(...ys)) * 0.95;
     this.yaw = 0.35; this.pitch = 0.62;
+    // open on a closer view of the Village (Big Basin Way) when the map has it
+    const v = w.pois.find(p => /saratoga village/i.test(p.name));
+    const bb = w.roads.find(r => /big basin/i.test(r.name));
+    const at = v ? [v.x, v.y] : bb ? [bb.pts[0], bb.pts[1]] : null;
+    if (at) { this.tx = at[0]; this.ty = at[1]; this.dist = 1500; this.yaw = 0.9; this.pitch = 0.42; }
     this.dirty = true;
   }
   updateCamera() {
@@ -1346,7 +1351,7 @@ SG.Renderer3D = class Renderer3D {
       const s = this.todCur, fx = this.q < 2;
       this.post.opts.ao = fx; this.post.opts.bloom = this.q < 3;
       this.post.render(this.scene, this.camera, {
-        exposure: s.exposure, fogCol: s.fog, sunCol: s.sunCol, sunDir: s.sun, fogFar: this.dist * 8 + 14000,
+        exposure: s.exposure, fogCol: s.fog, sunCol: s.sunCol, sunDir: s.sun, fogFar: this.dist * 14 + 14000,
         focus: this.camera.position.distanceTo(this.sun.target.position), maxCoC: fx ? (this.photo ? 10 : 1.5) * this.pr : 0,
         ao: 0.85, bloom: 0.85, vignette: this.photo ? 0.45 : 0.26, time: this.time,
       });
