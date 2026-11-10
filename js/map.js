@@ -276,7 +276,6 @@ class GameMap {
       if (this.gold[i] < GOLD_MAX) {
         this.gold[i] = Math.min(GOLD_MAX, this.gold[i] + 70);
         if (!this.goldKind[i]) this.goldKind[i] = l.kind;
-        if (this.terrain[i] !== T_SAND) this.terrain[i] = T_DIRT;
       }
     }
   }

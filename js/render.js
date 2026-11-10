@@ -128,16 +128,23 @@ const Render = (() => {
     const c = [s2w(0, 0), s2w(W, 0), s2w(0, H), s2w(W, H)];
     const x0 = clamp(Math.floor(Math.min(c[0].x, c[1].x, c[2].x, c[3].x)) - 1, 0, n - 1), x1 = clamp(Math.ceil(Math.max(c[0].x, c[1].x, c[2].x, c[3].x)) + 1, 0, n - 1);
     const y0 = clamp(Math.floor(Math.min(c[0].y, c[1].y, c[2].y, c[3].y)) - 1, 0, n - 1), y1 = clamp(Math.ceil(Math.max(c[0].y, c[1].y, c[2].y, c[3].y)) + 1, 0, n - 1);
-    const ex = G.explored, vis = G.vis, wt = Math.floor(G.time * 1.3);
+    const ex = G.explored, vis = G.vis;
+    Terrain.draw(ctx, m, L, T, R, B);
+    Terrain.drawWater(ctx, m, x0, x1, y0, y1, L, T, R, B, G.time, ex);
     for (let y = y0; y <= y1; y++) for (let x = x0; x <= x1; x++) {
+      const i = y * n + x, g = m.gold[i];
+      if (g <= 0) continue;
       const px = (x - y) * HW, py = (x + y + 1) * HH;
       if (px < L || px > R || py < T || py > B) continue;
-      const i = y * n + x;
-      const t = m.terrain[i];
-      const s = Art.tile(t, t === T_WATER ? m.variant[i] + ((wt + x * 3 + y * 5) % 4 << 4) : m.variant[i]);
-      ctx.drawImage(s.c, px - s.ox, py - s.oy, s.w, s.h);
-      const g = m.gold[i];
-      if (g > 0) { const gs = Art.gold(m.goldKind[i] || 1, clamp(Math.ceil(g / 150), 1, 4), m.variant[i]); ctx.drawImage(gs.c, px - gs.ox, py - gs.oy, gs.w, gs.h); }
+      const gs = Art.gold(m.goldKind[i] || 1, clamp(Math.ceil(g / 150), 1, 4), m.variant[i]);
+      ctx.drawImage(gs.c, px - gs.ox, py - gs.oy, gs.w, gs.h);
+      // a passing glint
+      const h = (Math.imul(x, 73856093) ^ Math.imul(y, 19349663)) >>> 0, ph = (G.time * 0.55 + (h % 700) / 100) % 7;
+      if (ph < 0.5 && ex[i]) {
+        const a = Math.sin(ph / 0.5 * Math.PI), sx = px + (h >> 5) % 30 - 15, sy = py + (h >> 11) % 12 - 9, r = 2 + 4 * a;
+        ctx.strokeStyle = `rgba(255,252,220,${a})`; ctx.lineWidth = 1.1;
+        ctx.beginPath(); ctx.moveTo(sx - r, sy); ctx.lineTo(sx + r, sy); ctx.moveTo(sx, sy - r); ctx.lineTo(sx, sy + r); ctx.stroke();
+      }
     }
     // decals
     for (const d of G.decals) {
@@ -207,6 +214,7 @@ const Render = (() => {
     }
     for (const p of G.projs) drawProj(ctx, p);
     for (const p of G.parts) drawPart(ctx, p);
+    Terrain.drawClouds(ctx, L, T, R, B, G.time);
     // fog of war: one smoothed draw of an n x n alpha map through the iso transform
     ctx.save(); ctx.transform(HW, HH, -HW, HH, 0, 0); ctx.imageSmoothingEnabled = true; ctx.drawImage(fogC, 0, 0); ctx.restore();
     // health bars
@@ -307,5 +315,5 @@ const Render = (() => {
     }
   }
 
-  return { draw, minimap, mmInv, reset() { fogC = null; mmBase = null; mmBaseT = -99; } };
+  return { draw, minimap, mmInv, reset() { fogC = null; mmBase = null; mmBaseT = -99; Terrain.reset(); } };
 })();
