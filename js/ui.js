@@ -13,7 +13,7 @@ const UI = (() => {
   const me = () => G.players[G.human];
   const PROD = { barracks: 1, stable: 1, siegeworks: 1 };
 
-  function setSel(ids) { ui.sel = ids; ui.selSet = new Set(ids); selSig = ''; }
+  function setSel(ids) { ui.sel = ids; ui.selSet = new Set(ids); selSig = null; }
   function setMode(m) {
     ui.mode = m;
     $('sellbtn').classList.toggle('on', !!m && m.t === 'sell');
