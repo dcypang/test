@@ -1,0 +1,96 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ReplyPilot</title>
+<meta name="description" content="Reply to every Google and Yelp review in seconds. AI drafts thoughtful, on-brand responses for your business.">
+<style>
+  :root { --bg:#fbfaf7; --fg:#1d1d1b; --muted:#6b6a64; --card:#fff; --line:#e6e3da; --accent:#1f6f50; --accent-fg:#fff; }
+  @media (prefers-color-scheme: dark) {
+    :root { --bg:#141413; --fg:#ecebe6; --muted:#a3a29b; --card:#1d1d1b; --line:#33322e; --accent:#4fb38a; --accent-fg:#0b1a13; }
+  }
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--bg); color:var(--fg); font:16px/1.55 system-ui, -apple-system, Segoe UI, sans-serif; }
+  .wrap { max-width:960px; margin:0 auto; padding:0 16px; }
+  header { padding:56px 0 24px; }
+  h1 { font-size:clamp(28px,5vw,44px); line-height:1.15; margin:0 0 12px; letter-spacing:-0.02em; }
+  .lede { color:var(--muted); font-size:18px; max-width:620px; }
+  .card { background:var(--card); border:1px solid var(--line); border-radius:12px; padding:20px; }
+  label { display:block; font-size:14px; font-weight:600; margin:12px 0 4px; }
+  input, textarea, select { width:100%; padding:10px; border:1px solid var(--line); border-radius:8px; background:var(--bg); color:var(--fg); font:inherit; }
+  textarea { min-height:120px; resize:vertical; }
+  .row { display:grid; grid-template-columns:1fr 1fr; gap:12px; }
+  @media (max-width:600px){ .row { grid-template-columns:1fr; } }
+  button, .btn { display:inline-block; margin-top:16px; padding:11px 18px; border:0; border-radius:8px; background:var(--accent); color:var(--accent-fg); font:inherit; font-weight:600; cursor:pointer; text-decoration:none; }
+  button:disabled { opacity:.6; cursor:wait; }
+  #out { white-space:pre-wrap; margin-top:16px; }
+  #out.err { color:#c0392b; }
+  .plans { display:grid; grid-template-columns:repeat(auto-fit,minmax(200px,1fr)); gap:12px; margin:16px 0 64px; }
+  .price { font-size:32px; font-weight:700; }
+  .muted { color:var(--muted); font-size:14px; }
+  section { margin-top:48px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>Answer every review in 10 seconds.</h1>
+    <p class="lede">Businesses that respond to reviews earn more trust and rank better locally. ReplyPilot drafts a thoughtful, specific reply to any Google, Yelp or TripAdvisor review — you just copy and post.</p>
+  </header>
+
+  <div class="card">
+    <div class="row">
+      <div><label for="business">Business name</label><input id="business" placeholder="Rosa's Pizzeria"></div>
+      <div><label for="rating">Star rating</label>
+        <select id="rating"><option value="">Unknown</option><option>5</option><option>4</option><option>3</option><option>2</option><option>1</option></select></div>
+    </div>
+    <label for="review">Paste the review</label>
+    <textarea id="review" placeholder="Waited 40 minutes for a pizza that arrived cold..."></textarea>
+    <div class="row">
+      <div><label for="tone">Tone</label>
+        <select id="tone"><option>warm and professional</option><option>friendly and casual</option><option>formal</option><option>upbeat</option></select></div>
+      <div><label for="key">Access key <span class="muted">(blank = 3 free replies/day)</span></label><input id="key" placeholder="rp_..." autocomplete="off"></div>
+    </div>
+    <label for="notes">Anything the reply should mention? <span class="muted">(optional)</span></label>
+    <input id="notes" placeholder="New delivery partner since March; call 555-0100 to talk to the manager">
+    <button id="go">Draft reply</button>
+    <div id="out"></div>
+  </div>
+
+  <section id="pricing">
+    <h2>Pricing</h2>
+    <p class="muted">7-day free trial on every plan. Cancel any time.</p>
+    <div class="plans">
+      <div class="card"><b>Starter</b><div class="price">$29<span class="muted">/mo</span></div><p class="muted">1 location · 50 replies/day</p><a class="btn" href="/checkout/starter">Start trial</a></div>
+      <div class="card"><b>Pro</b><div class="price">$79<span class="muted">/mo</span></div><p class="muted">Up to 5 locations · 300 replies/day</p><a class="btn" href="/checkout/pro">Start trial</a></div>
+      <div class="card"><b>Agency</b><div class="price">$249<span class="muted">/mo</span></div><p class="muted">Unlimited clients · 2,000 replies/day</p><a class="btn" href="/checkout/agency">Start trial</a></div>
+    </div>
+  </section>
+</div>
+<script>
+  const $ = (id) => document.getElementById(id);
+  try { $("key").value = localStorage.getItem("rp_key") || ""; } catch (e) {}
+  $("go").onclick = async () => {
+    const out = $("out"); out.className = ""; out.textContent = "Writing…"; $("go").disabled = true;
+    const key = $("key").value.trim();
+    try { localStorage.setItem("rp_key", key); } catch (e) {}
+    try {
+      const res = await fetch("/api/reply", {
+        method: "POST",
+        headers: Object.assign({"Content-Type": "application/json"}, key ? {"X-Access-Key": key} : {}),
+        body: JSON.stringify({
+          business: $("business").value.trim(), review: $("review").value.trim(),
+          rating: $("rating").value ? Number($("rating").value) : null,
+          tone: $("tone").value, notes: $("notes").value.trim(),
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(typeof data.detail === "string" ? data.detail : "Please fill in the business name and review.");
+      out.textContent = data.reply;
+    } catch (e) { out.className = "err"; out.textContent = e.message; }
+    finally { $("go").disabled = false; }
+  };
+</script>
+</body>
+</html>
