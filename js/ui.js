@@ -28,7 +28,11 @@ SG.UI = class UI {
     const group = t => { const d = document.createElement('div'); d.className = 'tgroup'; d.textContent = t; tb.appendChild(d); };
     add('inspect', '🔍', 'Inspect', 'Inspect and pan (drag)');
     add('bulldoze', '🚜', 'Bulldoze', 'Demolish a building or road');
-    add('road', '🛣️', 'Road', 'Drag to build a street ($900/m)');
+    group('Roads');
+    for (const cls of [3, 2, 1, 0]) {
+      const t = SG.ROAD_TYPES[cls];
+      add('road:' + cls, t.icon, t.label, `${t.label} ($${SG.fmtInt(t.cost)}/m): ${t.desc} Click to place points, click the last point again or press Enter to finish.`);
+    }
     group('Zoning');
     for (const z of SG.ZONES) if (z.id) add('zone:' + z.id, '', z.code.replace(',000', 'k'), `${z.code}: ${z.name}`, z.color);
     group('Private');
@@ -54,6 +58,7 @@ SG.UI = class UI {
     document.querySelectorAll('#overlays button').forEach(b => b.classList.toggle('on', b.dataset.ov === id));
   }
   setTool(id) {
+    if (this.roadPts && !(id.startsWith('road:') && id === this.tool)) this.cancelRoad();
     this.tool = id;
     document.querySelectorAll('.tool').forEach(b => b.classList.toggle('on', b.dataset.tool === id));
     this.r.ghost = null; this.r.dirty = true;
@@ -63,11 +68,15 @@ SG.UI = class UI {
       const z = SG.ZONES[+id.slice(5)];
       msg = `Paint ${z.code} (${z.name}). Drag to paint, [ ] change brush size.`;
       if (this.r.overlay !== 'zoning') this.setOverlay('zoning');
-    } else if (id === 'road') msg = 'Drag from an existing street to lay a new one.';
+    } else if (id.startsWith('road:')) {
+      const t = SG.ROAD_TYPES[+id.slice(5)];
+      msg = `${t.label}: click to start, click again to add bends (it curves through them), click the last point again or press Enter to finish. Esc cancels.`;
+    }
     else if (id === 'bulldoze') msg = 'Click a building or road to demolish it.';
     else if (id.startsWith('build:')) {
       const s = SG.BUILDS[id.slice(6)];
-      msg = s.private ? `${s.label}: click a lot to file a project. It must meet zoning to pass.` : `${s.label}: ${SG.fmtMoney(s.cost)}. Click to build.`;
+      msg = s.private ? `${s.label}: point at a lot. Green = allowed, builds right away. Amber = zoning doesn't allow it (needs ${SG.ZONE_NEEDS[s.zones]}): you can still file for a variance.`
+        : `${s.label}: ${SG.fmtMoney(s.cost)}. Click to build.`;
     }
     hint.textContent = msg; hint.style.display = msg ? 'block' : 'none';
   }
@@ -141,6 +150,8 @@ SG.UI = class UI {
     window.addEventListener('keydown', e => {
       if (e.target.tagName === 'INPUT' || e.target.tagName === 'SELECT') return;
       if (e.code === 'Space') { e.preventDefault(); this.g.setSpeed(this.g.speed ? 0 : (this.g.lastSpeed || 1)); }
+      if (e.key === 'Enter' && this.roadPts) { this.finishRoad(); return; }
+      if (e.key === 'Escape' && this.roadPts) { this.cancelRoad(); return; }
       if (e.key === 'Escape') { this.setTool('inspect'); this.select(null); if (this.g.photo) this.g.setPhoto(false); }
       if (e.key === '[') { this.brush = Math.max(0, this.brush - 1); }
       if (e.key === ']') { this.brush = Math.min(12, this.brush + 1); }
@@ -175,13 +186,22 @@ SG.UI = class UI {
     const t = this.tool;
     if (t.startsWith('zone:')) {
       this.r.ghost = { type: 'brush', x, y, r: (this.brush + 0.5) * SG.CELL, color: SG.ZONES[+t.slice(5)].color };
+    } else if (t.startsWith('road:')) {
+      this.roadPreview(x, y);
     } else if (t.startsWith('build:')) {
       const spec = SG.BUILDS[t.slice(6)];
       const [px, py] = this.snapBuild(spec, x, y);
       const nr = this.w.nearestRoad(px, py, 120);
       const pts = SG.World.rect(px, py, spec.w, spec.d, nr ? nr.angle : 0);
-      const ok = this.canPlace(spec, px, py, pts).ok;
-      this.r.ghost = { type: 'poly', pts, ok, h: spec.area ? 0.6 : (spec.levels || 1) * 3.3 };
+      const chk = this.canPlace(spec, px, py, pts);
+      const warn = chk.ok && spec.private && !chk.meetsZoning;
+      this.r.ghost = { type: 'poly', pts, ok: chk.ok, warn, h: spec.area ? 0.6 : (spec.levels || 1) * 3.3 };
+      const z = SG.ZONES[this.w.zoneAt(px, py)];
+      const hint = this.$('hint');
+      hint.style.display = 'block';
+      hint.textContent = !chk.ok ? `✗ ${chk.why}.`
+        : warn ? `⚠ ${spec.label} isn't allowed in ${z.code}: it needs ${SG.ZONE_NEEDS[spec.zones]}. Click to file for a variance, or paint that zoning here first.`
+        : `✓ ${spec.label} allowed in ${z ? z.code : 'this zone'}. Click to build${spec.private ? '' : ' (' + SG.fmtMoney(spec.cost) + ')'}.`;
     } else if (t === 'bulldoze') {
       const target = this.w.buildingAt(x, y) || this.roadAt(x, y);
       this.r.selected = target; this.r.ghost = null;
@@ -194,7 +214,7 @@ SG.UI = class UI {
   }
   canPlace(spec, x, y, pts) {
     const w = this.w, zid = w.zoneAt(x, y);
-    if (!zid) return { ok: false, why: 'Outside city limits' };
+    if (!zid) return { ok: false, why: 'Outside city limits: paint a zone here first to annex the land' };
     if (spec.area) {
       const c = w.cellOf(x, y);
       return w.areaK[c] === 4 ? { ok: false, why: 'Water' } : { ok: true };
@@ -222,40 +242,28 @@ SG.UI = class UI {
   toolDown(x, y) {
     const t = this.tool;
     if (t.startsWith('zone:')) { this.paintZone(x, y); }
-    else if (t === 'road') { this.roadStart = this.snapRoad(x, y); }
+    else if (t.startsWith('road:')) this.roadDown(x, y);
   }
   toolDrag(x, y) {
     const t = this.tool;
     if (t.startsWith('zone:')) { this.paintZone(x, y); this.toolHover(x, y); }
-    else if (t === 'road' && this.roadStart) {
-      const [ex, ey] = this.snapRoad(x, y);
-      const len = Math.hypot(ex - this.roadStart[0], ey - this.roadStart[1]);
-      this.r.ghost = { type: 'line', pts: [...this.roadStart, ex, ey], ok: len > 10 && this.sim.funds > len * 900 };
-      this.r.dirty = true;
-      this.$('hint').textContent = `New street: ${Math.round(len)} m, ${SG.fmtMoney(len * 900)}`;
-    }
+    else if (t.startsWith('road:')) this.roadPreview(x, y);
   }
   toolUp(x, y) {
     const t = this.tool, sim = this.sim, w = this.w;
-    if (t.startsWith('zone:')) { this.g.onWorldChange(); return; }
-    if (t === 'road' && this.roadStart) {
-      const [ex, ey] = this.snapRoad(x, y);
-      const len = Math.hypot(ex - this.roadStart[0], ey - this.roadStart[1]);
-      if (len > 10 && sim.spend(len * 900, 'a new street')) {
-        w.addRoad([...this.roadStart, ex, ey], 3, 'New street');
-        sim._roadsDirty = true;
-        sim.say(`New street built: ${Math.round(len)} m.`);
-        this.g.onWorldChange();
-      }
-      this.roadStart = null; this.r.ghost = null; this.setTool('road');
-      return;
-    }
-    if (t === 'bulldoze') {
+    if (t.startsWith('zone:')) { this.flushZoneNews(+t.slice(5)); this.g.onWorldChange(); return; }
+    if (t.startsWith('road:')) { this.roadUp(x, y); return; }
+    if (t === 'bulldoze') { this.bulldozeAt(x, y); return; }
+    if (t.startsWith('build:')) this.placeBuild(t.slice(6), x, y);
+  }
+  async bulldozeAt(x, y) {
+    const sim = this.sim, w = this.w;
+    {
       const b = w.buildingAt(x, y);
       if (b) {
         if (!b.inCity) { sim.say("That building is outside Saratoga's city limits."); return; }
         const cost = b.player ? 20000 : 60000 + b.value * 0.0;
-        if (!b.player && b.units && !confirm(`Demolish ${w.addressOf(b) || 'this home'}? The city has to buy it first: ${SG.fmtMoney(b.value * 1.6)}.`)) return;
+        if (!b.player && b.units && !(await this.ask('Demolish this home?', `${w.addressOf(b) || 'This home'} is privately owned. The city has to buy it first: ${SG.fmtMoney(b.value * 1.6)}.`, 'Buy and demolish'))) return;
         const total = b.player ? cost : cost + (b.units || b.jobs ? b.value * 1.6 : 0);
         if (!sim.spend(total, 'demolition')) return;
         w.removeBuilding(b);
@@ -267,15 +275,13 @@ SG.UI = class UI {
       }
       const rd = this.roadAt(x, y);
       if (rd) {
-        if (rd.cls <= 1 && !confirm(`${rd.name || 'This road'} is a major road. Remove this segment anyway?`)) return;
+        if (rd.cls <= 1 && !(await this.ask('Remove a major road?', `${rd.name || 'This road'} is a major road. Remove this ${Math.round(rd.len)} m segment anyway?`, 'Remove it'))) return;
         if (!sim.spend(rd.len * 150, 'road removal')) return;
         w.removeRoad(rd); sim._roadsDirty = true;
         sim.say(`Removed a ${Math.round(rd.len)} m segment of ${rd.name || 'road'}.`);
         this.r.selected = null; this.g.onWorldChange();
       }
-      return;
     }
-    if (t.startsWith('build:')) this.placeBuild(t.slice(6), x, y);
   }
 
   placeBuild(key, x, y) {
@@ -320,31 +326,162 @@ SG.UI = class UI {
       const X = cx + dx, Y = cy + dy;
       if (X < 0 || Y < 0 || X >= w.W || Y >= w.H) continue;
       const i = Y * w.W + X;
-      if (!w.inCity[i] || w.zone[i] === zid) continue;
+      if (w.zone[i] === zid && w.inCity[i]) continue;
+      if (!w.inCity[i]) { if (w.annexCells([i])) this.annexed = (this.annexed || 0) + 1; }
       w.zone[i] = zid; changed++;
+      this.sim.markHot([i]);
     }
     if (changed) {
       this.zoneChanges = (this.zoneChanges || 0) + changed;
       this.sim.funds -= changed * 400; // staff time, CEQA review, public hearings
+      if (this.annexed) this.sim.funds -= this.annexed * 2500; // annexation studies, utilities, LAFCO fees
       this.r.zoneDirty = true; this.r.dirty = true;
-      clearTimeout(this._zt);
-      this._zt = setTimeout(() => {
+
+    }
+  }
+  // one news item per brush stroke (sent on release, or after a pause)
+  flushZoneNews(zid) {
+    clearTimeout(this._zt);
+    if (!this.zoneChanges) return;
+    zid = zid || +this.tool.slice(5);
+    {
+      {
         const acres = this.zoneChanges * SG.CELL * SG.CELL / 4046.86;
+        if (this.annexed) {
+          const aa = this.annexed * SG.CELL * SG.CELL / 4046.86;
+          this.sim.say(`County LAFCO approves annexation of ${aa.toFixed(1)} acres into Saratoga (${SG.fmtMoney(this.annexed * 2500)} in studies and fees).`, true);
+          this.annexed = 0;
+        }
         this.sim.say(`City Council rezones ${acres.toFixed(1)} acres to ${SG.ZONES[zid].code} (${SG.fmtMoney(this.zoneChanges * 400)} in studies and hearings).`);
         if (zid === SG.Z.MU || zid === SG.Z.R_M) this.sim.approval -= Math.min(4, acres / 10);
         this.zoneChanges = 0;
-      }, 600);
+      }
     }
   }
 
+  // Snap to the nearest point on an existing road (vertices preferred). Returns [x, y, road, end]
+  // where end is true when the point is one of that road's two ends.
   snapRoad(x, y) {
-    let best = null, bd = 25 / Math.max(0.3, this.r.scale) + 8;
-    for (const r of this.w.roadsIn([x - 40, y - 40, x + 40, y + 40])) {
+    const tol = 14 / Math.max(0.15, this.r.scale) + 6;
+    let best = null, bd = tol;
+    for (const r of this.w.roadsIn([x - tol, y - tol, x + tol, y + tol])) {
       if (r.cls > 4) continue;
-      const p = r.pts;
-      for (let i = 0; i < p.length; i += 2) { const d = Math.hypot(p[i] - x, p[i + 1] - y); if (d < bd) { bd = d; best = [p[i], p[i + 1]]; } }
+      const p = r.pts, n = p.length;
+      for (let i = 0; i < n; i += 2) {
+        const d = Math.hypot(p[i] - x, p[i + 1] - y) - 3; // small preference for vertices
+        if (d < bd) { bd = d; best = [p[i], p[i + 1], r, i === 0 || i === n - 2]; }
+      }
+      for (let i = 2; i < n; i += 2) {
+        const ax = p[i - 2], ay = p[i - 1], dx = p[i] - ax, dy = p[i + 1] - ay, l2 = dx * dx + dy * dy;
+        const t = l2 ? Math.max(0, Math.min(1, ((x - ax) * dx + (y - ay) * dy) / l2)) : 0;
+        const qx = ax + t * dx, qy = ay + t * dy, d = Math.hypot(qx - x, qy - y);
+        if (d < bd) { bd = d; best = [qx, qy, r, false]; }
+      }
     }
-    return best || [x, y];
+    return best || [x, y, null, false];
+  }
+
+  // ---------- road building ----------
+  roadDown(x, y) {
+    const cls = +this.tool.slice(5);
+    const p = this.snapRoad(x, y);
+    if (!this.roadPts) { this.roadPts = [p]; this.roadCls = cls; this.roadDownAt = [x, y]; this.roadPreview(x, y); return; }
+    const last = this.roadPts[this.roadPts.length - 1];
+    const tol = 10 / Math.max(0.15, this.r.scale) + 3;
+    if (Math.hypot(p[0] - last[0], p[1] - last[1]) < tol) { this.finishRoad(); return; } // clicked the last point again
+    this.roadPts.push(p);
+    this.roadDownAt = null;
+    if (p[2] && this.roadPts.length >= 2) { this.finishRoad(); return; } // joined an existing road
+    this.roadPreview(x, y);
+  }
+  roadUp(x, y) {
+    // a single press-drag-release draws a straight road
+    if (this.roadPts && this.roadPts.length === 1 && this.roadDownAt) {
+      const d = Math.hypot(x - this.roadDownAt[0], y - this.roadDownAt[1]);
+      if (d > 20 / Math.max(0.15, this.r.scale)) { this.roadPts.push(this.snapRoad(x, y)); this.finishRoad(); }
+    }
+    this.roadDownAt = null;
+  }
+  // Catmull-Rom through the control points, sampled every ~12 m.
+  roadCurve(ctrl) {
+    const P = ctrl.map(p => [p[0], p[1]]);
+    if (P.length < 3) return P.flat();
+    const out = [];
+    for (let i = 0; i < P.length - 1; i++) {
+      const p0 = P[Math.max(0, i - 1)], p1 = P[i], p2 = P[i + 1], p3 = P[Math.min(P.length - 1, i + 2)];
+      const n = Math.max(2, Math.ceil(Math.hypot(p2[0] - p1[0], p2[1] - p1[1]) / 12));
+      for (let k = 0; k < n; k++) {
+        const t = k / n, t2 = t * t, t3 = t2 * t;
+        const f = (a, b, c, d) => 0.5 * ((2 * b) + (-a + c) * t + (2 * a - 5 * b + 4 * c - d) * t2 + (-a + 3 * b - 3 * c + d) * t3);
+        out.push(f(p0[0], p1[0], p2[0], p3[0]), f(p0[1], p1[1], p2[1], p3[1]));
+      }
+    }
+    out.push(P[P.length - 1][0], P[P.length - 1][1]);
+    return out;
+  }
+  roadLength(pts) { let L = 0; for (let i = 2; i < pts.length; i += 2) L += Math.hypot(pts[i] - pts[i - 2], pts[i + 1] - pts[i - 1]); return L; }
+  // buildings a new road would run through
+  roadVictims(pts, cls) {
+    const hw = SG.ROAD_STYLE[cls][0] / 2 + 1;
+    const bb = SG.World.bbox(pts), out = [];
+    for (const b of this.w.buildingsIn([bb[0] - 30, bb[1] - 30, bb[2] + 30, bb[3] + 30])) {
+      const r = Math.sqrt(b.area) * 0.42 + hw;
+      for (let i = 2; i < pts.length; i += 2)
+        if (SG.World.segDist2(b.cx, b.cy, pts[i - 2], pts[i - 1], pts[i], pts[i + 1]) < r * r) { out.push(b); break; }
+    }
+    return out;
+  }
+  roadCost(pts, cls, victims) {
+    const build = this.roadLength(pts) * SG.ROAD_TYPES[cls].cost;
+    const buy = victims.reduce((s, b) => s + (b.player ? 20000 : (b.units || b.jobs ? b.value * 1.6 : 20000)), 0);
+    return { build, buy, total: build + buy };
+  }
+  roadPreview(x, y) {
+    if (!this.roadPts) { this.r.ghost = null; this.r.dirty = true; return; }
+    const cls = this.roadCls, p = this.snapRoad(x, y);
+    const pts = this.roadCurve(this.roadPts.concat([p]));
+    const len = this.roadLength(pts), victims = this.roadVictims(pts, cls), c = this.roadCost(pts, cls, victims);
+    const ok = len > 10 && this.sim.funds - c.total > -2000000;
+    this.r.ghost = { type: 'line', pts, ok, w: SG.ROAD_STYLE[cls][0], ctrl: this.roadPts.map(q => [q[0], q[1]]).flat() };
+    this.r.dirty = true;
+    const t = SG.ROAD_TYPES[cls], hint = this.$('hint');
+    hint.style.display = 'block';
+    hint.textContent = `${t.label}: ${Math.round(len)} m, ${SG.fmtMoney(c.build)}` +
+      (victims.length ? ` + ${SG.fmtMoney(c.buy)} to buy ${victims.length} building${victims.length > 1 ? 's' : ''} in the way` : '') +
+      (p[2] ? ` · joins ${p[2].name || 'a road'}` : '') + '. Click to add a bend; click the last point again or press Enter to finish.';
+  }
+  cancelRoad() { this.roadPts = null; this.r.ghost = null; this.r.dirty = true; }
+  async finishRoad() {
+    const ctrl = this.roadPts, cls = this.roadCls, sim = this.sim, w = this.w;
+    this.roadPts = null;
+    if (!ctrl || ctrl.length < 2) { this.r.ghost = null; this.r.dirty = true; return; }
+    const pts = this.roadCurve(ctrl), len = this.roadLength(pts);
+    if (len < 10) { this.r.ghost = null; this.r.dirty = true; return; }
+    const victims = this.roadVictims(pts, cls).filter(b => !b.removed), c = this.roadCost(pts, cls, victims);
+    const t = SG.ROAD_TYPES[cls];
+    if (victims.length && !(await this.ask(`Build through ${victims.length} building${victims.length > 1 ? 's' : ''}?`,
+      `This ${t.label.toLowerCase()} runs through ${victims.length} building${victims.length > 1 ? 's' : ''}. The city would buy and demolish ${victims.length > 1 ? 'them' : 'it'} for ${SG.fmtMoney(c.buy)}, on top of ${SG.fmtMoney(c.build)} to build the road.`, 'Build it'))) {
+      this.r.ghost = null; this.r.dirty = true; return;
+    }
+    if (!sim.spend(c.total, 'this ' + t.label.toLowerCase())) { this.r.ghost = null; this.r.dirty = true; return; }
+    for (const b of victims) { w.removeBuilding(b); sim.construction = sim.construction.filter(x => x !== b); }
+    // name it: carry on the name of a same-type road it extends from either end, otherwise a new name
+    const a = ctrl[0], z = ctrl[ctrl.length - 1];
+    const cont = [a, z].find(q => q[2] && q[3] && q[2].cls === cls && q[2].name);
+    const name = cont ? cont[2].name : SG.roadName(w, cls, () => sim.rand());
+    const road = w.addRoad(pts, cls, name);
+    road.built = sim.year;
+    // lots along the new road are where developers look first
+    const near = [];
+    w.traceLine(pts, c => { for (let dy = -2; dy <= 2; dy++) for (let dx = -2; dx <= 2; dx++) { const k = c + dy * w.W + dx; if (k >= 0 && k < w.zone.length) near.push(k); } });
+    sim.markHot(near);
+    // the new road's ends become valid junctions for the next one
+    sim._roadsDirty = true;
+    sim.say(cont ? `${name} extended by ${Math.round(len)} m (${SG.fmtMoney(c.total)}).`
+      : `${name} opens: ${Math.round(len)} m of new ${t.label.toLowerCase()} (${SG.fmtMoney(c.total)}).`, true);
+    this.r.ghost = null;
+    this.select(road);
+    this.g.onWorldChange();
   }
   roadAt(x, y) {
     const tol = Math.max(6, 8 / this.r.scale);
@@ -392,8 +529,21 @@ SG.UI = class UI {
     }
     if (o.cls != null) {
       const cls = ['Freeway', 'Arterial', 'Collector', 'Residential street', 'Service road / driveway', 'Track', 'Path or trail'][o.cls];
-      el.innerHTML = `<div class="ititle">${o.name || 'Unnamed ' + cls.toLowerCase()}</div><div class="isub">${cls}</div>` +
-        kv([['Segment length', Math.round(o.len) + ' m'], ['Source', o.player ? 'Built in game' : 'OpenStreetMap']]);
+      el.innerHTML = `<div class="ititle">${esc(o.name) || 'Unnamed ' + cls.toLowerCase()}</div><div class="isub">${cls}</div>` +
+        kv([['Segment length', Math.round(o.len) + ' m'], ...(o.built ? [['Built', o.built]] : []), ['Source', o.player ? 'Built in game' : 'OpenStreetMap']]) +
+        `<div class="rename"><input id="road-name" maxlength="40" value="${esc(o.name)}" aria-label="Road name"><button class="btn" id="road-rename">Rename</button></div>`;
+      const go = () => {
+        const v = this.$('road-name').value.trim().replace(/\s+/g, ' ');
+        if (!v || v === o.name) return;
+        const old = o.name;
+        // rename every segment that carries the same name, so the whole road changes
+        for (const r of w.roads) if (!r.removed && old && r.name === old) r.name = v;
+        o.name = v;
+        this.sim.say(old ? `${old} is renamed ${v}.` : `The road is named ${v}.`);
+        this.r.dirty = true; this.r.hudDirty = true; this.renderInspector();
+      };
+      this.$('road-rename').onclick = go;
+      this.$('road-name').onkeydown = e => { if (e.key === 'Enter') go(); };
       return;
     }
     const b = o, k = SG.KIND[b.kind] || SG.KIND.other;
@@ -495,8 +645,20 @@ SG.UI = class UI {
   }
 
   // ---------- modal ----------
+  ask(title, body, okLabel = 'OK') {
+    return new Promise(resolve => {
+      this.modal(`<h2>${esc(title)}</h2><p>${esc(body)}</p><div class="row"><button class="btn danger" id="ask-ok">${esc(okLabel)}</button><button class="btn" id="ask-no">Cancel</button></div>`);
+      const done = v => { this.closeModal(); this._askResolve = null; resolve(v); };
+      this._askResolve = done;
+      this.$('ask-ok').onclick = () => done(true);
+      this.$('ask-no').onclick = () => done(false);
+    });
+  }
   modal(html) { this.$('modal-body').innerHTML = html; this.$('modal').classList.remove('hidden'); }
-  closeModal() { this.$('modal').classList.add('hidden'); }
+  closeModal() {
+    this.$('modal').classList.add('hidden');
+    if (this._askResolve) { const r = this._askResolve; this._askResolve = null; r(false); }
+  }
   intro() {
     const m = window.SARATOGA_MAP, n = m.buildings.filter(b => b.in).length;
     this.modal(`<h2>Welcome to Saratoga</h2>
@@ -506,8 +668,9 @@ SG.UI = class UI {
       Fall too far behind and developers can use the <i>builder's remedy</i> to skip local zoning.</p>
       <ul>
         <li><b>Inspect</b> (drag to pan, scroll or pinch to zoom). Click anything to see its details.</li>
-        <li><b>Zoning</b> tools paint districts: R-1-40,000 hillside lots, the Village (C-H), mixed-use housing sites (MU)…</li>
-        <li><b>Private</b> tools file projects. ADUs and SB 9 duplexes must be approved by state law.</li>
+        <li><b>Roads</b>: pick Street, Avenue, Boulevard or Highway, click to place points (the road curves through them), and click the last point again or press Enter to finish. Joining an existing road finishes it too. New roads get real-sounding names; rename one by clicking it.</li>
+        <li><b>Homes and apartments</b> go where the zoning lets them. Paint a zone along a street (R-1 for houses, R-M or MU for apartments) and developers build there over the following months. Or place one yourself with the <b>Private</b> tools: green means allowed, amber means it needs a variance.</li>
+        <li><b>Room to grow</b>: there's open land all around the city. Painting a zone outside the city limits annexes it.</li>
         <li><b>City</b> tools build parks, fire stations and libraries with city money.</li>
         <li><b>3D view</b>: right-drag (or Shift-drag) to rotate and tilt, Q/E and R/F from the keyboard, two-finger twist on touch. Zoom all the way in and tilt down for street-level views.</li>
         <li><b>P</b> is photo mode: the interface steps aside and the lens gets a shallower focus. 💾 saves the picture.</li>
@@ -535,9 +698,11 @@ SG.UI = class UI {
     if (this.$('m-gfx')) this.$('m-gfx').onchange = e => this.g.r3d.setGfx(e.target.value);
     this.$('m-save').onclick = () => { this.g.save(); this.closeModal(); };
     this.$('m-load').onclick = () => { this.g.load(); this.closeModal(); };
-    this.$('m-new').onclick = () => { if (confirm('Throw away this city and start over?')) { this.g.newGame(); this.closeModal(); } };
+    this.$('m-new').onclick = async () => { if (await this.ask('Start over?', 'Throw away this city and start again from today\'s Saratoga?', 'Start over')) this.g.newGame(); };
     this.$('m-help').onclick = () => this.intro();
     this.$('m-close').onclick = () => this.closeModal();
   }
 };
 const SQFT_ = 0.092903;
+
+function esc(v) { return String(v == null ? '' : v).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]); }

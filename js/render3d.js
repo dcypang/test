@@ -1184,8 +1184,12 @@ SG.Renderer3D = class Renderer3D {
     }
     for (let i = 0; i < w.zone.length; i++) { // oak and redwood woodland on unbuilt hillside land
       const z = w.zone[i];
-      if ((z !== SG.Z.HR && z !== SG.Z.OS && z !== SG.Z.R_1_40_000) || w.claim[i] !== -1 || w.roadDist[i] === 0 || w.areaK[i]) continue;
-      if (rnd() > (z === SG.Z.R_1_40_000 ? 0.25 : 0.55)) continue;
+      const open = z === 0 && !w.inCity[i];
+      if ((z !== SG.Z.HR && z !== SG.Z.OS && z !== SG.Z.R_1_40_000 && !open) || w.claim[i] !== -1 || w.roadMask[i] || w.areaK[i]) continue;
+      if (open) { // open country: scattered oaks on the flats, denser woods up in the hills
+        const [ox, oy] = w.cellCenter(i), h = w.heightAt(ox, oy), t = Math.max(0, Math.min(1, (h - 150) / 250));
+        if (rnd() > 0.015 + 0.17 * t) continue;
+      } else if (rnd() > (z === SG.Z.R_1_40_000 ? 0.25 : 0.55)) continue;
       const [cx, cy] = w.cellCenter(i), t = rnd();
       spots.push([cx + (rnd() - 0.5) * SG.CELL, cy + (rnd() - 0.5) * SG.CELL, 0.9 + rnd() * 0.9, t < 0.14 ? 2 : t < 0.38 ? 1 : 0, 0, rnd()]);
     }
@@ -1267,6 +1271,11 @@ SG.Renderer3D = class Renderer3D {
       let changed = false;
       im.userData.spots.forEach((s, i) => {
         if (s.gone) return;
+        const c = w.cellOf(s[0], s[1]);
+        if (c >= 0 && w.roadMask[c]) { // a new road was cut through here
+          const nr = w.nearestRoad(s[0], s[1], 16, false);
+          if (nr && nr.road.player && nr.dist < SG.ROAD_STYLE[nr.road.cls][0] / 2 + 2.5) { s.gone = true; im.setMatrixAt(i, m4); changed = true; return; }
+        }
         for (const b of w.buildingsIn([s[0] - 4, s[1] - 4, s[0] + 4, s[1] + 4])) {
           if (b.player && (SG.World.pointInPoly(s[0], s[1], b.pts) || Math.hypot(b.cx - s[0], b.cy - s[1]) < Math.sqrt(b.area) / 2 + 3)) {
             s.gone = true; im.setMatrixAt(i, m4); changed = true; break;
@@ -1281,7 +1290,7 @@ SG.Renderer3D = class Renderer3D {
   sync() {
     const w = this.w, seen = this.seen;
     if (seen.v !== w.version) { this.syncBuildings(); this.pruneTrees(); this._miniDirty = true; }
-    if (seen.r !== w.roadVersion) this.buildRoads();
+    if (seen.r !== w.roadVersion) { this.buildRoads(); this.pruneTrees(); }
     if (seen.r !== w.roadVersion || seen.a !== w.areaVersion) this.paintGround();
     this.seen = { v: w.version, r: w.roadVersion, a: w.areaVersion };
     const season = Renderer3D.seasonOf(this.sim.month);
@@ -1396,10 +1405,15 @@ SG.Renderer3D = class Renderer3D {
         ctx.fillStyle = g.color + '66'; ctx.fill(); ctx.strokeStyle = '#222'; ctx.lineWidth = 1; ctx.stroke();
       } else if (g.type === 'line') {
         ctx.beginPath(); this.hudLine(g.pts, 1);
-        ctx.strokeStyle = g.ok ? 'rgba(60,140,255,.85)' : 'rgba(230,60,60,.85)'; ctx.lineWidth = Math.max(3, 9 * s); ctx.lineCap = 'round'; ctx.stroke();
+        ctx.strokeStyle = g.ok ? 'rgba(60,140,255,.85)' : 'rgba(230,60,60,.85)'; ctx.lineWidth = Math.max(3, (g.w || 9) * s); ctx.lineCap = 'round'; ctx.stroke();
+        if (g.ctrl) for (let i = 0; i < g.ctrl.length; i += 2) {
+          const q = this.toScreen(g.ctrl[i], g.ctrl[i + 1], w.heightAt(g.ctrl[i], g.ctrl[i + 1]) + 1);
+          if (q[2] > 1) continue;
+          ctx.beginPath(); ctx.arc(q[0], q[1], 5, 0, Math.PI * 2); ctx.fillStyle = '#fff'; ctx.fill(); ctx.strokeStyle = '#1d4f91'; ctx.lineWidth = 2; ctx.stroke();
+        }
       } else if (g.type === 'poly') {
-        ctx.strokeStyle = g.ok ? '#1f9a4e' : '#c42323';
-        ctx.fillStyle = g.ok ? 'rgba(80,200,120,.35)' : 'rgba(230,70,60,.35)';
+        ctx.strokeStyle = !g.ok ? '#c42323' : g.warn ? '#b07a00' : '#1f9a4e';
+        ctx.fillStyle = !g.ok ? 'rgba(230,70,60,.35)' : g.warn ? 'rgba(240,180,50,.4)' : 'rgba(80,200,120,.35)';
         ctx.lineWidth = 2;
         this.hudBox(g.pts, g.h || 6, true);
       }

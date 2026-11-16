@@ -309,11 +309,15 @@ SG.Renderer = class Renderer {
       ctx.fillStyle = g.color + '55'; ctx.fill(); ctx.strokeStyle = '#222'; ctx.lineWidth = 1; ctx.stroke();
     } else if (g.type === 'line') {
       ctx.beginPath(); this.path(g.pts, false);
-      ctx.strokeStyle = g.ok ? 'rgba(60,140,255,.8)' : 'rgba(230,60,60,.8)'; ctx.lineWidth = Math.max(3, 9 * this.scale); ctx.lineCap = 'round'; ctx.stroke();
+      ctx.strokeStyle = g.ok ? 'rgba(60,140,255,.8)' : 'rgba(230,60,60,.8)'; ctx.lineWidth = Math.max(3, (g.w || 9) * this.scale); ctx.lineCap = 'round'; ctx.stroke();
+      if (g.ctrl) for (let i = 0; i < g.ctrl.length; i += 2) {
+        const [x, y] = this.toScreen(g.ctrl[i], g.ctrl[i + 1]);
+        ctx.beginPath(); ctx.arc(x, y, 5, 0, Math.PI * 2); ctx.fillStyle = '#fff'; ctx.fill(); ctx.strokeStyle = '#1d4f91'; ctx.lineWidth = 2; ctx.stroke();
+      }
     } else if (g.type === 'poly') {
       ctx.beginPath(); this.path(g.pts);
-      ctx.fillStyle = g.ok ? 'rgba(80,200,120,.55)' : 'rgba(230,70,60,.55)'; ctx.fill();
-      ctx.strokeStyle = g.ok ? '#1f7a3e' : '#9c1f1f'; ctx.lineWidth = 2; ctx.stroke();
+      ctx.fillStyle = !g.ok ? 'rgba(230,70,60,.55)' : g.warn ? 'rgba(240,180,50,.55)' : 'rgba(80,200,120,.55)'; ctx.fill();
+      ctx.strokeStyle = !g.ok ? '#9c1f1f' : g.warn ? '#9a6a00' : '#1f7a3e'; ctx.lineWidth = 2; ctx.stroke();
     }
   }
 

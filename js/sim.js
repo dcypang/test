@@ -113,12 +113,39 @@ SG.Sim = class Sim {
 
   // ---------- growth ----------
   // Find a vacant, zoned, road-adjacent cell where a project of this type fits.
+  // Candidate cells are listed once a month, so growth finds new streets anywhere on the map.
+  // "Hot" cells are land the player has just zoned or opened up with a new road: developers go there first.
+  markHot(cells) { if (!this.hot) this.hot = new Set(); for (const c of cells) this.hot.add(c); }
+  scanSites() {
+    const w = this.w, N = w.zone.length, sites = [], hotSites = [];
+    let hotRes = 0;
+    const hot = this.hot || new Set();
+    for (let i = 0; i < N; i++) {
+      if (!w.inCity[i] || w.claim[i] !== -1 || w.roadDist[i] < 1 || w.roadDist[i] > 2) continue;
+      const z = w.zone[i];
+      if (z < 1 || z > 9) continue;
+      sites.push(i);
+      if (hot.has(i)) { hotSites.push(i); if (z <= 5) hotRes++; }
+    }
+    // forget hot cells that have been built on or are no longer usable
+    if (hot.size) { const keep = new Set(hotSites); for (const c of [...hot]) if (!keep.has(c) && (w.claim[c] !== -1 || w.roadDist[c] <= 2)) hot.delete(c); }
+    this.sites = sites; this.hotSites = hotSites; this.hotRes = hotRes;
+  }
   findSite(filter, tries = 400) {
-    const w = this.w, N = w.zone.length;
-    for (let t = 0; t < tries; t++) {
-      const i = Math.floor(this.rand() * N);
-      if (!w.inCity[i] || w.claim[i] !== -1) continue;
-      if (w.roadDist[i] < 1 || w.roadDist[i] > 2) continue;
+    const w = this.w;
+    if (!this.sites) this.scanSites();
+    const pickFrom = list => {
+      for (let t = 0; t < Math.min(tries, 120); t++) {
+        const i = list[Math.floor(this.rand() * list.length)];
+        if (w.claim[i] === -1 && filter(w.zone[i], i)) return i;
+      }
+      return -1;
+    };
+    if (this.hotSites && this.hotSites.length && this.rand() < 0.8) { const i = pickFrom(this.hotSites); if (i >= 0) return i; }
+    if (!this.sites.length) return -1;
+    for (let t = 0; t < Math.min(tries, 200); t++) {
+      const i = this.sites[Math.floor(this.rand() * this.sites.length)];
+      if (w.claim[i] !== -1) continue;
       if (!filter(w.zone[i], i)) continue;
       return i;
     }
@@ -165,7 +192,11 @@ SG.Sim = class Sim {
       this.addApp({ build, x, y, replace, why, forced: !!opts.forced, ministerial: !!B[build].ministerial });
     };
     // Single-family infill on vacant lots
-    if (this.rand() < 0.55 * d.r) tryPropose('house', z => z >= 1 && z <= 5, 'Custom home on a vacant lot');
+    this.scanSites();
+    // more vacant single-family lots on streets -> more custom homes going up
+    const houseRounds = 1 + Math.min(10, Math.floor(this.hotRes / 25));
+    for (let k = 0; k < houseRounds; k++)
+      if (this.rand() < 0.55 * d.r) tryPropose('house', z => z >= 1 && z <= 5, 'Custom home on a vacant lot');
     // ADUs: Saratoga's most common new home type
     const aduTries = Math.round(4 * d.r + this.rand());
     for (let n = 0; n < aduTries; n++) {
@@ -185,6 +216,11 @@ SG.Sim = class Sim {
     for (let k = 0; k < multiRounds; k++) {
       if (this.rand() < 0.3 * d.r) tryPropose('townhomes', z => z === Z.R_M || z === Z.MU, 'Townhome project', { redevelop: true });
       if (this.rand() < 0.2 * d.r) tryPropose('apartments', z => z === Z.R_M || z === Z.MU, 'Apartment project', { redevelop: true });
+    }
+    const hotMulti = (this.hotSites || []).filter(i => this.w.zone[i] === Z.R_M || this.w.zone[i] === Z.MU).length;
+    for (let k = 0; k < Math.min(6, Math.floor(hotMulti / 30)); k++) {
+      if (this.rand() < 0.45 * d.r) tryPropose('apartments', z => z === Z.R_M || z === Z.MU, 'Apartment project');
+      if (this.rand() < 0.45 * d.r) tryPropose('townhomes', z => z === Z.R_M || z === Z.MU, 'Townhome project');
     }
     for (let k = 0; k < 1 + Math.floor(d.muAcres / 15); k++)
       if (this.rand() < 0.3 * d.m) tryPropose('mixeduse', z => z === Z.MU, 'Mixed-use project', { redevelop: true });
@@ -406,8 +442,10 @@ SG.Sim = class Sim {
     // run-length encode the zoning grid
     const z = w.zone, rle = [];
     for (let i = 0; i < z.length;) { let j = i; while (j < z.length && z[j] === z[i] && j - i < 65535) j++; rle.push(z[i], j - i); i = j; }
+    const cm = w.inCity, city = [];
+    for (let i = 0; i < cm.length;) { let j = i; while (j < cm.length && cm[j] === cm[i] && j - i < 65535) j++; city.push(cm[i], j - i); i = j; }
     return {
-      v: 1, year: this.year, month: this.month, funds: this.funds, parcelTax: this.parcelTax, approval: this.approval,
+      v: 2, W: w.W, H: w.H, city, year: this.year, month: this.month, funds: this.funds, parcelTax: this.parcelTax, approval: this.approval,
       rhnaPermitted: this.rhnaPermitted, compliant: this.compliant, seed: this.seed, baseUnits: this.baseUnits,
       history: this.history, news: this.news.slice(0, 15), nextAppId: this.nextAppId, denials: this.denials,
       removedOrig, added, removedRoads, addedRoads, parks, zone: rle,
@@ -418,8 +456,18 @@ SG.Sim = class Sim {
     for (const r of s.addedRoads) { const rr = world.addRoadRaw({ cls: r.cls, pts: new Float32Array(r.pts), name: r.name, player: true }); world.indexRoad(rr); }
     world.computeRoadDist();
     for (const id of s.removedOrig) world.buildings[id].removed = true;
-    let k = 0;
-    for (let i = 0; i < s.zone.length; i += 2) for (let n = 0; n < s.zone[i + 1]; n++) world.zone[k++] = s.zone[i];
+    // zoning and city limits are stored per grid cell; skip them if the map size has changed
+    const total = rle => { let t = 0; for (let i = 1; i < rle.length; i += 2) t += rle[i]; return t; };
+    const fits = s.W === world.W && s.H === world.H && total(s.zone) === world.zone.length;
+    if (fits) {
+      let k = 0;
+      for (let i = 0; i < s.zone.length; i += 2) for (let n = 0; n < s.zone[i + 1]; n++) world.zone[k++] = s.zone[i];
+      if (s.city) {
+        k = 0;
+        for (let i = 0; i < s.city.length; i += 2) for (let n = 0; n < s.city[i + 1]; n++) world.inCity[k++] = s.city[i];
+        for (const b of world.buildings) { const c = world.cellOf(b.cx, b.cy); if (c >= 0 && world.inCity[c]) b.inCity = true; }
+      }
+    }
     for (const p of s.parks) {
       const a = { id: world.areas.length, kind: 'park', pts: new Float32Array(p), name: 'New park', player: true };
       world.areas.push(a); world.playerParks.push(a);
@@ -440,6 +488,7 @@ SG.Sim = class Sim {
       compliant: s.compliant, seed: s.seed, history: s.history, news: s.news, nextAppId: s.nextAppId, denials: s.denials || 0,
     });
     sim.construction = pending;
+    if (!fits) sim.say('The map has grown since this city was saved, so its zoning was reset to today\'s. Roads and buildings were kept.', true);
     sim._roadsDirty = true;
     sim.recount();
     sim.budget = sim.computeBudget();

@@ -148,3 +148,6 @@ button { font: inherit; color: inherit; cursor: pointer; }
   #camctl button { width: 30px; height: 28px; font-size: 13px; }
   #overlays { max-width: calc(100% - 140px); }
 }
+
+.rename { display: flex; gap: 6px; margin-top: 10px; }
+.rename input { flex: 1; min-width: 0; background: var(--panel-2); border: 1px solid var(--line); border-radius: 6px; color: var(--text); padding: 6px 8px; font: inherit; font-size: 13px; }

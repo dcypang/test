@@ -135,3 +135,43 @@ SG.fmtMoney = function (v) {
 };
 SG.fmtInt = v => Math.round(v).toLocaleString('en-US');
 SG.MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+
+// Open land around the city that can be annexed and built on (metres on each side).
+SG.WORLD_MARGIN = 3000;
+
+// Road types the player can build. cost is $ per metre (grading, paving, drainage, lights).
+SG.ROAD_TYPES = {
+  3: { label: 'Street', icon: '🛣️', cost: 900, kind: 'street', desc: 'Two-lane neighborhood street. Homes can be built along it.' },
+  2: { label: 'Avenue', icon: '🛤️', cost: 1600, kind: 'avenue', desc: 'Wider collector road with a center line.' },
+  1: { label: 'Boulevard', icon: '🚦', cost: 2600, kind: 'boulevard', desc: 'Four-lane arterial with sidewalks and streetlights.' },
+  0: { label: 'Highway', icon: '🛣', cost: 9000, kind: 'highway', desc: 'Six-lane freeway. Moves traffic, but nothing can be built facing it.' },
+};
+// Which zones each private project needs, in words.
+SG.ZONE_NEEDS = { sfr: 'a single-family zone (HR or R-1)', res: 'a residential zone', multi: 'R-M, MU or C-H', mu: 'MU or C-H',
+  com: 'C-N, C-H or MU', pf: 'PF, C-N or MU', any: 'any zone' };
+
+// A believable name for a new road, unique in this world.
+SG.roadName = function (world, cls, rand = Math.random) {
+  const pick = a => a[Math.floor(rand() * a.length)];
+  const used = new Set(world.roads.filter(r => !r.removed && r.name).map(r => r.name.toLowerCase()));
+  const roots = ['Madrone', 'Live Oak', 'Sycamore', 'Redwood', 'Bay Laurel', 'Buckeye', 'Manzanita', 'Toyon', 'Black Oak', 'Valley Oak',
+    'Prune Orchard', 'Apricot', 'Cherry Blossom', 'Vineyard', 'Walnut', 'Olive', 'Persimmon', 'Quince', 'Almond', 'Fig Tree',
+    'Montalvo', 'Hakone', 'Blaney', 'Sanborn', 'Paul Masson', 'Garrod', 'Brookside', 'Wildcat Creek', 'Calabazas', 'Congress Springs',
+    'Sobey', 'Kittridge', 'Bohlman', 'Old Oak', 'Ten Acres', 'Glen Una', 'Lomita', 'Crestbrook', 'Hidden Hill', 'Canyon View',
+    'Skyline View', 'Summit Ridge', 'Fern Hollow', 'Quail Run', 'Deer Trail', 'Hawk Ridge', 'Foxglove', 'Lupine', 'Poppy', 'Sage Hill',
+    'Mission', 'Pioneer', 'Heritage', 'Stagecoach', 'Mill Pond', 'Lumber Mill', 'Tollgate', 'Springhouse', 'Orchard Hill', 'Arbor'];
+  const spanish = [['Via', ['Madrone', 'del Sol', 'Encinal', 'Monte', 'Alta', 'Serena', 'Cielo', 'Robles', 'Vista', 'Linda']],
+    ['Camino', ['Real', 'del Monte', 'de los Robles', 'Alto', 'Sereno', 'de la Loma']], ['Paseo', ['Grande', 'del Arroyo', 'Encino', 'Pueblo']]];
+  const suffix = { 3: ['Court', 'Lane', 'Drive', 'Way', 'Place', 'Circle', 'Road', 'Terrace', 'Trail'], 2: ['Avenue', 'Road', 'Drive'],
+    1: ['Boulevard', 'Parkway', 'Avenue'], 0: ['Expressway', 'Freeway', 'Highway'] };
+  for (let tries = 0; tries < 60; tries++) {
+    let name;
+    if (cls === 0) {
+      name = rand() < 0.35 ? `State Route ${pick([212, 231, 238, 263, 277, 285, 291, 309, 317, 329])}` : `${pick(['Foothill', 'Skyline', 'Saratoga', 'Sanborn', 'Redwood', 'Vineyard', 'Summit', 'Mission', 'Orchard Valley', 'Santa Cruz Mountains'])} ${pick(suffix[0])}`;
+    } else if (cls === 3 && rand() < 0.2) {
+      const [pre, rest] = pick(spanish); name = `${pre} ${pick(rest)}`;
+    } else name = `${pick(roots)} ${pick(suffix[cls] || suffix[3])}`;
+    if (!used.has(name.toLowerCase())) return name;
+  }
+  return `${pick(roots)} ${pick(suffix[cls] || suffix[3])} ${world.roads.length}`;
+};

@@ -62,6 +62,20 @@ browsers get a simpler lighting path. You can pin it from the menu (☰ → 3D g
 
 ### What you can do
 
+- **Build roads**: pick Street, Avenue, Boulevard or Highway. Click to place points and the road
+  curves through them; click the last point again, press Enter, or connect into an existing road
+  to finish. A single press-drag-release draws a straight road. Every new road gets a name
+  ("Madrone Court", "Via del Sol", "Foothill Expressway"); a road that extends an existing one of
+  the same type keeps its name. Click a road to rename it. Roads through buildings buy and
+  demolish them, after asking. Highways carry traffic, but nothing can be built facing them.
+- **Put homes and apartments where you want them**: paint a zone along a street (HR or R-1 for
+  houses, R-M or MU for apartments and townhomes). Developers build on land you've just zoned or
+  opened with a new road first, so a new street fills in over the following months. Or place a
+  building yourself: the preview is green when zoning allows it (it starts right away), amber
+  when it needs a variance (it goes to the Planning Commission), red when it can't go there.
+- **Grow the city**: the map extends about 3 km past the city limits on every side. Painting a
+  zone outside the limits annexes that land (with a fee) and makes it buildable.
+
 - **Zone** land with Saratoga's district names: HR (Hillside Residential), R-1-40,000 down to
   R-1-10,000, R-M, MU (Housing Element mixed-use sites), C-N, C-H (the Village on Big Basin Way),
   PF and OS.

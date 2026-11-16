@@ -8,7 +8,9 @@ SG.World = class World {
     this.map = map;
     const d = 0.1; // decimetres -> metres
     const toM = arr => { const a = new Float32Array(arr.length); for (let i = 0; i < arr.length; i++) a[i] = arr[i] * d; return a; };
-    const [x0, y0, x1, y1] = map.bounds.map(v => v * d);
+    // the map file covers the city plus a small margin; add open land all around it
+    const M = SG.WORLD_MARGIN || 0;
+    const [x0, y0, x1, y1] = map.bounds.map((v, i) => v * d + (i < 2 ? -M : M));
     this.x0 = x0; this.y0 = y0; this.x1 = x1; this.y1 = y1;
     this.W = Math.ceil((x1 - x0) / SG.CELL);
     this.H = Math.ceil((y1 - y0) / SG.CELL);
@@ -267,8 +269,11 @@ SG.World = class World {
   computeRoadDist() {
     const N = this.W * this.H;
     const dist = this.roadDist = new Uint8Array(N).fill(255);
+    const mask = this.roadMask = new Uint8Array(N);
     let q = [];
-    for (const r of this.roads) if (!r.removed && r.cls <= 4)
+    for (const r of this.roads) if (!r.removed && r.cls <= 4) this.traceLine(r.pts, c => { mask[c] = 1; });
+    // highways carry traffic but give no driveway access
+    for (const r of this.roads) if (!r.removed && r.cls >= 1 && r.cls <= 4)
       this.traceLine(r.pts, c => { if (dist[c]) { dist[c] = 0; q.push(c); } });
     for (let d = 1; d < 60 && q.length; d++) {
       const nq = [];
@@ -338,6 +343,24 @@ SG.World = class World {
       out[i] = best;
     }
     this.zone = out;
+  }
+  // Bring open land into the city (painting zoning outside the limits does this).
+  annexCells(cells) {
+    let n = 0, bb = [Infinity, Infinity, -Infinity, -Infinity];
+    for (const i of cells) {
+      if (this.inCity[i]) continue;
+      this.inCity[i] = 1; n++;
+      const [x, y] = this.cellCenter(i);
+      bb = [Math.min(bb[0], x), Math.min(bb[1], y), Math.max(bb[2], x), Math.max(bb[3], y)];
+    }
+    if (n) {
+      for (const b of this.buildingsIn([bb[0] - 20, bb[1] - 20, bb[2] + 20, bb[3] + 20])) {
+        const c = this.cellOf(b.cx, b.cy);
+        if (c >= 0 && this.inCity[c]) b.inCity = true;
+      }
+      this.cityCells += n; this.version++;
+    }
+    return n;
   }
   zoneAt(x, y) { const c = this.cellOf(x, y); return c < 0 ? 0 : this.zone[c]; }
 
@@ -418,15 +441,15 @@ SG.World = class World {
       if (ignore && ignore.has(b.id)) continue;
       if (World.polysOverlap(pts, b.pts)) return false;
     }
-    for (const r of this.roadsIn(bb)) {
+    const [fcx, fcy] = World.centroid(pts);
+    const probes = [[fcx, fcy]];
+    for (let k = 0; k < pts.length; k += 2) probes.push([pts[k], pts[k + 1]], [(pts[k] + pts[(k + 2) % pts.length]) / 2, (pts[k + 1] + pts[(k + 3) % pts.length]) / 2]);
+    for (const r of this.roadsIn([bb[0] - 14, bb[1] - 14, bb[2] + 14, bb[3] + 14])) {
       if (r.cls > 4) continue;
-      const p = r.pts;
+      const p = r.pts, hw = (SG.ROAD_STYLE ? SG.ROAD_STYLE[r.cls][0] : 9) / 2 + 1.5, hw2 = hw * hw;
       for (let i = 0; i < p.length; i += 2) if (World.pointInPoly(p[i], p[i + 1], pts)) return false;
       for (let i = 2; i < p.length; i += 2)
-        for (let k = 0; k < 4; k++) {
-          const mx = (pts[2 * k] + pts[(2 * k + 2) % 8]) / 2, my = (pts[2 * k + 1] + pts[(2 * k + 3) % 8]) / 2;
-          if (World.segDist2(mx, my, p[i - 2], p[i - 1], p[i], p[i + 1]) < 16) return false;
-        }
+        for (const [px, py] of probes) if (World.segDist2(px, py, p[i - 2], p[i - 1], p[i], p[i + 1]) < hw2) return false;
     }
     const [cx, cy] = World.centroid(pts);
     const c = this.cellOf(cx, cy);
@@ -441,8 +464,23 @@ SG.World = class World {
   }
 
   // Place a new building, oriented to the nearest street. Returns building or null.
+  // A street number from the position along the road: odd on one side, even on the other.
+  houseNumber(x, y, road) {
+    const p = road.pts;
+    let best = Infinity, along = 0, acc = 0, side = 1;
+    for (let i = 2; i < p.length; i += 2) {
+      const ax = p[i - 2], ay = p[i - 1], dx = p[i] - ax, dy = p[i + 1] - ay, L = Math.hypot(dx, dy);
+      const t = L ? Math.max(0, Math.min(1, ((x - ax) * dx + (y - ay) * dy) / (L * L))) : 0;
+      const d = Math.hypot(ax + dx * t - x, ay + dy * t - y);
+      if (d < best) { best = d; along = acc + t * L; side = dx * (y - ay) - dy * (x - ax) > 0 ? 1 : 0; }
+      acc += L;
+    }
+    const base = 12000 + ((road.id * 7919) % 90) * 100;
+    return String(base + Math.round(along / 9) * 2 + side);
+  }
   placeBuilding(x, y, spec, extra = {}) {
     const nr = this.nearestRoad(x, y, 120);
+    if (nr && !extra.hn && nr.road.name) extra = Object.assign({ hn: this.houseNumber(x, y, nr.road), street: nr.road.name }, extra);
     const ang = nr ? nr.angle : 0;
     const pts = World.rect(x, y, spec.w, spec.d, ang);
     const b = this.addBuildingRaw(Object.assign({
