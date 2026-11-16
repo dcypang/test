@@ -275,8 +275,7 @@ SG.Renderer = class Renderer {
       }
     }
     // places
-    const big = /^(Saratoga|Hakone|Villa Montalvo|Montalvo|West Valley|Saratoga High|Mountain Winery|Saratoga Village|Congress Springs|El Quito|Wildwood|Quito)/i;
-    const list = w.pois.filter(p => p.kind === 'place' || p.kind === 'suburb' || p.kind === 'neighbourhood' || big.test(p.name) ||
+    const list = w.pois.filter(p => p.kind === 'place' || p.kind === 'suburb' || p.kind === 'neighbourhood' ||
       ['school', 'college', 'library', 'townhall', 'park', 'museum', 'attraction', 'fire_station', 'place_of_worship', 'community_centre'].includes(p.kind));
     for (const a of w.areas) if (a.name && (a.kind === 'park' || a.kind === 'campus' || a.kind === 'golf') && !a._labelled) {
       // label named parks and campuses at their centroid

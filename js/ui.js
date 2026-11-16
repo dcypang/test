@@ -559,7 +559,7 @@ SG.UI = class UI {
       ['Assessed value', SG.fmtMoney(b.value)],
       ...(b.construction ? [['Status', `Under construction, ${b.months} mo left`, 'neg']] : []),
       ...(b.built ? [['Built', b.built]] : []),
-      ['Source', b.original ? 'OpenStreetMap footprint' : 'Built in game'],
+      ['Source', !b.original ? 'Built in game' : b.src === 'ms' ? 'Microsoft footprint (from imagery)' : 'OpenStreetMap footprint'],
     ]) + (b.inCity ? `<div class="row" style="margin-top:8px"><button class="btn danger" id="insp-demo">Demolish</button></div>` : '');
     const d = this.$('insp-demo');
     if (d) d.onclick = () => { const t = this.tool; this.tool = 'bulldoze'; this.toolUp(b.cx, b.cy); this.tool = t; };
@@ -694,7 +694,7 @@ SG.UI = class UI {
       <ul>${this.sim.news.slice(0, 10).map(n => `<li><span class="muted">${n.when}</span> ${n.msg}</li>`).join('') || '<li class="muted">Nothing yet.</li>'}</ul>
       <h3>History</h3>
       <ul>${this.sim.history.slice(-8).map(h => `<li>${h.y}: ${SG.fmtInt(h.pop)} residents, ${SG.fmtInt(h.units)} homes, ${SG.fmtMoney(h.funds)}</li>`).join('') || '<li class="muted">The first year is not over yet.</li>'}</ul>
-      <p class="muted">Map data © OpenStreetMap contributors (ODbL), generated ${window.SARATOGA_MAP.generated}. Zoning districts are inferred from what is built and simplified for play; this is not the official Saratoga zoning map.</p>`);
+      <p class="muted">Map data © OpenStreetMap contributors (ODbL)${/Microsoft/.test(window.SARATOGA_MAP.source) ? ', with building footprints from Microsoft Global ML Building Footprints (ODbL) where OpenStreetMap has none' : ''}, generated ${window.SARATOGA_MAP.generated}. Zoning districts are inferred from what is built and simplified for play; this is not the official Saratoga zoning map.</p>`);
     if (this.$('m-gfx')) this.$('m-gfx').onchange = e => this.g.r3d.setGfx(e.target.value);
     this.$('m-save').onclick = () => { this.g.save(); this.closeModal(); };
     this.$('m-load').onclick = () => { this.g.load(); this.closeModal(); };

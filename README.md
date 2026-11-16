@@ -102,26 +102,30 @@ browsers get a simpler lighting path. You can pin it from the menu (☰ → 3D g
 
 ## Map data
 
-The game reads its map from `data/saratoga.js`.
+The game reads its map from `data/saratoga.js`, which is built from real data:
+
+- **Streets, parks, creeks, schools and landmarks** come from OpenStreetMap: all of Saratoga's
+  1,024 named streets (Big Basin Way, Beaumont Avenue, Saratoga-Sunnyvale Road and the rest),
+  plus a 300 m margin around the city limits.
+- **Buildings** come from OpenStreetMap where it has them (about 7,500 inside the city). Where it
+  doesn't, which is large parts of south Saratoga, the gaps are filled from Microsoft's Global ML
+  Building Footprints, traced from aerial imagery (about 4,900 more). That gives 12,400 buildings
+  inside the city limits; the inspector says which source each one came from.
+
+To rebuild it:
 
 ```sh
-python3 tools/fetch_osm.py           # download Saratoga from OpenStreetMap and compile it
-python3 tools/fetch_osm.py --cached  # recompile from data/raw_osm.json
-python3 tools/make_fallback_map.py   # approximate stand-in map, no network needed
+python3 tools/fetch_osm.py --api --ms   # OSM main API in tiles + Microsoft footprints, then compile
+python3 tools/fetch_osm.py --ms         # same, but download OSM through the Overpass API
+python3 tools/fetch_osm.py --cached --ms  # recompile from the cached downloads
+python3 tools/make_fallback_map.py      # approximate stand-in map, no network needed
 ```
 
-`fetch_osm.py` uses the Overpass API to download every building footprint, street, park, creek
-and named place within the city limits plus a 300 m margin. It then compiles them into local metre
-coordinates. Only the Python standard library is needed. Buildings keep their OSM type, levels,
-name and address, so clicking a house shows its real street address where OSM has one.
-
-**The bundled `data/saratoga.js` may be the approximate stand-in.** The game's welcome screen
-says which map is loaded. The stand-in places the real arterials (Saratoga-Sunnyvale Road, Big
-Basin Way, Saratoga-Los Gatos Road, Saratoga Avenue, Prospect, Cox, Quito, Fruitvale, Pierce, Highway 85),
-landmarks (the Village, Hakone Gardens, Montalvo, the Mountain Winery, West Valley College,
-Saratoga High) and the density pattern from flat valley lots to big hillside parcels. Local
-streets and houses in it are generated, so it is not building-for-building accurate. Run
-`fetch_osm.py` on a machine that can reach `overpass-api.de` to get the real map.
+Only the Python standard library is needed. Downloads are cached in `data/osm_tiles/`,
+`data/ms_tiles/` and `data/raw_osm.json` (all ignored by git). Microsoft footprints are skipped
+wherever they overlap an OpenStreetMap building, so nothing is counted twice; their measured
+heights set the number of stories. Buildings keep their OSM type, levels, name and address where
+mapped. Most homes in OSM have no house number, so the inspector shows the street they face.
 
 ### Accuracy notes
 
@@ -132,7 +136,13 @@ streets and houses in it are generated, so it is not building-for-building accur
   type and size. Roof shapes, windows, doors, colours, trees, traffic and streetlights are
   generated to look plausible. They are decoration, not survey data.
 
-- **Building footprints and streets** are as accurate as OpenStreetMap's coverage of Saratoga.
+- **Streets** are as complete as OpenStreetMap, which is very good for US streets.
+- **Buildings**: after merging both sources, about 11% of residential street length in the city
+  still has no building within 45 m. Spot checks put these in the hills, where homes sit far back
+  on long private drives, and along campus and park roads, rather than missing data. A home built
+  or torn down after the imagery was taken may still be missing or present.
+- **Outside the 300 m margin** the world is open land for expansion; the real neighbouring towns
+  are not included.
 - **Zoning is inferred**, not copied from the official zoning map. Each 20 m cell gets a district
   from what is built around it: lot size estimated from house density, commercial and apartment
   buildings, schools, parks and empty hillsides. District rules (minimum lot, density, height,
@@ -141,7 +151,8 @@ streets and houses in it are generated, so it is not building-for-building accur
 - Budget and growth numbers are tuned to make a playable game, roughly to Saratoga's scale (about
   31,000 residents and 11,000 homes).
 
-Map data © OpenStreetMap contributors, available under the Open Database License.
+Map data © OpenStreetMap contributors, available under the Open Database License. Building
+footprints in the gaps are from Microsoft Global ML Building Footprints, also under the ODbL.
 
 ## Code layout
 
@@ -157,5 +168,5 @@ Map data © OpenStreetMap contributors, available under the Open Database Licens
 | `js/vendor/three.min.js` | three.js r149 (MIT), bundled so the game works offline |
 | `js/ui.js` | Tools, input, inspector, Planning Commission and budget panels |
 | `js/main.js` | Boot, main loop, persistence |
-| `tools/fetch_osm.py` | OpenStreetMap → `data/saratoga.js` |
+| `tools/fetch_osm.py` | OpenStreetMap (+ Microsoft footprints) → `data/saratoga.js` |
 | `tools/make_fallback_map.py` | Approximate offline map |

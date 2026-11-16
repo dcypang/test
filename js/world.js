@@ -19,7 +19,7 @@ SG.World = class World {
     this.buildings = [];
     for (const b of map.buildings) this.addBuildingRaw({
       kind: b.k, pts: toM(b.p), inCity: !!b.in, levels: b.l || 0,
-      name: b.n || '', hn: b.h || '', street: b.s || '', amenity: b.a || '', original: true,
+      name: b.n || '', hn: b.h || '', street: b.s || '', amenity: b.a || '', original: true, src: b.src || 'osm',
     });
     this.roads = [];
     for (const r of map.roads) this.addRoadRaw({ cls: r.c, pts: toM(r.p), name: r.n || '', original: true });

@@ -4,6 +4,7 @@ data/saratoga.js, the map file the game loads.
 
 Usage:  python3 tools/fetch_osm.py            # download (Overpass API) + compile
         python3 tools/fetch_osm.py --api      # download through the main OSM API in tiles + compile
+        add --ms to fill in buildings OSM lacks from Microsoft's Global ML Building Footprints
         python3 tools/fetch_osm.py --cached   # recompile from data/raw_osm.json
 
 Only the Python standard library is needed. Coordinates are projected to local
@@ -219,8 +220,10 @@ def compile_map():
             x, y = proj(el["lat"], el["lon"])
             if not (minx - pad <= x <= maxx + pad and miny - pad <= y <= maxy + pad):
                 continue
-            seen_poi.add(name)
             kind = t.get("amenity") or t.get("shop") or t.get("tourism") or t.get("historic") or t.get("place")
+            if not kind:  # bus stops and other untyped points ("Quito Road & Sousa Lane")
+                continue
+            seen_poi.add(name)
             pois.append([name, kind, x, y])
             continue
         if el["type"] == "relation":
@@ -280,10 +283,16 @@ def compile_map():
                         areas.append(a)
                         break
 
+    # fill in buildings OSM is missing from Microsoft's footprints (traced from imagery)
+    if MS_ADD:
+        added = add_ms_buildings(buildings, areas, inside_city, in_view)
+        print(f"added {added} Microsoft footprints where OSM has no building", file=sys.stderr)
+
     # bigger areas first so small ones draw on top
     areas.sort(key=lambda a: -area(a["p"]))
     out = {
-        "source": "OpenStreetMap contributors, ODbL 1.0 (https://www.openstreetmap.org/copyright)",
+        "source": "OpenStreetMap contributors, ODbL 1.0 (https://www.openstreetmap.org/copyright)" +
+              ("; Microsoft Global ML Building Footprints, ODbL 1.0" if MS_ADD else ""),
         "generated": time.strftime("%Y-%m-%d"),
         "origin": [LAT0, LON0],
         "unit": "dm",
@@ -299,6 +308,118 @@ def compile_map():
     inside = sum(b["in"] for b in buildings)
     print(f"wrote {OUT}: {len(buildings)} buildings ({inside} inside city limits), "
           f"{len(roads)} road segments, {len(areas)} areas, {len(water)} waterways, {len(pois)} places")
+
+
+MS_HOST = "https://minedbuildings.z5.web.core.windows.net/global-buildings"
+MS_DIR = os.path.join(ROOT, "data", "ms_tiles")
+MS_ADD = "--ms" in sys.argv
+
+
+def quadkey(lat, lon, z=9):
+    s = math.sin(math.radians(lat))
+    x, y = (lon + 180) / 360, 0.5 - math.log((1 + s) / (1 - s)) / (4 * math.pi)
+    tx, ty, q = int(x * (1 << z)), int(y * (1 << z)), ""
+    for i in range(z, 0, -1):
+        m = 1 << (i - 1)
+        q += str((1 if tx & m else 0) + (2 if ty & m else 0))
+    return q
+
+
+def ms_files():
+    """Download (once) the Microsoft Global ML Building Footprints tiles that cover the map."""
+    os.makedirs(MS_DIR, exist_ok=True)
+    links = os.path.join(MS_DIR, "dataset-links.csv")
+    if not os.path.exists(links):
+        _, data = api_get(f"{MS_HOST}/dataset-links.csv")
+        with open(links, "wb") as f:
+            f.write(data)
+    keys = {quadkey(la, lo) for la in (S, N) for lo in (W, E)}
+    out = []
+    with open(links) as f:
+        for line in f:
+            parts = line.strip().split(",")
+            if len(parts) >= 3 and parts[0] == "UnitedStates" and parts[1] in keys:
+                path = os.path.join(MS_DIR, parts[1] + "-" + parts[2].rsplit("/", 1)[-1])
+                if not os.path.exists(path):
+                    print(f"downloading Microsoft footprints {parts[1]} ({parts[3] if len(parts) > 3 else '?'})", file=sys.stderr)
+                    tmp = path + ".part"
+                    with urllib.request.urlopen(urllib.request.Request(parts[2], headers=UA), timeout=1800) as r, open(tmp, "wb") as f:
+                        while True:
+                            chunk = r.read(1 << 20)
+                            if not chunk:
+                                break
+                            f.write(chunk)
+                    os.replace(tmp, path)
+                out.append(path)
+    return out
+
+
+def add_ms_buildings(buildings, areas, inside_city, in_view):
+    import gzip
+    # index existing (OSM) footprints so duplicates are skipped
+    grid = {}
+    def cell(x, y): return (int(x // 300), int(y // 300))  # 30 m cells (coordinates are in dm)
+    for i, b in enumerate(buildings):
+        p = b["p"]; cx, cy = centroid(p)
+        grid.setdefault(cell(cx, cy), []).append(i)
+    def overlaps(p, cx, cy):
+        gx, gy = cell(cx, cy)
+        for dx in (-1, 0, 1):
+            for dy in (-1, 0, 1):
+                for i in grid.get((gx + dx, gy + dy), ()):
+                    q = buildings[i]["p"]; qx, qy = centroid(q)
+                    if (qx - cx) ** 2 + (qy - cy) ** 2 < 60 ** 2 or point_in_poly(cx, cy, q) or point_in_poly(qx, qy, p):
+                        return True
+        return False
+    # land use, to tell shops and schools from homes
+    zones = [(a["k"], a["p"]) for a in areas if a["k"] in ("commercial", "campus", "civic", "parking")]
+    zbox = [(k, p, min(p[0::2]), min(p[1::2]), max(p[0::2]), max(p[1::2])) for k, p in zones]
+    def landuse(x, y):
+        for k, p, a, b, c, d in zbox:
+            if a <= x <= c and b <= y <= d and point_in_poly(x, y, p):
+                return k
+        return None
+    added = 0
+    for path in ms_files():
+        with gzip.open(path, "rt") as f:
+            for line in f:
+                i = line.find('"coordinates"')
+                if i < 0:
+                    continue
+                j = line.find("[", line.find("[", line.find("[", i) + 1) + 1)  # first lon,lat pair
+                try:
+                    lon, lat = (float(v) for v in line[j + 1:line.find("]", j)].split(","))
+                except ValueError:
+                    continue
+                if not (S <= lat <= N and W <= lon <= E):
+                    continue
+                feat = json.loads(line)
+                g = feat.get("geometry") or {}
+                rings = g.get("coordinates") or []
+                if g.get("type") != "Polygon" or not rings:
+                    continue
+                flat = [c for lo, la in rings[0] for c in proj(la, lo)]
+                if flat[:2] == flat[-2:]:
+                    flat = flat[:-2]
+                if len(flat) < 6 or not in_view(flat):
+                    continue
+                cx, cy = centroid(flat)
+                if overlaps(flat, cx, cy):
+                    continue
+                a = area(flat)
+                if a < 12:
+                    continue
+                lu = landuse(cx, cy)
+                kind = "accessory" if a < 40 else "commercial" if lu in ("commercial", "parking") else "school" if lu == "campus" else \
+                    "civic" if lu == "civic" else "house" if a <= 1100 else "other"
+                b = {"k": kind, "p": flat, "in": 1 if inside_city(cx, cy) else 0, "src": "ms"}
+                h = (feat.get("properties") or {}).get("height", -1) or -1
+                if h and h > 0:
+                    b["l"] = max(1, min(6, int(round(h / 3.4))))
+                buildings.append(b)
+                grid.setdefault(cell(cx, cy), []).append(len(buildings) - 1)
+                added += 1
+    return added
 
 
 API = "https://api.openstreetmap.org/api/0.6"

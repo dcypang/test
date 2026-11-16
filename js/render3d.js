@@ -697,11 +697,14 @@ SG.Renderer3D = class Renderer3D {
     return g;
   }
   mergeGeos(list) {
-    const pos = [], col = [];
-    for (const g of list) { pos.push(...g.attributes.position.array); col.push(...g.attributes.color.array); g.dispose(); }
+    // copy into one typed array (spreading large arrays into push() overflows the stack)
+    const n = list.reduce((a, g) => a + g.attributes.position.array.length, 0);
+    const pos = new Float32Array(n), col = new Float32Array(n);
+    let o = 0;
+    for (const g of list) { pos.set(g.attributes.position.array, o); col.set(g.attributes.color.array, o); o += g.attributes.position.array.length; g.dispose(); }
     const g = new THREE.BufferGeometry();
-    g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
-    g.setAttribute('color', new THREE.Float32BufferAttribute(col, 3));
+    g.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+    g.setAttribute('color', new THREE.BufferAttribute(col, 3));
     g.computeVertexNormals();
     return g;
   }
@@ -1419,8 +1422,7 @@ SG.Renderer3D = class Renderer3D {
       }
     }
 
-    const big = /^(Saratoga|Hakone|Villa Montalvo|Montalvo|West Valley|Saratoga High|Mountain Winery|Saratoga Village|Congress Springs|El Quito|Wildwood|Quito)/i;
-    const list = w.pois.filter(p => p.kind === 'place' || p.kind === 'suburb' || p.kind === 'neighbourhood' || big.test(p.name) ||
+    const list = w.pois.filter(p => p.kind === 'place' || p.kind === 'suburb' || p.kind === 'neighbourhood' ||
       ['school', 'college', 'library', 'townhall', 'park', 'museum', 'attraction', 'fire_station', 'community_centre'].includes(p.kind));
     for (const a of w.areas) if (a.name && (a.kind === 'park' || a.kind === 'campus' || a.kind === 'golf')) {
       if (!a.c) a.c = SG.World.centroid(a.pts);
