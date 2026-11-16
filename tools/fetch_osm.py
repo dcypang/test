@@ -2,14 +2,15 @@
 """Download Saratoga, CA from OpenStreetMap (Overpass API) and compile it into
 data/saratoga.js, the map file the game loads.
 
-Usage:  python3 tools/fetch_osm.py            # download + compile
+Usage:  python3 tools/fetch_osm.py            # download (Overpass API) + compile
+        python3 tools/fetch_osm.py --api      # download through the main OSM API in tiles + compile
         python3 tools/fetch_osm.py --cached   # recompile from data/raw_osm.json
 
 Only the Python standard library is needed. Coordinates are projected to local
 metres (equirectangular around the city centre), rounded to 0.1 m and stored as
 integers in decimetres to keep the file small.
 """
-import json, math, os, sys, time, urllib.parse, urllib.request
+import json, math, os, sys, time, urllib.error, urllib.parse, urllib.request
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 RAW = os.path.join(ROOT, "data", "raw_osm.json")
@@ -300,7 +301,129 @@ def compile_map():
           f"{len(roads)} road segments, {len(areas)} areas, {len(water)} waterways, {len(pois)} places")
 
 
+API = "https://api.openstreetmap.org/api/0.6"
+UA = {"User-Agent": "simsaratoga-map-builder/1.0 (one-time extract for a city planning game)"}
+TILES = os.path.join(ROOT, "data", "osm_tiles")
+
+
+def api_get(url, retries=4):
+    last = None
+    for attempt in range(retries):
+        try:
+            with urllib.request.urlopen(urllib.request.Request(url, headers=UA), timeout=180) as r:
+                return r.status, r.read()
+        except urllib.error.HTTPError as e:
+            if e.code in (400, 509):  # too many nodes in the box / bandwidth limit
+                return e.code, e.read()
+            if e.code in (502, 503, 504) and attempt >= 1:  # server too slow for this box: let the caller split it
+                return e.code, b""
+
+            last = e
+        except Exception as e:
+            last = e
+        time.sleep(2 ** (attempt + 1))
+    raise SystemExit(f"OSM API request failed: {url}: {last}")
+
+
+def download_api():
+    """Download through the main OSM API in tiles (it caps each request at 50,000 nodes),
+    then convert to the same element format the Overpass download produces."""
+    import xml.etree.ElementTree as ET
+    os.makedirs(TILES, exist_ok=True)
+    nodes, ways, rels = {}, {}, {}
+
+    def parse(data):
+        root = ET.fromstring(data)
+        for el in root:
+            tags = {t.get("k"): t.get("v") for t in el.findall("tag")}
+            if el.tag == "node":
+                nodes[int(el.get("id"))] = (float(el.get("lat")), float(el.get("lon")), tags)
+            elif el.tag == "way":
+                ways[int(el.get("id"))] = ([int(n.get("ref")) for n in el.findall("nd")], tags)
+            elif el.tag == "relation":
+                rels[int(el.get("id"))] = ([(m.get("type"), int(m.get("ref")), m.get("role")) for m in el.findall("member")], tags)
+
+    def tile(s, w, n, e, depth=0):
+        name = os.path.join(TILES, f"{s:.4f}_{w:.4f}_{n:.4f}_{e:.4f}.osm")
+        if os.path.exists(name):
+            with open(name, "rb") as f:
+                parse(f.read())
+            return
+        status, data = api_get(f"{API}/map?bbox={w},{s},{e},{n}")
+        if status == 200:
+            with open(name, "wb") as f:
+                f.write(data)
+            parse(data)
+            print(f"  tile {s:.4f},{w:.4f}: {len(data) // 1024} KB", file=sys.stderr)
+            time.sleep(1)
+            return
+        if status in (502, 503, 504) and depth >= 2:  # small box, busy server: wait and try again
+            for wait in (15, 30, 60, 90):
+                time.sleep(wait)
+                status, data = api_get(f"{API}/map?bbox={w},{s},{e},{n}")
+                if status == 200:
+                    with open(name, "wb") as f:
+                        f.write(data)
+                    parse(data)
+                    print(f"  tile {s:.4f},{w:.4f}: {len(data) // 1024} KB (after retry)", file=sys.stderr)
+                    return
+            raise SystemExit(f"OSM API kept timing out for tile {s},{w},{n},{e}")
+        if depth > 5:
+            raise SystemExit(f"tile still too large at depth {depth}: {data[:200]!r}")
+        ms, mw = (s + n) / 2, (w + e) / 2  # too many nodes: split in four
+        for a in ((s, w, ms, mw), (s, mw, ms, e), (ms, w, n, mw), (ms, mw, n, e)):
+            tile(*a, depth + 1)
+
+    step = 0.03
+    lat = S
+    while lat < N - 1e-9:
+        lon = W
+        while lon < E - 1e-9:
+            tile(round(lat, 4), round(lon, 4), round(min(N, lat + step), 4), round(min(E, lon + step), 4))
+            lon += step
+        lat += step
+
+    # the city boundary relation, complete (its members reach outside the box)
+    city = [rid for rid, (m, t) in rels.items() if t.get("boundary") == "administrative"
+            and t.get("admin_level") == "8" and t.get("name") == "Saratoga"]
+    if not city:
+        raise SystemExit("Saratoga boundary relation not found in the tiles")
+    status, data = api_get(f"{API}/relation/{city[0]}/full")
+    if status != 200:
+        raise SystemExit(f"could not fetch boundary relation {city[0]}")
+    parse(data)
+
+    def geom(ids):
+        return [{"lat": nodes[i][0], "lon": nodes[i][1]} for i in ids if i in nodes]
+
+    els = []
+    for nid, (lat, lon, tags) in nodes.items():
+        if tags:
+            els.append({"type": "node", "id": nid, "lat": lat, "lon": lon, "tags": tags})
+    for wid, (ids, tags) in ways.items():
+        if tags:
+            g = geom(ids)
+            if len(g) >= 2:
+                els.append({"type": "way", "id": wid, "tags": tags, "geometry": g})
+    for rid, (members, tags) in rels.items():
+        if not (tags.get("boundary") == "administrative" or "landuse" in tags or "leisure" in tags or "building" in tags):
+            continue
+        mem = []
+        for typ, ref, role in members:
+            if typ == "way" and ref in ways:
+                g = geom(ways[ref][0])
+                if g:
+                    mem.append({"type": "way", "ref": ref, "role": role or "outer", "geometry": g})
+        if mem:
+            els.append({"type": "relation", "id": rid, "tags": tags, "members": mem})
+    with open(RAW, "w") as f:
+        json.dump({"elements": els}, f)
+    print(f"API download: {len(nodes)} nodes, {len(ways)} ways, {len(rels)} relations", file=sys.stderr)
+
+
 if __name__ == "__main__":
-    if "--cached" not in sys.argv:
+    if "--api" in sys.argv:
+        download_api()
+    elif "--cached" not in sys.argv:
         download()
     compile_map()

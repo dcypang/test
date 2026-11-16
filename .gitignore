@@ -1,2 +1,3 @@
 data/raw_osm.json
+data/osm_tiles/
 __pycache__/
