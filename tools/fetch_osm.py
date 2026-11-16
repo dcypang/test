@@ -367,7 +367,9 @@ def download_api():
                     parse(data)
                     print(f"  tile {s:.4f},{w:.4f}: {len(data) // 1024} KB (after retry)", file=sys.stderr)
                     return
-            raise SystemExit(f"OSM API kept timing out for tile {s},{w},{n},{e}")
+            if depth >= 5:
+                raise SystemExit(f"OSM API kept timing out for tile {s},{w},{n},{e}")
+            print(f"  tile {s:.4f},{w:.4f} keeps timing out; splitting it", file=sys.stderr)
         if depth > 5:
             raise SystemExit(f"tile still too large at depth {depth}: {data[:200]!r}")
         ms, mw = (s + n) / 2, (w + e) / 2  # too many nodes: split in four
