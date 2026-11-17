@@ -187,6 +187,19 @@ SG.World = class World {
     const p = best.pts;
     return { road: best, dist: Math.sqrt(bd), angle: Math.atan2(p[seg + 1] - p[seg - 1], p[seg] - p[seg - 2]) };
   }
+  // nearest road that has a name (driveways and parking aisles usually don't)
+  nearestNamedRoad(x, y, maxD = 150) {
+    let best = null, bd = maxD * maxD;
+    for (const r of this.roadsIn([x - maxD, y - maxD, x + maxD, y + maxD])) {
+      if (!r.name || r.cls > 4) continue;
+      const p = r.pts;
+      for (let i = 2; i < p.length; i += 2) {
+        const d2 = World.segDist2(x, y, p[i - 2], p[i - 1], p[i], p[i + 1]);
+        if (d2 < bd) { bd = d2; best = r; }
+      }
+    }
+    return best;
+  }
   areaAt(x, y) {
     let best = null;
     for (const a of this.areas) {
@@ -434,27 +447,34 @@ SG.World = class World {
     }
     return out;
   }
-  footprintClear(pts, ignore = null) {
+  // What stands on a footprint: buildings it overlaps, and whether a street or water is in the way.
+  // Driveways, parking aisles and paths (service roads and smaller) don't count: a new
+  // building simply replaces them.
+  siteBlockers(pts, ignore = null) {
     const bb = World.bbox(pts);
     if (typeof ignore === 'number') ignore = new Set([ignore]);
+    const buildings = [];
     for (const b of this.buildingsIn([bb[0] - 2, bb[1] - 2, bb[2] + 2, bb[3] + 2])) {
       if (ignore && ignore.has(b.id)) continue;
-      if (World.polysOverlap(pts, b.pts)) return false;
+      if (World.polysOverlap(pts, b.pts)) buildings.push(b);
     }
+    let road = null;
     const [fcx, fcy] = World.centroid(pts);
     const probes = [[fcx, fcy]];
     for (let k = 0; k < pts.length; k += 2) probes.push([pts[k], pts[k + 1]], [(pts[k] + pts[(k + 2) % pts.length]) / 2, (pts[k + 1] + pts[(k + 3) % pts.length]) / 2]);
-    for (const r of this.roadsIn([bb[0] - 14, bb[1] - 14, bb[2] + 14, bb[3] + 14])) {
-      if (r.cls > 4) continue;
+    outer: for (const r of this.roadsIn([bb[0] - 14, bb[1] - 14, bb[2] + 14, bb[3] + 14])) {
+      if (r.cls > 3) continue;
       const p = r.pts, hw = (SG.ROAD_STYLE ? SG.ROAD_STYLE[r.cls][0] : 9) / 2 + 1.5, hw2 = hw * hw;
-      for (let i = 0; i < p.length; i += 2) if (World.pointInPoly(p[i], p[i + 1], pts)) return false;
+      for (let i = 0; i < p.length; i += 2) if (World.pointInPoly(p[i], p[i + 1], pts)) { road = r; break outer; }
       for (let i = 2; i < p.length; i += 2)
-        for (const [px, py] of probes) if (World.segDist2(px, py, p[i - 2], p[i - 1], p[i], p[i + 1]) < hw2) return false;
+        for (const [px, py] of probes) if (World.segDist2(px, py, p[i - 2], p[i - 1], p[i], p[i + 1]) < hw2) { road = r; break outer; }
     }
-    const [cx, cy] = World.centroid(pts);
-    const c = this.cellOf(cx, cy);
-    if (c < 0 || this.areaK[c] === 4) return false;
-    return true;
+    const c = this.cellOf(fcx, fcy);
+    return { buildings, road, water: c < 0 || this.areaK[c] === 4 };
+  }
+  footprintClear(pts, ignore = null) {
+    const s = this.siteBlockers(pts, ignore);
+    return !s.buildings.length && !s.road && !s.water;
   }
   static polysOverlap(a, b) {
     for (let i = 0; i < a.length; i += 2) if (World.pointInPoly(a[i], a[i + 1], b)) return true;
@@ -480,7 +500,8 @@ SG.World = class World {
   }
   placeBuilding(x, y, spec, extra = {}) {
     const nr = this.nearestRoad(x, y, 120);
-    if (nr && !extra.hn && nr.road.name) extra = Object.assign({ hn: this.houseNumber(x, y, nr.road), street: nr.road.name }, extra);
+    const named = this.nearestNamedRoad(x, y);
+    if (named && !extra.hn) extra = Object.assign({ hn: this.houseNumber(x, y, named), street: named.name }, extra);
     const ang = nr ? nr.angle : 0;
     const pts = World.rect(x, y, spec.w, spec.d, ang);
     const b = this.addBuildingRaw(Object.assign({
@@ -521,8 +542,8 @@ SG.World = class World {
   addressOf(b) {
     if (b.hn && b.street) return b.hn + ' ' + b.street;
     if (b.street) return b.street;
-    const nr = this.nearestRoad(b.cx, b.cy, 120, false);
-    return nr && nr.road.name ? 'near ' + nr.road.name : '';
+    const r = this.nearestNamedRoad(b.cx, b.cy);
+    return r ? 'near ' + r.name : '';
   }
   roadKm() {
     let m = 0;

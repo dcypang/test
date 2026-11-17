@@ -190,18 +190,17 @@ SG.UI = class UI {
       this.roadPreview(x, y);
     } else if (t.startsWith('build:')) {
       const spec = SG.BUILDS[t.slice(6)];
-      const [px, py] = this.snapBuild(spec, x, y);
-      const nr = this.w.nearestRoad(px, py, 120);
-      const pts = SG.World.rect(px, py, spec.w, spec.d, nr ? nr.angle : 0);
-      const chk = this.canPlace(spec, px, py, pts);
-      const warn = chk.ok && spec.private && !chk.meetsZoning;
-      this.r.ghost = { type: 'poly', pts, ok: chk.ok, warn, h: spec.area ? 0.6 : (spec.levels || 1) * 3.3 };
-      const z = SG.ZONES[this.w.zoneAt(px, py)];
+      const st = this.site(spec, x, y);
+      const warn = st.ok && (!st.meetsZoning || st.replace.length > 0) && !spec.area;
+      this.r.ghost = { type: 'poly', pts: st.pts, ok: st.ok, warn, h: spec.area ? 0.6 : (spec.levels || 1) * 3.3 };
+      const z = SG.ZONES[st.zid];
+      const n = st.replace.length, repl = n ? ` It replaces ${n} building${n > 1 ? 's' : ''} on the site.` : '';
       const hint = this.$('hint');
       hint.style.display = 'block';
-      hint.textContent = !chk.ok ? `✗ ${chk.why}.`
-        : warn ? `⚠ ${spec.label} isn't allowed in ${z.code}: it needs ${SG.ZONE_NEEDS[spec.zones]}. Click to file for a variance, or paint that zoning here first.`
-        : `✓ ${spec.label} allowed in ${z ? z.code : 'this zone'}. Click to build${spec.private ? '' : ' (' + SG.fmtMoney(spec.cost) + ')'}.`;
+      hint.textContent = !st.ok ? `✗ ${st.why}.`
+        : spec.private && !st.meetsZoning ? `⚠ ${spec.label} isn't allowed in ${z.code} (needs ${SG.ZONE_NEEDS[spec.zones]}). Click to rezone the lot and build, or file for a variance.${repl}`
+        : !spec.private && !st.meetsZoning ? `✓ ${spec.label} fits here. The lot is ${z.code}, so the city rezones it to PF when you build (${SG.fmtMoney(spec.cost)}).${repl}`
+        : `✓ ${spec.label} fits here (${z ? z.code : ''}). Click to build${spec.private ? '' : ' (' + SG.fmtMoney(spec.cost) + ')'}.${repl}`;
     } else if (t === 'bulldoze') {
       const target = this.w.buildingAt(x, y) || this.roadAt(x, y);
       this.r.selected = target; this.r.ghost = null;
@@ -212,21 +211,79 @@ SG.UI = class UI {
     if (spec.kind !== 'adu') return [x, y];
     return [x, y];
   }
-  canPlace(spec, x, y, pts) {
-    const w = this.w, zid = w.zoneAt(x, y);
-    if (!zid) return { ok: false, why: 'Outside city limits: paint a zone here first to annex the land' };
-    if (spec.area) {
-      const c = w.cellOf(x, y);
-      return w.areaK[c] === 4 ? { ok: false, why: 'Water' } : { ok: true };
+  // Where a project would go if dropped at (x, y): slides up to ~15 m to the nearest spot that fits,
+  // otherwise it replaces what stands there. Returns { ok, why, x, y, pts, replace: [buildings], meetsZoning, zid }.
+  site(spec, x, y) {
+    const w = this.w;
+    const at = (px, py) => {
+      const nr = w.nearestRoad(px, py, 120);
+      const pts = SG.World.rect(px, py, spec.w, spec.d, nr ? nr.angle : 0);
+      return { x: px, y: py, pts, nr, blk: spec.area ? { buildings: [], road: null, water: w.areaK[w.cellOf(px, py)] === 4 } : w.siteBlockers(pts) };
+    };
+    const zid = w.zoneAt(x, y);
+    if (!zid) return { ok: false, why: 'Outside city limits: paint a zone here first to annex the land', x, y, pts: at(x, y).pts, replace: [] };
+    // the spot under the cursor if it's clear; otherwise the nearest spot within ~30 m that isn't on a
+    // street or in water, preferring ones that need fewer buildings replaced
+    let best = at(x, y);
+    const fine = c => !c.blk.road && !c.blk.water && w.zoneAt(c.x, c.y) && c.blk.buildings.every(b => this.replaceable(b, spec));
+    if (!spec.area && (best.blk.buildings.length || best.blk.road || best.blk.water)) {
+      let bestScore = fine(best) ? best.blk.buildings.length * 100 : Infinity;
+      for (let r = 3; r <= 30; r += 3)
+        for (let k = 0; k < 12; k++) {
+          const c = at(x + Math.cos(k * Math.PI / 6) * r, y + Math.sin(k * Math.PI / 6) * r);
+          if (!fine(c)) continue;
+          const score = c.blk.buildings.length * 100 + r;
+          if (score < bestScore) { bestScore = score; best = c; }
+        }
     }
-    if (!w.footprintClear(pts)) return { ok: false, why: 'Something is in the way' };
-    if (!w.nearestRoad(x, y, 80)) return { ok: false, why: 'Needs street access within 80 m' };
-    if (spec.kind === 'adu') {
-      const host = this.hostHouse(x, y);
-      if (!host) return { ok: false, why: 'An ADU must be on the lot of an existing home' };
-    }
-    if (!spec.private && !SG.zoneAllows(zid, spec)) return { ok: false, why: `Not allowed in ${SG.ZONES[zid].code}; rezone to PF first` };
-    return { ok: true, meetsZoning: SG.zoneAllows(zid, spec) };
+    const res = { ok: true, x: best.x, y: best.y, pts: best.pts, replace: best.blk.buildings, zid: w.zoneAt(best.x, best.y) };
+    if (best.blk.water) return Object.assign(res, { ok: false, why: 'That spot is in a creek or pond' });
+    if (best.blk.road) return Object.assign(res, { ok: false, why: `${best.blk.road.name || 'A street'} is in the way` });
+    const keep = res.replace.find(b => !this.replaceable(b, spec));
+    if (keep) return Object.assign(res, { ok: false, why: `${(SG.KIND[keep.kind] || SG.KIND.other).name} in the way can't be replaced` });
+    if (spec.area) return res;
+    if (!best.nr || best.nr.dist > 80) return Object.assign(res, { ok: false, why: 'Needs street access within 80 m' });
+    if (spec.kind === 'adu' && !this.hostHouse(best.x, best.y)) return Object.assign(res, { ok: false, why: 'An ADU must be on the lot of an existing home' });
+    if (spec.kind === 'adu' && res.replace.length) return Object.assign(res, { ok: false, why: 'No room for an ADU on this lot' });
+    res.meetsZoning = SG.zoneAllows(res.zid, spec);
+    return res;
+  }
+  // Private projects may buy out homes and shops; schools, civic buildings and city facilities stay.
+  replaceable(b, spec) {
+    void spec;
+    return !(['school', 'civic', 'utility', 'firestation', 'library', 'community'].includes(b.kind) || b.service);
+  }
+  canPlace(spec, x, y) { // kept for callers that only need a yes/no
+    const s = this.site(spec, x, y);
+    return { ok: s.ok, why: s.why, meetsZoning: s.meetsZoning };
+  }
+  // the zone a project needs, for "rezone and build"
+  zoneFor(spec) {
+    return { sfr: SG.Z.R_1_10_000, res: SG.Z.R_1_10_000, multi: SG.Z.R_M, mu: SG.Z.MU, com: SG.Z.C_N, pf: SG.Z.PF }[spec.zones] || SG.Z.R_M;
+  }
+  rezoneSite(pts, zid) {
+    const w = this.w, bb = SG.World.bbox(pts), cells = [];
+    const c0 = Math.floor((bb[0] - 8 - w.x0) / SG.CELL), c1 = Math.floor((bb[2] + 8 - w.x0) / SG.CELL);
+    const r0 = Math.floor((bb[1] - 8 - w.y0) / SG.CELL), r1 = Math.floor((bb[3] + 8 - w.y0) / SG.CELL);
+    for (let r = Math.max(0, r0); r <= Math.min(w.H - 1, r1); r++)
+      for (let c = Math.max(0, c0); c <= Math.min(w.W - 1, c1); c++) {
+        const i = r * w.W + c;
+        if (!w.inCity[i] || w.zone[i] === zid) continue;
+        w.zone[i] = zid; cells.push(i);
+      }
+    this.sim.funds -= cells.length * 400;
+    this.sim.markHot(cells);
+    this.r.zoneDirty = true;
+    return cells.length;
+  }
+  choose(title, body, buttons) {
+    return new Promise(resolve => {
+      this.modal(`<h2>${esc(title)}</h2><p>${body}</p><div class="row">${buttons.map((b, i) =>
+        `<button class="btn${i === 0 ? ' primary' : ''}" data-choice="${esc(b[0])}">${esc(b[1])}</button>`).join('')}</div>`);
+      const done = v => { this._askResolve = null; this.closeModal(); resolve(v); };
+      this._askResolve = () => resolve(null);
+      document.querySelectorAll('#modal [data-choice]').forEach(el => el.onclick = () => done(el.dataset.choice));
+    });
   }
   hostHouse(x, y) {
     const c = this.w.cellOf(x, y); if (c < 0) return null;
@@ -284,34 +341,63 @@ SG.UI = class UI {
     }
   }
 
-  placeBuild(key, x, y) {
+  async placeBuild(key, x, y) {
     const spec = SG.BUILDS[key], sim = this.sim, w = this.w;
+    const st = this.site(spec, x, y);
+    if (!st.ok) { sim.say(`Can't build here: ${st.why}.`, true); return; }
+    x = st.x; y = st.y;
     const nr = w.nearestRoad(x, y, 120);
-    const pts = SG.World.rect(x, y, spec.w, spec.d, nr ? nr.angle : 0);
-    const chk = this.canPlace(spec, x, y, pts);
-    if (!chk.ok) { sim.say(`Can't build here: ${chk.why}.`); return; }
     if (spec.area) {
       if (!sim.spend(spec.cost, 'a park')) return;
       w.addPark(x, y, spec.w, spec.d);
       sim.say(`New ${spec.w * spec.d / 10000 * 2.47 | 0}-acre park opens${nr && nr.road.name ? ' on ' + nr.road.name : ''}.`);
       this.g.onWorldChange(); return;
     }
+    const rep = st.replace, n = rep.length;
+    const buy = rep.reduce((s, b) => s + (b.units || b.jobs ? b.value * 1.6 : 20000), 0);
+    const list = rep.slice(0, 3).map(b => esc(w.addressOf(b) || (SG.KIND[b.kind] || SG.KIND.other).name.toLowerCase())).join('; ') + (n > 3 ? `; and ${n - 3} more` : '');
     if (!spec.private) {
-      if (!sim.spend(spec.cost, spec.label)) return;
+      const z = SG.ZONES[st.zid], parts = [];
+      if (n) parts.push(`The city buys and demolishes ${list} for ${SG.fmtMoney(buy)}.`);
+      if (!st.meetsZoning) parts.push(`The lot is zoned ${esc(z.code)}, so the Council rezones it to PF (public facility) first.`);
+      if (parts.length && (await this.choose(`Build the ${spec.label.toLowerCase()} here?`, parts.join('<br><br>') + `<br><br>Construction: ${SG.fmtMoney(spec.cost)}.`,
+        [['build', 'Build it'], ['cancel', 'Cancel']])) !== 'build') return;
+      if (!sim.spend(spec.cost + buy, spec.label)) return;
+      if (!st.meetsZoning) { const cells = this.rezoneSite(st.pts, SG.Z.PF); sim.say(`City Council rezones ${(cells * SG.CELL * SG.CELL / 4046.86).toFixed(1)} acres to PF for the ${spec.label.toLowerCase()}.`); }
+      for (const b of rep) { w.removeBuilding(b); sim.construction = sim.construction.filter(c => c !== b); }
       const b = w.placeBuilding(x, y, spec, { service: spec.service, radius: spec.radius, upkeep: spec.upkeep, name: 'New ' + spec.label.replace('Stn', 'Station').replace('Comm. Ctr', 'Community Center') });
       b.built = sim.year;
       sim.say(`${b.name} opens${b.street ? ' on ' + b.street : ''}.`, true);
       this.g.onWorldChange(); return;
     }
-    // private project: goes through planning review
-    const app = { build: key, x, y, why: 'Filed by you', ministerial: !!spec.ministerial, byPlayer: true };
+    // private project
+    const replText = n ? `<br><br>It replaces ${n} building${n > 1 ? 's' : ''} on the site (${list}); the developer buys ${n > 1 ? 'them' : 'it'}.` : '';
+    let mode = 'build';
+    if (!st.meetsZoning) {
+      const z = SG.ZONES[st.zid], target = SG.ZONES[this.zoneFor(spec)];
+      mode = await this.choose(`${spec.label} isn't allowed in ${z.code}`,
+        `This lot is zoned ${esc(z.name)}. ${esc(spec.label)} needs ${esc(SG.ZONE_NEEDS[spec.zones])}.<br><br>` +
+        `<b>Rezone and build</b>: the Council rezones this lot to ${esc(target.code)} and construction starts.<br>` +
+        `<b>File for a variance</b>: it goes to the Planning Commission panel for your decision.${replText}`,
+        [['rezone', `Rezone to ${target.code} and build`], ['variance', 'File for a variance'], ['cancel', 'Cancel']]);
+      if (!mode || mode === 'cancel') return;
+    } else if (n) {
+      mode = (await this.choose(`Build ${spec.label.toLowerCase()} here?`, `${esc(spec.label)} fits here.${replText}`, [['build', 'Build it'], ['cancel', 'Cancel']])) || 'cancel';
+      if (mode === 'cancel') return;
+    }
+    if (mode === 'rezone') {
+      const target = this.zoneFor(spec), cells = this.rezoneSite(st.pts, target);
+      sim.say(`City Council rezones ${(cells * SG.CELL * SG.CELL / 4046.86).toFixed(1)} acres${nr && nr.road.name ? ' on ' + nr.road.name : ''} to ${SG.ZONES[target].code} for new ${spec.label.toLowerCase()} (${SG.fmtMoney(cells * 400)}).`);
+      if (target === SG.Z.MU || target === SG.Z.R_M) sim.approval -= 0.5;
+    }
+    const app = { build: key, x, y, why: 'Filed by you', ministerial: !!spec.ministerial, byPlayer: true, replaceIds: rep.map(b => b.id) };
     if (key === 'adu') app.host = this.hostHouse(x, y)?.id;
     sim.autoApprove = false;
     sim.addApp(app);
     sim.autoApprove = this.$('auto-approve').checked;
     const filed = sim.apps.find(a => a.id === sim.nextAppId - 1);
     if (filed && filed.check.ok) { sim.approve(filed); sim.funds += spec.fee || 0; }
-    else if (filed) sim.say(`${spec.label} filed on ${filed.street} needs a variance (${filed.check.issues.join('; ')}). Decide in the Planning Commission panel.`);
+    else if (filed) sim.say(`${spec.label} filed on ${filed.street} needs a variance (${filed.check.issues.join('; ')}). Approve or deny it in the Planning Commission panel.`, true);
     else sim.funds += spec.fee || 0;
     this.g.onWorldChange();
   }
@@ -648,7 +734,7 @@ SG.UI = class UI {
   ask(title, body, okLabel = 'OK') {
     return new Promise(resolve => {
       this.modal(`<h2>${esc(title)}</h2><p>${esc(body)}</p><div class="row"><button class="btn danger" id="ask-ok">${esc(okLabel)}</button><button class="btn" id="ask-no">Cancel</button></div>`);
-      const done = v => { this.closeModal(); this._askResolve = null; resolve(v); };
+      const done = v => { this._askResolve = null; this.closeModal(); resolve(v); };
       this._askResolve = done;
       this.$('ask-ok').onclick = () => done(true);
       this.$('ask-no').onclick = () => done(false);

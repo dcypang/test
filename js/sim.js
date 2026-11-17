@@ -277,11 +277,13 @@ SG.Sim = class Sim {
     const issues = [];
     if (!zid) issues.push('Outside city limits');
     else if (!SG.zoneAllows(zid, spec) && !a.forced) issues.push(`${spec.label} not allowed in ${z.code}`);
-    if (spec.levels && z && z.maxHeightFt && spec.levels * 12 > z.maxHeightFt + 4 && !a.forced && !spec.ministerial)
-      issues.push(`Height ~${spec.levels * 12} ft exceeds ${z.maxHeightFt} ft limit`);
+    if (spec.levels && z && z.maxHeightFt && spec.levels * 11 > z.maxHeightFt + 4 && !a.forced && !spec.ministerial)
+      issues.push(`Height ~${spec.levels * 11} ft exceeds ${z.maxHeightFt} ft limit`);
     const nr = w.nearestRoad(a.x, a.y, 120);
     const pts = SG.World.rect(a.x, a.y, spec.w, spec.d, nr ? nr.angle : 0);
-    if (!w.footprintClear(pts, a.replace ? w.lotGroup(a.replace) : null)) issues.push('Site is not clear');
+    const ignore = a.replace ? w.lotGroup(a.replace) : new Set();
+    for (const id of a.replaceIds || []) ignore.add(id);
+    if (!w.footprintClear(pts, ignore)) issues.push('Site is not clear');
     if (!nr) issues.push('No street access');
     return { ok: issues.length === 0, issues, zone: z ? z.code : '—', blocked: issues.includes('Site is not clear') || !nr || !zid };
   }
@@ -292,6 +294,7 @@ SG.Sim = class Sim {
     if (a.check.blocked) { if (!auto) this.say(`Project on ${a.street} can't be built: ${a.check.issues.join(', ')}.`); return false; }
     const spec = SG.BUILDS[a.build];
     if (a.replace && !a.replace.removed) for (const id of this.w.lotGroup(a.replace)) this.w.removeBuilding(this.w.buildings[id]);
+    for (const id of a.replaceIds || []) { const old = this.w.buildings[id]; if (old && !old.removed) { this.w.removeBuilding(old); this.construction = this.construction.filter(c => c !== old); } }
     const b = this.w.placeBuilding(a.x, a.y, spec, { built: null, construction: true, appId: a.id });
     b.months = a.build === 'adu' ? 4 : a.build === 'house' || a.build === 'duplex' ? 10 : a.build === 'mixeduse' ? 26 : 18;
     b.totalMonths = b.months;
