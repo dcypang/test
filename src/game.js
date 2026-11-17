@@ -4,7 +4,7 @@
   var MAP = window.BAY_MAP, Sim = window.BaySim, CLS = Sim.CLS;
   var $ = function (id) { return document.getElementById(id); };
   var canvas = $('map'), ctx = canvas.getContext('2d');
-  var SAVE_KEY = 'bay-gridlock-v1';
+  var SAVE_KEY = 'bay-gridlock-v1', BEST_KEY = 'bay-gridlock-best';
   var SPEEDS = [0, 1, 3, 8];
   var KM_MI = 0.621371;
 
@@ -492,7 +492,7 @@
       '<ul><li><b>Tap a road</b><span>Add lanes, rebuild it as a freeway, or set a bridge toll.</span></li>' +
       '<li><b>Build road</b><span>Join any two junctions. Crossing the bay costs bridge money.</span></li>' +
       '<li><b>Red roads</b><span>Jams. Long delays sour commuters. If their mood hits zero, you are recalled.</span></li></ul>' +
-      '<p class="credit">' + esc(MAP.src) + '</p></div>' +
+      '<p class="credit">' + (function (b) { return b ? 'Your best run: ' + days(b.days) + '. ' : ''; })(loadBest()) + esc(MAP.src) + '</p></div>' +
       '<button class="exit" type="button" id="goBtn"><span>' + (fresh ? 'Start the commute' : 'Back to day ' + sim.day) + '</span>' + ARROW + '</button>' +
       (fresh ? '' : '<button class="exit alt" type="button" id="newBtn"><span>Start a new game</span></button>') + '</div>';
     $('overlay').hidden = false;
@@ -503,12 +503,20 @@
       newGame(); $('overlay').hidden = true; setSpeed(1);
     });
   }
+  function days(n) { return n + ' day' + (n === 1 ? '' : 's'); }
+  function loadBest() { try { return JSON.parse(localStorage.getItem(BEST_KEY) || 'null'); } catch (err) { return null; } }
   function showOver() {
     setSpeed(0);
+    var run = { days: sim.day - 1, trips: sim.totalTrips }, best = loadBest(), record = '';
+    if (!best || run.days > best.days || (run.days === best.days && run.trips > best.trips)) {
+      if (best) record = '<li><b>Record</b><span>Beats your old best of ' + days(best.days) + '.</span></li>';
+      try { localStorage.setItem(BEST_KEY, JSON.stringify(run)); } catch (err) {}
+    } else record = '<li><b>Best</b><span>' + days(best.days) + ', ' + best.trips.toLocaleString('en-US') + ' trips.</span></li>';
     $('overlay').innerHTML = '<div class="sign bigsign stop"><div class="body">' +
       '<p class="kicker">Commuter mood hit zero</p><h1>Recalled</h1>' +
-      '<p class="lede">You kept the Bay moving for <b>' + (sim.day - 1) + ' day' + (sim.day === 2 ? '' : 's') + '</b> and delivered <b>' +
-      sim.totalTrips.toLocaleString('en-US') + ' trips</b> before the voters had enough.</p></div>' +
+      '<p class="lede">You kept the Bay moving for <b>' + days(run.days) + '</b> and delivered <b>' +
+      run.trips.toLocaleString('en-US') + ' trips</b> before the voters had enough.</p>' +
+      (record ? '<ul>' + record + '</ul>' : '') + '</div>' +
       '<button class="exit" type="button" id="againBtn"><span>Try again</span>' + ARROW + '</button></div>';
     $('overlay').hidden = false;
     $('againBtn').addEventListener('click', function () { newGame(); $('overlay').hidden = true; setSpeed(1); });
