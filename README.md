@@ -2,7 +2,7 @@
 
 An original open-world crime/driving sandbox that runs in the browser with three.js (WebGL2), tuned for iPhone (17 Pro class) with touch controls.
 
-Sunset coastal city on an island: 64 city blocks, a wide west-facing beach, procedural skyline with lit windows and neon at night, traffic, pedestrians, police pursuits, delivery jobs, cash pickups and stunt ramps.
+Sunset coastal city: 144 city blocks with two skyline clusters, a wide west-facing beach, a 14 m elevated freeway looping the whole city on pillars (with ramps down to the port and the airport), Solano International airport (runway, terminal, jet bridges, an airliner that takes off, circles the city and lands), the Port of Solano (container yard, gantry cranes, moored cargo ships, piers, boats, lighthouse), 14 walk-in shops, traffic on the streets and the freeway, pedestrians, police pursuits with on-ramp chasing, delivery jobs, cash pickups and stunt ramps.
 
 ## Play
 
@@ -16,6 +16,8 @@ Open `index.html` in Safari (or any modern browser). Landscape works best on a p
 | Jump / handbrake drift | JUMP / DRIFT | Space |
 | Sprint | Push stick to the edge | Shift |
 | Horn, radio | HORN, RADIO | H, R |
+| Full map (pan, zoom, tap to set a waypoint) | Tap the minimap | M |
+| Enter a shop | Walk through a lit doorway | same |
 | Pause (quality, time of day, sound) | II button | Esc |
 
 ## Graphics
