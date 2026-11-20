@@ -1,0 +1,595 @@
+<title>Friday Ride Planner</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@500&display=swap">
+<style>
+/* Layout: two-pane planner — setup on the left, the day's timeline on the right; stacks on phones. */
+:root {
+  --bg: #f4f2fa;
+  --surface: #ffffff;
+  --sunk: #ebe8f5;
+  --ink: #1d1b3a;
+  --muted: #625f82;
+  --line: #dedaee;
+  --accent: #b8305f;
+  --accent-soft: #f8e3ec;
+  --on-accent: #ffffff;
+  --walk: #9893bf;
+  --wait: #e3a23b;
+  --ride: #3b66cf;
+  --ok: #2b8656;
+  --warn: #b4502a;
+  --warn-soft: #fbe9df;
+  --font-display: "Bricolage Grotesque", "Avenir Next", "Segoe UI", system-ui, sans-serif;
+  --font-body: "Inter", "Segoe UI", system-ui, -apple-system, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  --r: 10px;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #121127; --surface: #1b1a36; --sunk: #24234a; --ink: #ecebf8; --muted: #a3a0c4;
+    --line: #2f2d55; --accent: #ff6d9c; --accent-soft: #3d1f37; --on-accent: #1b0b14;
+    --walk: #7b77a8; --wait: #f0b45a; --ride: #6f95ff; --ok: #5cc48c; --warn: #f08c5e; --warn-soft: #3a2420;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #121127; --surface: #1b1a36; --sunk: #24234a; --ink: #ecebf8; --muted: #a3a0c4;
+  --line: #2f2d55; --accent: #ff6d9c; --accent-soft: #3d1f37; --on-accent: #1b0b14;
+  --walk: #7b77a8; --wait: #f0b45a; --ride: #6f95ff; --ok: #5cc48c; --warn: #f08c5e; --warn-soft: #3a2420;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+body { background: var(--bg); color: var(--ink); font-family: var(--font-body); font-size: 14px; line-height: 1.45; }
+.wrap { max-width: 1240px; margin: 0 auto; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); padding-block: 28px 48px; }
+header.top { display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: 12px 24px; margin-bottom: 22px; }
+h1 { font-family: var(--font-display); font-weight: 700; font-size: clamp(28px, 4.5vw, 40px); line-height: 1.05; margin: 0; letter-spacing: -0.01em; text-wrap: balance; }
+h1 em { font-style: normal; color: var(--accent); }
+.sub { color: var(--muted); margin: 6px 0 0; max-width: 62ch; }
+h2 { font-family: var(--font-display); font-weight: 700; font-size: 19px; margin: 0; }
+h3 { font-size: 11px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); margin: 0 0 8px; font-weight: 600; }
+.grid { display: grid; grid-template-columns: minmax(0, 440px) minmax(0, 1fr); gap: 20px; align-items: start; }
+@media (max-width: 900px) { .grid { grid-template-columns: minmax(0, 1fr); } }
+.panel { background: var(--surface); border: 1px solid var(--line); border-radius: var(--r); padding: 18px; min-width: 0; }
+.stack { display: flex; flex-direction: column; gap: 18px; }
+.sec { display: flex; flex-direction: column; gap: 10px; }
+.sec + .sec { border-top: 1px solid var(--line); padding-top: 16px; }
+.row { display: flex; flex-wrap: wrap; gap: 10px; align-items: end; }
+label.f { display: flex; flex-direction: column; gap: 4px; font-size: 12px; color: var(--muted); font-weight: 500; min-width: 0; }
+input, select { font: inherit; color: var(--ink); background: var(--bg); border: 1px solid var(--line); border-radius: 7px; padding: 7px 9px; min-width: 0; }
+input[type="time"], .mono { font-family: var(--font-mono); font-variant-numeric: tabular-nums; }
+input[type="number"] { width: 84px; }
+input:focus-visible, select:focus-visible, button:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+.check { display: inline-flex; align-items: center; gap: 7px; font-size: 13px; cursor: pointer; }
+.check input { accent-color: var(--accent); width: 16px; height: 16px; }
+.seg { display: inline-flex; background: var(--sunk); border-radius: 8px; padding: 3px; gap: 2px; flex-wrap: wrap; }
+.seg button { font: inherit; font-size: 12.5px; font-weight: 500; border: 0; background: transparent; color: var(--muted); padding: 5px 10px; border-radius: 6px; cursor: pointer; }
+.seg button[aria-pressed="true"] { background: var(--surface); color: var(--ink); box-shadow: 0 1px 2px rgb(0 0 0 / .12); }
+.seg.pri button[aria-pressed="true"][data-v="3"] { background: var(--accent); color: var(--on-accent); }
+.hint { font-size: 12px; color: var(--muted); margin: 0; }
+.park-h { font-family: var(--font-display); font-size: 16px; font-weight: 700; margin: 6px 0 2px; }
+.land { margin-top: 8px; }
+.ride { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 6px 10px; padding: 9px 0; border-top: 1px dashed var(--line); align-items: center; }
+.ride.off { opacity: .45; }
+.ride .nm { font-weight: 600; font-size: 13.5px; }
+.ride .meta { font-size: 11.5px; color: var(--muted); font-variant-numeric: tabular-nums; }
+.ride .ctl { grid-column: 1 / -1; display: flex; flex-wrap: wrap; gap: 8px 12px; align-items: center; }
+.ride .ctl .check { font-size: 12px; color: var(--muted); }
+.posted { display: inline-flex; align-items: center; gap: 5px; font-size: 12px; color: var(--muted); }
+.posted input { width: 62px; padding: 4px 6px; font-size: 12px; }
+.btn { font: inherit; font-weight: 600; font-size: 13px; border-radius: 8px; padding: 8px 14px; cursor: pointer; border: 1px solid var(--line); background: var(--surface); color: var(--ink); }
+.btn.primary { background: var(--accent); border-color: var(--accent); color: var(--on-accent); }
+.btn.small { padding: 5px 10px; font-size: 12px; }
+
+.stats { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; margin: 14px 0 6px; }
+@media (max-width: 560px) { .stats { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+.stat { background: var(--sunk); border-radius: 8px; padding: 10px 12px; }
+.stat b { display: block; font-family: var(--font-display); font-size: 24px; line-height: 1.1; font-variant-numeric: tabular-nums; }
+.stat span { font-size: 11.5px; color: var(--muted); }
+.daybar { position: relative; height: 18px; background: var(--sunk); border-radius: 5px; overflow: hidden; margin-top: 14px; }
+.daybar i { position: absolute; top: 0; bottom: 0; }
+.daybar .walk { background: var(--walk); } .daybar .wait { background: var(--wait); } .daybar .ride { background: var(--ride); } .daybar .meal { background: var(--ok); }
+.axis { display: flex; justify-content: space-between; font-family: var(--font-mono); font-size: 10.5px; color: var(--muted); margin-top: 4px; }
+.legend { display: flex; flex-wrap: wrap; gap: 12px; font-size: 11.5px; color: var(--muted); margin-top: 8px; }
+.legend span::before { content: ""; display: inline-block; width: 9px; height: 9px; border-radius: 2px; margin-right: 5px; background: var(--c); vertical-align: -1px; }
+.alert { background: var(--warn-soft); color: var(--ink); border-radius: 8px; padding: 10px 12px; font-size: 13px; border-left: 3px solid var(--warn); }
+.note { background: var(--accent-soft); border-radius: 8px; padding: 10px 12px; font-size: 13px; }
+ol.tl { list-style: none; margin: 16px 0 0; padding: 0; }
+ol.tl li { display: grid; grid-template-columns: 58px minmax(0, 1fr) auto; gap: 12px; padding: 11px 0; border-top: 1px solid var(--line); align-items: start; }
+ol.tl li.hop { border-top: 2px solid var(--accent); }
+ol.tl time { font-family: var(--font-mono); font-size: 14px; font-variant-numeric: tabular-nums; padding-top: 1px; }
+ol.tl .t { font-weight: 600; font-size: 14.5px; }
+ol.tl .d { font-size: 12px; color: var(--muted); margin-top: 2px; font-variant-numeric: tabular-nums; }
+ol.tl .bits { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; }
+.chip { font-size: 11px; font-weight: 600; border-radius: 99px; padding: 2px 8px; background: var(--sunk); color: var(--muted); white-space: nowrap; }
+.chip.must { background: var(--accent); color: var(--on-accent); }
+.chip.pa { background: var(--wait); color: #1d1b3a; }
+.chip.wait { background: transparent; border: 1px solid var(--line); color: var(--ink); }
+ol.tl li.meal .t { color: var(--ok); }
+ol.tl li.done .t { text-decoration: line-through; color: var(--muted); }
+.bars { display: flex; height: 6px; border-radius: 3px; overflow: hidden; margin-top: 7px; max-width: 260px; background: var(--sunk); }
+.bars i { display: block; height: 100%; }
+.foot { margin-top: 26px; font-size: 12px; color: var(--muted); max-width: 80ch; }
+.plan-head { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 8px; }
+.replan { display: flex; flex-wrap: wrap; gap: 10px; align-items: end; padding: 12px; background: var(--sunk); border-radius: 8px; margin-top: 14px; }
+.sticky { position: sticky; top: calc(env(safe-area-inset-top, 0px) + 12px); }
+@media (max-width: 900px) { .sticky { position: static; } }
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+</style>
+
+<div class="wrap">
+  <header class="top">
+    <div>
+      <h1>Friday Ride Planner <em>· Disneyland Paris</em></h1>
+      <p class="sub">Pick the rides you care about. The planner tests thousands of orders against typical queue curves and walking distances, then gives you the sequence with the least time in line.</p>
+    </div>
+  </header>
+
+  <div class="grid">
+    <aside class="panel stack" aria-label="Setup">
+      <section class="sec">
+        <h3>The day</h3>
+        <div class="row">
+          <label class="f">Date
+            <select id="date">
+              <option value="2026-11-20">Fri 20 Nov 2026 (today)</option>
+              <option value="2026-11-27">Fri 27 Nov 2026</option>
+            </select>
+          </label>
+          <label class="f">Crowds
+            <select id="crowd">
+              <option value="quiet">Quiet</option>
+              <option value="typical">Typical</option>
+              <option value="busy">Busy</option>
+              <option value="packed">Packed</option>
+            </select>
+          </label>
+        </div>
+        <div class="row">
+          <div class="f" style="font-size:12px;color:var(--muted);font-weight:500;display:flex;flex-direction:column;gap:4px">Parks
+            <div class="seg" id="parks" role="group" aria-label="Parks">
+              <button type="button" data-v="DLP">Disneyland Park</button>
+              <button type="button" data-v="DAW">Adventure World</button>
+              <button type="button" data-v="BOTH">Both (hopper)</button>
+            </div>
+          </div>
+        </div>
+        <div class="row">
+          <label class="f">Disneyland Park opens<input type="time" id="dlpO"></label>
+          <label class="f">closes<input type="time" id="dlpC"></label>
+        </div>
+        <div class="row">
+          <label class="f">Adventure World opens<input type="time" id="dawO"></label>
+          <label class="f">closes<input type="time" id="dawC"></label>
+        </div>
+        <p class="hint">Defaults are typical late-November hours. Check Friday's official hours in the Disneyland Paris app and adjust.</p>
+        <label class="check"><input type="checkbox" id="emt"> Extra Magic Time (hotel guests, 1 h before opening)</label>
+      </section>
+
+      <section class="sec">
+        <h3>Your group</h3>
+        <div class="row">
+          <label class="f">At the gates<input type="time" id="arrive"></label>
+          <label class="f">Leave by<input type="time" id="leave"></label>
+        </div>
+        <div class="row">
+          <label class="f">Shortest rider (cm)<input type="number" id="height" min="60" max="210" step="1"></label>
+          <label class="f">Walking pace
+            <select id="pace">
+              <option value="50">Relaxed / strollers</option>
+              <option value="65">Normal</option>
+              <option value="80">Brisk</option>
+            </select>
+          </label>
+        </div>
+        <label class="check"><input type="checkbox" id="sr"> Use Single Rider lines where offered</label>
+        <div class="row">
+          <label class="check"><input type="checkbox" id="lunchOn"> Lunch break</label>
+          <label class="f">around<input type="time" id="lunchT"></label>
+          <label class="f">minutes<input type="number" id="lunchD" min="15" max="120" step="5"></label>
+        </div>
+      </section>
+
+      <section class="sec">
+        <h3>Rides</h3>
+        <p class="hint">Example picks are filled in. <b>Must</b> rides are scheduled first. Tick <b>PA</b> if you'll buy Premier Access for that ride. In the park, type the wait posted in the app into <b>Posted</b> and the plan adjusts.</p>
+        <div id="rides"></div>
+      </section>
+    </aside>
+
+    <main class="panel sticky" aria-label="Plan">
+      <div class="plan-head">
+        <h2 id="planTitle">Your plan</h2>
+        <span class="hint mono" id="calcInfo"></span>
+      </div>
+      <div class="stats" id="stats"></div>
+      <div id="bar"></div>
+      <div id="warns" class="stack" style="gap:8px;margin-top:12px"></div>
+      <div class="replan">
+        <label class="f">Re-plan from<input type="time" id="fromT"></label>
+        <label class="f">I'm at<select id="fromLoc"></select></label>
+        <button type="button" class="btn small" id="nowBtn">Use current time</button>
+        <button type="button" class="btn small" id="resetFrom">Start of day</button>
+        <p class="hint" style="flex-basis:100%">When re-planning, rides you've ticked as done are left out.</p>
+      </div>
+      <ol class="tl" id="tl"></ol>
+      <div id="compare"></div>
+    </main>
+  </div>
+
+  <p class="foot">Queue times are estimates built from typical patterns for each ride (rope drop is quiet, headliners peak late morning to mid-afternoon, family rides empty out in the evening), scaled by the crowd level you choose. Walking times use approximate distances inside each park plus about 9 minutes to cross the esplanade between parks. Single Rider and Premier Access availability changes day to day. Hopping between parks needs a two-park ticket. This is an independent planning tool, not affiliated with Disney.</p>
+</div>
+
+<script>
+(function () {
+  "use strict";
+  // ---------- Data ----------
+  // id, name, park, land, x, y (metres from the park's entrance), ride minutes, typical peak wait, curve, min height cm, single rider, premier access, early entry
+  const RAW = [
+    ["btm","Big Thunder Mountain","DLP","Frontierland",-390,530,5,60,"head",102,1,1,0],
+    ["phm","Phantom Manor","DLP","Frontierland",-320,430,8,30,"family",0,0,1,0],
+    ["pir","Pirates of the Caribbean","DLP","Adventureland",-240,250,12,30,"family",0,0,1,0],
+    ["ind","Indiana Jones et le Temple du Péril","DLP","Adventureland",-430,320,3,35,"head",140,0,1,0],
+    ["ppf","Peter Pan's Flight","DLP","Fantasyland",-60,520,4,70,"kid",0,0,1,1],
+    ["snw","Blanche-Neige et les Sept Nains","DLP","Fantasyland",-25,480,3,30,"kid",0,0,0,1],
+    ["pin","Les Voyages de Pinocchio","DLP","Fantasyland",30,490,3,25,"kid",0,0,0,1],
+    ["dum","Dumbo the Flying Elephant","DLP","Fantasyland",80,560,2,40,"kid",0,0,1,1],
+    ["mad","Mad Hatter's Tea Cups","DLP","Fantasyland",40,640,2,20,"kid",0,0,0,1],
+    ["ali","Alice's Curious Labyrinth","DLP","Fantasyland",-30,650,15,10,"family",0,0,0,0],
+    ["cas","Casey Jr. – le Petit Train du Cirque","DLP","Fantasyland",140,640,3,25,"kid",0,0,0,1],
+    ["pdc","Le Pays des Contes de Fées","DLP","Fantasyland",170,690,8,20,"kid",0,0,0,0],
+    ["isw","“it's a small world”","DLP","Fantasyland",220,590,11,25,"family",0,0,1,1],
+    ["hsm","Star Wars Hyperspace Mountain","DLP","Discoveryland",330,460,3,55,"head",120,1,1,1],
+    ["stt","Star Tours: l'Aventure Continue","DLP","Discoveryland",290,380,6,30,"family",102,0,1,1],
+    ["buz","Buzz Lightyear Laser Blast","DLP","Discoveryland",230,320,5,45,"family",0,0,1,1],
+    ["orb","Orbitron","DLP","Discoveryland",220,410,2,35,"kid",0,0,1,1],
+    ["aut","Autopia","DLP","Discoveryland",370,560,5,40,"kid",81,0,1,1],
+    ["foe","Frozen Ever After","DAW","World of Frozen",90,520,7,80,"head",0,0,1,1],
+    ["tan","Raiponce Tangled Spin","DAW","Adventure Way",30,300,2,35,"kid",0,0,1,1],
+    ["avg","Avengers Assemble: Flight Force","DAW","Avengers Campus",230,190,3,50,"head",120,1,1,1],
+    ["spi","Spider-Man W.E.B. Adventure","DAW","Avengers Campus",180,120,5,40,"family",0,1,1,1],
+    ["tot","The Twilight Zone Tower of Terror","DAW","Production Courtyard",190,330,4,40,"head",102,0,1,1],
+    ["rat","Ratatouille: The Adventure","DAW","Worlds of Pixar",-200,250,5,50,"family",0,1,1,1],
+    ["cru","Crush's Coaster","DAW","Worlds of Pixar",-140,320,3,70,"head",107,0,1,1],
+    ["crr","Cars Quatre Roues Rallye","DAW","Worlds of Pixar",-230,330,2,20,"kid",0,0,0,0],
+    ["rcr","RC Racer","DAW","Worlds of Pixar",-80,430,2,30,"head",120,1,1,1],
+    ["tsp","Toy Soldiers Parachute Drop","DAW","Worlds of Pixar",-110,470,2,35,"kid",81,0,1,1],
+    ["sli","Slinky Dog Zigzag Spin","DAW","Worlds of Pixar",-40,460,2,30,"kid",0,0,0,1],
+    ["crt","Cars Road Trip","DAW","Worlds of Pixar",60,410,10,20,"family",0,0,1,0]
+  ];
+  const RIDES = RAW.map((a, i) => ({ i, id: a[0], name: a[1], park: a[2], land: a[3], x: a[4], y: a[5], dur: a[6], peak: a[7], kind: a[8], h: a[9], sr: !!a[10], pa: !!a[11], emt: !!a[12] }));
+  const BY_ID = Object.fromEntries(RIDES.map(r => [r.id, r]));
+  const PARK_NAME = { DLP: "Disneyland Park", DAW: "Disney Adventure World" };
+  const PRI_LABEL = ["Skip", "Maybe", "Want", "Must"];
+  const WEIGHT = [0, 10, 40, 1000];
+  const CROWD = { quiet: 0.65, typical: 0.9, busy: 1.15, packed: 1.45 };
+  // share of the peak wait by clock time (minutes after midnight)
+  const PROF = {
+    head:   [[510,.2],[570,.3],[600,.55],[660,.85],[720,1],[900,1],[1020,.85],[1140,.65],[1230,.45],[1320,.3]],
+    kid:    [[510,.2],[570,.4],[630,.9],[690,1],[870,1],[990,.8],[1080,.55],[1200,.35],[1320,.25]],
+    family: [[510,.2],[570,.3],[630,.7],[720,.95],[840,1],[960,.95],[1080,.7],[1200,.5],[1320,.35]]
+  };
+  const DEFAULT_PRI = { btm:3, hsm:3, ppf:3, pir:3, phm:3, ind:2, buz:2, stt:2, isw:2, orb:1,
+                        foe:3, rat:3, avg:3, tot:3, cru:2, spi:2, tan:2, rcr:1 };
+
+  // ---------- State ----------
+  const KEY = "friday-ride-planner-v1";
+  const defaults = () => ({
+    date: "2026-11-27", crowd: "busy", parks: "BOTH",
+    dlpO: "09:30", dlpC: "22:00", dawO: "09:30", dawC: "20:00", emt: false,
+    arrive: "09:00", leave: "22:00", height: 140, pace: "65", sr: false,
+    lunchOn: true, lunchT: "12:30", lunchD: 45,
+    pri: Object.fromEntries(RIDES.map(r => [r.id, DEFAULT_PRI[r.id] || 0])),
+    pa: {}, posted: {}, done: {}, fromT: "", fromLoc: "ESP"
+  });
+  let S = defaults();
+  try { const saved = JSON.parse(localStorage.getItem(KEY) || "null"); if (saved) S = Object.assign(defaults(), saved); } catch (e) {}
+  const save = () => { try { localStorage.setItem(KEY, JSON.stringify(S)); } catch (e) {} };
+
+  // ---------- Helpers ----------
+  const toMin = s => { if (!s) return null; const [h, m] = s.split(":").map(Number); return h * 60 + m; };
+  const fmt = m => { m = Math.round(m); return String(Math.floor(m / 60)).padStart(2, "0") + ":" + String(m % 60).padStart(2, "0"); };
+  const dur = m => { m = Math.round(m); return m >= 60 ? Math.floor(m / 60) + " h " + String(m % 60).padStart(2, "0") : m + " min"; };
+  const esc = s => String(s).replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+  const $ = id => document.getElementById(id);
+  const nowMin = () => { const d = new Date(); return d.getHours() * 60 + d.getMinutes(); };
+
+  function interp(pts, t) {
+    if (t <= pts[0][0]) return pts[0][1];
+    for (let k = 1; k < pts.length; k++) {
+      if (t <= pts[k][0]) { const [t0, v0] = pts[k - 1], [t1, v1] = pts[k]; return v0 + (v1 - v0) * (t - t0) / (t1 - t0); }
+    }
+    return pts[pts.length - 1][1];
+  }
+
+  // ---------- Model ----------
+  function buildCfg() {
+    const hours = { DLP: [toMin(S.dlpO), toMin(S.dlpC)], DAW: [toMin(S.dawO), toMin(S.dawC)] };
+    const parks = S.parks === "BOTH" ? ["DLP", "DAW"] : [S.parks];
+    const replanning = !!S.fromT;
+    const posted = {};
+    for (const [id, o] of Object.entries(S.posted)) if (o && o.w != null && o.w !== "") posted[id] = o;
+    const cand = RIDES.filter(r => S.pri[r.id] > 0 && parks.includes(r.park) && !(r.h && S.height && S.height < r.h) && !(replanning && S.done[r.id]));
+    const earliest = Math.min(...parks.map(p => hours[p][0] - (S.emt ? 60 : 0)));
+    let t0 = replanning ? toMin(S.fromT) : Math.max(toMin(S.arrive) || earliest, earliest);
+    let loc = { park: "ESP", x: 0, y: 0 };
+    if (replanning && S.fromLoc && BY_ID[S.fromLoc]) loc = BY_ID[S.fromLoc];
+    const lunchStart = toMin(S.lunchT), lunchDur = Number(S.lunchD) || 45;
+    const lunchOn = S.lunchOn && lunchStart != null && !(replanning && t0 >= lunchStart + lunchDur);
+    return { hours, parks, cand, t0, loc, crowd: CROWD[S.crowd] || 1, pace: Number(S.pace) || 65,
+             leave: toMin(S.leave) || 1320, lunchOn, lunchStart, lunchDur, emt: S.emt, sr: S.sr, pa: S.pa, posted };
+  }
+
+  function rideWindow(r, cfg) {
+    const [o, c] = cfg.hours[r.park];
+    return [cfg.emt && r.emt ? o - 60 : o, c, o];
+  }
+
+  function baseWait(r, t, cfg) {
+    const officialOpen = cfg.hours[r.park][0];
+    const f = t < officialOpen ? 0.18 : interp(PROF[r.kind], t);
+    return r.peak * cfg.crowd * f;
+  }
+
+  function waitAt(r, t, cfg) {
+    if (cfg.pa[r.id]) return 10;
+    let w = baseWait(r, t, cfg);
+    const o = cfg.posted[r.id];
+    if (o && t >= o.at - 30) {
+      const scaled = Number(o.w) * (w / Math.max(baseWait(r, o.at, cfg), 1));
+      const f = Math.min(1, Math.max(0, (t - o.at) / 150));
+      w = scaled * (1 - f) + w * f;
+    }
+    if (cfg.sr && r.sr) w *= 0.45;
+    return Math.max(5, Math.round(w / 5) * 5);
+  }
+
+  function walkMin(a, b, cfg) {
+    const d = (p, q) => Math.hypot(p.x - q.x, p.y - q.y) * 1.3;
+    const gate = { x: 0, y: 0 };
+    if (a.park === "ESP") return Math.max(3, Math.round(d(gate, b) / cfg.pace + 3));
+    if (a.park === b.park) return Math.max(2, Math.round(d(a, b) / cfg.pace + 1));
+    return Math.round((d(a, gate) + d(gate, b)) / cfg.pace + 9);
+  }
+
+  // ---------- Optimizer: beam search over ride orders ----------
+  function optimize(cfg) {
+    const C = cfg.cand, n = C.length;
+    const start = { t: cfg.t0, loc: cfg.loc, mask: 0n, lunch: !cfg.lunchOn, score: 0, prev: null, step: null };
+    let best = start, beam = [start], explored = 0;
+    const lunchChild = s => {
+      const st = Math.max(s.t, cfg.lunchStart);
+      return { t: st + cfg.lunchDur, loc: s.loc, mask: s.mask, lunch: true, score: s.score, prev: s,
+               step: { type: "meal", start: st, end: st + cfg.lunchDur } };
+    };
+    const expand = s => {
+      const pending = !s.lunch;
+      if (pending && s.t >= cfg.lunchStart - 10) return [lunchChild(s)];
+      const kids = [];
+      for (let k = 0; k < n; k++) {
+        const bit = 1n << BigInt(k);
+        if (s.mask & bit) continue;
+        const r = C[k];
+        const [o, c] = rideWindow(r, cfg);
+        const walk = walkMin(s.loc, r, cfg);
+        let arr = s.t + walk;
+        if (arr < o) arr = o;
+        if (arr > c) continue;
+        const w = waitAt(r, arr, cfg);
+        const end = arr + w + r.dur + 2;
+        if (end > cfg.leave) continue;
+        if (pending && end > cfg.lunchStart + 20) continue;
+        explored++;
+        kids.push({ t: end, loc: r, mask: s.mask | bit, lunch: s.lunch, score: s.score + WEIGHT[S.pri[r.id]], prev: s,
+                    step: { type: "ride", r, depart: s.t, walk, arr, wait: w, end, hop: s.loc.park !== "ESP" && s.loc.park !== r.park } });
+      }
+      if (!kids.length && pending && cfg.lunchStart + cfg.lunchDur <= cfg.leave) kids.push(lunchChild(s));
+      return kids;
+    };
+    const better = (a, b) => a.score > b.score || (a.score === b.score && a.t < b.t);
+    const B = 260;
+    for (let depth = 0; depth < n + 2 && beam.length; depth++) {
+      const seen = new Map();
+      for (const s of beam) {
+        const kids = expand(s);
+        for (const c of kids) {
+          if (better(c, best)) best = c;
+          const key = c.mask.toString(36) + "|" + (c.loc.id || "E") + "|" + (c.lunch ? 1 : 0);
+          const ex = seen.get(key);
+          if (!ex || c.t < ex.t) seen.set(key, c);
+        }
+      }
+      beam = [...seen.values()].sort((a, b) => (b.score - 0.5 * (b.t - cfg.t0)) - (a.score - 0.5 * (a.t - cfg.t0))).slice(0, B);
+    }
+    const steps = [];
+    for (let s = best; s && s.step; s = s.prev) steps.unshift(s.step);
+    return { steps, explored };
+  }
+
+  // Same rides, visited land by land in map order, for comparison
+  function mapOrder(cfg, rides) {
+    const order = [...rides].sort((a, b) => a.i - b.i);
+    let t = cfg.t0, loc = cfg.loc, lunch = !cfg.lunchOn, queue = 0, walkT = 0, count = 0;
+    for (const r of order) {
+      if (!lunch && t >= cfg.lunchStart - 10) { t = Math.max(t, cfg.lunchStart) + cfg.lunchDur; lunch = true; }
+      const [o, c] = rideWindow(r, cfg);
+      const walk = walkMin(loc, r, cfg);
+      let arr = Math.max(t + walk, o);
+      if (arr > c) continue;
+      const w = waitAt(r, arr, cfg);
+      const end = arr + w + r.dur + 2;
+      if (end > cfg.leave) continue;
+      queue += w; walkT += walk; t = end; loc = r; count++;
+    }
+    return { queue, walkT, end: t, count };
+  }
+
+  // ---------- Setup UI ----------
+  const fields = ["date","crowd","dlpO","dlpC","dawO","dawC","arrive","leave","height","pace","lunchT","lunchD","fromT"];
+  const checks = ["emt","sr","lunchOn"];
+  function bindSetup() {
+    fields.forEach(f => { const el = $(f); el.value = S[f] ?? ""; el.addEventListener("input", () => { S[f] = el.type === "number" ? Number(el.value) : el.value; update(); }); });
+    checks.forEach(f => { const el = $(f); el.checked = !!S[f]; el.addEventListener("change", () => { S[f] = el.checked; update(); }); });
+    $("parks").addEventListener("click", e => { const b = e.target.closest("button"); if (!b) return; S.parks = b.dataset.v; update(); });
+    $("fromLoc").addEventListener("change", e => { S.fromLoc = e.target.value; update(); });
+    $("nowBtn").addEventListener("click", () => { S.fromT = fmt(nowMin()); $("fromT").value = S.fromT; update(); });
+    $("resetFrom").addEventListener("click", () => { S.fromT = ""; $("fromT").value = ""; update(); });
+    $("rides").addEventListener("click", e => {
+      const b = e.target.closest(".pri button"); if (!b) return;
+      S.pri[b.closest(".ride").dataset.id] = Number(b.dataset.v); update();
+    });
+    $("rides").addEventListener("change", e => {
+      const row = e.target.closest(".ride"); if (!row) return;
+      const id = row.dataset.id;
+      if (e.target.matches(".pa-box")) { S.pa[id] = e.target.checked; update(); }
+      if (e.target.matches(".post")) {
+        const v = e.target.value;
+        if (v === "") delete S.posted[id];
+        else S.posted[id] = { w: Number(v), at: S.fromT ? toMin(S.fromT) : nowMin() };
+        update();
+      }
+    });
+    $("tl").addEventListener("change", e => {
+      if (!e.target.matches(".done-box")) return;
+      S.done[e.target.dataset.id] = e.target.checked; save(); renderPlan();
+    });
+  }
+
+  function renderRides() {
+    const parks = S.parks === "BOTH" ? ["DLP", "DAW"] : [S.parks];
+    let html = "";
+    for (const p of ["DLP", "DAW"]) {
+      const inPark = parks.includes(p);
+      html += `<div class="park-h"${inPark ? "" : ' style="opacity:.5"'}>${PARK_NAME[p]}${inPark ? "" : " · not visiting"}</div>`;
+      let land = "";
+      for (const r of RIDES.filter(r => r.park === p)) {
+        if (r.land !== land) { land = r.land; html += `<h3 class="land">${esc(land)}</h3>`; }
+        const tooShort = r.h && S.height && S.height < r.h;
+        const pri = S.pri[r.id] || 0;
+        const posted = S.posted[r.id] ? S.posted[r.id].w : "";
+        html += `<div class="ride${tooShort || !inPark ? " off" : ""}" data-id="${r.id}">
+          <div><div class="nm">${esc(r.name)}</div>
+          <div class="meta">${r.dur} min ride · peak ~${Math.round(r.peak * (CROWD[S.crowd] || 1) / 5) * 5} min${r.h ? " · " + r.h + " cm+" : ""}${r.sr ? " · Single Rider" : ""}${tooShort ? " · too short" : ""}</div></div>
+          <div></div>
+          <div class="ctl">
+            <div class="seg pri" role="group" aria-label="Priority for ${esc(r.name)}">${PRI_LABEL.map((l, v) => `<button type="button" data-v="${v}" aria-pressed="${pri === v}">${l}</button>`).join("")}</div>
+            ${r.pa ? `<label class="check"><input type="checkbox" class="pa-box" ${S.pa[r.id] ? "checked" : ""}> PA</label>` : ""}
+            <label class="posted">Posted <input type="number" class="post mono" id="post-${r.id}" min="0" max="240" step="5" value="${posted}" placeholder="–"></label>
+          </div></div>`;
+      }
+    }
+    $("rides").innerHTML = html;
+    [...$("parks").children].forEach(b => b.setAttribute("aria-pressed", String(b.dataset.v === S.parks)));
+    const sel = $("fromLoc");
+    const parksOn = RIDES.filter(r => parks.includes(r.park));
+    sel.innerHTML = `<option value="ESP">Park entrance</option>` + parksOn.map(r => `<option value="${r.id}">${esc(r.name)}</option>`).join("");
+    sel.value = BY_ID[S.fromLoc] && parks.includes(BY_ID[S.fromLoc].park) ? S.fromLoc : "ESP";
+  }
+
+  // ---------- Plan UI ----------
+  function renderPlan() {
+    const cfg = buildCfg();
+    const t0 = performance.now();
+    const { steps, explored } = optimize(cfg);
+    const ms = Math.round(performance.now() - t0);
+    const rides = steps.filter(s => s.type === "ride");
+    const queue = rides.reduce((a, s) => a + s.wait, 0);
+    const walkT = rides.reduce((a, s) => a + s.walk, 0);
+    const end = steps.length ? steps[steps.length - 1].end : cfg.t0;
+    const musts = cfg.cand.filter(r => S.pri[r.id] === 3);
+    const gotMust = rides.filter(s => S.pri[s.r.id] === 3).length;
+    const dateLabel = $("date").selectedOptions[0] ? $("date").selectedOptions[0].textContent.replace(" (today)", "") : "";
+    $("planTitle").textContent = (S.fromT ? "Updated plan from " + S.fromT : "Your plan") + " · " + dateLabel;
+    $("calcInfo").textContent = explored.toLocaleString() + " options tested · " + ms + " ms";
+
+    $("stats").innerHTML = [
+      [rides.length, "rides"],
+      [musts.length ? gotMust + "/" + musts.length : "–", "must-dos"],
+      [dur(queue), "in queues"],
+      [fmt(end), "last ride ends"]
+    ].map(([b, s]) => `<div class="stat"><b>${b}</b><span>${s}</span></div>`).join("");
+
+    // day bar
+    const span = Math.max(60, end - cfg.t0);
+    const pct = m => ((m - cfg.t0) / span * 100).toFixed(2) + "%";
+    let bar = "";
+    for (const s of steps) {
+      if (s.type === "meal") { bar += `<i class="meal" style="left:${pct(s.start)};width:${(s.end - s.start) / span * 100}%"></i>`; continue; }
+      bar += `<i class="walk" style="left:${pct(s.arr - s.walk)};width:${s.walk / span * 100}%"></i>`;
+      bar += `<i class="wait" style="left:${pct(s.arr)};width:${s.wait / span * 100}%"></i>`;
+      bar += `<i class="ride" style="left:${pct(s.arr + s.wait)};width:${(s.r.dur + 2) / span * 100}%"></i>`;
+    }
+    $("bar").innerHTML = `<div class="daybar" role="img" aria-label="Day timeline from ${fmt(cfg.t0)} to ${fmt(end)}">${bar}</div>
+      <div class="axis"><span>${fmt(cfg.t0)}</span><span>${fmt(cfg.t0 + span / 2)}</span><span>${fmt(end)}</span></div>
+      <div class="legend"><span style="--c:var(--walk)">Walking ${dur(walkT)}</span><span style="--c:var(--wait)">Queueing ${dur(queue)}</span><span style="--c:var(--ride)">Riding</span>${cfg.lunchOn ? '<span style="--c:var(--ok)">Lunch</span>' : ""}</div>`;
+
+    // warnings
+    const warns = [];
+    const missed = musts.filter(r => !rides.some(s => s.r.id === r.id));
+    if (missed.length) warns.push(`<div class="alert"><b>Doesn't fit:</b> ${missed.map(r => esc(r.name)).join(", ")}. Try Premier Access, Single Rider, arriving earlier, or dropping some Want rides.</div>`);
+    const blocked = RIDES.filter(r => S.pri[r.id] > 0 && r.h && S.height && S.height < r.h && cfg.parks.includes(r.park));
+    if (blocked.length) warns.push(`<div class="note">Left out for height (${S.height} cm): ${blocked.map(r => esc(r.name) + " " + r.h + " cm").join(", ")}.</div>`);
+    if (!S.fromT && rides.length) {
+      const first = rides[0];
+      const [o] = rideWindow(first.r, cfg);
+      warns.push(`<div class="note">Be at the ${PARK_NAME[first.r.park]} turnstiles by <b class="mono">${fmt(o - 30)}</b>. The first hour has the shortest lines of the day, so head straight to ${esc(first.r.name)}.</div>`);
+    }
+    $("warns").innerHTML = warns.join("");
+
+    // timeline
+    let html = "", lastPark = cfg.loc.park;
+    for (const s of steps) {
+      if (s.type === "meal") {
+        html += `<li class="meal"><time>${fmt(s.start)}</time><div><div class="t">Lunch break</div><div class="d">${cfg.lunchDur} min · eat near where you are; mobile ordering in the app saves time</div></div><span></span></li>`;
+        continue;
+      }
+      const r = s.r, pri = S.pri[r.id];
+      const hop = lastPark !== "ESP" && lastPark !== r.park;
+      lastPark = r.park;
+      const total = s.walk + s.wait + r.dur;
+      const tags = [];
+      if (pri === 3) tags.push('<span class="chip must">Must</span>');
+      if (S.pa[r.id]) tags.push('<span class="chip pa">Premier Access</span>');
+      else if (S.sr && r.sr) tags.push('<span class="chip">Single Rider</span>');
+      if (S.posted[r.id]) tags.push('<span class="chip">from posted wait</span>');
+      if (s.arr < cfg.hours[r.park][0]) tags.push('<span class="chip">Extra Magic Time</span>');
+      html += `<li class="${hop ? "hop" : ""}${S.done[r.id] ? " done" : ""}">
+        <time>${fmt(s.arr)}</time>
+        <div>
+          <div class="t">${esc(r.name)}</div>
+          <div class="d">${hop ? "Cross to " + PARK_NAME[r.park] + " · " : ""}${esc(r.land)} · walk ${s.walk} · queue ~${s.wait} · ride ${r.dur} · off by ${fmt(s.end)}</div>
+          <div class="bars" aria-hidden="true"><i style="width:${s.walk / total * 100}%;background:var(--walk)"></i><i style="width:${s.wait / total * 100}%;background:var(--wait)"></i><i style="width:${r.dur / total * 100}%;background:var(--ride)"></i></div>
+          ${tags.length ? `<div class="bits">${tags.join("")}</div>` : ""}
+        </div>
+        <label class="check" title="Mark as done"><input type="checkbox" class="done-box" data-id="${r.id}" ${S.done[r.id] ? "checked" : ""}><span class="hint">Done</span></label>
+      </li>`;
+    }
+    if (!steps.length) html = `<li><span></span><div class="hint">Nothing fits. Pick some rides, check the opening hours, or move your leave time later.</div><span></span></li>`;
+    $("tl").innerHTML = html;
+
+    // comparison with map order
+    if (rides.length > 2) {
+      const m = mapOrder(cfg, rides.map(s => s.r));
+      const saved = m.queue - queue;
+      let msg;
+      if (m.count < rides.length) msg = `Visiting the same rides land by land, you'd fit only <b>${m.count} of ${rides.length}</b> and spend ${dur(m.queue)} in queues.`;
+      else if (saved > 0) msg = `Visiting the same rides land by land would mean <b>${dur(saved)} more</b> in queues (${dur(m.queue)}) and finishing at ${fmt(m.end)}.`;
+      else msg = `This order beats a simple land-by-land route on total time (${fmt(end)} vs ${fmt(m.end)}).`;
+      $("compare").innerHTML = `<p class="hint" style="margin-top:14px">${msg}</p>`;
+    } else $("compare").innerHTML = "";
+  }
+
+  let timer = null;
+  function update() {
+    save();
+    renderRides();
+    clearTimeout(timer);
+    timer = setTimeout(renderPlan, 60);
+  }
+
+  bindSetup();
+  renderRides();
+  renderPlan();
+})();
+</script>
