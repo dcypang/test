@@ -1180,6 +1180,8 @@ function addRestroom(R, P, x0, x1, z0, z1, side, y = 0, home = false) {
   P.push(boxAt(0.9, 0.85, 0.5, sx, IY + y + 0.425, z0 + 0.32, 0xf4f4f0), boxAt(0.5, 0.06, 0.34, sx, IY + y + 0.87, z0 + 0.32, 0xc9d3d8), boxAt(0.75, 0.85, 0.03, sx, IY + y + 1.65, z0 + 0.09, 0xcfe0ea));
   R.obst.push({ minX: tx - 0.28, maxX: tx + 0.28, minZ: z0, maxZ: tz + 0.32, yr }, { minX: sx - 0.48, maxX: sx + 0.48, minZ: z0, maxZ: z0 + 0.6, yr });
   addSeat(R, tx, tz, y, 0.45, 0); R.seats[R.seats.length - 1].toilet = true;
+  const dp = side === 's' ? [mx, z1, 0, 1] : side === 'e' ? [x1, mz, 1, 0] : [x0, mz, -1, 0];
+  (R.wcs = R.wcs || []).push({ y, busy: null, out: { x: dp[0] + dp[2] * 0.8, z: dp[1] + dp[3] * 0.8 }, in: { x: dp[0] - dp[2] * 0.8, z: dp[1] - dp[3] * 0.8 }, sink: { x: sx, z: z0 + 1.05 } });
   R.counters.push({ x: sx, z: z0 + 0.95, y, r: 0.65, back: [0, 0.8], type: home ? 'bath_home' : 'bath', title: home ? 'Bathroom' : 'Restroom' });
   const sp = side === 's' ? [mx, IY + y + 2.35, z1 + 0.1, 0] : side === 'e' ? [x1 + 0.1, IY + y + 2.35, mz, Math.PI / 2] : [x0 - 0.1, IY + y + 2.35, mz, -Math.PI / 2];
   roomText(R, 'WC', '#1f6fb2', sp[0], sp[1], sp[2], 0.9, 0.42, sp[3]);
@@ -1207,7 +1209,7 @@ function sitDown(st) {
   if (st.bed) toast(TOUCH ? 'Tap SLEEP to choose when to wake up' : 'Press Space to sleep');
 }
 function standUp() {
-  const st = player.sit; if (!st) return; st.taken = null; player.sit = null; if (game.tvWatch) { game.tvWatch = false; if (tvState.ch === 4) radioOn(false); }
+  const st = player.sit; if (!st) return; st.taken = null; player.sit = null; if (game.eat) { game.eat = null; refreshDishes(); } if (game.tvWatch) { game.tvWatch = false; if (tvState.ch === 4) radioOn(false); }
   player.pos.set(st.out[0], IY + st.y, st.out[1]); player.h.root.rotation.set(0, player.yaw, 0, 'YXZ'); shopCD = Math.max(shopCD, 0.4);
 }
 function addVisitor(R, x, z, mode, suitcase, yaw) {
@@ -1225,9 +1227,16 @@ function updateVisitors(R, dt) {
     if (v.mode === 'walk' && spots.length) {
       if (v.wait > 0) v.wait -= dt;
       else {
-        const dx = v.tx - v.x, dz = v.tz - v.z, l = Math.hypot(dx, dz); v.walkT += dt;
-        if (l < 0.5 || v.walkT > 14) { const sp2 = mpick(spots); v.tx = sp2[0] + (Math.random() - 0.5) * 2; v.tz = sp2[1] + (Math.random() - 0.5) * 2; v.wait = 1 + Math.random() * 4; v.walkT = 0; }
-        else { v.x += dx / l * v.sp * dt; v.z += dz / l * v.sp * dt; sp = v.sp; v.yaw += angDiff(v.yaw, Math.atan2(dx, dz)) * (1 - Math.exp(-8 * dt)); const pt = { x: v.x, z: v.z }; for (const o of R.obst) if (hitsY(o, v.y || 0)) pushBox(pt, 0.3, o); v.x = pt.x; v.z = pt.z; }
+        const wp = v.route && v.route[0], gx = wp ? wp.x : v.tx, gz = wp ? wp.z : v.tz, dx = gx - v.x, dz = gz - v.z, l = Math.hypot(dx, dz); v.walkT += dt;
+        if (wp && l < 0.3) { v.route.shift(); v.walkT = 0; if (wp.wait) { v.wait = wp.wait; v.yaw = wp.face; } if (!v.route.length) { v.route = null; if (v.wc) { v.wc.busy = null; v.wc = null; } } }
+        else if ((!wp && l < 0.5) || v.walkT > 14) {
+          if (v.wc) { v.wc.busy = null; v.wc = null; } v.route = null; v.walkT = 0;
+          const wc = !wp && R.wcs && Math.random() < 0.18 && R.wcs.find((w) => !w.busy && Math.abs(w.y - (v.y || 0)) < 0.5 && Math.hypot(w.out.x - v.x, w.out.z - v.z) < 26);
+          if (wc) { wc.busy = v; v.wc = wc; v.route = [wc.out, wc.in, { x: wc.sink.x, z: wc.sink.z, wait: 4 + Math.random() * 4, face: Math.PI }, wc.in, wc.out]; }
+          else { const sp2 = mpick(spots); v.tx = sp2[0] + (Math.random() - 0.5) * 2; v.tz = sp2[1] + (Math.random() - 0.5) * 2; v.wait = 1 + Math.random() * 4; }
+        }
+        else { const sp1 = wp ? Math.min(v.sp, 0.9) : v.sp, ox = v.x, oz = v.z; v.x += dx / l * sp1 * dt; v.z += dz / l * sp1 * dt; sp = sp1; v.yaw += angDiff(v.yaw, Math.atan2(dx, dz)) * (1 - Math.exp(-8 * dt)); const pt = { x: v.x, z: v.z }; for (const o of R.obst) if (hitsY(o, v.y || 0)) pushBox(pt, 0.3, o); v.x = pt.x; v.z = pt.z;
+          if (Math.hypot(gx - v.x, gz - v.z) > l - sp1 * dt * 0.25) v.walkT += dt * 5; }
       }
     }
     if (R.queue && (v.mode === 'queue' || v.mode === 'toDesk' || v.mode === 'served')) {
@@ -1470,7 +1479,7 @@ function buildHome(R) {
     ramps: [{ x0: SX0, x1: SX1, zTop: SZT, zBot: SZB }] });
   const ob = (x0, x1, z0, z1, y0, y1, wall) => { const o = { minX: x0, maxX: x1, minZ: z0, maxZ: z1, yr: [y0, y1] }; R.obst.push(o); if (wall) R.walls.push(o); };
   const seat = (x, z, y, top, yaw, out) => { addSeat(R, x, z, y, top, yaw); const st = R.seats[R.seats.length - 1]; if (out) st.out = out; return st; };
-  const chair = (x, z, y, yaw, hex) => { const sn = Math.sin(yaw), cs = Math.cos(yaw), wide = Math.abs(cs) > 0.5; P.push(boxAt(0.46, 0.06, 0.46, x, IY + y + 0.47, z, hex), boxAt(0.36, 0.44, 0.36, x, IY + y + 0.22, z, 0x5b3b22), boxAt(wide ? 0.46 : 0.06, 0.55, wide ? 0.06 : 0.46, x - sn * 0.22, IY + y + 0.77, z - cs * 0.22, hex)); ob(x - 0.24, x + 0.24, z - 0.24, z + 0.24, y, y + 1); seat(x, z, y, 0.5, yaw, [x - sn * 0.75, z - cs * 0.75]); };
+  const chair = (x, z, y, yaw, hex) => { const sn = Math.sin(yaw), cs = Math.cos(yaw), wide = Math.abs(cs) > 0.5; P.push(boxAt(0.46, 0.06, 0.46, x, IY + y + 0.47, z, hex), boxAt(0.36, 0.44, 0.36, x, IY + y + 0.22, z, 0x5b3b22), boxAt(wide ? 0.46 : 0.06, 0.55, wide ? 0.06 : 0.46, x - sn * 0.22, IY + y + 0.77, z - cs * 0.22, hex)); ob(x - 0.24, x + 0.24, z - 0.24, z + 0.24, y, y + 1); return seat(x, z, y, 0.5, yaw, [x - sn * 0.75, z - cs * 0.75]); };
   const armchair = (x, z, y, yaw, hex) => { const sn = Math.sin(yaw), cs = Math.cos(yaw), wide = Math.abs(cs) > 0.5; P.push(boxAt(0.9, 0.45, 0.9, x, IY + y + 0.225, z, hex), boxAt(wide ? 0.9 : 0.2, 0.62, wide ? 0.2 : 0.9, x - sn * 0.36, IY + y + 0.75, z - cs * 0.36, hex));
     for (const k of [-1, 1]) P.push(boxAt(wide ? 0.16 : 0.9, 0.25, wide ? 0.9 : 0.16, x + (wide ? k * 0.42 : 0), IY + y + 0.55, z + (wide ? 0 : k * 0.42), hex));
     ob(x - 0.45, x + 0.45, z - 0.45, z + 0.45, y, y + 1.2); seat(x, z, y, 0.5, yaw); };
@@ -1509,8 +1518,11 @@ function buildHome(R) {
   P.push(boxAt(6, 1.1, 0.35, X0 + 3, IY + 0.55, cz - 1.4, 0xd9cbb5)); ob(X0, cx - 5, cz - 1.6, cz - 1.2, 0, 1.2); plant(X0 + 1, cz - 1.4, 1.1); plant(cx - 5.6, cz - 1.4, 1.1);
   // dining room: a table for six
   P.push(boxAt(3.0, 0.08, 1.4, cx - 6.5, IY + 0.76, cz + 3.4, WOOD), boxAt(2.6, 0.72, 1.0, cx - 6.5, IY + 0.36, cz + 3.4, 0x6e4a2d)); ob(cx - 8, cx - 5, cz + 2.7, cz + 4.1, 0, 1.2);
-  for (const x of [cx - 7.4, cx - 5.6]) { chair(x, cz + 2.25, 0, 0, 0xc8372d); chair(x, cz + 4.55, 0, Math.PI, 0xc8372d); P.push(boxAt(0.32, 0.02, 0.32, x, IY + 0.81, cz + 2.95, 0xffffff), boxAt(0.32, 0.02, 0.32, x, IY + 0.81, cz + 3.85, 0xffffff)); }
-  chair(cx - 8.55, cz + 3.4, 0, Math.PI / 2, 0xc8372d); chair(cx - 4.45, cz + 3.4, 0, -Math.PI / 2, 0xc8372d);
+  const dine = (st) => { st.dine = true; st.place = [st.x + Math.sin(st.yaw) * 0.72, st.z + Math.cos(st.yaw) * 0.72]; return st.place; };
+  R.dishPlaces = [];
+  for (const x of [cx - 7.4, cx - 5.6]) { R.dishPlaces.push(dine(chair(x, cz + 2.25, 0, 0, 0xc8372d)), dine(chair(x, cz + 4.55, 0, Math.PI, 0xc8372d))); P.push(boxAt(0.04, 0.01, 0.2, x + 0.24, IY + 0.805, cz + 2.95, 0x9aa0a8), boxAt(0.04, 0.01, 0.2, x - 0.24, IY + 0.805, cz + 3.85, 0x9aa0a8)); }
+  dine(chair(cx - 8.55, cz + 3.4, 0, Math.PI / 2, 0xc8372d)); dine(chair(cx - 4.45, cz + 3.4, 0, -Math.PI / 2, 0xc8372d));
+  P.push(colorize(new THREE.CylinderGeometry(0.17, 0.14, 0.07, 16).translate(cx - 6.22, IY + 1.075, Z0 + 0.28), 0x2b2b30), boxAt(0.3, 0.025, 0.04, cx - 6.53, IY + 1.09, Z0 + 0.28, 0x111111));
   P.push(boxAt(0.5, 0.25, 0.5, cx - 6.5, IY + 0.92, cz + 3.4, 0x8ac926));
   win(X0 + 0.03, 1.6, cz + 3.4, Math.PI / 2, 2.4); win(X0 + 0.03, 1.7, cz - 4.4, Math.PI / 2, 2);
   // guest bathroom, then the living room facing a TV on its wall
@@ -2202,7 +2214,7 @@ function removeOfficer(o) { scene.remove(o.h.root); const i = officers.indexOf(o
 
 // ---------------------------------------------------------------- player
 const player = { sit: null, autoTo: null, pos: new THREE.Vector3(-494.6, 0, 16.5), vel: new THREE.Vector3(), yaw: -Math.PI / 2, onGround: true, car: null, h: null, knock: 0, health: 100, hurtT: 0, alive: true, lie: 0 };
-const game = { pantry: {}, fedT: 0, tvWatch: false, visited: [], lastDest: null, ticketGate: null, ticket: null, owned: ['coral'], counter: null, ride: null, inside: null, state: 'boot', cash: 500, shownCash: 500, wanted: 0, heat: 0, evadeT: 0, crimeT: 0, bustT: 0, tod: 17.62, job: null, quality: 'ultra', radio: true, sound: true, time: 0, downT: 0, seenDistrict: '', saveT: 0 };
+const game = { pantry: {}, dishes: [], eat: null, fedT: 0, tvWatch: false, visited: [], lastDest: null, ticketGate: null, ticket: null, owned: ['coral'], counter: null, ride: null, inside: null, state: 'boot', cash: 500, shownCash: 500, wanted: 0, heat: 0, evadeT: 0, crimeT: 0, bustT: 0, tod: 17.62, job: null, quality: 'ultra', radio: true, sound: true, time: 0, downT: 0, seenDistrict: '', saveT: 0 };
 const STAR_AT = [1, 4, 9, 16, 26];
 function focusPos() { return game.ride ? flight.m.position : player.car ? player.car.pos : game.inside ? game.inside.out : player.pos; }
 function focusY() { return game.wheel ? surfaceH(ferris.x, ferris.z + 6) : game.ride ? flight.y : player.car ? player.car.y : game.inside ? CURB : player.pos.y; }
@@ -2270,6 +2282,11 @@ function updatePlayerInside(dt, ax, ay, sprint) {
     if (st.bed) { p.h.root.position.set(st.x, IY + st.y + st.top + 0.12, st.z); p.h.root.rotation.set(-Math.PI / 2, st.yaw, 0, 'YXZ'); }
     else { p.h.root.position.set(st.x, IY + st.y, st.z); p.h.root.rotation.set(0, st.yaw, 0, 'YXZ'); }
     poseSit(p.h, st.top, st.bed); heal(dt * 3); shopCD -= dt;
+    if (st.dine && game.dishes.length) {
+      if (!game.eat) { game.eat = { t: 0, place: st.place }; refreshDishes(); }
+      const e = game.eat; e.t += dt; const k = 0.5 + 0.5 * Math.sin(e.t * 5); p.h.armR.rotation.x = -0.5 - 0.7 * k; p.h.elbowR.rotation.x = -1.2 - 0.5 * k;
+      if (e.t > 5) { const r = RECIPES.find((x) => x.name === game.dishes[0]); game.dishes.shift(); store.set('dishes', game.dishes); game.eat = null; refreshDishes(); if (r) { heal(r.heal); game.fedT = Math.max(game.fedT || 0, r.fed); toast(`${r.name} · delicious! +${r.heal} health · well fed for ${Math.round(r.fed / 60)} min`); sfxChime(); } }
+    }
     if (st.toilet) { st.useT = (st.useT || 0) + dt; if (st.useT > 3) { st.useT = 0; heal(8); standUp(); toast('All done · hands washed'); return; } }
     if (Rm.followLight) interiorLight.position.set(p.pos.x, p.pos.y + (Rm.lightH || 3.8), p.pos.z);
     for (const c of Rm.clerks) if (!c.mannequin) poseHuman(c, dt, 0, false, game.time);
@@ -2352,11 +2369,25 @@ const INGR = {
   egg: { name: 'Eggs', price: 4, color: 0xf6e7c8 }, plantain: { name: 'Plantains', price: 3, color: 0xffd60a }, bean: { name: 'Black beans', price: 2, color: 0x2b2b30 },
 };
 const RECIPES = [
-  { name: 'Fish tacos', needs: ['fish', 'tortilla', 'lime'], heal: 60, fed: 240 }, { name: 'Arroz con pollo', needs: ['rice', 'chicken', 'pepper'], heal: 100, fed: 360 },
-  { name: 'Mango smoothie', needs: ['mango', 'milk'], heal: 30, fed: 120 }, { name: 'Pancakes', needs: ['flour', 'egg', 'milk'], heal: 45, fed: 180 },
-  { name: 'Fried plantains', needs: ['plantain'], heal: 20, fed: 60 }, { name: 'Rice and black beans', needs: ['rice', 'bean'], heal: 40, fed: 200 },
+  { name: 'Fish tacos', needs: ['fish', 'tortilla', 'lime'], heal: 60, fed: 240, look: ['tacos', 0xf2d59b, 0xf2d3c2, 0x8ac926] }, { name: 'Arroz con pollo', needs: ['rice', 'chicken', 'pepper'], heal: 100, fed: 360, look: ['mound', 0xf2c14e, 0xd62828, 0xc68642] },
+  { name: 'Mango smoothie', needs: ['mango', 'milk'], heal: 30, fed: 120, look: ['glass', 0xffb703, 0xff7b00] }, { name: 'Pancakes', needs: ['flour', 'egg', 'milk'], heal: 45, fed: 180, look: ['stack', 0xd9a55b, 0xfff3c4] },
+  { name: 'Fried plantains', needs: ['plantain'], heal: 20, fed: 60, look: ['slices', 0xd4a017, 0x8b5a2b] }, { name: 'Rice and black beans', needs: ['rice', 'bean'], heal: 40, fed: 200, look: ['mound', 0xf4efe4, 0x2b2b30, 0x2b2b30] },
 ];
-function cook(r) { for (const k of r.needs) game.pantry[k]--; store.set('pantry', game.pantry); fadeFlash(`Cooking ${r.name.toLowerCase()}…`, 1.3); heal(r.heal); game.fedT = Math.max(game.fedT || 0, r.fed); return `${r.name} · delicious! +${r.heal} health · well fed for ${Math.round(r.fed / 60)} min`; }
+function cook(r) { for (const k of r.needs) game.pantry[k]--; store.set('pantry', game.pantry); fadeFlash(`Cooking ${r.name.toLowerCase()}…`, 1.3); game.dishes.push(r.name); store.set('dishes', game.dishes); refreshDishes(); return `${r.name} is ready · sit at the dining table to eat`; }
+function dishGeo(r) {
+  const [kind, c0, c1, c2] = r.look, G = [colorize(new THREE.CylinderGeometry(0.17, 0.14, 0.02, 18).translate(0, 0.01, 0), 0xffffff)], bit = (w, h, d, x, y, z, c) => G.push(boxAt(w, h, d, x, y, z, c));
+  if (kind === 'mound') { G.push(colorize(new THREE.SphereGeometry(0.11, 12, 6, 0, Math.PI * 2, 0, Math.PI / 2).scale(1, 0.6, 1).translate(0, 0.02, 0), c0)); for (let i = 0; i < 7; i++) { const a = i * 2.4, rr = 0.03 + (i % 3) * 0.025; bit(0.03, 0.025, 0.03, Math.cos(a) * rr, 0.075 - rr * 0.35, Math.sin(a) * rr, i % 2 ? c1 : c2); } }
+  else if (kind === 'stack') { for (let i = 0; i < 3; i++) G.push(colorize(new THREE.CylinderGeometry(0.11, 0.11, 0.024, 16).translate(0, 0.034 + i * 0.026, 0), c0)); bit(0.045, 0.02, 0.045, 0, 0.1, 0, c1); }
+  else if (kind === 'glass') { G.push(colorize(new THREE.CylinderGeometry(0.05, 0.042, 0.17, 12).translate(0, 0.105, 0), c0)); bit(0.012, 0.12, 0.012, 0.02, 0.2, 0, c1); }
+  else if (kind === 'tacos') { for (const zz of [-0.05, 0.05]) { bit(0.2, 0.04, 0.07, 0, 0.04, zz, c0); bit(0.17, 0.03, 0.04, 0, 0.065, zz, c1); } bit(0.05, 0.03, 0.05, 0.11, 0.035, 0.11, c2); }
+  else for (let i = 0; i < 6; i++) G.push(colorize(new THREE.CylinderGeometry(0.035, 0.035, 0.016, 10).translate(Math.cos(i) * 0.08, 0.03, Math.sin(i) * 0.08), i % 2 ? c0 : c1));
+  return mergeAll(G);
+}
+function refreshDishes() {
+  const R = ROOMS.home; if (!R || !R.dishPlaces) return;
+  for (const m of R.dishMeshes || []) { R.group.remove(m); m.geometry.dispose(); } R.dishMeshes = [];
+  game.dishes.forEach((nm, i) => { const r = RECIPES.find((x) => x.name === nm); if (!r) return; const pl = (i === 0 && game.eat && game.eat.place) || R.dishPlaces[i % R.dishPlaces.length]; const m = new THREE.Mesh(dishGeo(r), vcolMat); m.position.set(pl[0], IY + 0.8, pl[1]); m.castShadow = true; R.group.add(m); R.dishMeshes.push(m); });
+}
 function heal(n) { player.health = Math.min(100, player.health + n); }
 const SHOP_ITEMS = {
   mart: [
@@ -2389,7 +2420,7 @@ const SHOP_ITEMS = {
     { name: 'Glass of cold water', desc: 'Restores 15 health.', price: 0, buy: () => { heal(15); return '+15 health'; } },
     ...Object.keys(INGR).filter((k) => game.pantry[k] > 0).map((k) => ({ name: `${INGR[k].name} × ${game.pantry[k]}`, desc: 'In your fridge · cook with it at the stove', price: 0, sw: INGR[k].color, disabled: true, buy: () => null })),
   ],
-  kitchen: () => RECIPES.map((r) => { const miss = r.needs.filter((k) => !(game.pantry[k] > 0)); return { name: r.name, desc: (miss.length ? 'Missing: ' + miss.map((k) => INGR[k].name).join(', ') : 'Ready to cook') + ` · +${r.heal} health`, price: 0, disabled: miss.length > 0, buy: () => cook(r) }; }),
+  kitchen: () => RECIPES.map((r) => { const miss = r.needs.filter((k) => !(game.pantry[k] > 0)), full = game.dishes.length >= 4; return { name: r.name, desc: (full ? 'The table is full · eat something first' : miss.length ? 'Missing: ' + miss.map((k) => INGR[k].name).join(', ') : 'Ready to cook') + ` · +${r.heal} health`, price: 0, sw: r.look[1], disabled: miss.length > 0 || full, buy: () => cook(r) }; }),
   grocery: () => Object.keys(INGR).map((k) => ({ name: INGR[k].name, desc: `In your fridge: ${game.pantry[k] || 0}`, price: INGR[k].price, sw: INGR[k].color, buy: () => { game.pantry[k] = (game.pantry[k] || 0) + 1; store.set('pantry', game.pantry); return `${INGR[k].name} bagged · cook it at home`; } })),
   bath: [
     { name: 'Wash your hands', desc: 'Soap, water, paper towel.', price: 0, buy: () => { heal(3); return 'Squeaky clean'; } },
@@ -3022,7 +3053,7 @@ function updateHUD(dt) {
   const fw = !c && nearFerris(), near = !c && !fw && !game.inside && !game.ride && !game.wheel && nearestEnterable(3.8);
   const seat = game.inside ? game.nearSeat : null;
   ui.bCar.textContent = game.wheel ? 'GET OFF' : fw ? 'RIDE' : game.ride ? 'LAND' : c ? 'GET OUT' : player.sit ? (player.sit.bed ? 'GET UP' : 'STAND') : seat ? (seat.bed ? 'LIE DOWN' : seat.toilet ? 'USE' : 'SIT') : 'GET IN'; ui.bCar.classList.toggle('ready', !!near || fw || (!!seat && !player.sit));
-  ui.bAction.textContent = c ? 'DRIFT' : player.sit && player.sit.bed ? 'SLEEP' : player.sit && player.sit.tv ? (game.tvWatch ? 'CHANNEL' : 'TV') : 'JUMP'; ui.bHorn.hidden = !c; ui.bRadio.hidden = !c;
+  ui.bAction.textContent = c ? 'DRIFT' : player.sit && player.sit.bed ? 'SLEEP' : player.sit && player.sit.tv ? (game.tvWatch ? 'CHANNEL' : 'TV') : 'JUMP'; ui.bHorn.hidden = !c; ui.bRadio.hidden = !c; ui.bAction.style.visibility = game.wheel || game.ride ? 'hidden' : '';
   let hint = '';
   if (near && !TOUCH) hint = near.driver === 'ai' ? 'Press F to carjack' : near.isCop && near.driver ? 'Press F to steal the cruiser' : 'Press F to get in';
   else if (near && TOUCH) hint = near.driver === 'ai' ? 'Tap GET IN to carjack' : 'Tap GET IN to drive';
@@ -3032,6 +3063,7 @@ function updateHUD(dt) {
     const Q = game.inside.room.queue, qi = Q ? Q.line.indexOf('player') : -1;
     if (player.sit && player.sit.tv) hint = game.tvWatch ? `Ch ${tvState.ch + 1} · ${TV_CH[tvState.ch]} · ${TOUCH ? 'tap CHANNEL to switch' : 'Space: next channel'}` : (TOUCH ? 'Tap TV to watch · STAND to get up' : 'Space: watch TV · F: stand');
     else if (player.sit && player.sit.toilet) hint = 'Using the restroom…';
+    else if (player.sit && player.sit.dine) hint = game.eat ? `Eating ${game.dishes[0].toLowerCase()}…` : 'Nothing on the table · cook something in the kitchen';
     else if (player.sit) hint = player.sit.bed ? (TOUCH ? 'Tap SLEEP to pick a wake-up time · GET UP to stand' : 'Space: sleep · F: get up') : (TOUCH ? 'Resting · move or tap STAND to get up' : 'Resting · press F or move to stand');
     else if (qi >= 0) hint = qi === 0 ? 'You are next · waiting for a free desk' : `In line for check-in · ${qi} ahead of you`;
     else if (player.autoTo) hint = 'A desk is free · walking up';
@@ -3311,7 +3343,7 @@ function start(data) {
     game.sound = store.get('sound', true); game.radio = store.get('radio', true); setSound(game.sound);
     player.pos.set(-494.6, 0, 16.5); player.yaw = -Math.PI / 2;
     starterCar = new Vehicle('sports', 0xff3f8e); starterCar.place(-492.4, 18.8, 0);
-    game.owned = store.get('owned', ['coral']); game.visited = store.get('visited', []); game.pantry = store.get('pantry', {});
+    game.owned = store.get('owned', ['coral']); game.visited = store.get('visited', []); game.pantry = store.get('pantry', {}); game.dishes = store.get('dishes', []); refreshDishes();
     setupMarkers(); setupCash(); spawnTraffic(); spawnPeds(); spawnLotCars();
     for (let i = 0; i < HWY_N; i++) { const c = new Vehicle(mpick(TRAFFIC_TYPES), mpick(PAINTS)); if (!placeHwy(c, false)) c.dispose(); }
     applyQuality(data.quality || store.get('quality', 'ultra'));
