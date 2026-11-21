@@ -2,7 +2,7 @@
 
 An original open-world crime/driving sandbox that runs in the browser with three.js (WebGL2), tuned for iPhone (17 Pro class) with touch controls.
 
-Sunset coastal city: 144 city blocks with two skyline clusters, a wide west-facing beach, a 14 m elevated freeway looping the whole city on pillars (with ramps down to the port and the airport), Solano International airport (runway, terminal, jet bridges, an airliner that takes off, circles the city and lands), the Port of Solano (container yard, gantry cranes, moored cargo ships, piers, boats, lighthouse), 14 walk-in shops, a home (villa with pool, bed to sleep through the night, closet, kitchen), parking lots with cars to take, five island destinations reachable by plane from their own gates (San Marco B1, Port Coral B3, Santa Luz B4, Isla Verde B5, Bayside B6), each with an airstrip that flies home or on to the next island, plus a 'Surprise me' ticket, a two-floor airport (ground: check-in and security; escalators up to a mezzanine café and a 90 m glass concourse with moving walkways and gates B1–B6) where you buy boarding passes and fly, traffic on the streets and the freeway, pedestrians, police pursuits with on-ramp chasing, delivery jobs, cash pickups and stunt ramps.
+Sunset coastal city: 144 city blocks with two skyline clusters, a wide west-facing beach, a 14 m elevated freeway looping the whole city on pillars (with ramps down to the port and the airport), Solano International airport (runway, terminal, jet bridges, an airliner that takes off, circles the city and lands), the Port of Solano (container yard, gantry cranes, moored cargo ships, piers, boats, lighthouse), walk-in shops (24/7 Mart, Threads, and Mercado Fresco grocery stores across the city and on every island), restrooms in every shop and on both airport floors, a two-floor home (villa with pool: kitchen with a stove and fridge, dining room, living room with a TV and a guest bathroom downstairs; stairs up to the bedroom, a bathroom with a shower and a lounge), cooking (buy ingredients at the grocery, cook six recipes at home for health and a 'well fed' boost), a rideable Ferris wheel at Bayside, parking lots with cars to take, five island destinations reachable by plane from their own gates (San Marco B1, Port Coral B3, Santa Luz B4, Isla Verde B5, Bayside B6), each with an airstrip that flies home or on to the next island, plus a 'Surprise me' ticket, a two-floor airport (ground: check-in and security; escalators up to a mezzanine café and a 90 m glass concourse with moving walkways and gates B1–B6) where you buy boarding passes and fly, traffic on the streets and the freeway, pedestrians, police pursuits with on-ramp chasing, delivery jobs, cash pickups and stunt ramps.
 
 ## Play
 
@@ -24,6 +24,10 @@ Open `index.html` in Safari (or any modern browser). Landscape works best on a p
 | Sleep (while lying down) | SLEEP | Space |
 | Watch TV (sit on your sofa) / change channel | TV / CHANNEL | Space |
 | Check in: stop at the back of the line, it moves up as people are served | walk up | walk up |
+| Buy groceries: walk up to a Mercado Fresco checkout, produce stand or bakery | walk up | walk up |
+| Cook: walk up to your stove at home, pick a recipe you have the ingredients for | walk up | walk up |
+| Use a toilet / take a shower | USE / walk up to the shower or sink | F / walk up |
+| Ride the Ferris wheel at Bayside ($10, one full turn, look around while you ride) | RIDE, GET OFF | F |
 | Pause (quality, time of day, sound) | II button | Esc |
 
 ## Graphics
