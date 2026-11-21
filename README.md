@@ -17,7 +17,8 @@ Open `index.html` in Safari (or any modern browser). Landscape works best on a p
 | Sprint | Push stick to the edge | Shift |
 | Horn, radio | HORN, RADIO | H, R |
 | Full map (pan, zoom, tap to set a waypoint) | Tap the minimap | M |
-| Enter a shop | Walk through a lit doorway | same |
+| Enter a shop or the airport terminal | Walk through a lit doorway | same |
+| Scenic flight (buy at the terminal ticket desk) | LAND skips ahead | F skips ahead |
 | Pause (quality, time of day, sound) | II button | Esc |
 
 ## Graphics

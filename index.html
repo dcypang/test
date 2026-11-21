@@ -233,7 +233,7 @@ button:focus-visible{outline:3px solid var(--lagoon);outline-offset:3px}
       <div><div class="bm-title">Solano</div><div class="bm-hint">Drag to pan · pinch to zoom · tap to drop a waypoint</div></div>
       <div class="bm-actions"><button class="ghost" id="bmClear" hidden>Clear waypoint</button><button class="bm-btn" id="bmIn" aria-label="Zoom in">+</button><button class="bm-btn" id="bmOut" aria-label="Zoom out">−</button><button class="bm-btn" id="bmClose" aria-label="Close map">✕</button></div>
     </div>
-    <div class="bm-legend"><span><i style="background:#fff3e8"></i>You</span><span><i style="background:#ff3f8e"></i>Jobs</span><span><i class="sq" style="background:#2be0cf"></i>24/7 Mart</span><span><i class="sq" style="background:#ff7aa8"></i>Threads</span><span><i style="background:#86ffb0"></i>Cash</span><span><i style="background:#b18cff"></i>Waypoint</span><span><i style="background:#ff3050"></i>Police</span></div>
+    <div class="bm-legend"><span><i style="background:#fff3e8"></i>You</span><span><i style="background:#ff3f8e"></i>Jobs</span><span><i class="sq" style="background:#2be0cf"></i>24/7 Mart</span><span><i class="sq" style="background:#ff7aa8"></i>Threads</span><span><i class="sq" style="background:#9ad8f2"></i>Airport terminal</span><span><i style="background:#86ffb0"></i>Cash</span><span><i style="background:#b18cff"></i>Waypoint</span><span><i style="background:#ff3050"></i>Police</span></div>
   </div>
 
   <div id="shop" class="overlay" hidden>
@@ -787,7 +787,7 @@ function buildWorld() {
 
   // ---- street lights along every segment
   const poles = [], lamps = [], pools = [];
-  const addLamp = (x, z, yaw) => {
+  const addLamp = (x, z, yaw) => { if (z > HALF && Math.abs(x - 60) < 12) return;
     poles.push({ x, z, yaw }); addPost(x, z, 0.22);
     const c = Math.cos(yaw), s = Math.sin(yaw);
     lamps.push({ x: x + c * 2.1, z: z - s * 2.1, yaw }); pools.push({ x: x + c * 2.8, z: z - s * 2.8 });
@@ -804,7 +804,7 @@ function buildWorld() {
 
   // ---- palms
   const palms = [];
-  const addPalm = (x, z, collide = true) => { palms.push({ x, z, h: rr(7, 12.5), yaw: rr(0, Math.PI * 2), fy: rr(0, Math.PI * 2), fs: rr(0.85, 1.15) }); if (collide) addPost(x, z, 0.36); };
+  const addPalm = (x, z, collide = true) => { if (z > HALF && Math.abs(x - 60) < 12) return; palms.push({ x, z, h: rr(7, 12.5), yaw: rr(0, Math.PI * 2), fy: rr(0, Math.PI * 2), fs: rr(0.85, 1.15) }); if (collide) addPost(x, z, 0.36); };
   const PROM = LAND - 4;
   for (let z = -LAND + 13; z <= LAND - 8; z += 15) addPalm(-PROM + rr(-0.6, 0.6), z + rr(-2, 2));
   for (let z = -LAND + 14; z <= LAND - 14; z += 22) addPalm(PROM, z + rr(-2, 2));
@@ -903,8 +903,9 @@ function extraZones(addB, roofBoxes, blink) {
   for (const x of [20, 380]) flat(24, 100, asph, x, 0.035, 990);
   const at = tileTex.clone(); at.repeat.set(90, 11); at.needsUpdate = true;
   flat(AP.x1 - AP.x0, AP.z1 - AP.z0, new THREE.MeshStandardMaterial({ map: at, color: 0xd6d3cb, roughness: 0.85 }), (AP.x0 + AP.x1) / 2, 0.03, (AP.z0 + AP.z1) / 2);
-  roadStrip(380, 60, 678, false);
-  mapPaint.push({ x0: RX0, x1: RX1, z0: RZ - 25, z1: RZ + 25, c: '#3b3c44' }, { x0: -200, x1: 720, z0: 1028, z1: 1052, c: '#4a4b52' }, { x0: AP.x0, x1: AP.x1, z0: AP.z0, z1: AP.z1, c: '#8d8a94' }, { x0: 52, x1: 68, z0: 488, z1: 868, c: '#8b879c' });
+  roadStrip(380, 60, 678, false); roadStrip(338, -101, 784, true);
+  shopsData.push({ dx: 10, dz: 800, nx: 0, nz: -1, type: 'terminal' });
+  mapPaint.push({ x0: RX0, x1: RX1, z0: RZ - 25, z1: RZ + 25, c: '#3b3c44' }, { x0: -200, x1: 720, z0: 1028, z1: 1052, c: '#4a4b52' }, { x0: AP.x0, x1: AP.x1, z0: AP.z0, z1: AP.z1, c: '#8d8a94' }, { x0: 52, x1: 68, z0: 488, z1: 868, c: '#8b879c' }, { x0: -270, x1: 68, z0: 776, z1: 792, c: '#8b879c' });
   addB(-135, 825, 330, 50, 17.2, 0, 0x3f6f6a, 0); addBox(-300, 30, 800, 850, 17.2);
   const props = [boxAt(340, 0.6, 64, -135, 17.6, 825, 0xe8e6e0)];
   const gates = [-250, -160, -70];
@@ -922,8 +923,9 @@ function extraZones(addB, roofBoxes, blink) {
 const signs = [];
 // ---------------------------------------------------------------- shops: storefronts + walk-in interiors (built far below the map)
 const shopsData = [], IY = -400;
-const SHOP_LOOK = { mart: { name: '24/7 MART', hex: 0x2a9d8f }, threads: { name: 'THREADS', hex: 0xff3f8e } };
-const ROOMS = { mart: { name: '24/7 Mart', cx: 0, cz: 0, w: 18, d: 14, H: 5.2 }, threads: { name: 'Threads', cx: 80, cz: 0, w: 16, d: 14, H: 5.2 } };
+const SHOP_LOOK = { mart: { name: '24/7 MART', hex: 0x2a9d8f }, threads: { name: 'THREADS', hex: 0xff3f8e }, terminal: { name: 'DEPARTURES', hex: 0x18b3a6 } };
+const SHOP_COL = { mart: '#2be0cf', threads: '#ff7aa8', terminal: '#9ad8f2' };
+const ROOMS = { mart: { name: '24/7 Mart', cx: 0, cz: 0, w: 18, d: 14, H: 5.2 }, threads: { name: 'Threads', cx: 80, cz: 0, w: 16, d: 14, H: 5.2 }, terminal: { name: 'Solano International', cx: 200, cz: 0, w: 40, d: 24, H: 9 } };
 const interiorLight = new THREE.PointLight(0xfff0dc, 0, 34, 1.3); scene.add(interiorLight);
 const roomLightMat = new THREE.MeshBasicMaterial({ color: new THREE.Color(2.2, 2.15, 2.0) });
 const fridgeMat = new THREE.MeshBasicMaterial({ color: new THREE.Color(0.9, 1.3, 1.5) });
@@ -938,7 +940,7 @@ function buildShops() {
     const ring = new THREE.Mesh(new THREE.CylinderGeometry(0.85, 0.85, 0.7, 24, 1, true), new THREE.MeshBasicMaterial({ color: new THREE.Color(0.6, 2.4, 2.2), map: beamTex, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, side: THREE.DoubleSide }));
     ring.position.set(0, CURB + 0.35, 1.3); g.add(ring); scene.add(g);
   }
-  buildMart(ROOMS.mart); buildThreads(ROOMS.threads);
+  buildMart(ROOMS.mart); buildThreads(ROOMS.threads); buildTerminal(ROOMS.terminal);
 }
 function buildRoom(R, floorTex, wallHex) {
   const { cx, cz, w, d, H } = R; R.group = new THREE.Group(); R.group.visible = false; scene.add(R.group); R.obst = []; R.clerks = [];
@@ -970,6 +972,29 @@ function buildMart(R) {
   R.counter = { x: cx + 4.7, z: cz + 2.4 };
   addClerk(R, cx + 7.2, cz + 2.4, -Math.PI / 2, { skin: 0x8d5a3b, shirt: 0x2a9d8f, pants: 0x222222, shoes: 0x111111, hair: 0x111111, shades: false, shorts: false });
   finishRoom(R, 'OPEN 24 HOURS', '#ff3f8e');
+}
+const windowMat = new THREE.MeshBasicMaterial({ color: new THREE.Color(1.2, 1.6, 2.0) });
+function boardTex() {
+  return canvasTex(1024, 384, (g, w) => {
+    g.fillStyle = '#0b1220'; g.fillRect(0, 0, w, 384); g.fillStyle = '#ffb000'; g.font = 'bold 44px sans-serif'; g.textBaseline = 'middle'; g.fillText('DEPARTURES', 28, 42);
+    g.font = 'bold 30px monospace';
+    const rows = [['18:05', 'ISLA VERDE', 'SA 214', 'B2', 'BOARDING'], ['18:20', 'PORT CORAL', 'SA 330', 'B4', 'ON TIME'], ['18:45', 'SAN MARCO', 'SA 102', 'A1', 'ON TIME'], ['19:10', 'BAYSIDE', 'SA 518', 'B6', 'DELAYED'], ['19:35', 'SANTA LUZ', 'SA 77', 'A3', 'ON TIME'], ['20:00', 'SOLANO LOOP', 'SA 1', 'B2', 'SCENIC']];
+    rows.forEach((r, i) => { const y = 104 + i * 46; if (i % 2) { g.fillStyle = 'rgba(255,255,255,.06)'; g.fillRect(16, y - 22, w - 32, 44); } g.fillStyle = '#ffb000'; g.fillText(r[0], 28, y); g.fillText(r[1], 160, y); g.fillText(r[2], 540, y); g.fillText(r[3], 700, y); g.fillStyle = r[4] === 'DELAYED' ? '#ff6b4a' : r[4] === 'BOARDING' ? '#7dff9a' : '#ffb000'; g.fillText(r[4], 790, y); });
+  });
+}
+function buildTerminal(R) {
+  buildRoom(R, tileTex, 0xe6ebef); const { cx, cz, w, d } = R, P = R.parts;
+  R.group.add(new THREE.Mesh(mergeAll([boxAt(0.05, 4, d - 4, cx - w / 2 + 0.03, IY + 4.2, cz), boxAt(0.05, 4, d - 4, cx + w / 2 - 0.03, IY + 4.2, cz)]), windowMat));
+  for (let i = 0; i < 6; i++) { const x = cx - 15 + i * 6; P.push(boxAt(4, 1.1, 1.2, x, IY + 0.55, cz - 5, 0x18b3a6), boxAt(4.2, 0.08, 1.4, x, IY + 1.14, cz - 5, 0xf4f4f0), boxAt(0.6, 0.45, 0.5, x + 1.2, IY + 1.4, cz - 5, 0x222831)); }
+  P.push(boxAt(36, 0.6, 1.6, cx, IY + 0.3, cz - 7.2, 0x2a2f38)); R.obst.push({ minX: cx - 18, maxX: cx + 18, minZ: cz - d / 2, maxZ: cz - 4.3 });
+  for (const z of [cz + 2, cz + 5]) for (const x of [cx - 9, cx + 9]) {
+    P.push(boxAt(10, 0.45, 0.6, x, IY + 0.45, z, 0x1f6fb2), boxAt(10, 0.6, 0.12, x, IY + 0.95, z - 0.3, 0x1f6fb2), boxAt(9.6, 0.3, 0.4, x, IY + 0.15, z, 0x9aa0a8));
+    R.obst.push({ minX: x - 5.1, maxX: x + 5.1, minZ: z - 0.45, maxZ: z + 0.35 });
+  }
+  const board = new THREE.Mesh(new THREE.PlaneGeometry(12, 4.5), new THREE.MeshBasicMaterial({ map: boardTex(), color: new THREE.Color(1.4, 1.4, 1.4) })); board.position.set(cx, IY + 6.4, cz - d / 2 + 0.05); R.group.add(board);
+  R.counter = { x: cx - 15, z: cz - 3.6 };
+  addClerk(R, cx - 15, cz - 6.3, 0, { skin: 0xc89470, shirt: 0x18b3a6, pants: 0x1b1f2e, shoes: 0x111111, hair: 0x2b1d14, shades: false, shorts: false });
+  finishRoom(R, 'SOLANO INTERNATIONAL', '#18b3a6');
 }
 const OUTFITS = [
   { id: 'coral', name: 'Coral tee & navy chinos', shirt: 0xff6b4a, pants: 0x22304a, price: 60 },
@@ -1557,10 +1582,10 @@ function removeOfficer(o) { scene.remove(o.h.root); const i = officers.indexOf(o
 
 // ---------------------------------------------------------------- player
 const player = { pos: new THREE.Vector3(-494.6, 0, 16.5), vel: new THREE.Vector3(), yaw: -Math.PI / 2, onGround: true, car: null, h: null, knock: 0, health: 100, hurtT: 0, alive: true, lie: 0 };
-const game = { inside: null, state: 'boot', cash: 500, shownCash: 500, wanted: 0, heat: 0, evadeT: 0, crimeT: 0, bustT: 0, tod: 17.62, job: null, quality: 'ultra', radio: true, sound: true, time: 0, downT: 0, seenDistrict: '', saveT: 0 };
+const game = { ride: null, inside: null, state: 'boot', cash: 500, shownCash: 500, wanted: 0, heat: 0, evadeT: 0, crimeT: 0, bustT: 0, tod: 17.62, job: null, quality: 'ultra', radio: true, sound: true, time: 0, downT: 0, seenDistrict: '', saveT: 0 };
 const STAR_AT = [1, 4, 9, 16, 26];
-function focusPos() { return player.car ? player.car.pos : game.inside ? game.inside.out : player.pos; }
-function focusY() { return player.car ? player.car.y : game.inside ? CURB : player.pos.y; }
+function focusPos() { return game.ride ? flight.m.position : player.car ? player.car.pos : game.inside ? game.inside.out : player.pos; }
+function focusY() { return game.ride ? flight.y : player.car ? player.car.y : game.inside ? CURB : player.pos.y; }
 
 function nearestEnterable(range) {
   let best = null, bd = range;
@@ -1603,7 +1628,7 @@ function checkShopDoors(dt) {
     if (game.wanted > 0) { toast('The owner locks the door. Lose the cops first.'); shopCD = 3; return; }
     const Rm = ROOMS[s.type]; game.inside = { shop: s, room: Rm, out: new THREE.Vector3(s.dx + s.nx * 2.2, CURB, s.dz + s.nz * 2.2) };
     Rm.group.visible = true; player.pos.set(Rm.spawn.x, IY, Rm.spawn.z); player.vel.set(0, 0, 0); player.yaw = Math.PI;
-    cam.yaw = 0; cam.pitch = 0.16; interiorLight.position.set(Rm.cx, IY + 4.4, Rm.cz); interiorLight.intensity = 16;
+    cam.yaw = 0; cam.pitch = 0.16; interiorLight.position.set(Rm.cx, IY + Rm.H - 0.8, Rm.cz); interiorLight.intensity = Rm.w > 20 ? 40 : 16;
     toast(`${Rm.name} · walk up to the counter to buy`); shopCD = 1.2; return;
   }
 }
@@ -1632,6 +1657,16 @@ function updatePlayerInside(dt, ax, ay, sprint) {
   if (shopCD <= 0 && Math.hypot(p.pos.x - Rm.door.x, p.pos.z - Rm.door.z) < 0.9) { exitShop(); return; }
   if (shopCD <= 0 && Math.hypot(p.pos.x - Rm.counter.x, p.pos.z - Rm.counter.z) < 1.0) openShopPanel();
 }
+function startRide() {
+  $('shop').hidden = true; const s = game.inside.shop; game.inside.room.group.visible = false; game.inside = null; interiorLight.intensity = 0;
+  game.state = 'play'; game.ride = { back: s }; player.h.root.visible = false; player.vel.set(0, 0, 0);
+  resetFlight(1.5); cam.yaw = flight.yaw + Math.PI; cam.pitch = 0.25; cam.manual = 0; radioOn(true);
+}
+function endRide() {
+  const s = game.ride.back; game.ride = null; player.h.root.visible = true; radioOn(false);
+  player.pos.set(s.dx + s.nx * 2.6, surfaceH(s.dx + s.nx * 2.6, s.dz + s.nz * 2.6), s.dz + s.nz * 2.6); player.vel.set(0, 0, 0); player.yaw = Math.atan2(s.nx, s.nz);
+  cam.yaw = player.yaw + Math.PI; cam.pitch = 0.2; cam.init = false; shopCD = 2; toast('Welcome back to Solano');
+}
 function heal(n) { player.health = Math.min(100, player.health + n); }
 const SHOP_ITEMS = {
   mart: [
@@ -1639,6 +1674,11 @@ const SHOP_ITEMS = {
     { name: 'Mango smoothie', desc: 'Restores all your health.', price: 9, buy: () => { heal(100); return 'Fully refreshed'; } },
     { name: 'Scratch-off ticket', desc: 'Win up to $1,000.', price: 20, buy: () => { const r = Math.random(), win = r < 0.02 ? 1000 : r < 0.1 ? 200 : r < 0.3 ? 40 : r < 0.5 ? 20 : 0; addCash(win); return win ? `Winner! +$${win}` : 'No luck this time'; } },
     { name: 'Cooler of sodas', desc: 'Restores 50 health.', price: 6, buy: () => { heal(50); return 'Ice cold · +50 health'; } },
+  ],
+  terminal: [
+    { name: 'Scenic flight over Solano', desc: 'Ride along on the next departure. It loops over the whole city, then lands back here.', price: 150, buy: () => { startRide(); return 'Now boarding at gate B2'; } },
+    { name: 'Airport espresso', desc: 'Restores 25 health.', price: 5, buy: () => { heal(25); return 'Espresso · +25 health'; } },
+    { name: 'Travel snack box', desc: 'Restores all your health.', price: 12, buy: () => { heal(100); return 'Fully refreshed'; } },
   ],
   threads: OUTFITS.map((o) => ({ name: o.name, desc: game.outfit === o.id ? 'You are wearing this' : 'Change into it right here', price: o.price, sw: o.shirt, outfit: o, buy: () => { setOutfit(o); return `Looking sharp in the ${o.name.toLowerCase()}`; } })),
 };
@@ -1648,6 +1688,7 @@ function setOutfit(o) {
   player.h = makeHuman(look, false); player.h.root.visible = old.root.visible; player.h.root.position.copy(old.root.position); player.h.root.rotation.copy(old.root.rotation); scene.remove(old.root); scene.add(player.h.root);
 }
 function renderShop() {
+  if (!game.inside) return;
   const Rm = game.inside.room, type = game.inside.shop.type, list = $('shopItems'); $('shopName').textContent = Rm.name; $('shopCash').textContent = `Cash $${game.cash.toLocaleString('en-US')} · Health ${Math.round(player.health)}`;
   list.innerHTML = '';
   for (const it of SHOP_ITEMS[type]) {
@@ -1866,6 +1907,7 @@ function placeCash(c) {
 }
 const _m4 = new THREE.Matrix4(), _q = new THREE.Quaternion(), _s = new THREE.Vector3(1, 1, 1), _p = new THREE.Vector3();
 function updatePickups(dt) {
+  if (game.ride) return;
   const f = focusPos(), inCar = !!player.car;
   cashSpots.forEach((c, i) => {
     if (c.cd > 0) { c.cd -= dt; if (c.cd <= 0) placeCash(c); _s.setScalar(0.0001); }
@@ -1926,13 +1968,13 @@ function drawBigmap() {
   for (const [t, x, zz, big] of MAP_LABELS) { g.font = `${big ? 800 : 700} ${Math.round((big ? 16 : 13) * dpr)}px 'Barlow Condensed', 'Arial Narrow', sans-serif`; g.lineWidth = 3.5 * dpr; g.strokeStyle = 'rgba(14,10,23,.8)'; g.strokeText(t.toUpperCase(), X(x), Z(zz)); g.fillStyle = big ? '#ffc857' : '#fff3e8'; g.fillText(t.toUpperCase(), X(x), Z(zz)); }
   const dot = (x, zz, r, col, sq) => { g.fillStyle = col; g.strokeStyle = 'rgba(14,10,23,.9)'; g.lineWidth = 2 * dpr; g.beginPath(); if (sq) g.rect(X(x) - r * dpr, Z(zz) - r * dpr, 2 * r * dpr, 2 * r * dpr); else g.arc(X(x), Z(zz), r * dpr, 0, Math.PI * 2); g.fill(); g.stroke(); };
   for (const c of cashSpots) if (c.cd <= 0) dot(c.x, c.z, 3.5, '#86ffb0');
-  for (const sp of shopsData) dot(sp.dx, sp.dz, 5, sp.type === 'mart' ? '#2be0cf' : '#ff7aa8', true);
+  for (const sp of shopsData) dot(sp.dx, sp.dz, 5, SHOP_COL[sp.type], true);
   if (!game.job) for (const m of markers) if (m.m.visible) dot(m.x, m.z, 6.5, '#ff3f8e');
   if (game.job) dot(game.job.x, game.job.z, 7.5, '#ffc857');
   if (game.waypoint) dot(game.waypoint.x, game.waypoint.z, 7.5, '#b18cff');
   for (const c of police) dot(c.pos.x, c.pos.z, 5, '#ff3050');
   if (flight.m && flight.y > 10) dot(flight.x, flight.z, 4, '#ffffff');
-  const hy = player.car ? player.car.yaw : player.yaw;
+  const hy = (game.ride ? flight.yaw : player.car ? player.car.yaw : player.yaw);
   g.save(); g.translate(X(f.x), Z(f.z)); g.rotate(Math.atan2(Math.cos(hy), Math.sin(hy))); g.fillStyle = '#fff3e8'; g.strokeStyle = 'rgba(14,10,23,.95)'; g.lineWidth = 2.5 * dpr;
   g.beginPath(); g.moveTo(12 * dpr, 0); g.lineTo(-8 * dpr, 8 * dpr); g.lineTo(-4 * dpr, 0); g.lineTo(-8 * dpr, -8 * dpr); g.closePath(); g.stroke(); g.fill(); g.restore();
 }
@@ -2036,7 +2078,8 @@ function updateAudio(dt) {
     e.o1.frequency.setTargetAtTime(fq, t, 0.06); e.o2.frequency.setTargetAtTime(fq * 0.5, t, 0.06);
     e.f.frequency.setTargetAtTime(380 + rpm * 1500 + Math.max(0, c.thr) * 700, t, 0.08); e.g.gain.setTargetAtTime(0.05 + 0.07 * Math.abs(c.thr), t, 0.1);
     audio.skid.gain.setTargetAtTime(c.air ? 0 : clamp((c.slip - 4) / 8, 0, 1) * 0.16, t, 0.05);
-  } else { e.g.gain.setTargetAtTime(0, t, 0.15); audio.skid.gain.setTargetAtTime(0, t, 0.1); }
+  } else if (game.ride) { e.o1.frequency.setTargetAtTime(48 + flight.v * 0.4, t, 0.2); e.o2.frequency.setTargetAtTime(24 + flight.v * 0.2, t, 0.2); e.f.frequency.setTargetAtTime(260 + flight.v * 4, t, 0.2); e.g.gain.setTargetAtTime(0.045, t, 0.3); audio.skid.gain.setTargetAtTime(0, t, 0.1); }
+  else { e.g.gain.setTargetAtTime(0, t, 0.15); audio.skid.gain.setTargetAtTime(0, t, 0.1); }
   if (game.wanted > 0 && game.nearCop && game.state === 'play') { const d = game.nearCopD; audio.siren.g.gain.setTargetAtTime(clamp(16 / Math.max(d, 1), 0, 0.08), t, 0.1); audio.siren.o.frequency.setTargetAtTime(760 + 380 * Math.sin(game.time * Math.PI * 0.9), t, 0.03); }
   else audio.siren.g.gain.setTargetAtTime(0, t, 0.2);
   const shore = Math.abs(Math.abs(camera.position.x) - LAND - 20); audio.surf.gain.setTargetAtTime(clamp(1 - shore / 60, 0, 1) * 0.05, t, 0.3);
@@ -2107,10 +2150,10 @@ function axes() {
 function handleActions() {
   while (input.actions.length) {
     const a = input.actions.shift();
-    if (a === 'car') { if (game.inside) continue; if (player.car) exitCar(); else if (player.knock <= 0) { const c = nearestEnterable(3.8); if (c) enterCar(c); } }
+    if (a === 'car') { if (game.ride) { endRide(); continue; } if (game.inside) continue; if (player.car) exitCar(); else if (player.knock <= 0) { const c = nearestEnterable(3.8); if (c) enterCar(c); } }
     else if (a === 'horn') { if (player.car) { sfxHorn(1); for (const p of peds) if (p.pos.distanceTo(player.car.pos) < 14) p.scare(player.car.pos.x, player.car.pos.z, 3); } }
     else if (a === 'radio') { game.radio = !game.radio; store.set('radio', game.radio); radioOn(!!player.car); toast(game.radio ? 'Radio on · Solano 88.4' : 'Radio off'); }
-    else if (a === 'cam') { cam.yaw = (player.car ? player.car.yaw : player.yaw) + Math.PI; cam.pitch = 0.22; }
+    else if (a === 'cam') { cam.yaw = ((game.ride ? flight.yaw : player.car ? player.car.yaw : player.yaw)) + Math.PI; cam.pitch = 0.22; }
   }
 }
 
@@ -2132,6 +2175,15 @@ function updateCamera(dt) {
     camera.position.set(clamp(p.x + Math.sin(cam.yaw) * cp * dd, Rm.cx - Rm.w / 2 + 0.3, Rm.cx + Rm.w / 2 - 0.3), clamp(IY + 1.45 + Math.sin(cam.pitch) * dd, IY + 0.4, IY + Rm.H - 0.3), clamp(p.z + Math.cos(cam.yaw) * cp * dd, Rm.cz - Rm.d / 2 + 0.3, Rm.cz + Rm.d / 2 - 0.3));
     cam.tgt.set(p.x, IY + 1.4, p.z); camera.lookAt(cam.tgt); cam.init = false;
     if (Math.abs(camera.fov - baseFov) > 0.05) { camera.fov = baseFov; camera.updateProjectionMatrix(); }
+    return;
+  }
+  if (game.ride) {
+    const tg = flight.m.position; cam.manual -= dt;
+    if (cam.manual <= 0) { cam.yaw += angDiff(cam.yaw, flight.yaw + Math.PI) * (1 - Math.exp(-1.2 * dt)); cam.pitch = damp(cam.pitch, 0.22, 1, dt); }
+    const cp = Math.cos(cam.pitch), dd = 52;
+    camera.position.set(tg.x + Math.sin(cam.yaw) * cp * dd, Math.max(tg.y + Math.sin(cam.pitch) * dd, 4), tg.z + Math.cos(cam.yaw) * cp * dd);
+    cam.tgt.copy(tg); camera.lookAt(tg.x, tg.y + 2, tg.z); cam.init = false;
+    if (Math.abs(camera.fov - baseFov) > 0.05) { camera.fov = damp(camera.fov, baseFov, 3, dt); camera.updateProjectionMatrix(); }
     return;
   }
   const c = player.car, fp = c ? c.pos : player.pos, fy = c ? c.y + 1.55 : player.pos.y + 1.5;
@@ -2202,14 +2254,14 @@ function drawMinimap() {
   }
   const dot = (p, r, col) => { mm.fillStyle = col; mm.beginPath(); mm.arc(p[0], p[1], r, 0, Math.PI * 2); mm.fill(); };
   for (const c of cashSpots) if (c.cd <= 0) { const p = W(c.x, c.z); if (Math.hypot(p[0] - R, p[1] - R) < R) dot(p, S * 0.018, '#86ffb0'); }
-  for (const sp of shopsData) { const p = W(sp.dx, sp.dz); if (Math.hypot(p[0] - R, p[1] - R) < R - 4) { mm.fillStyle = sp.type === 'mart' ? '#2be0cf' : '#ff7aa8'; mm.fillRect(p[0] - S * 0.022, p[1] - S * 0.022, S * 0.044, S * 0.044); } }
+  for (const sp of shopsData) { const p = W(sp.dx, sp.dz); if (Math.hypot(p[0] - R, p[1] - R) < R - 4) { mm.fillStyle = SHOP_COL[sp.type]; mm.fillRect(p[0] - S * 0.022, p[1] - S * 0.022, S * 0.044, S * 0.044); } }
   if (!j) for (const m of markers) if (m.m.visible) dot(clampEdge(W(m.x, m.z), S * 0.05), S * 0.032, '#ff3f8e');
   if (j) dot(clampEdge(W(j.x, j.z), S * 0.05), S * 0.04, '#ffc857');
   if (game.waypoint) dot(clampEdge(W(game.waypoint.x, game.waypoint.z), S * 0.05), S * 0.04, '#b18cff');
   const fl = Math.sin(game.time * 14) > 0;
   for (const c of police) dot(clampEdge(W(c.pos.x, c.pos.z), S * 0.04), S * 0.03, fl ? '#ff3050' : '#3a6bff');
   // player arrow
-  const hy = player.car ? player.car.yaw : player.yaw, hx = Math.sin(hy), hz = Math.cos(hy), ax = hx * cy - hz * sy, ay = hx * sy + hz * cy, ang = Math.atan2(ay, ax);
+  const hy = (game.ride ? flight.yaw : player.car ? player.car.yaw : player.yaw), hx = Math.sin(hy), hz = Math.cos(hy), ax = hx * cy - hz * sy, ay = hx * sy + hz * cy, ang = Math.atan2(ay, ax);
   mm.save(); mm.translate(R, R); mm.rotate(ang); mm.fillStyle = '#fff3e8'; mm.strokeStyle = 'rgba(14,10,23,.9)'; mm.lineWidth = S * 0.012;
   mm.beginPath(); mm.moveTo(S * 0.06, 0); mm.lineTo(-S * 0.04, S * 0.038); mm.lineTo(-S * 0.02, 0); mm.lineTo(-S * 0.04, -S * 0.038); mm.closePath(); mm.stroke(); mm.fill(); mm.restore();
   // north tick
@@ -2229,13 +2281,14 @@ function updateHUD(dt) {
   if (dn !== game.seenDistrict) { game.seenDistrict = dn; ui.district.textContent = dn; ui.district.classList.add('show'); clearTimeout(districtT); districtT = setTimeout(() => ui.district.classList.remove('show'), 3500); }
   const c = player.car;
   ui.speedo.hidden = !c; if (c) { const mph = Math.round(Math.abs(c.vf) * 2.237); if (mph !== lastSpd) { lastSpd = mph; ui.spd.textContent = mph; } }
-  const near = !c && !game.inside && nearestEnterable(3.8);
-  ui.bCar.textContent = c ? 'GET OUT' : 'GET IN'; ui.bCar.classList.toggle('ready', !!near);
+  const near = !c && !game.inside && !game.ride && nearestEnterable(3.8);
+  ui.bCar.textContent = game.ride ? 'LAND' : c ? 'GET OUT' : 'GET IN'; ui.bCar.classList.toggle('ready', !!near);
   ui.bAction.textContent = c ? 'DRIFT' : 'JUMP'; ui.bHorn.hidden = !c; ui.bRadio.hidden = !c;
   let hint = '';
   if (near && !TOUCH) hint = near.driver === 'ai' ? 'Press F to carjack' : near.isCop && near.driver ? 'Press F to steal the cruiser' : 'Press F to get in';
   else if (near && TOUCH) hint = near.driver === 'ai' ? 'Tap GET IN to carjack' : 'Tap GET IN to drive';
   else if (game.bustT > 0.4) hint = 'Cops are boxing you in · move!';
+  if (game.ride) hint = TOUCH ? 'Scenic flight · tap LAND to skip ahead' : 'Scenic flight · press F to skip ahead';
   if (hint !== lastHint) { lastHint = hint; ui.hint.textContent = hint; ui.hint.hidden = !hint; }
   const j = game.job;
   if (j) { const m = `Deliver ${j.cargo} to ${j.where}`; if (m !== lastMission) { lastMission = m; ui.mTitle.textContent = m; } ui.mission.hidden = false; const s = Math.max(0, Math.ceil(j.t)); ui.mTimer.textContent = `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`; ui.mTimer.classList.toggle('low', s <= 10); }
@@ -2272,6 +2325,7 @@ function updateDaylight(dt) {
   neonMat.color.setScalar(lerp(1.3, 6, glow)); for (const sg of signs) sg.material.opacity = 1, sg.material.color.setRGB(0.9, 1.6, 1.5).multiplyScalar(lerp(0.75, 2.6, glow)); lampMat.color.setRGB(1, 0.82, 0.6).multiplyScalar(lerp(0.5, 7, night));
   poolMat.opacity = night * 0.42; headMat.color.setScalar(lerp(1.3, 6, night)); taxiSignMat.color.setRGB(1, 0.88, 0.55).multiplyScalar(lerp(1.2, 4, night));
   blinkMat.color.setRGB(1, 0.08, 0.08).multiplyScalar((Math.sin(game.time * 3) > 0.55 ? 1 : 0.08) * lerp(1.5, 6, night));
+  windowMat.color.setRGB(1.2, 1.6, 2.0).multiplyScalar(lerp(0.12, 1, Math.max(day, golden * 0.7)));
   starMat.opacity = night * 0.9; stars.position.copy(camera.position); sky.position.copy(camera.position);
   moon.visible = moonDir.y > -0.05; moon.position.copy(camera.position).addScaledVector(moonDir, 2500); moon.lookAt(camera.position); moon.material.opacity = smooth(-0.05, 0.1, moonDir.y) * lerp(0.35, 1, night);
   smokeMat.uniforms.uLight.value = lerp(0.18, 1, Math.max(day, golden * 0.8));
@@ -2405,7 +2459,7 @@ function step(dt) {
     if (playing) { const ex = Math.abs(ax) < 0.1 ? 0 : Math.sign(ax) * Math.pow(Math.abs(ax), 1.35); c.thr = Math.abs(ay) < 0.12 ? 0 : ay; c.str = damp(c.str, -ex, 10, dt); c.hb = input.keys.has('Space') || input.btnAction; }
     else { c.thr = 0; c.hb = true; }
     player.pos.set(c.pos.x, c.y, c.pos.z);
-  } else if (game.inside) updatePlayerInside(dt, ax, ay, sprint); else { updatePlayerFoot(dt, ax, ay, sprint); if (playing) checkShopDoors(dt); }
+  } else if (game.ride) { if (flight.st === 'parked') endRide(); } else if (game.inside) updatePlayerInside(dt, ax, ay, sprint); else { updatePlayerFoot(dt, ax, ay, sprint); if (playing) checkShopDoors(dt); }
   input.jumpQ = false;
   if (player.hurtT > 0) player.hurtT -= dt; else player.health = Math.min(100, player.health + dt * 4);
   // vehicles
