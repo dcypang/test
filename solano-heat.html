@@ -976,7 +976,7 @@ function startWheel() {
   ferris.a = -Math.PI / 2 - k * step; wheelRide.k = k; wheelRide.start = ferris.a; game.wheel = wheelRide; wheelGondola(wheelRide.pos);
   player.h.root.visible = false; player.vel.set(0, 0, 0); ferris.cabin.visible = true;
   cam.yaw = -Math.PI / 2; cam.pitch = 0.05; cam.manual = 0;
-  fadeFlash('Boarding the Ferris wheel…', 0.6); toast('Bayside Ferris wheel · one full turn · drag to look around');
+  fadeFlash('Boarding the Ferris wheel…', 0.6); toast(fam.out && fam.list.length ? 'The whole family squeezes into the gondola · drag to look around' : 'Bayside Ferris wheel · one full turn · drag to look around');
 }
 function updateWheel(dt) {
   wheelGondola(wheelRide.pos); player.pos.copy(wheelRide.pos); player.vel.set(0, 0, 0); ferris.cabin.position.copy(wheelRide.pos);
@@ -2224,7 +2224,7 @@ function removeOfficer(o) { scene.remove(o.h.root); const i = officers.indexOf(o
 
 // ---------------------------------------------------------------- player
 const player = { sit: null, autoTo: null, pos: new THREE.Vector3(-494.6, 0, 16.5), vel: new THREE.Vector3(), yaw: -Math.PI / 2, onGround: true, car: null, h: null, knock: 0, health: 100, hurtT: 0, alive: true, lie: 0 };
-const game = { pantry: {}, dishes: [], eat: null, fedT: 0, luggage: null, bagChecked: false, family: [], nearFam: null, famD: 9, hugT: 0, tvWatch: false, visited: [], lastDest: null, ticketGate: null, ticket: null, owned: ['coral'], counter: null, ride: null, inside: null, state: 'boot', cash: 500, shownCash: 500, wanted: 0, heat: 0, evadeT: 0, crimeT: 0, bustT: 0, tod: 17.62, job: null, quality: 'ultra', radio: true, sound: true, time: 0, downT: 0, seenDistrict: '', saveT: 0 };
+const game = { pantry: {}, dishes: [], eat: null, fedT: 0, luggage: null, bagChecked: false, family: [], famFollow: true, nearFam: null, famD: 9, hugT: 0, tvWatch: false, visited: [], lastDest: null, ticketGate: null, ticket: null, owned: ['coral'], counter: null, ride: null, inside: null, state: 'boot', cash: 500, shownCash: 500, wanted: 0, heat: 0, evadeT: 0, crimeT: 0, bustT: 0, tod: 17.62, job: null, quality: 'ultra', radio: true, sound: true, time: 0, downT: 0, seenDistrict: '', saveT: 0 };
 const STAR_AT = [1, 4, 9, 16, 26];
 function focusPos() { return game.ride ? flight.m.position : player.car ? player.car.pos : game.inside ? game.inside.out : player.pos; }
 function focusY() { return game.wheel ? surfaceH(ferris.x, ferris.z + 6) : game.ride ? flight.y : player.car ? player.car.y : game.inside ? CURB : player.pos.y; }
@@ -2271,12 +2271,13 @@ function checkShopDoors(dt) {
     const Rm = ROOMS[s.type]; game.inside = { shop: s, room: Rm, out: new THREE.Vector3(s.dx + s.nx * 2.2, CURB, s.dz + s.nz * 2.2) };
     Rm.group.visible = true; player.pos.set(Rm.spawn.x, IY, Rm.spawn.z); player.vel.set(0, 0, 0); player.yaw = Math.PI;
     cam.yaw = 0; cam.pitch = 0.16; interiorLight.position.set(Rm.cx, IY + Rm.H - 0.8, Rm.cz); interiorLight.intensity = Rm.w > 30 ? 90 : Rm.w > 20 ? 40 : 16; interiorLight.distance = Rm.w > 30 ? 80 : 34; if (Rm.followLight) { interiorLight.intensity = Rm.lightI || 40; interiorLight.distance = Rm.lightD || 30; }
-    toast((s.type === 'home' && famEnter()) || Rm.hello || `${Rm.name} · walk up to the counter to buy`); shopCD = 1.2; return;
+    fam.snap = true; toast((s.type === 'home' && famEnter()) || Rm.hello || `${Rm.name} · walk up to the counter to buy`); shopCD = 1.2; return;
   }
 }
 function exitShop() {
   if (player.sit) standUp(); leaveQueue(game.inside.room); game.nearSeat = null; game.nearFam = null; if (game.bagChecked) { game.bagChecked = false; toast('You pick your suitcase back up'); }
-  const s = game.inside.shop; game.inside.room.group.visible = false; game.inside = null; interiorLight.intensity = 0;
+  const s = game.inside.shop; game.inside.room.group.visible = false; game.inside = null; interiorLight.intensity = 0; fam.snap = true;
+  if (s.type === 'home' && game.famFollow && game.family.length) { famGoOut(); toast(game.family.length > 1 ? 'The family comes along with you' : `${game.family[0].name} comes along with you`); }
   player.pos.set(s.dx + s.nx * 2.6, CURB, s.dz + s.nz * 2.6); player.vel.set(0, 0, 0); player.yaw = Math.atan2(s.nx, s.nz); cam.yaw = player.yaw + Math.PI; cam.init = false; shopCD = 2;
 }
 function pushBox(p, r, c) {
@@ -2334,7 +2335,7 @@ function updatePlayerInside(dt, ax, ay, sprint) {
   if (Rm.followLight) interiorLight.position.set(p.pos.x, p.pos.y + (Rm.lightH || 3.8), p.pos.z);
   p.h.root.position.set(p.pos.x, p.pos.y, p.pos.z); p.h.root.rotation.set(0, p.yaw, 0, 'YXZ');
   poseHuman(p.h, dt, Math.hypot(p.vel.x, p.vel.z), false, game.time); holdBag(p.h);
-  if (game.hugT > 0) { game.hugT -= dt; p.h.armL.rotation.x = p.h.armR.rotation.x = -1.25; p.h.armL.rotation.z = 0.35; p.h.armR.rotation.z = -0.35; p.h.elbowL.rotation.x = p.h.elbowR.rotation.x = -0.5; }
+  hugPose(p.h, dt);
   for (const c of Rm.clerks) if (!c.mannequin) poseHuman(c, dt, 0, false, game.time);
   shopCD -= dt;
   if (shopCD <= 0 && pyr < 1 && Math.hypot(p.pos.x - Rm.door.x, p.pos.z - Rm.door.z) < 0.9) { exitShop(); return; }
@@ -2359,7 +2360,7 @@ function board(gt) {
   Rm.group.visible = false; game.inside = null; interiorLight.intensity = 0;
   game.ride = { back, kind }; player.h.root.visible = false; player.vel.set(0, 0, 0);
   placeFlight(from, 1.5); flight.trip = dest; cam.yaw = flight.yaw + Math.PI; cam.pitch = 0.25; cam.manual = 0; radioOn(true);
-  toast(dest ? `Flight to ${dest.name} · enjoy the view` : 'Scenic loop over Solano · enjoy the view', 3500);
+  toast((dest ? `Flight to ${dest.name} · enjoy the view` : 'Scenic loop over Solano · enjoy the view') + (fam.out && fam.list.length ? ' · the family flies with you' : ''), 3500);
 }
 function endRide() {
   const s = game.ride.back, kind = game.ride.kind; game.ride = null; flight.trip = null; player.h.root.visible = true; radioOn(false);
@@ -2506,22 +2507,81 @@ function famUpdate(dt) {
   }
 }
 function famEnter() {
+  const R = ROOMS.home, wasOut = fam.out; fam.out = false;
   for (const d of game.family) if (!fam.list.find((m) => m.d === d)) famSpawn(d);
-  for (const m of fam.list) famPlace(m, null);
+  for (const m of fam.list) { R.group.add(m.h.root); m.h.root.visible = true; m.hugT = 0; famPlace(m, wasOut ? R.famNodes[3] : null); }
+  if (wasOut && game.family.length) return 'Home sweet home · the family is back home with you';
   if (!game.family.length) return 'Home sweet home · start a family at the photo wall by the door';
   const n = game.family.map((d) => d.name), list = n.length > 1 ? n.slice(0, -1).join(', ') + ' and ' + n[n.length - 1] : n[0];
   return famNight() ? `Home sweet home · ${list} ${n.length > 1 ? 'are' : 'is'} asleep upstairs` : `Home sweet home · ${list} ${n.length > 1 ? 'are' : 'is'} home`;
 }
 function hugTarget() {
-  const m = game.inside && game.inside.room === ROOMS.home && !player.sit ? game.nearFam : null; if (!m) return null;
-  const st = game.nearSeat; return !st || Math.hypot(st.x - player.pos.x, st.z - player.pos.z) > game.famD ? m : null;
+  if (player.sit || player.car || game.ride || game.wheel) return null; const m = game.nearFam; if (!m) return null;
+  if (!game.inside) return m; const st = game.nearSeat; return !st || Math.hypot(st.x - player.pos.x, st.z - player.pos.z) > game.famD ? m : null;
+}
+function hugPose(h, dt) { if (game.hugT <= 0) return; game.hugT -= dt; h.armL.rotation.x = h.armR.rotation.x = -1.25; h.armL.rotation.z = 0.35; h.armR.rotation.z = -0.35; h.elbowL.rotation.x = h.elbowR.rotation.x = -0.5; }
+// ---- out and about: the family follows the path you walk, sits when you sit, rides along in cars, planes and the Ferris wheel
+const trail = { pts: [], yaw: 0 }, FAM_SLOTS = [{ d: 1.3, lat: 0.5, ls: 0.8 }, { d: 1.3, lat: -0.5, ls: -0.8 }, { d: 2.4, lat: 0.5, ls: 1.6 }, { d: 2.4, lat: -0.5, ls: -1.6 }];
+function famGoOut() {
+  for (const d of game.family) if (!fam.list.find((m) => m.d === d)) famSpawn(d);
+  if (!fam.list.length) return;
+  fam.out = true; fam.snap = true;
+  for (const m of fam.list) { famFree(m); m.route = null; m.goal = null; m.mode = 'out'; m.hugT = 0; m.fx = undefined; scene.add(m.h.root); }
+}
+function trailReset() { const p = player.pos; trail.pts = [{ x: p.x, y: p.y, z: p.z }]; trail.yaw = player.yaw; for (const m of fam.list) m.fx = undefined; }
+function trailPush() { const p = player.pos, l = trail.pts[trail.pts.length - 1]; if (l && (Math.hypot(p.x - l.x, p.z - l.z) > 4 || Math.abs(p.y - l.y) > 2.5)) { trailReset(); return; } if (!l || Math.hypot(p.x - l.x, p.z - l.z) > 0.25 || Math.abs(p.y - l.y) > 0.3) { trail.pts.push({ x: p.x, y: p.y, z: p.z }); if (trail.pts.length > 80) trail.pts.shift(); } }
+function trailAt(d) {
+  const p = player.pos; let px = p.x, py = p.y, pz = p.z, acc = 0;
+  for (let i = trail.pts.length - 1; i >= 0; i--) {
+    const q = trail.pts[i], seg = Math.hypot(q.x - px, q.z - pz);
+    if (seg > 1e-4 && acc + seg >= d) { const t = (d - acc) / seg; return { x: px + (q.x - px) * t, y: py + (q.y - py) * t, z: pz + (q.z - pz) * t, dx: px - q.x, dz: pz - q.z }; }
+    acc += seg; px = q.x; py = q.y; pz = q.z;
+  }
+  return { x: px, y: py, z: pz, short: true };
+}
+function followUpdate(dt) {
+  game.nearFam = null; game.famD = 1.3;
+  if (game.wheel) { // everyone sits on the gondola benches with you
+    const c = game.wheel.pos; fam.snap = true;
+    fam.list.forEach((m, i) => { const sd = i % 2 ? -1 : 1, bx = i < 2 ? -0.55 : 0.55; m.h.root.visible = true; m.h.root.position.set(c.x + bx, c.y - 0.6 - m.sc * 0.45, c.z + sd * 1.3); m.h.root.rotation.set(0, sd > 0 ? Math.PI : 0, 0, 'YXZ'); poseSit(m.h, 0.5, false); });
+    return;
+  }
+  if (player.car || game.ride || !player.alive) { for (const m of fam.list) { m.h.root.visible = false; if (m.seat) famFree(m); } fam.snap = true; return; }
+  if (fam.snap) { trailReset(); fam.snap = false; }
+  const Rm = game.inside && game.inside.room;
+  if (!player.sit && (Rm || player.onGround)) trailPush();
+  fam.list.forEach((m, i) => {
+    const h = m.h, S = FAM_SLOTS[i % FAM_SLOTS.length]; h.root.visible = true; m.hugT = Math.max(0, (m.hugT || 0) - dt);
+    // you sat down: take the nearest free seats around you
+    if (player.sit && Rm) {
+      if (!m.seat) { let best = null, bd = 7; for (const st of Rm.seats) { if (st.taken || st.toilet || st.bed || Math.abs(st.y - player.sit.y) > 0.5) continue; const d = Math.hypot(st.x - player.sit.x, st.z - player.sit.z); if (d < bd) { bd = d; best = st; } } if (best) { best.taken = m; m.seat = best; m.seatT = 0; } }
+      if (m.seat) {
+        const st = m.seat; m.seatT += dt;
+        if (m.seatT < 0.9 && m.fx !== undefined) { const k = 1 - Math.exp(-6 * dt), ox = m.fx, oz = m.fz; m.fx += (st.out[0] - m.fx) * k; m.fz += (st.out[1] - m.fz) * k; m.fy = IY + st.y; m.yaw += angDiff(m.yaw, Math.atan2(m.fx - ox, m.fz - oz)) * k; h.root.position.set(m.fx, m.fy, m.fz); h.root.rotation.set(0, m.yaw, 0, 'YXZ'); poseHuman(h, dt, 2, false, game.time); }
+        else { h.root.position.set(st.x, IY + st.y + (1 - m.sc) * (st.top - 0.05), st.z); h.root.rotation.set(0, st.yaw, 0, 'YXZ'); poseSit(h, st.top, false); }
+        return;
+      }
+    } else if (m.seat) { m.fx = m.seat.out[0]; m.fz = m.seat.out[1]; famFree(m); }
+    const tp = trailAt(S.d); let tx, tz;
+    if (tp.short) { tx = tp.x + Math.cos(trail.yaw) * S.ls; tz = tp.z - Math.sin(trail.yaw) * S.ls; }
+    else { const l = Math.hypot(tp.dx, tp.dz) || 1; tx = tp.x + tp.dz / l * S.lat; tz = tp.z - tp.dx / l * S.lat; }
+    if (m.fx === undefined || Math.hypot(m.fx - tx, m.fz - tz) > 14 || Math.abs(m.fy - tp.y) > 6) { m.fx = tx; m.fz = tz; m.fy = tp.y; }
+    const k = 1 - Math.exp(-7 * dt), ox = m.fx, oz = m.fz; m.fx += (tx - m.fx) * k; m.fz += (tz - m.fz) * k;
+    if (Rm) { const pt = { x: m.fx, z: m.fz }; for (const o of Rm.obst) if (hitsY(o, tp.y - IY)) pushBox(pt, 0.22, o); m.fx = pt.x; m.fz = pt.z; m.fy += (tp.y - m.fy) * Math.min(1, k * 2); }
+    else { const g = surfaceH(m.fx, m.fz, tp.y + 0.5); m.fy = Math.abs(g - tp.y) < 1.2 ? g : tp.y; }
+    const sp = Math.hypot(m.fx - ox, m.fz - oz) / Math.max(dt, 1e-3);
+    if (sp > 0.3) m.yaw += angDiff(m.yaw, Math.atan2(m.fx - ox, m.fz - oz)) * (1 - Math.exp(-10 * dt)); else m.yaw += angDiff(m.yaw, Math.atan2(player.pos.x - m.fx, player.pos.z - m.fz)) * (1 - Math.exp(-3 * dt));
+    h.root.position.set(m.fx, m.fy, m.fz); h.root.rotation.set(0, m.yaw, 0, 'YXZ'); poseHuman(h, dt, sp < 0.25 ? 0 : sp, false, game.time);
+    if (m.hugT > 0) { h.armL.rotation.x = h.armR.rotation.x = -1.25; h.armL.rotation.z = 0.35; h.armR.rotation.z = -0.35; h.elbowL.rotation.x = h.elbowR.rotation.x = -0.5; m.yaw += angDiff(m.yaw, Math.atan2(player.pos.x - m.fx, player.pos.z - m.fz)) * (1 - Math.exp(-10 * dt)); }
+    if (Math.abs(m.fy - player.pos.y) < 1) { const d = Math.hypot(m.fx - player.pos.x, m.fz - player.pos.z); if (d < game.famD) { game.famD = d; game.nearFam = m; } }
+  });
 }
 function hugFamily(m) {
   if (m.cd > 0) toast(`${m.d.name}: "Another hug? Okay!"`); else { heal(10); m.cd = 20; toast(`${m.d.name}: "${mpick(FAM_LINES[m.kid ? 'kid' : 'partner'])}" · +10 health`, 3400); }
-  game.hugT = 1.4; sfxChime(); player.yaw = Math.atan2(m.x - player.pos.x, m.z - player.pos.z);
+  const mx = m.mode === 'out' ? m.fx : m.x, mz = m.mode === 'out' ? m.fz : m.z; game.hugT = 1.4; m.hugT = 1.4; sfxChime(); player.yaw = Math.atan2(mx - player.pos.x, mz - player.pos.z);
   if (m.mode === 'walk' || m.mode === 'idle') { m.after = m.mode; m.mode = 'hug'; m.t = 1.4; }
 }
-function famStatus(d) { const m = fam.list.find((x) => x.d === d); return !m ? 'At home' : m.mode === 'sleep' ? 'Asleep' : m.mode === 'sit' ? (m.seat.dine ? 'At the dinner table' : m.seat.tv ? 'On the sofa' : 'Sitting down') : m.y > 1 ? 'Upstairs' : 'Downstairs'; }
+function famStatus(d) { const m = fam.list.find((x) => x.d === d); return !m ? 'At home' : m.mode === 'out' ? 'With you' : m.mode === 'sleep' ? 'Asleep' : m.mode === 'sit' ? (m.seat.dine ? 'At the dinner table' : m.seat.tv ? 'On the sofa' : 'Sitting down') : m.y > 1 ? 'Upstairs' : 'Downstairs'; }
 function refreshDishes() {
   const R = ROOMS.home; if (!R || !R.dishPlaces) return;
   for (const m of R.dishMeshes || []) { R.group.remove(m); m.geometry.dispose(); } R.dishMeshes = [];
@@ -2570,6 +2630,7 @@ const SHOP_ITEMS = {
   family: () => { const fm = game.family, partner = fm.find((d) => d.role === 'partner'), kids = fm.filter((d) => d.role === 'kid').length; return [
     ...(partner ? [] : [{ name: 'Find a partner', desc: 'Someone special moves in and shares the house with you', price: 0, sw: 0xff7aa8, buy: () => addFamily('partner') }]),
     { name: kids >= 3 ? "The kids' room is full" : 'Welcome a child', desc: kids >= 3 ? 'Three kids, three beds upstairs' : "A kid moves into the kids' room upstairs (up to 3)", price: 0, sw: 0xffc857, disabled: kids >= 3, buy: () => addFamily('kid') },
+    ...(fm.length ? [{ name: game.famFollow ? 'Family comes with you: ON' : 'Family comes with you: OFF', desc: game.famFollow ? 'They go everywhere with you: walks, car rides, shops, flights, the Ferris wheel · tap to let them stay home' : 'They stay home while you go out · tap to bring them along', price: 0, sw: 0x2be0cf, buy: () => { game.famFollow = !game.famFollow; store.set('famFollow', game.famFollow); return game.famFollow ? 'The family will come with you when you go out' : 'The family will stay home'; } }] : []),
     ...fm.map((d) => ({ name: `${d.name} · ${d.role === 'partner' ? 'your partner' : 'your kid'}`, desc: famStatus(d), price: 0, sw: d.look.shirt, disabled: true, buy: () => null })),
   ]; },
   bath: [
@@ -2643,7 +2704,7 @@ function updatePlayerFoot(dt, ax, ay, sprint) {
   }
   const sp = Math.hypot(p.vel.x, p.vel.z);
   h.root.position.set(p.pos.x, p.pos.y + p.lie * 0.14, p.pos.z); h.root.rotation.set(-p.lie * Math.PI / 2, p.yaw, 0, 'YXZ');
-  poseHuman(h, dt, p.knock > 0 ? 0 : sp, !p.onGround && p.knock <= 0, game.time); holdBag(h);
+  poseHuman(h, dt, p.knock > 0 ? 0 : sp, !p.onGround && p.knock <= 0, game.time); holdBag(h); hugPose(h, dt);
 }
 function pushOutOfCar(v, pt, r) {
   const fx = Math.sin(v.yaw), fz = Math.cos(v.yaw), rx = -fz, rz = fx, ox = pt.x - v.pos.x, oz = pt.z - v.pos.z;
@@ -3054,7 +3115,7 @@ function axes() {
 function handleActions() {
   while (input.actions.length) {
     const a = input.actions.shift();
-    if (a === 'car') { if (game.wheel) { endWheel(false); continue; } if (game.ride) { const k = game.ride.kind; endRide(); if (k !== 'loop') flight.trip = null; continue; } if (game.inside) { const hm = hugTarget(); if (player.sit) standUp(); else if (hm) hugFamily(hm); else if (game.nearSeat) sitDown(game.nearSeat); continue; } if (player.car) exitCar(); else if (player.knock <= 0) { if (nearFerris()) { startWheel(); continue; } const c = nearestEnterable(3.8); if (c) enterCar(c); } }
+    if (a === 'car') { if (game.wheel) { endWheel(false); continue; } if (game.ride) { const k = game.ride.kind; endRide(); if (k !== 'loop') flight.trip = null; continue; } if (game.inside) { const hm = hugTarget(); if (player.sit) standUp(); else if (hm) hugFamily(hm); else if (game.nearSeat) sitDown(game.nearSeat); continue; } if (player.car) exitCar(); else if (player.knock <= 0) { if (nearFerris()) { startWheel(); continue; } const c = nearestEnterable(3.8), hm = hugTarget(); if (hm && (!c || game.famD < 1.0)) { hugFamily(hm); continue; } if (c) enterCar(c); } }
     else if (a === 'horn') { if (player.car) { sfxHorn(1); for (const p of peds) if (p.pos.distanceTo(player.car.pos) < 14) p.scare(player.car.pos.x, player.car.pos.z, 3); } }
     else if (a === 'radio') { game.radio = !game.radio; store.set('radio', game.radio); radioOn(!!player.car); toast(game.radio ? 'Radio on · Solano 88.4' : 'Radio off'); }
     else if (a === 'cam') { cam.yaw = ((game.ride ? flight.yaw : player.car ? player.car.yaw : player.yaw)) + Math.PI; cam.pitch = 0.22; }
@@ -3201,12 +3262,13 @@ function updateHUD(dt) {
   const c = player.car;
   ui.speedo.hidden = !c; if (c) { const mph = Math.round(Math.abs(c.vf) * 2.237); if (mph !== lastSpd) { lastSpd = mph; ui.spd.textContent = mph; } }
   const fw = !c && nearFerris(), near = !c && !fw && !game.inside && !game.ride && !game.wheel && nearestEnterable(3.8);
-  const seat = game.inside ? game.nearSeat : null, hugM = hugTarget();
-  ui.bCar.textContent = game.wheel ? 'GET OFF' : fw ? 'RIDE' : game.ride ? 'LAND' : c ? 'GET OUT' : player.sit ? (player.sit.bed ? 'GET UP' : 'STAND') : hugM ? 'HUG' : seat ? (seat.bed ? 'LIE DOWN' : seat.toilet ? 'USE' : 'SIT') : 'GET IN'; ui.bCar.classList.toggle('ready', !!near || fw || !!hugM || (!!seat && !player.sit));
+  const seat = game.inside ? game.nearSeat : null, hug0 = hugTarget(), hugM = hug0 && (game.inside || !near || game.famD < 1.0) ? hug0 : null;
+  ui.bCar.textContent = game.wheel ? 'GET OFF' : fw ? 'RIDE' : game.ride ? 'LAND' : c ? 'GET OUT' : hugM && !game.inside ? 'HUG' : player.sit ? (player.sit.bed ? 'GET UP' : 'STAND') : hugM ? 'HUG' : seat ? (seat.bed ? 'LIE DOWN' : seat.toilet ? 'USE' : 'SIT') : 'GET IN'; ui.bCar.classList.toggle('ready', !!near || fw || !!hugM || (!!seat && !player.sit));
   ui.bAction.textContent = c ? 'DRIFT' : player.sit && player.sit.bed ? 'SLEEP' : player.sit && player.sit.tv ? (game.tvWatch ? 'CHANNEL' : 'TV') : 'JUMP'; ui.bHorn.hidden = !c; ui.bRadio.hidden = !c; ui.bAction.style.visibility = game.wheel || game.ride ? 'hidden' : '';
   let hint = '';
   if (near && !TOUCH) hint = near.driver === 'ai' ? 'Press F to carjack' : near.isCop && near.driver ? 'Press F to steal the cruiser' : 'Press F to get in';
   else if (near && TOUCH) hint = near.driver === 'ai' ? 'Tap GET IN to carjack' : 'Tap GET IN to drive';
+  if (hugM && !game.inside) hint = TOUCH ? `Tap HUG · ${hugM.d.name}` : `Press F to hug ${hugM.d.name}`;
   else if (game.bustT > 0.4) hint = 'Cops are boxing you in · move!';
   if (game.inside && game.ticketGate) hint = `Boarding pass · gate ${game.ticketGate} · upstairs`;
   if (game.inside && game.state === 'play') {
@@ -3398,6 +3460,7 @@ function step(dt) {
     player.pos.set(c.pos.x, c.y, c.pos.z);
   } else if (game.wheel) updateWheel(dt); else if (game.ride) { if (flight.st === 'parked') endRide(); } else if (game.inside) { updatePlayerInside(dt, ax, ay, sprint); if (game.inside && game.inside.room === ROOMS.home) famUpdate(dt); } else { updatePlayerFoot(dt, ax, ay, sprint); if (playing) checkShopDoors(dt); }
   input.jumpQ = false; if (player.bag) player.bag.visible = !game.bagChecked && !player.sit;
+  if (fam.out) followUpdate(dt); else if (!game.inside || game.inside.room !== ROOMS.home) game.nearFam = null;
   if (player.hurtT > 0) player.hurtT -= dt; else player.health = Math.min(100, player.health + dt * (game.fedT > 0 ? 12 : 4)); if (game.fedT > 0) game.fedT -= dt;
   // vehicles
   const f = focusPos();
@@ -3495,7 +3558,7 @@ function start(data) {
     game.sound = store.get('sound', true); game.radio = store.get('radio', true); setSound(game.sound);
     player.pos.set(-494.6, 0, 16.5); player.yaw = -Math.PI / 2;
     starterCar = new Vehicle('sports', 0xff3f8e); starterCar.place(-492.4, 18.8, 0);
-    game.owned = store.get('owned', ['coral']); game.visited = store.get('visited', []); game.pantry = store.get('pantry', {}); game.dishes = store.get('dishes', []); refreshDishes(); game.family = store.get('family', []);
+    game.owned = store.get('owned', ['coral']); game.visited = store.get('visited', []); game.pantry = store.get('pantry', {}); game.dishes = store.get('dishes', []); refreshDishes(); game.family = store.get('family', []); game.famFollow = store.get('famFollow', true); if (game.family.length && game.famFollow) famGoOut();
     setupMarkers(); setupCash(); spawnTraffic(); spawnPeds(); spawnLotCars();
     for (let i = 0; i < HWY_N; i++) { const c = new Vehicle(mpick(TRAFFIC_TYPES), mpick(PAINTS)); if (!placeHwy(c, false)) c.dispose(); }
     applyQuality(data.quality || store.get('quality', 'ultra'));
