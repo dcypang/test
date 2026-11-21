@@ -2297,7 +2297,7 @@ function checkShopDoors(dt) {
 function exitShop() {
   if (player.sit) standUp(); leaveQueue(game.inside.room); game.nearSeat = null; game.nearFam = null; if (game.bagChecked) { game.bagChecked = false; toast('You pick your suitcase back up'); }
   const s = game.inside.shop; game.inside.room.group.visible = false; game.inside = null; interiorLight.intensity = 0; fam.snap = true;
-  if (s.type === 'home' && game.famFollow && game.family.length) { famGoOut(); toast(game.family.length > 1 ? 'The family comes along with you' : `${game.family[0].name} comes along with you`); }
+  if (s.type === 'home' && fam.trip && game.family.length) { famGoOut(); toast('Family trip! Everyone has a suitcase · head to the airport together'); }
   player.pos.set(s.dx + s.nx * 2.6, CURB, s.dz + s.nz * 2.6); player.vel.set(0, 0, 0); player.yaw = Math.atan2(s.nx, s.nz); cam.yaw = player.yaw + Math.PI; cam.init = false; shopCD = 2;
 }
 function pushBox(p, r, c) {
@@ -2385,7 +2385,7 @@ function board(gt) {
 function endRide() {
   const s = game.ride.back, kind = game.ride.kind; game.ride = null; flight.trip = null; player.h.root.visible = true; radioOn(false);
   player.pos.set(s.dx + s.nx * 2.6, surfaceH(s.dx + s.nx * 2.6, s.dz + s.nz * 2.6), s.dz + s.nz * 2.6); player.vel.set(0, 0, 0); player.yaw = Math.atan2(s.nx, s.nz);
-  cam.yaw = player.yaw + Math.PI; cam.pitch = 0.2; cam.init = false; shopCD = 2; toast((kind === 'loop' || kind === 'solano' ? 'Welcome back to Solano' : `Welcome to ${RUNWAYS[kind].name}`) + (game.bagChecked ? ' · your suitcase came off the carousel' : ''), 3500); game.bagChecked = false; if (kind !== 'loop' && kind !== 'solano') { game.lastDest = kind; if (!game.visited.includes(kind)) { game.visited.push(kind); store.set('visited', game.visited); } }
+  cam.yaw = player.yaw + Math.PI; cam.pitch = 0.2; cam.init = false; shopCD = 2; toast((kind === 'loop' || kind === 'solano' ? 'Welcome back to Solano' : `Welcome to ${RUNWAYS[kind].name}`) + (game.bagChecked ? ' · your suitcase came off the carousel' : ''), 3500); game.bagChecked = false; if ((kind === 'loop' || kind === 'solano') && fam.trip) { setLuggage(null); famEndTrip('Welcome back to Solano · what a trip! The family takes a taxi home with all the suitcases'); } if (kind !== 'loop' && kind !== 'solano') { game.lastDest = kind; if (!game.visited.includes(kind)) { game.visited.push(kind); store.set('visited', game.visited); } }
 }
 function fmtTime(h) { const hh = Math.floor(h) % 24, mn = Math.round((h - Math.floor(h)) * 60); return `${hh % 12 === 0 ? 12 : hh % 12}:${String(mn).padStart(2, '0')} ${hh < 12 ? 'AM' : 'PM'}`; }
 let fadeTimer = null;
@@ -2527,10 +2527,10 @@ function famUpdate(dt) {
   }
 }
 function famEnter() {
-  const R = ROOMS.home, wasOut = fam.out; fam.out = false;
+  const R = ROOMS.home, wasOut = fam.out; fam.out = false; fam.trip = false;
   for (const d of game.family) if (!fam.list.find((m) => m.d === d)) famSpawn(d);
   for (const m of fam.list) { R.group.add(m.h.root); m.h.root.visible = true; m.hugT = 0; if (m.bag) m.bag.visible = false; famPlace(m, wasOut ? R.famNodes[3] : null); }
-  if (wasOut && game.family.length) return 'Home sweet home · the family is back home with you';
+  if (wasOut && game.family.length) return 'Home sweet home · trip over, the family unpacks their suitcases';
   if (!game.family.length) return 'Home sweet home · start a family at the photo wall by the door';
   const n = game.family.map((d) => d.name), list = n.length > 1 ? n.slice(0, -1).join(', ') + ' and ' + n[n.length - 1] : n[0];
   return famNight() ? `Home sweet home · ${list} ${n.length > 1 ? 'are' : 'is'} asleep upstairs` : `Home sweet home · ${list} ${n.length > 1 ? 'are' : 'is'} home`;
@@ -2542,6 +2542,16 @@ function hugTarget() {
 function hugPose(h, dt) { if (game.hugT <= 0) return; game.hugT -= dt; h.armL.rotation.x = h.armR.rotation.x = -1.25; h.armL.rotation.z = 0.35; h.armR.rotation.z = -0.35; h.elbowL.rotation.x = h.elbowR.rotation.x = -0.5; }
 // ---- out and about: the family follows the path you walk, sits when you sit, rides along in cars, planes and the Ferris wheel
 const trail = { pts: [], yaw: 0 }, FAM_SLOTS = [{ d: 1.3, lat: 0.5, ls: 0.8 }, { d: 1.3, lat: -0.5, ls: -0.8 }, { d: 2.4, lat: 0.5, ls: 1.6 }, { d: 2.4, lat: -0.5, ls: -1.6 }];
+function planTrip() {
+  if (!game.family.length) return 'Start a family first';
+  fam.trip = true; if (!game.luggage) setLuggage((SUITCASES.find((x) => x.id === 'blue') || SUITCASES[0]).id);
+  return 'Trip time! Everyone packs a suitcase · walk out the front door together';
+}
+function famEndTrip(msg) {
+  const R = ROOMS.home; fam.trip = false; fam.out = false; game.nearFam = null;
+  for (const m of fam.list) { famFree(m); R.group.add(m.h.root); m.mode = 'idle'; m.route = null; m.goal = null; if (m.bag) m.bag.visible = false; }
+  if (msg) toast(msg, 4000);
+}
 function famGoOut() {
   for (const d of game.family) if (!fam.list.find((m) => m.d === d)) famSpawn(d);
   if (!fam.list.length) return;
@@ -2572,7 +2582,7 @@ function followUpdate(dt) {
   if (!player.sit && (Rm || player.onGround)) trailPush();
   fam.list.forEach((m, i) => {
     const h = m.h, S = FAM_SLOTS[i % FAM_SLOTS.length]; h.root.visible = true; m.hugT = Math.max(0, (m.hugT || 0) - dt);
-    const carry = !!player.bag && player.bag.visible && !player.sit;
+    const carry = fam.trip && !game.bagChecked && !player.sit;
     if (carry && !m.bag) { m.bag = new THREE.Mesh(suitcaseGeo([0x2a9d8f, 0x9b5de5, 0xff7aa8, 0xf4a261][i % 4], m.kid ? 0.8 : 0.9), vcolMat); m.bag.castShadow = true; m.bag.position.set(-0.42, 0, -0.06); h.root.add(m.bag); }
     if (m.bag) m.bag.visible = carry;
     // you sat down: take the nearest free seats around you
@@ -2605,7 +2615,7 @@ function hugFamily(m) {
   const mx = m.mode === 'out' ? m.fx : m.x, mz = m.mode === 'out' ? m.fz : m.z; game.hugT = 1.4; m.hugT = 1.4; sfxChime(); player.yaw = Math.atan2(mx - player.pos.x, mz - player.pos.z);
   if (m.mode === 'walk' || m.mode === 'idle') { m.after = m.mode; m.mode = 'hug'; m.t = 1.4; }
 }
-function famStatus(d) { const m = fam.list.find((x) => x.d === d); return !m ? 'At home' : m.mode === 'out' ? 'With you' : m.mode === 'sleep' ? 'Asleep' : m.mode === 'sit' ? (m.seat.dine ? 'At the dinner table' : m.seat.tv ? 'On the sofa' : 'Sitting down') : m.y > 1 ? 'Upstairs' : 'Downstairs'; }
+function famStatus(d) { const m = fam.list.find((x) => x.d === d); return !m ? 'At home' : m.mode === 'out' ? 'On a trip with you' : m.mode === 'sleep' ? 'Asleep' : m.mode === 'sit' ? (m.seat.dine ? 'At the dinner table' : m.seat.tv ? 'On the sofa' : 'Sitting down') : m.y > 1 ? 'Upstairs' : 'Downstairs'; }
 function refreshDishes() {
   const R = ROOMS.home; if (!R || !R.dishPlaces) return;
   for (const m of R.dishMeshes || []) { R.group.remove(m); m.geometry.dispose(); } R.dishMeshes = [];
@@ -2648,13 +2658,14 @@ const SHOP_ITEMS = {
   kitchen: () => RECIPES.map((r) => { const miss = r.needs.filter((k) => !(game.pantry[k] > 0)), full = game.dishes.length >= 4; return { name: r.name, desc: (full ? 'The table is full · eat something first' : miss.length ? 'Missing: ' + miss.map((k) => INGR[k].name).join(', ') : 'Ready to cook') + ` · +${r.heal} health`, price: 0, sw: r.look[1], disabled: miss.length > 0 || full, buy: () => cook(r) }; }),
   grocery: () => Object.keys(INGR).map((k) => ({ name: INGR[k].name, desc: `In your fridge: ${game.pantry[k] || 0}`, price: INGR[k].price, sw: INGR[k].color, buy: () => { game.pantry[k] = (game.pantry[k] || 0) + 1; store.set('pantry', game.pantry); return `${INGR[k].name} bagged · cook it at home`; } })),
   luggage: () => [
+    ...(game.family.length && !fam.trip ? [{ name: 'Pack for a family trip', desc: 'Everyone gets their own suitcase and comes with you · they head home when you fly back to Solano', price: 0, sw: 0x2be0cf, buy: () => planTrip() }] : []),
     ...SUITCASES.map((sc) => ({ name: game.luggage === sc.id ? `${sc.name} · with you` : `Take the ${sc.name.toLowerCase()}`, desc: game.luggage === sc.id ? 'Rolling along behind you' : 'Packed and ready for a trip', price: 0, sw: sc.hex, disabled: game.luggage === sc.id, buy: () => { setLuggage(sc.id); return `You grab the ${sc.name.toLowerCase()} · check it in at the airport`; } })),
     ...(game.luggage ? [{ name: 'Put your suitcase away', desc: 'Leave it here at home', price: 0, buy: () => { setLuggage(null); return 'Suitcase put away'; } }] : []),
   ],
   family: () => { const fm = game.family, partner = fm.find((d) => d.role === 'partner'), kids = fm.filter((d) => d.role === 'kid').length; return [
     ...(partner ? [] : [{ name: 'Find a partner', desc: 'Someone special moves in and shares the house with you', price: 0, sw: 0xff7aa8, buy: () => addFamily('partner') }]),
     { name: kids >= 3 ? "The kids' room is full" : 'Welcome a child', desc: kids >= 3 ? 'Three kids, three beds upstairs' : "A kid moves into the kids' room upstairs (up to 3)", price: 0, sw: 0xffc857, disabled: kids >= 3, buy: () => addFamily('kid') },
-    ...(fm.length ? [{ name: game.famFollow ? 'Family comes with you: ON' : 'Family comes with you: OFF', desc: game.famFollow ? 'They go everywhere with you: walks, car rides, shops, flights, the Ferris wheel · tap to let them stay home' : 'They stay home while you go out · tap to bring them along', price: 0, sw: 0x2be0cf, buy: () => { game.famFollow = !game.famFollow; store.set('famFollow', game.famFollow); return game.famFollow ? 'The family will come with you when you go out' : 'The family will stay home'; } }] : []),
+    ...(fm.length ? [{ name: fam.trip ? 'Trip planned · walk out the front door' : 'Go on a family trip', desc: fam.trip ? 'Everyone has packed a suitcase · they come with you until you fly back to Solano' : 'Everyone packs their own suitcase and comes with you · they head home when you fly back to Solano', price: 0, sw: 0x2be0cf, disabled: fam.trip, buy: () => planTrip() }] : []),
     ...fm.map((d) => ({ name: `${d.name} · ${d.role === 'partner' ? 'your partner' : 'your kid'}`, desc: famStatus(d), price: 0, sw: d.look.shirt, disabled: true, buy: () => null })),
   ]; },
   bath: [
@@ -3447,12 +3458,12 @@ $('resumeBtn').addEventListener('click', () => pause(false));
 $('soundBtn').addEventListener('click', () => setSound(!game.sound));
 function refreshTripButtons() {
   const atHome = game.inside && game.inside.room === ROOMS.home, hasFam = game.family.length > 0, fb = $('famBtn'), bb = $('bagBtn');
-  fb.hidden = !hasFam || atHome; fb.textContent = fam.out ? 'Send the family home' : 'Call the family to join you';
+  fb.hidden = !hasFam || atHome; fb.textContent = fam.out ? 'End the trip · family goes home' : 'Start a family trip';
   bb.hidden = !game.luggage; $('pTripLabel').hidden = $('pTripRow').hidden = fb.hidden && bb.hidden;
 }
 $('famBtn').addEventListener('click', () => {
-  if (fam.out) { const R = ROOMS.home; fam.out = false; game.nearFam = null; for (const m of fam.list) { famFree(m); R.group.add(m.h.root); m.mode = 'idle'; if (m.bag) m.bag.visible = false; } toast('The family heads home · they will be there when you get back'); }
-  else { famGoOut(); toast(game.family.length > 1 ? 'The family hops in a taxi and meets you here' : `${game.family[0].name} hops in a taxi and meets you here`); }
+  if (fam.out) { setLuggage(null); famEndTrip('Trip over · the family heads home with all the suitcases'); }
+  else { planTrip(); famGoOut(); toast(game.family.length > 1 ? 'Trip time! The family arrives by taxi with their suitcases' : `Trip time! ${game.family[0].name} arrives by taxi with a suitcase`); }
   refreshTripButtons();
 });
 $('bagBtn').addEventListener('click', () => { const was = SUITCASES.find((x) => x.id === game.luggage); setLuggage(null); toast(was ? `Your ${was.name.toLowerCase()} is back home` : 'Suitcase put away'); refreshTripButtons(); });
@@ -3593,7 +3604,7 @@ function start(data) {
     game.sound = store.get('sound', true); game.radio = store.get('radio', true); setSound(game.sound);
     player.pos.set(-494.6, 0, 16.5); player.yaw = -Math.PI / 2;
     starterCar = new Vehicle('sports', 0xff3f8e); starterCar.place(-492.4, 18.8, 0);
-    game.owned = store.get('owned', ['coral']); game.visited = store.get('visited', []); game.pantry = store.get('pantry', {}); game.dishes = store.get('dishes', []); refreshDishes(); game.family = store.get('family', []); game.famFollow = store.get('famFollow', true); if (game.family.length && game.famFollow) famGoOut();
+    game.owned = store.get('owned', ['coral']); game.visited = store.get('visited', []); game.pantry = store.get('pantry', {}); game.dishes = store.get('dishes', []); refreshDishes(); game.family = store.get('family', []); 
     setupMarkers(); setupCash(); spawnTraffic(); spawnPeds(); spawnLotCars();
     for (let i = 0; i < HWY_N; i++) { const c = new Vehicle(mpick(TRAFFIC_TYPES), mpick(PAINTS)); if (!placeHwy(c, false)) c.dispose(); }
     applyQuality(data.quality || store.get('quality', 'ultra'));
