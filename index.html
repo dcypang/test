@@ -1537,6 +1537,11 @@ function buildHome(R) {
   plant(X1 - 0.6, Z1 - 0.6, 0); plant(SX1 + 0.6, Z1 - 0.6, 0); win(X1 - 0.03, 1.6, cz + 2, -Math.PI / 2, 2.4);
   P.push(boxAt(1.6, 0.02, 1, cx, IY + 0.01, Z1 - 0.9, 0x6e4a2d));
   roomText(R, 'CASA SOLANO', '#c8372d', cx - 2.6, IY + 2.5, Z1 - 0.03, 2.6, 0.4, Math.PI);
+  { const tex = canvasTex(384, 128, (g) => { [['#ffb37a', '#ff7aa8'], ['#9ad8f2', '#2be0cf'], ['#ffd36e', '#ff9f43']].forEach(([a, b], i) => { const x = i * 128 + 6, gr = g.createLinearGradient(0, 6, 0, 122); gr.addColorStop(0, a); gr.addColorStop(1, b); g.fillStyle = gr; g.fillRect(x, 6, 116, 116); g.fillStyle = '#1f6fb2'; g.fillRect(x, 88, 116, 34); g.fillStyle = '#fff3c4'; g.beginPath(); g.arc(x + 90, 32, 12, 0, 7); g.fill();
+      for (let k = 0; k < 2 + i; k++) { const fx = x + 22 + k * 26, sc = k >= 2 ? 0.7 : 1; g.fillStyle = ['#c8372d', '#2a9d8f', '#ffc857', '#9b5de5'][k]; g.fillRect(fx - 7 * sc, 92 - 30 * sc, 14 * sc, 26 * sc); g.fillStyle = '#8d5a3b'; g.beginPath(); g.arc(fx, 92 - 37 * sc, 7 * sc, 0, 7); g.fill(); } }); });
+    const ph = new THREE.Mesh(new THREE.PlaneGeometry(1.8, 0.6), new THREE.MeshBasicMaterial({ map: tex, color: new THREE.Color(1.2, 1.2, 1.2) })); ph.position.set(cx - 2.6, IY + 1.55, Z1 - 0.07); ph.rotation.y = Math.PI; R.group.add(ph);
+    P.push(boxAt(1.95, 0.75, 0.04, cx - 2.6, IY + 1.55, Z1 - 0.03, WOOD));
+    R.counters.push({ x: cx - 2.6, z: Z1 - 1.0, y: 0, r: 0.75, back: [0, -0.9], type: 'family', title: 'Family photo wall' }); }
   // ---- upstairs ----
   const wallU = (x0, x1, z0, z1) => { P.push(boxAt(x1 - x0, H - FH, z1 - z0, (x0 + x1) / 2, IY + FH + (H - FH) / 2, (z0 + z1) / 2, WALL)); ob(x0, x1, z0, z1, FH, H, true); };
   wallU(cx - 1.35, cx - 1.2, Z0, cz - 4.6); wallU(cx - 1.35, cx - 1.2, cz - 3.4, Z1); P.push(boxAt(0.15, H - FH - 2.4, 1.2, cx - 1.275, IY + FH + 2.4 + (H - FH - 2.4) / 2, cz - 4, WALL));
@@ -1544,7 +1549,8 @@ function buildHome(R) {
   // bedroom: big bed (head against the west wall), nightstands, wardrobe, dresser, desk, reading chair
   P.push(boxAt(3.2, 0.5, 2.4, cx - 9.3, IY + FH + 0.25, cz + 1, 0xf4f4f0), boxAt(0.2, 1.2, 2.6, X0 + 0.1, IY + FH + 0.6, cz + 1, WOOD), boxAt(2.0, 0.1, 2.42, cx - 8.7, IY + FH + 0.55, cz + 1, 0x1f6fb2), boxAt(0.6, 0.18, 1.8, cx - 10.4, IY + FH + 0.6, cz + 1, 0xffffff));
   ob(X0, cx - 7.6, cz - 0.3, cz + 2.3, FH, FH + 2);
-  addSeat(R, cx - 8.2, cz + 1, FH, 0.66, Math.PI / 2, true);
+  addSeat(R, cx - 8.2, cz + 0.45, FH, 0.66, Math.PI / 2, true);
+  R.partnerBed = { x: cx - 8.2, z: cz + 1.55, y: FH, yaw: Math.PI / 2, top: 0.78, node: 18, ax: cx - 7.1, az: cz + 1.55 };
   for (const nz of [cz - 0.75, cz + 2.75]) { P.push(boxAt(0.6, 0.6, 0.6, X0 + 0.5, IY + FH + 0.3, nz, WOOD)); R.group.add(new THREE.Mesh(boxAt(0.22, 0.3, 0.22, X0 + 0.5, IY + FH + 0.75, nz), roomLightMat)); ob(X0, X0 + 0.85, nz - 0.32, nz + 0.32, FH, FH + 1.2); }
   P.push(boxAt(3, 2.4, 0.7, cx - 6, IY + FH + 1.2, Z0 + 0.35, 0xd9cbb5), boxAt(0.04, 2.2, 0.04, cx - 6, IY + FH + 1.2, Z0 + 0.71, 0x8a7a66)); ob(cx - 7.5, cx - 4.5, Z0, Z0 + 0.75, FH, FH + 2.6);
   R.counters.push({ x: cx - 6, z: Z0 + 1.4, y: FH, type: 'closet', title: 'Your closet' });
@@ -1552,7 +1558,9 @@ function buildHome(R) {
   P.push(boxAt(0.7, 0.75, 1.6, X0 + 0.35, IY + FH + 0.375, cz + 5.6, WOOD), boxAt(0.4, 0.03, 0.55, X0 + 0.4, IY + FH + 0.77, cz + 5.6, 0x2b2b30)); ob(X0, X0 + 0.75, cz + 4.8, cz + 6.4, FH, FH + 1.2);
   armchair(cx - 2.4, Z1 - 1.4, FH, Math.PI, 0x9b5de5);
   P.push(boxAt(4, 0.02, 3, cx - 6.5, IY + FH + 0.02, cz + 4.6, 0xe9c46a));
-  win(X0 + 0.03, FH + 1.7, cz - 4, Math.PI / 2, 2.2); plant(cx - 2.2, Z0 + 0.6, FH);
+  win(X0 + 0.03, FH + 1.7, cz - 4, Math.PI / 2, 2.2); plant(cx - 1.9, Z0 + 0.6, FH);
+  R.suitcases = {}; SUITCASES.forEach((sc, i) => { const m = new THREE.Mesh(suitcaseGeo(sc.hex, sc.s), vcolMat); m.position.set(cx - 4.05 + i * 0.6, IY + FH, Z0 + 0.32); m.rotation.y = Math.PI; m.castShadow = true; R.group.add(m); R.suitcases[sc.id] = m; });
+  ob(cx - 4.3, cx - 2.6, Z0, Z0 + 0.5, FH, FH + 1.2); R.counters.push({ x: cx - 3.45, z: Z0 + 1.3, y: FH, r: 0.8, back: [0, 0.9], type: 'luggage', title: 'Your suitcases' });
   // bathroom with a shower
   addRestroom(R, P, cx + 6, X1, Z0, cz - 3, 'w', FH, true);
   { const x0 = X1 - 1.35, z0 = cz - 4.45, z1 = cz - 3.1, y = FH; P.push(boxAt(X1 - x0, 0.1, z1 - z0, (x0 + X1) / 2, IY + y + 0.05, (z0 + z1) / 2, 0xe8eef2), boxAt(0.26, 0.05, 0.26, X1 - 0.65, IY + y + 2.15, (z0 + z1) / 2, 0x9aa0a8), boxAt(0.05, 0.5, 0.05, X1 - 0.65, IY + y + 2.4, (z0 + z1) / 2, 0x9aa0a8));
@@ -1565,6 +1573,20 @@ function buildHome(R) {
   const BK = [0xc8372d, 0x1f6fb2, 0xffc857, 0x2a9d8f, 0xf4f4f0, 0x9b5de5];
   for (let r = 0; r < 4; r++) for (let k = 0; k < 9; k++) P.push(boxAt(0.25, 0.32 + ((k * 7 + r) % 3) * 0.04, 0.22, X1 - 0.5, IY + FH + 0.35 + r * 0.5, cz + 4.75 + k * 0.3, BK[(k + r * 2) % BK.length]));
   P.push(boxAt(5, 0.02, 3.6, cx + 7.5, IY + FH + 0.02, cz + 3, 0x8ac926)); win(X1 - 0.03, FH + 1.7, cz + 1.5, -Math.PI / 2, 2.4); plant(X1 - 0.6, Z1 - 0.6, FH); plant(SX1 + 0.6, cz - 2.4, FH);
+  // kids' room: three small beds along the south wall upstairs
+  R.kidBeds = []; [cx + 4, cx + 6, cx + 8].forEach((bx, i) => {
+    P.push(boxAt(1.1, 0.32, 2.0, bx, IY + FH + 0.16, cz + 6.9, 0xf4f1ea), boxAt(1.12, 0.1, 1.5, bx, IY + FH + 0.37, cz + 6.6, [0xff7aa8, 0x2be0cf, 0xffc857][i]), boxAt(0.8, 0.12, 0.4, bx, IY + FH + 0.4, cz + 7.6, 0xffffff), boxAt(1.2, 0.8, 0.1, bx, IY + FH + 0.4, Z1 - 0.05, WOOD));
+    ob(bx - 0.56, bx + 0.56, cz + 5.85, Z1, FH, FH + 1.2); R.kidBeds.push({ x: bx, z: cz + 6.15, y: FH, yaw: Math.PI, top: 0.5, node: i === 0 ? 13 : 14, ax: bx, az: cz + 5.35 });
+  });
+  for (const [bx, bz, c] of [[cx + 5.2, cz + 4.6, 0xd62828], [cx + 5.5, cz + 4.75, 0x1f6fb2], [cx + 5.35, cz + 4.65, 0xffc857]]) P.push(boxAt(0.22, 0.22, 0.22, bx, IY + FH + 0.11 + (c === 0xffc857 ? 0.22 : 0), bz, c));
+  roomText(R, "KIDS' ROOM", '#ff3f8e', cx + 6, IY + FH + 2.4, Z1 - 0.03, 2.6, 0.45, Math.PI);
+  // walking graph for the family (both floors, linked by the stairs)
+  const NODES = [[-3.2, -2.4, 0], [-2.4, -6.2, 0], [-3.6, 1.2, 0], [-2.0, 6.0, 0], [1.4, 4.6, 0], [3.1, 5.6, 0], [3.1, -1.5, 0], [4.0, -5.0, 0], [8.4, 6.0, 0], [1.4, 2.6, 0], [1.4, -6.7, 1], [3.6, -6.9, 1], [3.6, 0.5, 1], [3.6, 5.0, 1], [7.4, 5.1, 1], [-0.35, -6.9, 1], [-0.35, -4.0, 1], [-2.4, -4.0, 1], [-4.5, -2.0, 1], [-4.5, 4.2, 1], [5.0, 2.2, 0], [-9.3, 1.0, 0]];
+  R.famNodes = NODES.map(([x, z, f], i) => ({ i, x: cx + x, z: cz + z, y: f * FH }));
+  R.famAdj = R.famNodes.map(() => []); for (const [a, b] of [[0, 1], [0, 2], [2, 3], [3, 4], [4, 5], [5, 6], [6, 7], [5, 8], [4, 9], [9, 10], [10, 11], [11, 12], [12, 13], [13, 14], [10, 15], [15, 16], [16, 17], [17, 18], [18, 19], [5, 20], [6, 20], [2, 21]]) { R.famAdj[a].push(b); R.famAdj[b].push(a); }
+  R.famIdle = [0, 1, 2, 3, 5, 6, 7, 8, 11, 12, 13, 14, 17, 18, 19, 20];
+  R.famSeats = R.seats.filter((st) => st.y === 0 && !st.toilet && !st.bed);
+  for (const st of R.famSeats) { st.famNode = st.dine ? (st.yaw === Math.PI ? 3 : st.yaw === Math.PI / 2 ? 21 : 2) : st.x > cx + 3 ? 20 : 0; if (!st.tv && !st.dine && st.x > cx + 3) st.famTv = true; }
   const m = new THREE.Mesh(mergeAll(P), vcolMat); m.castShadow = m.receiveShadow = true; R.group.add(m);
 }
 const OUTFITS = [
@@ -2214,7 +2236,7 @@ function removeOfficer(o) { scene.remove(o.h.root); const i = officers.indexOf(o
 
 // ---------------------------------------------------------------- player
 const player = { sit: null, autoTo: null, pos: new THREE.Vector3(-494.6, 0, 16.5), vel: new THREE.Vector3(), yaw: -Math.PI / 2, onGround: true, car: null, h: null, knock: 0, health: 100, hurtT: 0, alive: true, lie: 0 };
-const game = { pantry: {}, dishes: [], eat: null, fedT: 0, tvWatch: false, visited: [], lastDest: null, ticketGate: null, ticket: null, owned: ['coral'], counter: null, ride: null, inside: null, state: 'boot', cash: 500, shownCash: 500, wanted: 0, heat: 0, evadeT: 0, crimeT: 0, bustT: 0, tod: 17.62, job: null, quality: 'ultra', radio: true, sound: true, time: 0, downT: 0, seenDistrict: '', saveT: 0 };
+const game = { pantry: {}, dishes: [], eat: null, fedT: 0, luggage: null, bagChecked: false, family: [], nearFam: null, famD: 9, hugT: 0, tvWatch: false, visited: [], lastDest: null, ticketGate: null, ticket: null, owned: ['coral'], counter: null, ride: null, inside: null, state: 'boot', cash: 500, shownCash: 500, wanted: 0, heat: 0, evadeT: 0, crimeT: 0, bustT: 0, tod: 17.62, job: null, quality: 'ultra', radio: true, sound: true, time: 0, downT: 0, seenDistrict: '', saveT: 0 };
 const STAR_AT = [1, 4, 9, 16, 26];
 function focusPos() { return game.ride ? flight.m.position : player.car ? player.car.pos : game.inside ? game.inside.out : player.pos; }
 function focusY() { return game.wheel ? surfaceH(ferris.x, ferris.z + 6) : game.ride ? flight.y : player.car ? player.car.y : game.inside ? CURB : player.pos.y; }
@@ -2261,11 +2283,11 @@ function checkShopDoors(dt) {
     const Rm = ROOMS[s.type]; game.inside = { shop: s, room: Rm, out: new THREE.Vector3(s.dx + s.nx * 2.2, CURB, s.dz + s.nz * 2.2) };
     Rm.group.visible = true; player.pos.set(Rm.spawn.x, IY, Rm.spawn.z); player.vel.set(0, 0, 0); player.yaw = Math.PI;
     cam.yaw = 0; cam.pitch = 0.16; interiorLight.position.set(Rm.cx, IY + Rm.H - 0.8, Rm.cz); interiorLight.intensity = Rm.w > 30 ? 90 : Rm.w > 20 ? 40 : 16; interiorLight.distance = Rm.w > 30 ? 80 : 34; if (Rm.followLight) { interiorLight.intensity = Rm.lightI || 40; interiorLight.distance = Rm.lightD || 30; }
-    toast(Rm.hello || `${Rm.name} · walk up to the counter to buy`); shopCD = 1.2; return;
+    toast((s.type === 'home' && famEnter()) || Rm.hello || `${Rm.name} · walk up to the counter to buy`); shopCD = 1.2; return;
   }
 }
 function exitShop() {
-  if (player.sit) standUp(); leaveQueue(game.inside.room); game.nearSeat = null;
+  if (player.sit) standUp(); leaveQueue(game.inside.room); game.nearSeat = null; game.nearFam = null; if (game.bagChecked) { game.bagChecked = false; toast('You pick your suitcase back up'); }
   const s = game.inside.shop; game.inside.room.group.visible = false; game.inside = null; interiorLight.intensity = 0;
   player.pos.set(s.dx + s.nx * 2.6, CURB, s.dz + s.nz * 2.6); player.vel.set(0, 0, 0); player.yaw = Math.atan2(s.nx, s.nz); cam.yaw = player.yaw + Math.PI; cam.init = false; shopCD = 2;
 }
@@ -2323,7 +2345,8 @@ function updatePlayerInside(dt, ax, ay, sprint) {
   game.nearSeat = null; if (!player.autoTo) { let bd = 1.4; for (const st of Rm.seats) { if (st.taken || Math.abs(st.y - pyr) > 1) continue; const d = Math.hypot(st.x - p.pos.x, st.z - p.pos.z); if (d < bd) { bd = d; game.nearSeat = st; } } }
   if (Rm.followLight) interiorLight.position.set(p.pos.x, p.pos.y + (Rm.lightH || 3.8), p.pos.z);
   p.h.root.position.set(p.pos.x, p.pos.y, p.pos.z); p.h.root.rotation.set(0, p.yaw, 0, 'YXZ');
-  poseHuman(p.h, dt, Math.hypot(p.vel.x, p.vel.z), false, game.time);
+  poseHuman(p.h, dt, Math.hypot(p.vel.x, p.vel.z), false, game.time); holdBag(p.h);
+  if (game.hugT > 0) { game.hugT -= dt; p.h.armL.rotation.x = p.h.armR.rotation.x = -1.25; p.h.armL.rotation.z = 0.35; p.h.armR.rotation.z = -0.35; p.h.elbowL.rotation.x = p.h.elbowR.rotation.x = -0.5; }
   for (const c of Rm.clerks) if (!c.mannequin) poseHuman(c, dt, 0, false, game.time);
   shopCD -= dt;
   if (shopCD <= 0 && pyr < 1 && Math.hypot(p.pos.x - Rm.door.x, p.pos.z - Rm.door.z) < 0.9) { exitShop(); return; }
@@ -2353,7 +2376,7 @@ function board(gt) {
 function endRide() {
   const s = game.ride.back, kind = game.ride.kind; game.ride = null; flight.trip = null; player.h.root.visible = true; radioOn(false);
   player.pos.set(s.dx + s.nx * 2.6, surfaceH(s.dx + s.nx * 2.6, s.dz + s.nz * 2.6), s.dz + s.nz * 2.6); player.vel.set(0, 0, 0); player.yaw = Math.atan2(s.nx, s.nz);
-  cam.yaw = player.yaw + Math.PI; cam.pitch = 0.2; cam.init = false; shopCD = 2; toast(kind === 'loop' || kind === 'solano' ? 'Welcome back to Solano' : `Welcome to ${RUNWAYS[kind].name}`, 3500); if (kind !== 'loop' && kind !== 'solano') { game.lastDest = kind; if (!game.visited.includes(kind)) { game.visited.push(kind); store.set('visited', game.visited); } }
+  cam.yaw = player.yaw + Math.PI; cam.pitch = 0.2; cam.init = false; shopCD = 2; toast((kind === 'loop' || kind === 'solano' ? 'Welcome back to Solano' : `Welcome to ${RUNWAYS[kind].name}`) + (game.bagChecked ? ' · your suitcase came off the carousel' : ''), 3500); game.bagChecked = false; if (kind !== 'loop' && kind !== 'solano') { game.lastDest = kind; if (!game.visited.includes(kind)) { game.visited.push(kind); store.set('visited', game.visited); } }
 }
 function fmtTime(h) { const hh = Math.floor(h) % 24, mn = Math.round((h - Math.floor(h)) * 60); return `${hh % 12 === 0 ? 12 : hh % 12}:${String(mn).padStart(2, '0')} ${hh < 12 ? 'AM' : 'PM'}`; }
 let fadeTimer = null;
@@ -2383,6 +2406,134 @@ function dishGeo(r) {
   else for (let i = 0; i < 6; i++) G.push(colorize(new THREE.CylinderGeometry(0.035, 0.035, 0.016, 10).translate(Math.cos(i) * 0.08, 0.03, Math.sin(i) * 0.08), i % 2 ? c0 : c1));
   return mergeAll(G);
 }
+const SUITCASES = [{ id: 'blue', name: 'Blue suitcase', hex: 0x1f6fb2, s: 1 }, { id: 'red', name: 'Red suitcase', hex: 0xc8372d, s: 1 }, { id: 'yellow', name: 'Yellow carry-on', hex: 0xffc857, s: 0.8 }];
+function suitcaseGeo(hex, s) {
+  return mergeAll([boxAt(0.42 * s, 0.6 * s, 0.24, 0, 0.38 * s, 0, hex), boxAt(0.44 * s, 0.05, 0.26, 0, 0.5 * s, 0, 0x2b2b30), boxAt(0.03, 0.36 * s, 0.03, -0.12 * s, 0.86 * s, -0.08, 0x9aa0a8), boxAt(0.03, 0.36 * s, 0.03, 0.12 * s, 0.86 * s, -0.08, 0x9aa0a8),
+    boxAt(0.27 * s, 0.035, 0.04, 0, 1.04 * s, -0.08, 0x2b2b30), boxAt(0.06, 0.06, 0.06, -0.16 * s, 0.04, -0.08, 0x111111), boxAt(0.06, 0.06, 0.06, 0.16 * s, 0.04, -0.08, 0x111111)]);
+}
+function attachLuggage() {
+  if (player.bag) { if (player.bag.parent) player.bag.parent.remove(player.bag); player.bag.geometry.dispose(); player.bag = null; }
+  const sc = SUITCASES.find((x) => x.id === game.luggage);
+  if (sc && player.h) { player.bag = new THREE.Mesh(suitcaseGeo(sc.hex, sc.s), vcolMat); player.bag.castShadow = true; player.bag.position.set(-0.42, 0, -0.06); player.h.root.add(player.bag); }
+  const R = ROOMS.home; if (R && R.suitcases) for (const k in R.suitcases) R.suitcases[k].visible = game.luggage !== k;
+}
+function setLuggage(id) { game.luggage = id; game.bagChecked = false; store.set('luggage', id); attachLuggage(); }
+function holdBag(h) { if (!player.bag || !player.bag.visible || h !== player.h) return; h.armR.rotation.x = 0.1; h.armR.rotation.z = -0.2; h.elbowR.rotation.x = -0.08; }
+function bagItems() {
+  const sc = SUITCASES.find((x) => x.id === game.luggage); if (!sc) return [];
+  return [game.bagChecked ? { name: `${sc.name} · checked`, desc: 'Tagged for your flight · it meets you when you land', price: 0, sw: sc.hex, disabled: true, buy: () => null }
+    : { name: `Check your ${sc.name.toLowerCase()}`, desc: 'Free · it rides in the hold and meets you when you land', price: 0, sw: sc.hex, buy: () => { game.bagChecked = true; return 'Bag tag printed · your suitcase rolls away down the belt'; } }];
+}
+// ---------------------------------------------------------------- family
+const PARTNER_NAMES = ['Sofia', 'Mateo', 'Camila', 'Diego', 'Lucia', 'Andres', 'Valeria', 'Gabriel'], KID_NAMES = ['Leo', 'Mia', 'Nico', 'Ana', 'Tomas', 'Isla', 'Pablo', 'Rosa', 'Max', 'Luna'];
+const FAM_LINES = {
+  partner: ['Welcome home! How was your day?', 'I saved you some pastelitos.', 'Movie night later? I will make popcorn.', 'The kids missed you today!', 'Want to fly somewhere this weekend?', 'Let us cook dinner together tonight.'],
+  kid: ['Can we ride the Ferris wheel?', 'Look, I drew an airplane!', 'Can you make pancakes?', 'Race you up the stairs!', 'I built a fort in my room!', 'You are the best!'],
+};
+const fam = { list: [] };
+const famNight = () => game.tod >= 21.5 || game.tod < 6.5;
+function famName(role) { const used = game.family.map((m) => m.name), pool = (role === 'kid' ? KID_NAMES : PARTNER_NAMES).filter((n) => !used.includes(n)); return mpick(pool.length ? pool : KID_NAMES); }
+function addFamily(role) {
+  const d = { role, name: famName(role), look: { ...randomLook(), shades: false } }; game.family.push(d); store.set('family', game.family);
+  if (game.inside && game.inside.room === ROOMS.home) famPlace(famSpawn(d), ROOMS.home.famNodes[3]);
+  return role === 'kid' ? `Welcome home, ${d.name}! · their bed is in the kids' room upstairs` : `${d.name} moved in · say hi!`;
+}
+function famSpawn(d) {
+  const R = ROOMS.home, kid = d.role === 'kid', h = makeHuman(d.look, false), sc = kid ? 0.66 : 1; h.root.scale.setScalar(sc); R.group.add(h.root);
+  const m = { d, h, sc, kid, x: R.cx, z: R.cz, y: 0, yaw: 0, mode: 'idle', wait: 1, route: null, goal: null, seat: null, t: 0, cd: 0, walkT: 0, stuck: 0, after: null, bed: kid ? fam.list.filter((o) => o.kid).length : -1 };
+  fam.list.push(m); return m;
+}
+function famFree(m) { if (m.seat) { if (m.seat.taken === m) m.seat.taken = null; m.seat = null; } }
+function famBed(m) { const R = ROOMS.home; return m.kid ? R.kidBeds[m.bed % R.kidBeds.length] : R.partnerBed; }
+function famSleep(m) { const b = famBed(m); famFree(m); m.mode = 'sleep'; m.route = null; m.goal = null; m.x = b.ax; m.z = b.az; m.y = b.y; }
+function famPickNode(m) { const R = ROOMS.home, home = m.kid ? R.FH : 0, pref = Math.random() < 0.72, c = R.famIdle.filter((i) => !pref || R.famNodes[i].y === home); return R.famNodes[mpick(c)]; }
+function famPlace(m, n) {
+  famFree(m); m.route = null; m.goal = null;
+  if (!n && famNight()) { famSleep(m); return; }
+  n = n || famPickNode(m); m.x = n.x + (Math.random() - 0.5) * 0.6; m.z = n.z + (Math.random() - 0.5) * 0.6; m.y = n.y; m.yaw = Math.random() * 6.28; m.mode = 'idle'; m.wait = 1 + Math.random() * 4;
+}
+function famNear(R, x, z, y) { let best = 0, bd = 1e9; for (const n of R.famNodes) { const d = Math.hypot(n.x - x, n.z - z) + Math.abs(n.y - y) * 3; if (d < bd) { bd = d; best = n.i; } } return best; }
+function famPath(R, a, b) {
+  if (a === b) return [a]; const prev = R.famNodes.map(() => -1), q = [a]; prev[a] = a;
+  while (q.length) { const u = q.shift(); if (u === b) break; for (const v of R.famAdj[u]) if (prev[v] < 0) { prev[v] = u; q.push(v); } }
+  if (prev[b] < 0) return [b]; const out = []; for (let u = b; u !== a; u = prev[u]) out.push(u); out.push(a); return out.reverse();
+}
+function famGo(m, tgt, goal) {
+  const R = ROOMS.home; m.route = famPath(R, famNear(R, m.x, m.z, m.y), tgt.node).map((i) => R.famNodes[i]);
+  if (tgt.x !== undefined) m.route.push({ x: tgt.x, z: tgt.z, y: tgt.y });
+  m.mode = 'walk'; m.goal = goal; m.walkT = 0; m.stuck = 0;
+}
+function famSeatGo(m, st, goal) { famFree(m); st.taken = m; m.seat = st; famGo(m, { node: st.famNode, x: st.out[0], z: st.out[1], y: st.y }, goal); }
+function famChoose(m) {
+  const R = ROOMS.home;
+  if (Math.random() < (m.kid ? 0.25 : 0.4)) { const free = R.famSeats.filter((st) => !st.taken); if (free.length) { famSeatGo(m, mpick(free), 'seat'); return; } }
+  famGo(m, { node: famPickNode(m).i }, 'spot');
+}
+function famArrive(m) {
+  m.route = null; const g = m.goal; m.goal = null;
+  if (g === 'bed') { famSleep(m); return; }
+  if (m.seat && (g === 'seat' || g === 'dine' || g === 'tv')) { m.mode = 'sit'; m.t = g === 'seat' ? 12 + Math.random() * 18 : 4; return; }
+  famFree(m); m.mode = 'idle'; m.wait = 2 + Math.random() * 5;
+}
+function famWalk(m, dt) {
+  const R = ROOMS.home, wp = m.route && m.route[0];
+  if (!wp) { famArrive(m); return 0; }
+  const dx = wp.x - m.x, dz = wp.z - m.z, l = Math.hypot(dx, dz);
+  if (l < 0.2) { m.route.shift(); m.stuck = 0; if (!m.route.length) famArrive(m); return 0; }
+  const v = m.kid ? 1.6 : 1.25, st = Math.min(l, v * dt), nx = m.x + dx / l * st, nz = m.z + dz / l * st, h = roomFloor(R, nx, nz, m.y);
+  if (h !== null && h > m.y - 0.6) { m.x = nx; m.z = nz; m.y = h; }
+  const pt = { x: m.x, z: m.z }; for (const o of R.obst) if (hitsY(o, m.y)) pushBox(pt, 0.22, o); m.x = pt.x; m.z = pt.z;
+  m.yaw += angDiff(m.yaw, Math.atan2(dx, dz)) * (1 - Math.exp(-10 * dt));
+  if (Math.hypot(wp.x - m.x, wp.z - m.z) > l - st * 0.3) m.stuck += dt; else m.stuck = Math.max(0, m.stuck - dt);
+  if (m.stuck > 2.5) { m.x = wp.x; m.z = wp.z; if (wp.y !== undefined) m.y = wp.y; m.stuck = 0; }
+  return v;
+}
+function famPose(m, dt, sp) {
+  const h = m.h, r = h.root;
+  if (m.mode === 'sleep') { const b = famBed(m); r.position.set(b.x, IY + b.y + b.top, b.z); r.rotation.set(-Math.PI / 2, b.yaw, 0, 'YXZ'); poseSit(h, 0.6, true); return; }
+  if (m.mode === 'sit') {
+    const st = m.seat; r.position.set(st.x, IY + st.y + (1 - m.sc) * (st.top - 0.05), st.z); r.rotation.set(0, st.yaw, 0, 'YXZ'); poseSit(h, st.top, false);
+    if (game.eat && st.dine) { const k = 0.5 + 0.5 * Math.sin(game.time * 5 + m.bed * 2.1); h.armR.rotation.x = -0.5 - 0.7 * k; h.elbowR.rotation.x = -1.2 - 0.5 * k; }
+    return;
+  }
+  r.position.set(m.x, IY + m.y, m.z); r.rotation.set(0, m.yaw, 0, 'YXZ'); poseHuman(h, dt, sp, false, game.time);
+  if (m.mode === 'hug') { h.armL.rotation.x = h.armR.rotation.x = -1.25; h.armL.rotation.z = 0.35; h.armR.rotation.z = -0.35; h.elbowL.rotation.x = h.elbowR.rotation.x = -0.5; }
+}
+function famUpdate(dt) {
+  const R = ROOMS.home, night = famNight(), p = player.pos; game.nearFam = null; game.famD = 1.3;
+  for (const m of fam.list) {
+    m.cd -= dt; let sp = 0;
+    if (night && m.mode !== 'sleep' && m.goal !== 'bed') { if (m.mode === 'sit' && m.seat) { m.x = m.seat.out[0]; m.z = m.seat.out[1]; m.y = m.seat.y; } famFree(m); const b = famBed(m); famGo(m, { node: b.node, x: b.ax, z: b.az, y: b.y }, 'bed'); }
+    else if (!night && (m.mode === 'sleep' || m.goal === 'bed')) { m.mode = 'idle'; m.goal = null; m.route = null; m.wait = 1 + Math.random() * 3; }
+    else if (m.mode !== 'sleep' && m.mode !== 'hug') {
+      const want = game.eat ? 'dine' : game.tvWatch ? 'tv' : null, has = m.seat && ((want === 'dine' && m.seat.dine) || (want === 'tv' && (m.seat.tv || m.seat.famTv)));
+      if (want && !has && m.goal !== want) { const st = R.famSeats.find((x) => !x.taken && (want === 'dine' ? x.dine : x.tv || x.famTv)); if (st) { if (m.mode === 'sit' && m.seat) { m.x = m.seat.out[0]; m.z = m.seat.out[1]; } famSeatGo(m, st, want); } }
+    }
+    if (m.mode === 'idle') { m.wait -= dt; if (m.wait <= 0) famChoose(m); }
+    else if (m.mode === 'walk') sp = famWalk(m, dt);
+    else if (m.mode === 'sit') { const st = m.seat; m.t -= dt; if ((game.eat && st.dine) || (game.tvWatch && (st.tv || st.famTv))) m.t = Math.max(m.t, 3); if (m.t <= 0) { m.x = st.out[0]; m.z = st.out[1]; m.y = st.y; famFree(m); m.mode = 'idle'; m.wait = 1 + Math.random() * 2; } }
+    else if (m.mode === 'hug') { m.t -= dt; m.yaw += angDiff(m.yaw, Math.atan2(p.x - m.x, p.z - m.z)) * (1 - Math.exp(-10 * dt)); if (m.t <= 0) { m.mode = m.after === 'walk' && m.route ? 'walk' : 'idle'; m.wait = 1.5; } }
+    famPose(m, dt, sp);
+    if (m.mode !== 'sleep' && Math.abs(m.y - (p.y - IY)) < 1) { const d = Math.hypot(m.x - p.x, m.z - p.z); if (d < game.famD) { game.famD = d; game.nearFam = m; } }
+  }
+}
+function famEnter() {
+  for (const d of game.family) if (!fam.list.find((m) => m.d === d)) famSpawn(d);
+  for (const m of fam.list) famPlace(m, null);
+  if (!game.family.length) return 'Home sweet home · start a family at the photo wall by the door';
+  const n = game.family.map((d) => d.name), list = n.length > 1 ? n.slice(0, -1).join(', ') + ' and ' + n[n.length - 1] : n[0];
+  return famNight() ? `Home sweet home · ${list} ${n.length > 1 ? 'are' : 'is'} asleep upstairs` : `Home sweet home · ${list} ${n.length > 1 ? 'are' : 'is'} home`;
+}
+function hugTarget() {
+  const m = game.inside && game.inside.room === ROOMS.home && !player.sit ? game.nearFam : null; if (!m) return null;
+  const st = game.nearSeat; return !st || Math.hypot(st.x - player.pos.x, st.z - player.pos.z) > game.famD ? m : null;
+}
+function hugFamily(m) {
+  if (m.cd > 0) toast(`${m.d.name}: "Another hug? Okay!"`); else { heal(10); m.cd = 20; toast(`${m.d.name}: "${mpick(FAM_LINES[m.kid ? 'kid' : 'partner'])}" · +10 health`, 3400); }
+  game.hugT = 1.4; sfxChime(); player.yaw = Math.atan2(m.x - player.pos.x, m.z - player.pos.z);
+  if (m.mode === 'walk' || m.mode === 'idle') { m.after = m.mode; m.mode = 'hug'; m.t = 1.4; }
+}
+function famStatus(d) { const m = fam.list.find((x) => x.d === d); return !m ? 'At home' : m.mode === 'sleep' ? 'Asleep' : m.mode === 'sit' ? (m.seat.dine ? 'At the dinner table' : m.seat.tv ? 'On the sofa' : 'Sitting down') : m.y > 1 ? 'Upstairs' : 'Downstairs'; }
 function refreshDishes() {
   const R = ROOMS.home; if (!R || !R.dishPlaces) return;
   for (const m of R.dishMeshes || []) { R.group.remove(m); m.geometry.dispose(); } R.dishMeshes = [];
@@ -2397,11 +2548,13 @@ const SHOP_ITEMS = {
     { name: 'Cooler of sodas', desc: 'Restores 50 health.', price: 6, buy: () => { heal(50); return 'Ice cold · +50 health'; } },
   ],
   checkin: () => [
+    ...bagItems(),
     { name: 'Scenic loop over Solano · gate B2', desc: 'Take off, circle the whole city and land back here.', price: 150, buy: () => { game.ticket = 'loop'; game.ticketGate = 'B2'; return 'Boarding pass · gate B2 · through security and up the escalators'; } },
     ...DESTS.map((d) => ({ name: `${d.name} · gate ${d.gate}`, desc: (game.visited.includes(d.id) ? 'Been there · ' : 'New · ') + d.blurb, price: d.price, buy: () => { game.ticket = d.id; game.ticketGate = d.gate; return `Boarding pass to ${d.name} · gate ${d.gate}, upstairs`; } })),
     { name: 'Surprise me', desc: 'A random flight to somewhere you have not been lately.', price: 220, buy: () => { const fresh = DESTS.filter((d) => d.id !== game.lastDest && !game.visited.includes(d.id)), pool = fresh.length ? fresh : DESTS.filter((d) => d.id !== game.lastDest), d = mpick(pool); game.ticket = d.id; game.ticketGate = d.gate; return `Surprise! You're flying to ${d.name} · gate ${d.gate}`; } },
   ],
   checkin_isla: () => { const here = game.inside && game.inside.shop.dest; return [
+    ...bagItems(),
     { name: 'Solano International', desc: 'Home to the mainland.', price: 250, buy: () => { game.ticket = 'solano'; game.ticketGate = null; return 'Boarding pass to Solano · walk to the gate'; } },
     ...DESTS.filter((d) => d.id !== here).map((d) => ({ name: d.name, desc: (game.visited.includes(d.id) ? 'Been there · ' : 'New · ') + d.blurb, price: d.price, buy: () => { game.ticket = d.id; game.ticketGate = null; return `Boarding pass to ${d.name} · walk to the gate`; } })),
   ]; },
@@ -2422,6 +2575,15 @@ const SHOP_ITEMS = {
   ],
   kitchen: () => RECIPES.map((r) => { const miss = r.needs.filter((k) => !(game.pantry[k] > 0)), full = game.dishes.length >= 4; return { name: r.name, desc: (full ? 'The table is full · eat something first' : miss.length ? 'Missing: ' + miss.map((k) => INGR[k].name).join(', ') : 'Ready to cook') + ` · +${r.heal} health`, price: 0, sw: r.look[1], disabled: miss.length > 0 || full, buy: () => cook(r) }; }),
   grocery: () => Object.keys(INGR).map((k) => ({ name: INGR[k].name, desc: `In your fridge: ${game.pantry[k] || 0}`, price: INGR[k].price, sw: INGR[k].color, buy: () => { game.pantry[k] = (game.pantry[k] || 0) + 1; store.set('pantry', game.pantry); return `${INGR[k].name} bagged · cook it at home`; } })),
+  luggage: () => [
+    ...SUITCASES.map((sc) => ({ name: game.luggage === sc.id ? `${sc.name} · with you` : `Take the ${sc.name.toLowerCase()}`, desc: game.luggage === sc.id ? 'Rolling along behind you' : 'Packed and ready for a trip', price: 0, sw: sc.hex, disabled: game.luggage === sc.id, buy: () => { setLuggage(sc.id); return `You grab the ${sc.name.toLowerCase()} · check it in at the airport`; } })),
+    ...(game.luggage ? [{ name: 'Put your suitcase away', desc: 'Leave it here at home', price: 0, buy: () => { setLuggage(null); return 'Suitcase put away'; } }] : []),
+  ],
+  family: () => { const fm = game.family, partner = fm.find((d) => d.role === 'partner'), kids = fm.filter((d) => d.role === 'kid').length; return [
+    ...(partner ? [] : [{ name: 'Find a partner', desc: 'Someone special moves in and shares the house with you', price: 0, sw: 0xff7aa8, buy: () => addFamily('partner') }]),
+    { name: kids >= 3 ? "The kids' room is full" : 'Welcome a child', desc: kids >= 3 ? 'Three kids, three beds upstairs' : "A kid moves into the kids' room upstairs (up to 3)", price: 0, sw: 0xffc857, disabled: kids >= 3, buy: () => addFamily('kid') },
+    ...fm.map((d) => ({ name: `${d.name} · ${d.role === 'partner' ? 'your partner' : 'your kid'}`, desc: famStatus(d), price: 0, sw: d.look.shirt, disabled: true, buy: () => null })),
+  ]; },
   bath: [
     { name: 'Wash your hands', desc: 'Soap, water, paper towel.', price: 0, buy: () => { heal(3); return 'Squeaky clean'; } },
     { name: 'Splash water on your face', desc: 'Wakes you right up.', price: 0, buy: () => { heal(6); return 'Refreshed'; } },
@@ -2437,7 +2599,7 @@ const SHOP_ITEMS = {
 function setOutfit(o) {
   game.outfit = o.id; store.set('outfit', o.id); if (game.owned && !game.owned.includes(o.id)) { game.owned.push(o.id); store.set('owned', game.owned); }
   const old = player.h, look = { ...PLAYER_LOOK, shirt: o.shirt, pants: o.pants, shorts: !!o.shorts };
-  player.h = makeHuman(look, false); player.h.root.visible = old.root.visible; player.h.root.position.copy(old.root.position); player.h.root.rotation.copy(old.root.rotation); scene.remove(old.root); scene.add(player.h.root);
+  player.h = makeHuman(look, false); player.h.root.visible = old.root.visible; player.h.root.position.copy(old.root.position); player.h.root.rotation.copy(old.root.rotation); scene.remove(old.root); scene.add(player.h.root); attachLuggage();
 }
 function renderShop() {
   if (!game.inside) return;
@@ -2493,7 +2655,7 @@ function updatePlayerFoot(dt, ax, ay, sprint) {
   }
   const sp = Math.hypot(p.vel.x, p.vel.z);
   h.root.position.set(p.pos.x, p.pos.y + p.lie * 0.14, p.pos.z); h.root.rotation.set(-p.lie * Math.PI / 2, p.yaw, 0, 'YXZ');
-  poseHuman(h, dt, p.knock > 0 ? 0 : sp, !p.onGround && p.knock <= 0, game.time);
+  poseHuman(h, dt, p.knock > 0 ? 0 : sp, !p.onGround && p.knock <= 0, game.time); holdBag(h);
 }
 function pushOutOfCar(v, pt, r) {
   const fx = Math.sin(v.yaw), fz = Math.cos(v.yaw), rx = -fz, rz = fx, ox = pt.x - v.pos.x, oz = pt.z - v.pos.z;
@@ -2904,7 +3066,7 @@ function axes() {
 function handleActions() {
   while (input.actions.length) {
     const a = input.actions.shift();
-    if (a === 'car') { if (game.wheel) { endWheel(false); continue; } if (game.ride) { const k = game.ride.kind; endRide(); if (k !== 'loop') flight.trip = null; continue; } if (game.inside) { if (player.sit) standUp(); else if (game.nearSeat) sitDown(game.nearSeat); continue; } if (player.car) exitCar(); else if (player.knock <= 0) { if (nearFerris()) { startWheel(); continue; } const c = nearestEnterable(3.8); if (c) enterCar(c); } }
+    if (a === 'car') { if (game.wheel) { endWheel(false); continue; } if (game.ride) { const k = game.ride.kind; endRide(); if (k !== 'loop') flight.trip = null; continue; } if (game.inside) { const hm = hugTarget(); if (player.sit) standUp(); else if (hm) hugFamily(hm); else if (game.nearSeat) sitDown(game.nearSeat); continue; } if (player.car) exitCar(); else if (player.knock <= 0) { if (nearFerris()) { startWheel(); continue; } const c = nearestEnterable(3.8); if (c) enterCar(c); } }
     else if (a === 'horn') { if (player.car) { sfxHorn(1); for (const p of peds) if (p.pos.distanceTo(player.car.pos) < 14) p.scare(player.car.pos.x, player.car.pos.z, 3); } }
     else if (a === 'radio') { game.radio = !game.radio; store.set('radio', game.radio); radioOn(!!player.car); toast(game.radio ? 'Radio on · Solano 88.4' : 'Radio off'); }
     else if (a === 'cam') { cam.yaw = ((game.ride ? flight.yaw : player.car ? player.car.yaw : player.yaw)) + Math.PI; cam.pitch = 0.22; }
@@ -3051,8 +3213,8 @@ function updateHUD(dt) {
   const c = player.car;
   ui.speedo.hidden = !c; if (c) { const mph = Math.round(Math.abs(c.vf) * 2.237); if (mph !== lastSpd) { lastSpd = mph; ui.spd.textContent = mph; } }
   const fw = !c && nearFerris(), near = !c && !fw && !game.inside && !game.ride && !game.wheel && nearestEnterable(3.8);
-  const seat = game.inside ? game.nearSeat : null;
-  ui.bCar.textContent = game.wheel ? 'GET OFF' : fw ? 'RIDE' : game.ride ? 'LAND' : c ? 'GET OUT' : player.sit ? (player.sit.bed ? 'GET UP' : 'STAND') : seat ? (seat.bed ? 'LIE DOWN' : seat.toilet ? 'USE' : 'SIT') : 'GET IN'; ui.bCar.classList.toggle('ready', !!near || fw || (!!seat && !player.sit));
+  const seat = game.inside ? game.nearSeat : null, hugM = hugTarget();
+  ui.bCar.textContent = game.wheel ? 'GET OFF' : fw ? 'RIDE' : game.ride ? 'LAND' : c ? 'GET OUT' : player.sit ? (player.sit.bed ? 'GET UP' : 'STAND') : hugM ? 'HUG' : seat ? (seat.bed ? 'LIE DOWN' : seat.toilet ? 'USE' : 'SIT') : 'GET IN'; ui.bCar.classList.toggle('ready', !!near || fw || !!hugM || (!!seat && !player.sit));
   ui.bAction.textContent = c ? 'DRIFT' : player.sit && player.sit.bed ? 'SLEEP' : player.sit && player.sit.tv ? (game.tvWatch ? 'CHANNEL' : 'TV') : 'JUMP'; ui.bHorn.hidden = !c; ui.bRadio.hidden = !c; ui.bAction.style.visibility = game.wheel || game.ride ? 'hidden' : '';
   let hint = '';
   if (near && !TOUCH) hint = near.driver === 'ai' ? 'Press F to carjack' : near.isCop && near.driver ? 'Press F to steal the cruiser' : 'Press F to get in';
@@ -3067,6 +3229,7 @@ function updateHUD(dt) {
     else if (player.sit) hint = player.sit.bed ? (TOUCH ? 'Tap SLEEP to pick a wake-up time · GET UP to stand' : 'Space: sleep · F: get up') : (TOUCH ? 'Resting · move or tap STAND to get up' : 'Resting · press F or move to stand');
     else if (qi >= 0) hint = qi === 0 ? 'You are next · waiting for a free desk' : `In line for check-in · ${qi} ahead of you`;
     else if (player.autoTo) hint = 'A desk is free · walking up';
+    else if (hugM) hint = TOUCH ? `Tap HUG · ${hugM.d.name}` : `Press F to hug ${hugM.d.name}`;
     else if (game.nearSeat) hint = game.nearSeat.toilet ? (TOUCH ? 'Tap USE for the toilet' : 'Press F to use the toilet') : TOUCH ? (game.nearSeat.bed ? 'Tap LIE DOWN' : 'Tap SIT') : (game.nearSeat.bed ? 'Press F to lie down' : 'Press F to sit');
     else if (game.nearTail) hint = 'Stop here to join the check-in line';
   }
@@ -3245,8 +3408,8 @@ function step(dt) {
     if (playing) { const ex = Math.abs(ax) < 0.1 ? 0 : Math.sign(ax) * Math.pow(Math.abs(ax), 1.35); c.thr = Math.abs(ay) < 0.12 ? 0 : ay; c.str = damp(c.str, -ex, 10, dt); c.hb = input.keys.has('Space') || input.btnAction; }
     else { c.thr = 0; c.hb = true; }
     player.pos.set(c.pos.x, c.y, c.pos.z);
-  } else if (game.wheel) updateWheel(dt); else if (game.ride) { if (flight.st === 'parked') endRide(); } else if (game.inside) updatePlayerInside(dt, ax, ay, sprint); else { updatePlayerFoot(dt, ax, ay, sprint); if (playing) checkShopDoors(dt); }
-  input.jumpQ = false;
+  } else if (game.wheel) updateWheel(dt); else if (game.ride) { if (flight.st === 'parked') endRide(); } else if (game.inside) { updatePlayerInside(dt, ax, ay, sprint); if (game.inside && game.inside.room === ROOMS.home) famUpdate(dt); } else { updatePlayerFoot(dt, ax, ay, sprint); if (playing) checkShopDoors(dt); }
+  input.jumpQ = false; if (player.bag) player.bag.visible = !game.bagChecked && !player.sit;
   if (player.hurtT > 0) player.hurtT -= dt; else player.health = Math.min(100, player.health + dt * (game.fedT > 0 ? 12 : 4)); if (game.fedT > 0) game.fedT -= dt;
   // vehicles
   const f = focusPos();
@@ -3338,18 +3501,19 @@ function start(data) {
     buildWorld();
     player.h = makeHuman(PLAYER_LOOK, false); scene.add(player.h.root);
     const of = OUTFITS.find((o) => o.id === store.get('outfit', '')); if (of) setOutfit(of);
+    game.luggage = store.get('luggage', null); attachLuggage();
     game.cash = game.shownCash = Number.isFinite(data.cash) ? data.cash : store.get('cash', 500);
     if (Number.isFinite(data.tod)) game.tod = data.tod;
     game.sound = store.get('sound', true); game.radio = store.get('radio', true); setSound(game.sound);
     player.pos.set(-494.6, 0, 16.5); player.yaw = -Math.PI / 2;
     starterCar = new Vehicle('sports', 0xff3f8e); starterCar.place(-492.4, 18.8, 0);
-    game.owned = store.get('owned', ['coral']); game.visited = store.get('visited', []); game.pantry = store.get('pantry', {}); game.dishes = store.get('dishes', []); refreshDishes();
+    game.owned = store.get('owned', ['coral']); game.visited = store.get('visited', []); game.pantry = store.get('pantry', {}); game.dishes = store.get('dishes', []); refreshDishes(); game.family = store.get('family', []);
     setupMarkers(); setupCash(); spawnTraffic(); spawnPeds(); spawnLotCars();
     for (let i = 0; i < HWY_N; i++) { const c = new Vehicle(mpick(TRAFFIC_TYPES), mpick(PAINTS)); if (!placeHwy(c, false)) c.dispose(); }
     applyQuality(data.quality || store.get('quality', 'ultra'));
     updateDaylight(0); refreshEnv(true);
     renderer.compile(scene, camera);
-    game.state = 'title'; window.__solanoRunning = true; window.__solanoDebug = { ROOMS, ferris, renderer, game, camera, cam, player, officers, police, shopsData, vehicles, flight, RING_H, peek: () => ({ shopCD, t: +game.time.toFixed(2) }), crime: (n) => crime(n, 'Test heat') };
+    game.state = 'title'; window.__solanoRunning = true; window.__solanoDebug = { ROOMS, ferris, famList: fam.list, renderer, game, camera, cam, player, officers, police, shopsData, vehicles, flight, RING_H, peek: () => ({ shopCD, t: +game.time.toFixed(2) }), crime: (n) => crime(n, 'Test heat') };
     $('loading').hidden = true; $('title').hidden = false;
     renderer.setAnimationLoop(frame);
   } catch (e) { console.error(e); fail('The city failed to build: ' + e.message); }
