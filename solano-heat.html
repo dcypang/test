@@ -1000,9 +1000,10 @@ function buildShops() {
     ring.position.set(0, CURB + 0.35, 1.3); g.add(ring); scene.add(g);
   }
   buildMart(ROOMS.mart); buildThreads(ROOMS.threads); buildTerminal(ROOMS.terminal); buildAirstrip(ROOMS.airstrip); buildHome(ROOMS.home);
+  for (const k in ROOMS) markSeats(ROOMS[k]);
 }
 function buildRoom(R, floorTex, wallHex, glassNorth) {
-  const { cx, cz, w, d, H } = R; R.group = new THREE.Group(); R.group.visible = false; scene.add(R.group); R.obst = []; R.clerks = []; R.counters = []; R.visitors = []; R.spots = [];
+  const { cx, cz, w, d, H } = R; R.group = new THREE.Group(); R.group.visible = false; scene.add(R.group); R.obst = []; R.clerks = []; R.counters = []; R.visitors = []; R.spots = []; R.seats = [];
   R.parts = [boxAt(w + 1, 0.4, d + 1, cx, IY + H + 0.2, cz, 0xf1efe9), boxAt(0.4, H, d, cx - w / 2 - 0.2, IY + H / 2, cz, wallHex), boxAt(0.4, H, d, cx + w / 2 + 0.2, IY + H / 2, cz, wallHex),
     boxAt(w + 0.8, H, 0.4, cx, IY + H / 2, cz + d / 2 + 0.2, wallHex), boxAt(2.6, 3.1, 0.1, cx, IY + 1.55, cz + d / 2 - 0.02, 0x0f1a24)];
   if (!glassNorth) R.parts.push(boxAt(w + 0.8, H, 0.4, cx, IY + H / 2, cz - d / 2 - 0.2, wallHex));
@@ -1030,6 +1031,32 @@ function roomFloor(R, x, z, yr) {
   for (const a of R.areas) if (x >= a.x0 && x <= a.x1 && z >= a.z0 && z <= a.z1) { const h = a.lv ? R.FH : 0; if (h <= yr + 1.3 && (best === null || h > best)) best = h; }
   return best;
 }
+function addSeat(R, x, z, y, top, yaw, bed) { R.seats.push({ x, z, y, top, yaw, bed: !!bed, taken: null, out: bed ? [x, z + 1.1] : [x + Math.sin(yaw) * 0.85, z + Math.cos(yaw) * 0.85] }); }
+function markSeats(R) { for (const v of R.visitors) if (v.mode === 'sit') for (const st of R.seats) if (!st.taken && Math.hypot(st.x - v.x, st.z - v.z) < 0.55 && Math.abs(st.y - (v.y || 0)) < 1) { st.taken = v; break; } }
+function poseSit(h, top, lie) {
+  h.spine.rotation.x = 0;
+  if (lie) { h.hips.position.y = 0.95; h.legL.rotation.x = h.legR.rotation.x = 0; h.kneeL.rotation.x = h.kneeR.rotation.x = 0.05; h.armL.rotation.x = h.armR.rotation.x = 0; h.armL.rotation.z = 0.25; h.armR.rotation.z = -0.25; h.elbowL.rotation.x = h.elbowR.rotation.x = -0.2; }
+  else { h.hips.position.y = top - 0.05; h.legL.rotation.x = h.legR.rotation.x = -1.5; h.kneeL.rotation.x = h.kneeR.rotation.x = 1.5; h.armL.rotation.x = h.armR.rotation.x = -0.35; h.armL.rotation.z = 0.08; h.armR.rotation.z = -0.08; h.elbowL.rotation.x = h.elbowR.rotation.x = -0.7; }
+}
+function updateQueue(R, dt) {
+  const Q = R.queue;
+  for (const d of Q.desks) if (d.busy && d.busy !== 'player' && d.busy.mode === 'served') { d.t -= dt; if (d.t <= 0) { const v = d.busy; d.busy = null; v.mode = 'walk'; v.desk = null; v.spots = R.landSpots; const s0 = mpick(R.landSpots); v.tx = s0[0]; v.tz = s0[1]; v.wait = 0; v.walkT = 0; v.rejoin = 10 + Math.random() * 20; } }
+  const free = Q.desks.filter((d) => !d.busy);
+  if (free.length && Q.line.length) {
+    const f = Q.line[0], [sx, sz] = Q.slots[0], fx = f === 'player' ? player.pos.x : f.x, fz = f === 'player' ? player.pos.z : f.z;
+    if (Math.hypot(fx - sx, fz - sz) < 0.8) { const d = free[(Math.random() * free.length) | 0]; Q.line.shift(); d.busy = f; if (f === 'player') player.autoTo = d; else { f.mode = 'toDesk'; f.desk = d; } }
+  }
+  for (const v of R.visitors) if (v.rejoin !== undefined && v.mode === 'walk') { v.rejoin -= dt; if (v.rejoin <= 0) { if (Q.line.length < Q.slots.length - 1) { delete v.rejoin; v.mode = 'queue'; Q.line.push(v); } else v.rejoin = 8; } }
+}
+function leaveQueue(R) { const Q = R && R.queue; if (Q) { const i = Q.line.indexOf('player'); if (i >= 0) Q.line.splice(i, 1); } if (player.autoTo) { if (player.autoTo.busy === 'player') player.autoTo.busy = null; player.autoTo = null; } }
+function sitDown(st) {
+  if (!game.inside) return; leaveQueue(game.inside.room); player.sit = st; st.taken = 'player'; player.vel.set(0, 0, 0);
+  if (st.bed) toast(TOUCH ? 'Tap SLEEP to choose when to wake up' : 'Press Space to sleep');
+}
+function standUp() {
+  const st = player.sit; if (!st) return; st.taken = null; player.sit = null;
+  player.pos.set(st.out[0], IY + st.y, st.out[1]); player.h.root.rotation.set(0, player.yaw, 0, 'YXZ'); shopCD = Math.max(shopCD, 0.4);
+}
 function addVisitor(R, x, z, mode, suitcase, yaw) {
   const h = makeHuman(randomLook(), false); R.group.add(h.root);
   if (suitcase) { const sc = new THREE.Mesh(boxAt(0.42, 0.62, 0.24, 0.42, 0.35, -0.05, mpick([0x1f6fb2, 0xc8372d, 0x2a2f38, 0xffc857, 0x2a9d8f])), vcolMat); sc.castShadow = true; h.root.add(sc); }
@@ -1049,6 +1076,13 @@ function updateVisitors(R, dt) {
         if (l < 0.5 || v.walkT > 14) { const sp2 = mpick(spots); v.tx = sp2[0] + (Math.random() - 0.5) * 2; v.tz = sp2[1] + (Math.random() - 0.5) * 2; v.wait = 1 + Math.random() * 4; v.walkT = 0; }
         else { v.x += dx / l * v.sp * dt; v.z += dz / l * v.sp * dt; sp = v.sp; v.yaw += angDiff(v.yaw, Math.atan2(dx, dz)) * (1 - Math.exp(-8 * dt)); const pt = { x: v.x, z: v.z }; for (const o of R.obst) if (hitsY(o, v.y || 0)) pushBox(pt, 0.3, o); v.x = pt.x; v.z = pt.z; }
       }
+    }
+    if (R.queue && (v.mode === 'queue' || v.mode === 'toDesk' || v.mode === 'served')) {
+      let tx, tz, face;
+      if (v.mode === 'queue') { [tx, tz] = R.queue.slots[Math.max(0, R.queue.line.indexOf(v))]; face = -Math.PI / 2; } else { tx = v.desk.x; tz = v.desk.z; face = Math.PI; }
+      const dx = tx - v.x, dz = tz - v.z, l = Math.hypot(dx, dz);
+      if (l > 0.12) { const s2 = Math.min(1.3, l * 2.5); v.x += dx / l * s2 * dt; v.z += dz / l * s2 * dt; sp = s2; v.yaw += angDiff(v.yaw, Math.atan2(dx, dz)) * (1 - Math.exp(-8 * dt)); }
+      else { v.yaw += angDiff(v.yaw, face) * (1 - Math.exp(-6 * dt)); if (v.mode === 'toDesk') { v.mode = 'served'; v.desk.t = 5 + Math.random() * 4; } }
     }
     v.h.root.position.set(v.x, IY + (v.y || 0), v.z); v.h.root.rotation.y = v.yaw; poseHuman(v.h, dt, sp, false, game.time);
   }
@@ -1087,7 +1121,7 @@ function buildTerminal(R) {
   // two floors: ground = check-in + security + lower lobby; upstairs = mezzanine café + a 90 m glass concourse with gates B1–B6
   const { cx, cz } = R, FH = 5, HT = 13, X0 = cx - 28, X1 = cx + 28, ZS = cz + 24, ZM = cz - 10, ZMS = cz - 2, CX0 = cx - 12, CX1 = cx + 12, ZN = cz - 100;
   R.group = new THREE.Group(); R.group.visible = false; scene.add(R.group);
-  Object.assign(R, { obst: [], clerks: [], counters: [], visitors: [], spots: [], walls: [], gates: [], FH, followLight: true, mezzZ: ZMS,
+  Object.assign(R, { obst: [], clerks: [], counters: [], visitors: [], spots: [], walls: [], gates: [], seats: [], FH, followLight: true, mezzZ: ZMS,
     bounds: { x0: X0, x1: X1, z0: ZN, z1: ZS, h: HT },
     areas: [{ lv: 0, x0: X0 + 0.4, x1: X1 - 0.4, z0: ZM + 0.4, z1: ZS - 0.4 }, { lv: 1, x0: X0 + 0.4, x1: X1 - 0.4, z0: ZM + 0.4, z1: ZMS - 0.3 }, { lv: 1, x0: CX0 + 0.4, x1: CX1 - 0.4, z0: ZN + 0.4, z1: ZM + 1 }],
     ramps: [{ x0: cx + 10.4, x1: cx + 12.2, zTop: ZMS - 0.5, zBot: ZMS + 8 }, { x0: cx + 12.8, x1: cx + 14.6, zTop: ZMS - 0.5, zBot: ZMS + 8 }],
@@ -1098,8 +1132,8 @@ function buildTerminal(R) {
   const wall = (x0, x1, z0, z1, h, hex) => { P.push(boxAt(x1 - x0, h, z1 - z0, (x0 + x1) / 2, IY + h / 2, (z0 + z1) / 2, hex)); const o = { minX: x0, maxX: x1, minZ: z0, maxZ: z1, yr: [0, h] }; R.obst.push(o); R.walls.push(o); };
   const floorPlane = (x0, x1, z0, z1, y) => { const t = tileTex.clone(); t.repeat.set((x1 - x0) / 2, (z1 - z0) / 2); t.needsUpdate = true; const m = new THREE.Mesh(new THREE.PlaneGeometry(x1 - x0, z1 - z0).rotateX(-Math.PI / 2), new THREE.MeshStandardMaterial({ map: t, roughness: 0.3 })); m.position.set((x0 + x1) / 2, IY + y + 0.01, (z0 + z1) / 2); m.receiveShadow = true; R.group.add(m); };
   const glass = (w, h, x, y, z, ry) => { const m = new THREE.Mesh(new THREE.PlaneGeometry(w, h), glassPaneMat); m.position.set(x, IY + y, z); m.rotation.y = ry || 0; R.group.add(m); };
-  const benchZ = (bx, z0, z1, side) => { const zc = (z0 + z1) / 2; P.push(boxAt(0.6, 0.45, z1 - z0, bx, IY + FH + 0.45, zc, 0x1f6fb2), boxAt(0.12, 0.6, z1 - z0, bx - side * 0.3, IY + FH + 0.95, zc, 0x1f6fb2)); ob(bx - 0.45, bx + 0.45, z0, z1, FH, FH + 2); };
-  const benchX = (x, z, y, back) => { P.push(boxAt(10, 0.45, 0.6, x, IY + y + 0.45, z, 0x1f6fb2), boxAt(10, 0.6, 0.12, x, IY + y + 0.95, z + back, 0x1f6fb2)); ob(x - 5.1, x + 5.1, z - 0.45, z + 0.45, y, y + 2); };
+  const benchZ = (bx, z0, z1, side) => { const zc = (z0 + z1) / 2; P.push(boxAt(0.6, 0.45, z1 - z0, bx, IY + FH + 0.45, zc, 0x1f6fb2), boxAt(0.12, 0.6, z1 - z0, bx - side * 0.3, IY + FH + 0.95, zc, 0x1f6fb2)); ob(bx - 0.45, bx + 0.45, z0, z1, FH, FH + 2); for (let z = z0 + 0.4; z < z1 - 0.2; z += 0.72) addSeat(R, bx, z, FH, 0.675, side < 0 ? -Math.PI / 2 : Math.PI / 2); };
+  const benchX = (x, z, y, back) => { P.push(boxAt(10, 0.45, 0.6, x, IY + y + 0.45, z, 0x1f6fb2), boxAt(10, 0.6, 0.12, x, IY + y + 0.95, z + back, 0x1f6fb2)); ob(x - 5.1, x + 5.1, z - 0.45, z + 0.45, y, y + 2); for (let k = -6; k <= 6; k++) addSeat(R, x + k * 0.72, z, y, 0.675, back < 0 ? 0 : Math.PI); };
   // shell: double-height hall, mezzanine slab, roof
   floorPlane(X0, X1, ZM, ZS, 0); floorPlane(X0, X1, ZM, ZMS, FH); floorPlane(CX0, CX1, ZN, ZM, FH);
   P.push(boxAt(0.4, HT, ZS - ZM, X0 - 0.2, IY + HT / 2, (ZS + ZM) / 2, WALL), boxAt(0.4, HT, ZS - ZM, X1 + 0.2, IY + HT / 2, (ZS + ZM) / 2, WALL), boxAt(X1 - X0 + 0.8, HT, 0.4, cx, IY + HT / 2, ZS + 0.2, WALL),
@@ -1116,8 +1150,7 @@ function buildTerminal(R) {
   // ground floor landside: check-in
   for (const x of [cx - 22, cx - 16, cx - 10, cx - 4]) P.push(boxAt(4, 1.1, 1.2, x, IY + 0.55, cz + 13.4, 0x18b3a6), boxAt(4.2, 0.08, 1.4, x, IY + 1.14, cz + 13.4, 0xf4f4f0), boxAt(0.6, 0.45, 0.5, x + 1.2, IY + 1.4, cz + 13.4, 0x222831));
   P.push(boxAt(25, 0.6, 1.6, cx - 13, IY + 0.3, cz + 10.8, DARK)); ob(cx - 25.5, cx - 0.5, cz + 10, cz + 14.1, 0, 3);
-  R.counters.push({ x: cx - 22, z: cz + 15, y: 0, type: 'checkin', title: 'Solano Air · Check-in' });
-  addClerk(R, cx - 22, cz + 12.2, 0, STAFF); addClerk(R, cx - 10, cz + 12.2, 0, { ...STAFF, skin: 0x8d5a3b, hair: 0x111111 });
+  addClerk(R, cx - 22, cz + 12.2, 0, STAFF); addClerk(R, cx - 16, cz + 12.2, 0, { ...STAFF, skin: 0xe2b48f, hair: 0x5a3825 }); addClerk(R, cx - 10, cz + 12.2, 0, { ...STAFF, skin: 0x8d5a3b, hair: 0x111111 }); addClerk(R, cx - 4, cz + 12.2, 0, { ...STAFF, skin: 0xf3cfb1, hair: 0xc9a66b });
   roomText(R, 'CHECK-IN · TICKETS', '#18b3a6', cx - 13, IY + 3.4, cz + 9.95, 9, 0.9);
   benchX(cx + 16, cz + 17, 0, -0.3); benchX(cx + 16, cz + 20.5, 0, -0.3);
   // security
@@ -1134,7 +1167,7 @@ function buildTerminal(R) {
   R.counters.push({ x: cx + 21, z: ZM + 2.7, y: FH, type: 'cafe', title: 'Sky Café' });
   addClerk(R, cx + 21, ZM + 0.45, 0, { ...STAFF, shirt: 0xc8372d, skin: 0xe2b48f, hair: 0x6b2d1a }).root.position.y = IY + FH;
   roomText(R, 'SKY CAFÉ', '#c8372d', cx + 21, IY + FH + 3.2, ZM + 0.05, 5, 0.8);
-  for (const tx of [cx - 23, cx - 17]) { P.push(boxAt(1.2, 0.75, 1.2, tx, IY + FH + 0.375, cz - 6, 0xf4f1ea)); ob(tx - 0.7, tx + 0.7, cz - 6.7, cz - 5.3, FH, FH + 2); lift(addVisitor(R, tx - 1, cz - 6, 'sit', false, Math.PI / 2), FH); lift(addVisitor(R, tx + 1, cz - 6, 'sit', false, -Math.PI / 2), FH); }
+  for (const tx of [cx - 23, cx - 17]) { P.push(boxAt(1.2, 0.75, 1.2, tx, IY + FH + 0.375, cz - 6, 0xf4f1ea)); ob(tx - 0.7, tx + 0.7, cz - 6.7, cz - 5.3, FH, FH + 2); lift(addVisitor(R, tx - 1, cz - 6, 'sit', false, Math.PI / 2), FH); lift(addVisitor(R, tx + 1, cz - 6, 'sit', false, -Math.PI / 2), FH); addSeat(R, tx - 1, cz - 6, FH, 0.6, Math.PI / 2); addSeat(R, tx + 1, cz - 6, FH, 0.6, -Math.PI / 2); }
   // concourse shell
   const CL = ZM - ZN, CZ = (ZM + ZN) / 2;
   P.push(boxAt(CX1 - CX0, 0.5, CL, cx, IY + FH - 0.25, CZ, 0xd9dde2), boxAt(CX1 - CX0 + 1, 0.4, CL, cx, IY + HT + 0.2, CZ, 0xf1efe9));
@@ -1166,10 +1199,17 @@ function buildTerminal(R) {
   wSpots.forEach((p0, i) => { if (i % 2 === 0) lift(addVisitor(R, p0[0], p0[1], 'walk', i % 4 === 0), FH).spots = wSpots; });
   eSpots.forEach((p0, i) => { if (i % 2 === 1) lift(addVisitor(R, p0[0], p0[1], 'walk', i % 4 === 1), FH).spots = eSpots; });
   // crowds downstairs
-  const land = [[cx - 2, cz + 18], [cx + 8, cz + 20], [cx - 16, cz + 19], [cx + 4, cz + 12], [cx - 8, cz + 17], [cx + 22, cz + 14]], air = [[cx - 6, cz + 4], [cx - 20, cz - 2], [cx + 4, cz - 6], [cx - 10, cz + 5], [cx + 22, cz + 3]];
+  const land = [[cx + 2, cz + 21.5], [cx + 8, cz + 20], [cx - 20, cz + 21], [cx + 4, cz + 12], [cx - 8, cz + 22], [cx + 22, cz + 14]], air = [[cx - 6, cz + 4], [cx - 20, cz - 2], [cx + 4, cz - 6], [cx - 10, cz + 5], [cx + 22, cz + 3]];
   land.forEach((p0, i) => { addVisitor(R, p0[0], p0[1], 'walk', i % 2 === 0).spots = land; });
   air.forEach((p0, i) => { if (i < 4) addVisitor(R, p0[0], p0[1], 'walk', i === 1).spots = air; });
-  addVisitor(R, cx - 16, cz + 16.2, 'stand', true, Math.PI); addVisitor(R, cx - 10, cz + 16.0, 'stand', true, Math.PI); addVisitor(R, cx - 10.2, cz + 17.4, 'stand', false, Math.PI);
+  // check-in line: four working desks, a roped queue, people served one by one
+  const desks = [cx - 22, cx - 16, cx - 10, cx - 4].map((x) => ({ x, z: cz + 14.95, busy: null, t: 0 }));
+  desks.forEach((d, k) => R.counters.push({ x: d.x, z: d.z, y: 0, type: 'checkin', title: `Solano Air · Check-in desk ${k + 1}`, desk: d }));
+  R.queue = { desks, slots: Array.from({ length: 10 }, (_, i) => [cx - 13 + i * 1.05, cz + 18.6]), line: [] }; R.landSpots = land;
+  for (let x = cx - 13.6; x <= cx - 2.8; x += 2.1) for (const z of [cz + 17.8, cz + 19.4]) P.push(boxAt(0.08, 0.95, 0.08, x, IY + 0.475, z, 0x9aa0a8));
+  for (const z of [cz + 17.8, cz + 19.4]) P.push(boxAt(10.8, 0.06, 0.03, cx - 8.2, IY + 0.85, z, 0xc8372d));
+  roomText(R, 'LINE STARTS HERE', '#c8372d', cx - 2, IY + 1.9, cz + 18.6, 2.6, 0.32, -Math.PI / 2);
+  for (let i = 0; i < 8; i++) { const v = addVisitor(R, cx - 13 + i * 1.05, cz + 18.6, 'queue', Math.random() < 0.6, -Math.PI / 2); R.queue.line.push(v); }
   for (const [x, z] of [[cx + 13, cz + 17.05], [cx + 19, cz + 20.55], [cx - 19, cz + 0.95], [cx - 13, cz - 5.05]]) addVisitor(R, x, z, 'sit', false, x > cx ? 0 : Math.PI);
   // the apron and sky outside the glass
   const tarmac = new THREE.Mesh(new THREE.PlaneGeometry(330, 170).rotateX(-Math.PI / 2), new THREE.MeshStandardMaterial({ color: 0x55565c, roughness: 0.85 })); tarmac.position.set(cx, IY - 0.02, CZ - 20); tarmac.receiveShadow = true; R.group.add(tarmac);
@@ -1181,7 +1221,7 @@ function buildAirstrip(R) {
   P.push(boxAt(5, 1.1, 1.2, cx - 6, IY + 0.55, cz - 0.5, 0x2a9d8f), boxAt(5.2, 0.08, 1.4, cx - 6, IY + 1.14, cz - 0.5, 0xf4f4f0)); R.obst.push({ minX: cx - 8.6, maxX: cx - 3.4, minZ: cz - 3, maxZ: cz + 0.15 });
   R.counters.push({ x: cx - 6, z: cz + 1, type: 'checkin_isla', title: 'Isla Verde Air · Tickets' });
   addClerk(R, cx - 6, cz - 1.8, 0, { skin: 0x8d5a3b, shirt: 0x2a9d8f, pants: 0xf2efe6, shoes: 0x111111, hair: 0x111111, shades: false, shorts: false });
-  P.push(boxAt(8, 0.45, 0.6, cx + 4, IY + 0.45, cz + 3, 0xffc857), boxAt(8, 0.6, 0.12, cx + 4, IY + 0.95, cz + 3.3, 0xffc857)); R.obst.push({ minX: cx, maxX: cx + 8.1, minZ: cz + 2.55, maxZ: cz + 3.45 });
+  P.push(boxAt(8, 0.45, 0.6, cx + 4, IY + 0.45, cz + 3, 0xffc857), boxAt(8, 0.6, 0.12, cx + 4, IY + 0.95, cz + 3.3, 0xffc857)); R.obst.push({ minX: cx, maxX: cx + 8.1, minZ: cz + 2.55, maxZ: cz + 3.45 }); for (let k = -5; k <= 5; k++) addSeat(R, cx + 4 + k * 0.72, cz + 3, 0, 0.675, Math.PI);
   R.gate = { x: cx + 6, z: north + 1.2 }; R.group.add(new THREE.Mesh(boxAt(2.4, 3, 0.1, cx + 6, IY + 1.5, north + 0.08), roomLightMat));
   roomText(R, 'GATE 1 · TO SOLANO', '#2a9d8f', cx + 6, IY + 3.6, north + 0.12, 5, 0.55);
   R.spots = [[cx - 2, cz + 5], [cx + 7, cz - 2], [cx - 7, cz + 4], [cx + 2, cz - 3]];
@@ -1200,7 +1240,7 @@ function buildHome(R) {
   P.push(boxAt(4.2, 2.3, 0.15, cx + 2, IY + 1.9, cz - 6.9, 0x111111), boxAt(4.5, 0.5, 0.8, cx + 2, IY + 0.25, cz - 6.5, 0x3a3a40)); R.obst.push({ minX: cx - 0.3, maxX: cx + 4.3, minZ: cz - 7, maxZ: cz - 6.1 });
   const tv = new THREE.Mesh(new THREE.PlaneGeometry(3.9, 2.05), new THREE.MeshBasicMaterial({ map: tvTex, color: new THREE.Color(1.3, 1.3, 1.3) })); tv.position.set(cx + 2, IY + 1.9, cz - 6.8); R.group.add(tv);
   P.push(boxAt(2.4, 0.55, 3.2, cx - 6, IY + 0.275, cz - 4.9, 0xf4f4f0), boxAt(2.6, 1.2, 0.2, cx - 6, IY + 0.6, cz - 6.6, 0x8a5a3c), boxAt(2.42, 0.1, 2.0, cx - 6, IY + 0.6, cz - 4.3, 0x1f6fb2), boxAt(1.8, 0.18, 0.6, cx - 6, IY + 0.64, cz - 6, 0xffffff)); R.obst.push({ minX: cx - 7.3, maxX: cx - 4.7, minZ: cz - 7, maxZ: cz - 3.25 });
-  R.counters.push({ x: cx - 6, z: cz - 2.5, type: 'bed', title: 'Your bed' });
+  addSeat(R, cx - 6, cz - 3.6, 0, 0.66, 0, true); for (const sx of [cx + 0.6, cx + 2, cx + 3.4]) addSeat(R, sx, cz + 3.35, 0, 0.5, Math.PI);
   P.push(boxAt(0.8, 2.4, 2.6, cx - 8.5, IY + 1.2, cz + 1, 0xd9cbb5)); R.obst.push({ minX: cx - 9, maxX: cx - 8.05, minZ: cz - 0.35, maxZ: cz + 2.35 });
   R.counters.push({ x: cx - 7.3, z: cz + 1, type: 'closet', title: 'Your closet' });
   P.push(boxAt(1, 1, 5, cx + 8.4, IY + 0.5, cz - 3, 0xf4f4f0), boxAt(1.05, 0.06, 5.05, cx + 8.4, IY + 1.03, cz - 3, 0x2b2b30), boxAt(1, 2.1, 1, cx + 8.4, IY + 1.05, cz + 0.2, 0xdedede)); R.obst.push({ minX: cx + 7.85, maxX: cx + 9, minZ: cz - 5.6, maxZ: cz + 0.8 });
@@ -1810,7 +1850,7 @@ function deployOfficer(car) {
 function removeOfficer(o) { scene.remove(o.h.root); const i = officers.indexOf(o); if (i >= 0) officers.splice(i, 1); if (o.car && o.car.ai) o.car.ai.deployed = null; walkers = peds.concat(officers); }
 
 // ---------------------------------------------------------------- player
-const player = { pos: new THREE.Vector3(-494.6, 0, 16.5), vel: new THREE.Vector3(), yaw: -Math.PI / 2, onGround: true, car: null, h: null, knock: 0, health: 100, hurtT: 0, alive: true, lie: 0 };
+const player = { sit: null, autoTo: null, pos: new THREE.Vector3(-494.6, 0, 16.5), vel: new THREE.Vector3(), yaw: -Math.PI / 2, onGround: true, car: null, h: null, knock: 0, health: 100, hurtT: 0, alive: true, lie: 0 };
 const game = { ticketGate: null, ticket: null, owned: ['coral'], counter: null, ride: null, inside: null, state: 'boot', cash: 500, shownCash: 500, wanted: 0, heat: 0, evadeT: 0, crimeT: 0, bustT: 0, tod: 17.62, job: null, quality: 'ultra', radio: true, sound: true, time: 0, downT: 0, seenDistrict: '', saveT: 0 };
 const STAR_AT = [1, 4, 9, 16, 26];
 function focusPos() { return game.ride ? flight.m.position : player.car ? player.car.pos : game.inside ? game.inside.out : player.pos; }
@@ -1862,6 +1902,7 @@ function checkShopDoors(dt) {
   }
 }
 function exitShop() {
+  if (player.sit) standUp(); leaveQueue(game.inside.room); game.nearSeat = null;
   const s = game.inside.shop; game.inside.room.group.visible = false; game.inside = null; interiorLight.intensity = 0;
   player.pos.set(s.dx + s.nx * 2.6, CURB, s.dz + s.nz * 2.6); player.vel.set(0, 0, 0); player.yaw = Math.atan2(s.nx, s.nz); cam.yaw = player.yaw + Math.PI; cam.init = false; shopCD = 2;
 }
@@ -1873,9 +1914,28 @@ function pushBox(p, r, c) {
 }
 function updatePlayerInside(dt, ax, ay, sprint) {
   const p = player, Rm = game.inside.room;
+  if (p.sit) {
+    const st = p.sit; p.vel.set(0, 0, 0); p.yaw = st.yaw; p.pos.set(st.x, IY + st.y, st.z);
+    if (st.bed) { p.h.root.position.set(st.x, IY + st.y + st.top + 0.12, st.z); p.h.root.rotation.set(-Math.PI / 2, st.yaw, 0, 'YXZ'); }
+    else { p.h.root.position.set(st.x, IY + st.y, st.z); p.h.root.rotation.set(0, st.yaw, 0, 'YXZ'); }
+    poseSit(p.h, st.top, st.bed); heal(dt * 3); shopCD -= dt;
+    if (Rm.followLight) interiorLight.position.set(p.pos.x, p.pos.y + 3.8, p.pos.z);
+    for (const c of Rm.clerks) if (!c.mannequin) poseHuman(c, dt, 0, false, game.time);
+    updateVisitors(Rm, dt); if (Rm.queue) updateQueue(Rm, dt);
+    if (Math.hypot(ax, ay) > 0.5) standUp(); else if (st.bed && input.jumpQ) openShopPanel({ type: 'bed', title: 'Your bed', x: st.out[0], z: st.out[1] });
+    return;
+  }
   const fx = -Math.sin(cam.yaw), fz = -Math.cos(cam.yaw), rx = Math.cos(cam.yaw), rz = -Math.sin(cam.yaw);
   let dx = fx * ay + rx * ax, dz = fz * ay + rz * ax, maxS = 0; const mag = Math.min(1, Math.hypot(dx, dz));
   if (mag > 0.06) { const l = Math.hypot(dx, dz); dx /= l; dz /= l; p.yaw += angDiff(p.yaw, Math.atan2(dx, dz)) * (1 - Math.exp(-12 * dt)); maxS = sprint ? 4.5 : input.usingKeys ? 3 : 1 + 2.4 * mag; }
+  const Q = Rm.queue; let auto = null, autoFace = 0;
+  if (Q) {
+    const qi = Q.line.indexOf('player');
+    if (qi >= 0) { auto = Q.slots[qi]; autoFace = -Math.PI / 2; } else if (player.autoTo) { auto = [player.autoTo.x, player.autoTo.z]; autoFace = Math.PI; }
+    if (auto && Math.hypot(ax, ay) > 0.35) { leaveQueue(Rm); auto = null; }
+    updateQueue(Rm, dt);
+  }
+  if (auto) { const ddx = auto[0] - p.pos.x, ddz = auto[1] - p.pos.z, dl = Math.hypot(ddx, ddz); if (dl > 0.12) { dx = ddx / dl; dz = ddz / dl; maxS = Math.min(1.4, dl * 3); p.yaw += angDiff(p.yaw, Math.atan2(dx, dz)) * (1 - Math.exp(-10 * dt)); } else { dx = dz = 0; maxS = 0; p.yaw += angDiff(p.yaw, autoFace) * (1 - Math.exp(-8 * dt)); } }
   p.vel.x = damp(p.vel.x, dx * maxS, 10, dt); p.vel.z = damp(p.vel.z, dz * maxS, 10, dt);
   if (Rm.areas) {
     const yr = p.pos.y - IY, ok = (nx, nz) => { const h = roomFloor(Rm, nx, nz, yr); return h !== null && h > yr - 0.6 ? h : null; };
@@ -1885,6 +1945,13 @@ function updatePlayerInside(dt, ax, ay, sprint) {
     p.pos.y = IY + h;
   } else { p.pos.x = clamp(p.pos.x + p.vel.x * dt, Rm.cx - Rm.w / 2 + 0.4, Rm.cx + Rm.w / 2 - 0.4); p.pos.z = clamp(p.pos.z + p.vel.z * dt, Rm.cz - Rm.d / 2 + 0.4, Rm.cz + Rm.d / 2 - 0.4); p.pos.y = IY; }
   const pyr = p.pos.y - IY; for (const o of Rm.obst) if (hitsY(o, pyr)) pushBox(p.pos, 0.35, o);
+  game.nearTail = false;
+  if (Q && !player.autoTo && Q.line.indexOf('player') < 0 && pyr < 1 && Q.line.length < Q.slots.length) {
+    const [sx, sz] = Q.slots[Q.line.length], dt2 = Math.hypot(p.pos.x - sx, p.pos.z - sz);
+    if (dt2 < 0.9 && Math.hypot(ax, ay) < 0.2) { Q.line.push('player'); toast('You joined the check-in line'); } else if (dt2 < 2.5) game.nearTail = true;
+  }
+  if (player.autoTo && Math.hypot(p.pos.x - player.autoTo.x, p.pos.z - player.autoTo.z) < 0.4) { const d = player.autoTo; player.autoTo = null; const ct = Rm.counters.find((c) => c.desk === d); if (ct) { openShopPanel(ct); return; } }
+  game.nearSeat = null; if (!player.autoTo) { let bd = 1.4; for (const st of Rm.seats) { if (st.taken || Math.abs(st.y - pyr) > 1) continue; const d = Math.hypot(st.x - p.pos.x, st.z - p.pos.z); if (d < bd) { bd = d; game.nearSeat = st; } } }
   if (Rm.followLight) interiorLight.position.set(p.pos.x, p.pos.y + 3.8, p.pos.z);
   p.h.root.position.set(p.pos.x, p.pos.y, p.pos.z); p.h.root.rotation.set(0, p.yaw, 0, 'YXZ');
   poseHuman(p.h, dt, Math.hypot(p.vel.x, p.vel.z), false, game.time);
@@ -1892,7 +1959,7 @@ function updatePlayerInside(dt, ax, ay, sprint) {
   shopCD -= dt;
   if (shopCD <= 0 && Math.hypot(p.pos.x - Rm.door.x, p.pos.z - Rm.door.z) < 0.9) { exitShop(); return; }
   updateVisitors(Rm, dt);
-  if (shopCD <= 0) for (const ct of Rm.counters) if (Math.hypot(p.pos.x - ct.x, p.pos.z - ct.z) < 1.0 && Math.abs(p.pos.y - IY - (ct.y || 0)) < 1.2) { openShopPanel(ct); return; }
+  if (shopCD <= 0) for (const ct of Rm.counters) if (Math.hypot(p.pos.x - ct.x, p.pos.z - ct.z) < 1.0 && Math.abs(p.pos.y - IY - (ct.y || 0)) < 1.2 && (!ct.desk || !ct.desk.busy || ct.desk.busy === 'player')) { if (ct.desk) ct.desk.busy = 'player'; openShopPanel(ct); return; }
   if (Rm.gate && shopCD <= 0 && Math.hypot(p.pos.x - Rm.gate.x, p.pos.z - Rm.gate.z) < 1.4) board();
   if (Rm.gates && shopCD <= 0) for (const gt of Rm.gates) if (Math.hypot(p.pos.x - gt.x, p.pos.z - gt.z) < 1.4 && Math.abs(p.pos.y - IY - gt.y) < 1.2) { board(gt); return; }
 }
@@ -1976,10 +2043,10 @@ function renderShop() {
     list.appendChild(b);
   }
 }
-function openShopPanel(ct) { game.counter = ct; game.state = 'shop'; renderShop(); $('shop').hidden = false; if (document.pointerLockElement) document.exitPointerLock(); }
+function openShopPanel(ct) { game.counter = ct; game.state = 'shop'; player.autoTo = null; renderShop(); $('shop').hidden = false; if (document.pointerLockElement) document.exitPointerLock(); }
 function closeShopPanel() {
   $('shop').hidden = true; game.state = 'play'; if (!game.inside) return; const ct = game.counter, Rm = game.inside.room, dx = Rm.cx - ct.x, dz = Rm.cz - ct.z, l = Math.hypot(dx, dz) || 1;
-  player.pos.x = ct.x + dx / l * 1.7; player.pos.z = ct.z + dz / l * 1.7; shopCD = 0.6;
+  player.pos.x = ct.x + dx / l * 1.7; player.pos.z = ct.z + dz / l * 1.7; shopCD = 0.6; if (ct.desk && ct.desk.busy === 'player') ct.desk.busy = null;
 }
 $('shopClose').addEventListener('click', closeShopPanel);
 function hurt(n) { player.health = Math.max(0, player.health - n); player.hurtT = 5; if (player.health <= 0 && game.state === 'play') knockedOut(); }
@@ -2426,7 +2493,7 @@ function axes() {
 function handleActions() {
   while (input.actions.length) {
     const a = input.actions.shift();
-    if (a === 'car') { if (game.ride) { const k = game.ride.kind; endRide(); if (k !== 'loop') flight.trip = null; continue; } if (game.inside) continue; if (player.car) exitCar(); else if (player.knock <= 0) { const c = nearestEnterable(3.8); if (c) enterCar(c); } }
+    if (a === 'car') { if (game.ride) { const k = game.ride.kind; endRide(); if (k !== 'loop') flight.trip = null; continue; } if (game.inside) { if (player.sit) standUp(); else if (game.nearSeat) sitDown(game.nearSeat); continue; } if (player.car) exitCar(); else if (player.knock <= 0) { const c = nearestEnterable(3.8); if (c) enterCar(c); } }
     else if (a === 'horn') { if (player.car) { sfxHorn(1); for (const p of peds) if (p.pos.distanceTo(player.car.pos) < 14) p.scare(player.car.pos.x, player.car.pos.z, 3); } }
     else if (a === 'radio') { game.radio = !game.radio; store.set('radio', game.radio); radioOn(!!player.car); toast(game.radio ? 'Radio on · Solano 88.4' : 'Radio off'); }
     else if (a === 'cam') { cam.yaw = ((game.ride ? flight.yaw : player.car ? player.car.yaw : player.yaw)) + Math.PI; cam.pitch = 0.22; }
@@ -2563,13 +2630,22 @@ function updateHUD(dt) {
   const c = player.car;
   ui.speedo.hidden = !c; if (c) { const mph = Math.round(Math.abs(c.vf) * 2.237); if (mph !== lastSpd) { lastSpd = mph; ui.spd.textContent = mph; } }
   const near = !c && !game.inside && !game.ride && nearestEnterable(3.8);
-  ui.bCar.textContent = game.ride ? 'LAND' : c ? 'GET OUT' : 'GET IN'; ui.bCar.classList.toggle('ready', !!near);
-  ui.bAction.textContent = c ? 'DRIFT' : 'JUMP'; ui.bHorn.hidden = !c; ui.bRadio.hidden = !c;
+  const seat = game.inside ? game.nearSeat : null;
+  ui.bCar.textContent = game.ride ? 'LAND' : c ? 'GET OUT' : player.sit ? (player.sit.bed ? 'GET UP' : 'STAND') : seat ? (seat.bed ? 'LIE DOWN' : 'SIT') : 'GET IN'; ui.bCar.classList.toggle('ready', !!near || (!!seat && !player.sit));
+  ui.bAction.textContent = c ? 'DRIFT' : player.sit && player.sit.bed ? 'SLEEP' : 'JUMP'; ui.bHorn.hidden = !c; ui.bRadio.hidden = !c;
   let hint = '';
   if (near && !TOUCH) hint = near.driver === 'ai' ? 'Press F to carjack' : near.isCop && near.driver ? 'Press F to steal the cruiser' : 'Press F to get in';
   else if (near && TOUCH) hint = near.driver === 'ai' ? 'Tap GET IN to carjack' : 'Tap GET IN to drive';
   else if (game.bustT > 0.4) hint = 'Cops are boxing you in · move!';
   if (game.inside && game.ticketGate) hint = `Boarding pass · gate ${game.ticketGate} · upstairs`;
+  if (game.inside && game.state === 'play') {
+    const Q = game.inside.room.queue, qi = Q ? Q.line.indexOf('player') : -1;
+    if (player.sit) hint = player.sit.bed ? (TOUCH ? 'Tap SLEEP to pick a wake-up time · GET UP to stand' : 'Space: sleep · F: get up') : (TOUCH ? 'Resting · move or tap STAND to get up' : 'Resting · press F or move to stand');
+    else if (qi >= 0) hint = qi === 0 ? 'You are next · waiting for a free desk' : `In line for check-in · ${qi} ahead of you`;
+    else if (player.autoTo) hint = 'A desk is free · walking up';
+    else if (game.nearSeat) hint = TOUCH ? (game.nearSeat.bed ? 'Tap LIE DOWN' : 'Tap SIT') : (game.nearSeat.bed ? 'Press F to lie down' : 'Press F to sit');
+    else if (game.nearTail) hint = 'Stop here to join the check-in line';
+  }
   if (game.ride) hint = TOUCH ? 'Scenic flight · tap LAND to skip ahead' : 'Scenic flight · press F to skip ahead';
   if (hint !== lastHint) { lastHint = hint; ui.hint.textContent = hint; ui.hint.hidden = !hint; }
   const j = game.job;

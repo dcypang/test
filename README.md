@@ -20,6 +20,9 @@ Open `index.html` in Safari (or any modern browser). Landscape works best on a p
 | Enter a shop or the airport terminal | Walk through a lit doorway | same |
 | Fly: buy a boarding pass at check-in, go through security, take the escalators up and walk to the gate printed on your pass | LAND skips ahead | F skips ahead |
 | Go home | Map → Home sets a waypoint | same |
+| Sit on a free seat / lie on your bed | SIT / LIE DOWN (the GET IN button) | F |
+| Sleep (while lying down) | SLEEP | Space |
+| Check in: stop at the back of the line, it moves up as people are served | walk up | walk up |
 | Pause (quality, time of day, sound) | II button | Esc |
 
 ## Graphics
