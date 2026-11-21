@@ -1035,6 +1035,13 @@ function finishRoom(R, text, hex) {
   const t = new THREE.Mesh(new THREE.PlaneGeometry(6, 0.9), new THREE.MeshBasicMaterial({ map: textTex(text, 768, 115, hex), transparent: true, color: new THREE.Color(1.6, 1.6, 1.6) }));
   t.position.set(R.cx, IY + 3.6, R.cz - R.d / 2 + 0.02); R.group.add(t);
 }
+const hitsY = (o, y) => !o.yr || (y + 1.7 > o.yr[0] && y < o.yr[1]);
+function roomFloor(R, x, z, yr) {
+  let best = null;
+  for (const r of R.ramps) if (x >= r.x0 && x <= r.x1 && z >= r.zTop && z <= r.zBot) { const h = R.FH * (r.zBot - z) / (r.zBot - r.zTop); if (h <= yr + 1.3 && (best === null || h > best)) best = h; }
+  for (const a of R.areas) if (x >= a.x0 && x <= a.x1 && z >= a.z0 && z <= a.z1) { const h = a.lv ? R.FH : 0; if (h <= yr + 1.3 && (best === null || h > best)) best = h; }
+  return best;
+}
 function addVisitor(R, x, z, mode, suitcase, yaw) {
   const h = makeHuman(randomLook(), false); R.group.add(h.root);
   if (suitcase) { const sc = new THREE.Mesh(boxAt(0.42, 0.62, 0.24, 0.42, 0.35, -0.05, mpick([0x1f6fb2, 0xc8372d, 0x2a2f38, 0xffc857, 0x2a9d8f])), vcolMat); sc.castShadow = true; h.root.add(sc); }
@@ -1052,10 +1059,10 @@ function updateVisitors(R, dt) {
       else {
         const dx = v.tx - v.x, dz = v.tz - v.z, l = Math.hypot(dx, dz); v.walkT += dt;
         if (l < 0.5 || v.walkT > 14) { const sp2 = mpick(spots); v.tx = sp2[0] + (Math.random() - 0.5) * 2; v.tz = sp2[1] + (Math.random() - 0.5) * 2; v.wait = 1 + Math.random() * 4; v.walkT = 0; }
-        else { v.x += dx / l * v.sp * dt; v.z += dz / l * v.sp * dt; sp = v.sp; v.yaw += angDiff(v.yaw, Math.atan2(dx, dz)) * (1 - Math.exp(-8 * dt)); const pt = { x: v.x, z: v.z }; for (const o of R.obst) pushBox(pt, 0.3, o); v.x = pt.x; v.z = pt.z; }
+        else { v.x += dx / l * v.sp * dt; v.z += dz / l * v.sp * dt; sp = v.sp; v.yaw += angDiff(v.yaw, Math.atan2(dx, dz)) * (1 - Math.exp(-8 * dt)); const pt = { x: v.x, z: v.z }; for (const o of R.obst) if (hitsY(o, v.y || 0)) pushBox(pt, 0.3, o); v.x = pt.x; v.z = pt.z; }
       }
     }
-    v.h.root.position.set(v.x, IY, v.z); v.h.root.rotation.y = v.yaw; poseHuman(v.h, dt, sp, false, game.time);
+    v.h.root.position.set(v.x, IY + (v.y || 0), v.z); v.h.root.rotation.y = v.yaw; poseHuman(v.h, dt, sp, false, game.time);
   }
 }
 function addClerk(R, x, z, yaw, look) { const h = makeHuman(look, false); h.root.position.set(x, IY, z); h.root.rotation.y = yaw; R.group.add(h.root); R.clerks.push(h); return h; }
@@ -1079,55 +1086,107 @@ function boardTex() {
   return canvasTex(1024, 384, (g, w) => {
     g.fillStyle = '#0b1220'; g.fillRect(0, 0, w, 384); g.fillStyle = '#ffb000'; g.font = 'bold 44px sans-serif'; g.textBaseline = 'middle'; g.fillText('DEPARTURES', 28, 42);
     g.font = 'bold 30px monospace';
-    const rows = [['18:05', 'ISLA VERDE', 'SA 214', 'B2', 'BOARDING'], ['18:20', 'PORT CORAL', 'SA 330', 'B4', 'ON TIME'], ['18:45', 'SAN MARCO', 'SA 102', 'A1', 'ON TIME'], ['19:10', 'BAYSIDE', 'SA 518', 'B6', 'DELAYED'], ['19:35', 'SANTA LUZ', 'SA 77', 'A3', 'ON TIME'], ['20:00', 'SOLANO LOOP', 'SA 1', 'B2', 'SCENIC']];
+    const rows = [['18:05', 'ISLA VERDE', 'SA 214', 'B5', 'BOARDING'], ['18:20', 'PORT CORAL', 'SA 330', 'B4', 'ON TIME'], ['18:45', 'SAN MARCO', 'SA 102', 'A1', 'ON TIME'], ['19:10', 'BAYSIDE', 'SA 518', 'B6', 'DELAYED'], ['19:35', 'SANTA LUZ', 'SA 77', 'A3', 'ON TIME'], ['20:00', 'SOLANO LOOP', 'SA 1', 'B2', 'SCENIC']];
     rows.forEach((r, i) => { const y = 104 + i * 46; if (i % 2) { g.fillStyle = 'rgba(255,255,255,.06)'; g.fillRect(16, y - 22, w - 32, 44); } g.fillStyle = '#ffb000'; g.fillText(r[0], 28, y); g.fillText(r[1], 160, y); g.fillText(r[2], 540, y); g.fillText(r[3], 700, y); g.fillStyle = r[4] === 'DELAYED' ? '#ff6b4a' : r[4] === 'BOARDING' ? '#7dff9a' : '#ffb000'; g.fillText(r[4], 790, y); });
   });
 }
 const skyGradTex = canvasTex(4, 256, (g) => { const gr = g.createLinearGradient(0, 0, 0, 256); gr.addColorStop(0, '#4f7fbf'); gr.addColorStop(0.6, '#a9c6e8'); gr.addColorStop(1, '#f3d1b0'); g.fillStyle = gr; g.fillRect(0, 0, 4, 256); });
 const skyBackMat = new THREE.MeshBasicMaterial({ map: skyGradTex });
 function roomText(R, text, hex, x, y, z, w, h, yaw = 0) { const t = new THREE.Mesh(new THREE.PlaneGeometry(w, h), new THREE.MeshBasicMaterial({ map: textTex(text, 1024, Math.round(1024 * h / w), hex), transparent: true, color: new THREE.Color(1.5, 1.5, 1.5) })); t.position.set(x, y, z); t.rotation.y = yaw; R.group.add(t); }
+const glassPaneMat = new THREE.MeshPhysicalMaterial({ color: 0x9fd3e0, metalness: 0, roughness: 0.05, transparent: true, opacity: 0.18, side: THREE.DoubleSide });
+const lift = (v, y) => { v.y = y; v.h.root.position.y = IY + y; return v; };
 function buildTerminal(R) {
-  buildRoom(R, tileTex, 0xe6ebef, true); const { cx, cz, w, d } = R, P = R.parts, north = cz - d / 2; R.walls = [];
-  const STAFF = { skin: 0xc89470, shirt: 0x18b3a6, pants: 0x1b1f2e, shoes: 0x111111, hair: 0x2b1d14, shades: false, shorts: false };
-  const wall = (x0, x1, z0, z1, h, hex) => { P.push(boxAt(x1 - x0, h, z1 - z0, (x0 + x1) / 2, IY + h / 2, (z0 + z1) / 2, hex)); const o = { minX: x0, maxX: x1, minZ: z0, maxZ: z1 }; R.obst.push(o); R.walls.push(o); };
-  const bench = (x, z, facing) => { const back = facing > 0 ? -0.3 : 0.3; P.push(boxAt(10, 0.45, 0.6, x, IY + 0.45, z, 0x1f6fb2), boxAt(10, 0.6, 0.12, x, IY + 0.95, z + back, 0x1f6fb2), boxAt(9.6, 0.3, 0.4, x, IY + 0.15, z, 0x9aa0a8)); R.obst.push({ minX: x - 5.1, maxX: x + 5.1, minZ: z - 0.45, maxZ: z + 0.45 }); };
-  // landside: check-in
-  for (const x of [cx - 22, cx - 16, cx - 10, cx - 4]) P.push(boxAt(4, 1.1, 1.2, x, IY + 0.55, cz + 9.4, 0x18b3a6), boxAt(4.2, 0.08, 1.4, x, IY + 1.14, cz + 9.4, 0xf4f4f0), boxAt(0.6, 0.45, 0.5, x + 1.2, IY + 1.4, cz + 9.4, 0x222831));
-  P.push(boxAt(25, 0.6, 1.6, cx - 13, IY + 0.3, cz + 6.8, 0x2a2f38)); R.obst.push({ minX: cx - 25.5, maxX: cx - 0.5, minZ: cz + 6, maxZ: cz + 10.1 });
-  R.counters.push({ x: cx - 22, z: cz + 11, type: 'checkin', title: 'Solano Air · Check-in' });
-  addClerk(R, cx - 22, cz + 8.2, 0, STAFF); addClerk(R, cx - 10, cz + 8.2, 0, { ...STAFF, skin: 0x8d5a3b, hair: 0x111111 });
-  roomText(R, 'CHECK-IN · TICKETS', '#18b3a6', cx - 13, IY + 3.4, cz + 5.95, 9, 0.9);
-  bench(cx + 16, cz + 13, 1); bench(cx + 16, cz + 16.5, 1);
-  // security: partition with two scanner lanes
-  wall(cx - w / 2, cx + 1, cz + 3.8, cz + 4.2, 3.4, 0xd5dbe0); wall(cx + 3.5, cx + 6, cz + 3.8, cz + 4.2, 3.4, 0xd5dbe0); wall(cx + 8.5, cx + w / 2, cz + 3.8, cz + 4.2, 3.4, 0xd5dbe0);
-  for (const lx of [cx + 2.25, cx + 7.25]) { P.push(boxAt(0.3, 2.3, 0.8, lx - 1.1, IY + 1.15, cz + 4.6, 0x9aa0a8), boxAt(0.3, 2.3, 0.8, lx + 1.1, IY + 1.15, cz + 4.6, 0x9aa0a8), boxAt(2.5, 0.3, 0.8, lx, IY + 2.4, cz + 4.6, 0x9aa0a8)); R.obst.push({ minX: lx - 1.3, maxX: lx - 0.9, minZ: cz + 4.2, maxZ: cz + 5 }, { minX: lx + 0.9, maxX: lx + 1.3, minZ: cz + 4.2, maxZ: cz + 5 }); }
-  P.push(boxAt(2.2, 1.0, 1.0, cx - 0.6, IY + 0.5, cz + 5.1, 0x5b6168), boxAt(2.2, 1.0, 1.0, cx + 4.75, IY + 0.5, cz + 5.1, 0x5b6168)); R.obst.push({ minX: cx - 1.7, maxX: cx + 0.5, minZ: cz + 4.2, maxZ: cz + 5.6 }, { minX: cx + 3.65, maxX: cx + 5.85, minZ: cz + 4.2, maxZ: cz + 5.6 });
-  addClerk(R, cx + 0.2, cz + 6.2, Math.PI, { ...STAFF, shirt: 0x1d2b4a });
-  roomText(R, 'SECURITY · GATES', '#1b1f2e', cx + 4.75, IY + 3.0, cz + 4.25, 7, 0.75);
-  const board = new THREE.Mesh(new THREE.PlaneGeometry(10, 3.75), new THREE.MeshBasicMaterial({ map: boardTex(), color: new THREE.Color(1.4, 1.4, 1.4) })); board.position.set(cx - 14, IY + 5.6, cz + 4.3); R.group.add(board);
-  // airside: gate lounge, café, the boarding gate
-  bench(cx - 16, cz - 8, -1); bench(cx - 16, cz - 4, -1); bench(cx, cz - 8, -1); bench(cx, cz - 4, -1);
-  P.push(boxAt(1.2, 1.05, 6, cx + 22, IY + 0.525, cz - 3, 0x8a5a3c), boxAt(1.4, 0.08, 6.2, cx + 22, IY + 1.09, cz - 3, 0xdedad2)); R.obst.push({ minX: cx + 21.35, maxX: cx + w / 2, minZ: cz - 6.2, maxZ: cz + 0.2 });
-  R.counters.push({ x: cx + 20.4, z: cz - 3, type: 'cafe', title: 'Sky Café' }); addClerk(R, cx + 23.6, cz - 3, -Math.PI / 2, { ...STAFF, shirt: 0xc8372d, skin: 0xe2b48f, hair: 0x6b2d1a });
-  roomText(R, 'SKY CAFÉ', '#c8372d', cx + w / 2 - 0.1, IY + 3, cz - 3, 5, 0.8, -Math.PI / 2);
-  for (const [tx, tz] of [[cx + 14, cz - 11], [cx + 12, cz - 1], [cx + 16, cz - 16]]) { P.push(boxAt(1.2, 0.75, 1.2, tx, IY + 0.375, tz, 0xf4f1ea)); R.obst.push({ minX: tx - 0.7, maxX: tx + 0.7, minZ: tz - 0.7, maxZ: tz + 0.7 }); addVisitor(R, tx - 1.0, tz, 'sit', false, Math.PI / 2); addVisitor(R, tx + 1.0, tz, 'sit', false, -Math.PI / 2); }
-  R.gate = { x: cx - 14, z: north + 1.2 };
-  R.group.add(new THREE.Mesh(boxAt(2.4, 3, 0.1, cx - 14, IY + 1.5, north + 0.08), roomLightMat));
-  roomText(R, 'GATE B2 · BOARDING', '#18b3a6', cx - 14, IY + 3.7, north + 0.12, 6, 0.6);
-  // crowd
-  const land = [[cx - 2, cz + 14], [cx + 8, cz + 16], [cx - 16, cz + 15], [cx + 4, cz + 8], [cx - 8, cz + 13], [cx + 22, cz + 10]], air = [[cx - 6, cz - 1], [cx + 8, cz - 13], [cx - 20, cz - 14], [cx + 6, cz + 1], [cx - 14, cz - 1], [cx + 16, cz - 6]];
-  land.forEach((p0, i) => { const v = addVisitor(R, p0[0], p0[1], 'walk', i % 2 === 0); v.spots = land; });
-  air.forEach((p0, i) => { const v = addVisitor(R, p0[0], p0[1], 'walk', i === 1 || i === 4); v.spots = air; });
-  addVisitor(R, cx - 16, cz + 12.2, 'stand', true, Math.PI); addVisitor(R, cx - 10, cz + 12.0, 'stand', true, Math.PI); addVisitor(R, cx - 10.2, cz + 13.4, 'stand', false, Math.PI);
-  for (const [x, z] of [[cx + 13, cz + 13.05], [cx + 19, cz + 16.55], [cx + 20, cz + 13.05]]) addVisitor(R, x, z, 'sit', false, 0);
-  for (const [x, z] of [[cx - 19, cz - 8.05], [cx - 13, cz - 8.05], [cx - 2, cz - 4.05], [cx + 3, cz - 8.05], [cx - 15, cz - 4.05], [cx + 2, cz - 4.05]]) addVisitor(R, x, z, 'sit', Math.random() < 0.3, Math.PI);
-  // the apron seen through the glass
-  const tarmac = new THREE.Mesh(new THREE.PlaneGeometry(420, 124).rotateX(-Math.PI / 2), new THREE.MeshStandardMaterial({ color: 0x55565c, roughness: 0.85 })); tarmac.position.set(cx, IY - 0.01, north - 62); tarmac.receiveShadow = true; R.group.add(tarmac);
-  const a1 = makeAirliner(); scene.remove(a1); a1.position.set(cx - 14, IY + 3.4, north - 26); R.group.add(a1);
-  const a2 = makeAirliner(); scene.remove(a2); a2.position.set(cx + 34, IY + 3.4, north - 72); a2.rotation.y = -Math.PI / 2; R.group.add(a2);
-  P.push(boxAt(3, 2.8, 13, cx - 10.6, IY + 3.4, north - 6.9, 0x9aa0a8), boxAt(0.5, 2.2, 0.5, cx - 10.6, IY + 1.1, north - 10, 0x2a2f38), boxAt(2, 1.2, 3, cx + 4, IY + 0.6, north - 18, 0xffc857), boxAt(1.6, 0.9, 2.2, cx + 4, IY + 0.45, north - 22, 0x9aa0a8));
-  const back = new THREE.Mesh(new THREE.PlaneGeometry(460, 150), skyBackMat); back.position.set(cx, IY + 70, north - 124); R.group.add(back);
-  finishRoom(R, 'SOLANO INTERNATIONAL', '#18b3a6');
+  // two floors: ground = check-in + security + lower lobby; upstairs = mezzanine café + a 90 m glass concourse with gates B1–B6
+  const { cx, cz } = R, FH = 5, HT = 13, X0 = cx - 28, X1 = cx + 28, ZS = cz + 24, ZM = cz - 10, ZMS = cz - 2, CX0 = cx - 12, CX1 = cx + 12, ZN = cz - 100;
+  R.group = new THREE.Group(); R.group.visible = false; scene.add(R.group);
+  Object.assign(R, { obst: [], clerks: [], counters: [], visitors: [], spots: [], walls: [], gates: [], FH, followLight: true, mezzZ: ZMS,
+    bounds: { x0: X0, x1: X1, z0: ZN, z1: ZS, h: HT },
+    areas: [{ lv: 0, x0: X0 + 0.4, x1: X1 - 0.4, z0: ZM + 0.4, z1: ZS - 0.4 }, { lv: 1, x0: X0 + 0.4, x1: X1 - 0.4, z0: ZM + 0.4, z1: ZMS - 0.3 }, { lv: 1, x0: CX0 + 0.4, x1: CX1 - 0.4, z0: ZN + 0.4, z1: ZM + 1 }],
+    ramps: [{ x0: cx + 10.4, x1: cx + 12.2, zTop: ZMS - 0.5, zBot: ZMS + 8 }, { x0: cx + 12.8, x1: cx + 14.6, zTop: ZMS - 0.5, zBot: ZMS + 8 }],
+    walkways: [{ x0: cx - 4, x1: cx - 1, z0: ZN + 6, z1: ZM - 4, v: -2.6 }, { x0: cx + 1, x1: cx + 4, z0: ZN + 6, z1: ZM - 4, v: 2.6 }],
+    door: { x: cx, z: ZS - 0.8 }, spawn: { x: cx, z: ZS - 2.4 } });
+  const P = [], WALL = 0xe6ebef, DARK = 0x2a2f38, STAFF = { skin: 0xc89470, shirt: 0x18b3a6, pants: 0x1b1f2e, shoes: 0x111111, hair: 0x2b1d14, shades: false, shorts: false };
+  const ob = (x0, x1, z0, z1, y0, y1) => R.obst.push({ minX: x0, maxX: x1, minZ: z0, maxZ: z1, yr: [y0, y1] });
+  const wall = (x0, x1, z0, z1, h, hex) => { P.push(boxAt(x1 - x0, h, z1 - z0, (x0 + x1) / 2, IY + h / 2, (z0 + z1) / 2, hex)); const o = { minX: x0, maxX: x1, minZ: z0, maxZ: z1, yr: [0, h] }; R.obst.push(o); R.walls.push(o); };
+  const floorPlane = (x0, x1, z0, z1, y) => { const t = tileTex.clone(); t.repeat.set((x1 - x0) / 2, (z1 - z0) / 2); t.needsUpdate = true; const m = new THREE.Mesh(new THREE.PlaneGeometry(x1 - x0, z1 - z0).rotateX(-Math.PI / 2), new THREE.MeshStandardMaterial({ map: t, roughness: 0.3 })); m.position.set((x0 + x1) / 2, IY + y + 0.01, (z0 + z1) / 2); m.receiveShadow = true; R.group.add(m); };
+  const glass = (w, h, x, y, z, ry) => { const m = new THREE.Mesh(new THREE.PlaneGeometry(w, h), glassPaneMat); m.position.set(x, IY + y, z); m.rotation.y = ry || 0; R.group.add(m); };
+  const benchZ = (bx, z0, z1, side) => { const zc = (z0 + z1) / 2; P.push(boxAt(0.6, 0.45, z1 - z0, bx, IY + FH + 0.45, zc, 0x1f6fb2), boxAt(0.12, 0.6, z1 - z0, bx - side * 0.3, IY + FH + 0.95, zc, 0x1f6fb2)); ob(bx - 0.45, bx + 0.45, z0, z1, FH, FH + 2); };
+  const benchX = (x, z, y, back) => { P.push(boxAt(10, 0.45, 0.6, x, IY + y + 0.45, z, 0x1f6fb2), boxAt(10, 0.6, 0.12, x, IY + y + 0.95, z + back, 0x1f6fb2)); ob(x - 5.1, x + 5.1, z - 0.45, z + 0.45, y, y + 2); };
+  // shell: double-height hall, mezzanine slab, roof
+  floorPlane(X0, X1, ZM, ZS, 0); floorPlane(X0, X1, ZM, ZMS, FH); floorPlane(CX0, CX1, ZN, ZM, FH);
+  P.push(boxAt(0.4, HT, ZS - ZM, X0 - 0.2, IY + HT / 2, (ZS + ZM) / 2, WALL), boxAt(0.4, HT, ZS - ZM, X1 + 0.2, IY + HT / 2, (ZS + ZM) / 2, WALL), boxAt(X1 - X0 + 0.8, HT, 0.4, cx, IY + HT / 2, ZS + 0.2, WALL),
+    boxAt(X1 - X0, FH, 0.4, cx, IY + FH / 2, ZM - 0.2, WALL), boxAt(CX0 - X0, HT - FH, 0.4, (X0 + CX0) / 2, IY + (HT + FH) / 2, ZM - 0.2, WALL), boxAt(X1 - CX1, HT - FH, 0.4, (X1 + CX1) / 2, IY + (HT + FH) / 2, ZM - 0.2, WALL),
+    boxAt(X1 - X0 + 1, 0.4, ZS - ZM + 1, cx, IY + HT + 0.2, (ZS + ZM) / 2, 0xf1efe9), boxAt(X1 - X0, 0.4, ZMS - ZM, cx, IY + FH - 0.2, (ZM + ZMS) / 2, 0xd9dde2), boxAt(2.6, 3.1, 0.1, cx, IY + 1.55, ZS - 0.02, 0x0f1a24));
+  R.group.add(new THREE.Mesh(boxAt(2.2, 2.8, 0.05, cx, IY + 1.45, ZS - 0.09), roomLightMat));
+  for (const [a0, a1] of [[X0, cx + 10.2], [cx + 14.8, X1]]) { P.push(boxAt(a1 - a0, 0.08, 0.12, (a0 + a1) / 2, IY + FH + 1.1, ZMS, 0x9aa0a8)); glass(a1 - a0, 1.0, (a0 + a1) / 2, FH + 0.55, ZMS); }
+  // escalators up to the mezzanine
+  const ang = Math.atan2(FH, 8), sl = Math.hypot(8, FH), slope = (w, h, x, y, hex) => { const g = new THREE.BoxGeometry(w, h, sl); g.rotateX(ang); g.translate(x, y, ZMS + 4); return colorize(g, hex); };
+  for (const r of R.ramps) P.push(slope(r.x1 - r.x0, 0.3, (r.x0 + r.x1) / 2, IY + FH / 2 - 0.15, 0x3a3f46));
+  for (const x of [cx + 10.3, cx + 12.5, cx + 14.7]) P.push(slope(0.15, 1.0, x, IY + FH / 2 + 0.5, 0xc9ced4), slope(0.2, 0.1, x, IY + FH / 2 + 1.05, 0x1a1a1a));
+  ob(cx + 10.0, cx + 10.4, ZMS, ZMS + 8, 0, FH + 1.2); ob(cx + 12.2, cx + 12.8, ZMS, ZMS + 8, 0, FH + 1.2); ob(cx + 14.6, cx + 15.0, ZMS, ZMS + 8, 0, FH + 1.2); ob(cx + 10.0, cx + 15.0, ZMS, ZMS + 4.0, 0, 1.6);
+  roomText(R, 'GATES B1–B6 · UPSTAIRS', '#18b3a6', cx + 12.5, IY + 3.6, ZMS + 8.4, 7, 0.7);
+  // ground floor landside: check-in
+  for (const x of [cx - 22, cx - 16, cx - 10, cx - 4]) P.push(boxAt(4, 1.1, 1.2, x, IY + 0.55, cz + 13.4, 0x18b3a6), boxAt(4.2, 0.08, 1.4, x, IY + 1.14, cz + 13.4, 0xf4f4f0), boxAt(0.6, 0.45, 0.5, x + 1.2, IY + 1.4, cz + 13.4, 0x222831));
+  P.push(boxAt(25, 0.6, 1.6, cx - 13, IY + 0.3, cz + 10.8, DARK)); ob(cx - 25.5, cx - 0.5, cz + 10, cz + 14.1, 0, 3);
+  R.counters.push({ x: cx - 22, z: cz + 15, y: 0, type: 'checkin', title: 'Solano Air · Check-in' });
+  addClerk(R, cx - 22, cz + 12.2, 0, STAFF); addClerk(R, cx - 10, cz + 12.2, 0, { ...STAFF, skin: 0x8d5a3b, hair: 0x111111 });
+  roomText(R, 'CHECK-IN · TICKETS', '#18b3a6', cx - 13, IY + 3.4, cz + 9.95, 9, 0.9);
+  benchX(cx + 16, cz + 17, 0, -0.3); benchX(cx + 16, cz + 20.5, 0, -0.3);
+  // security
+  wall(X0, cx + 1, cz + 7.8, cz + 8.2, 3.4, 0xd5dbe0); wall(cx + 3.5, cx + 6, cz + 7.8, cz + 8.2, 3.4, 0xd5dbe0); wall(cx + 8.5, X1, cz + 7.8, cz + 8.2, 3.4, 0xd5dbe0);
+  for (const lx of [cx + 2.25, cx + 7.25]) { P.push(boxAt(0.3, 2.3, 0.8, lx - 1.1, IY + 1.15, cz + 8.6, 0x9aa0a8), boxAt(0.3, 2.3, 0.8, lx + 1.1, IY + 1.15, cz + 8.6, 0x9aa0a8), boxAt(2.5, 0.3, 0.8, lx, IY + 2.4, cz + 8.6, 0x9aa0a8)); ob(lx - 1.3, lx - 0.9, cz + 8.2, cz + 9, 0, 3); ob(lx + 0.9, lx + 1.3, cz + 8.2, cz + 9, 0, 3); }
+  P.push(boxAt(2.2, 1.0, 1.0, cx - 0.6, IY + 0.5, cz + 9.1, 0x5b6168), boxAt(2.2, 1.0, 1.0, cx + 4.75, IY + 0.5, cz + 9.1, 0x5b6168)); ob(cx - 1.7, cx + 0.5, cz + 8.2, cz + 9.6, 0, 3); ob(cx + 3.65, cx + 5.85, cz + 8.2, cz + 9.6, 0, 3);
+  addClerk(R, cx + 0.2, cz + 10.2, Math.PI, { ...STAFF, shirt: 0x1d2b4a });
+  roomText(R, 'SECURITY', '#1b1f2e', cx + 4.75, IY + 3.0, cz + 8.25, 5, 0.75);
+  const board = new THREE.Mesh(new THREE.PlaneGeometry(10, 3.75), new THREE.MeshBasicMaterial({ map: boardTex(), color: new THREE.Color(1.4, 1.4, 1.4) })); board.position.set(cx - 14, IY + 6.2, cz + 8.3); R.group.add(board);
+  // ground floor airside lobby
+  benchX(cx - 16, cz + 1, 0, 0.3); benchX(cx - 16, cz - 5, 0, 0.3);
+  // mezzanine café
+  P.push(boxAt(8, 1.05, 1.2, cx + 21, IY + FH + 0.525, ZM + 1.4, 0x8a5a3c), boxAt(8.2, 0.08, 1.4, cx + 21, IY + FH + 1.09, ZM + 1.4, 0xdedad2)); ob(cx + 16.9, cx + 25.1, ZM, ZM + 2.1, FH, FH + 2);
+  R.counters.push({ x: cx + 21, z: ZM + 2.7, y: FH, type: 'cafe', title: 'Sky Café' });
+  addClerk(R, cx + 21, ZM + 0.45, 0, { ...STAFF, shirt: 0xc8372d, skin: 0xe2b48f, hair: 0x6b2d1a }).root.position.y = IY + FH;
+  roomText(R, 'SKY CAFÉ', '#c8372d', cx + 21, IY + FH + 3.2, ZM + 0.05, 5, 0.8);
+  for (const tx of [cx - 23, cx - 17]) { P.push(boxAt(1.2, 0.75, 1.2, tx, IY + FH + 0.375, cz - 6, 0xf4f1ea)); ob(tx - 0.7, tx + 0.7, cz - 6.7, cz - 5.3, FH, FH + 2); lift(addVisitor(R, tx - 1, cz - 6, 'sit', false, Math.PI / 2), FH); lift(addVisitor(R, tx + 1, cz - 6, 'sit', false, -Math.PI / 2), FH); }
+  // concourse shell
+  const CL = ZM - ZN, CZ = (ZM + ZN) / 2;
+  P.push(boxAt(CX1 - CX0, 0.5, CL, cx, IY + FH - 0.25, CZ, 0xd9dde2), boxAt(CX1 - CX0 + 1, 0.4, CL, cx, IY + HT + 0.2, CZ, 0xf1efe9));
+  for (const x of [CX0, CX1]) {
+    const o = x < cx ? -0.2 : 0.2; P.push(boxAt(0.4, 1.0, CL, x + o, IY + FH + 0.5, CZ, DARK), boxAt(0.4, 1.4, CL, x + o, IY + HT - 0.7, CZ, WALL)); glass(CL, HT - FH - 2.4, x + o, FH + 1 + (HT - FH - 2.4) / 2, CZ, Math.PI / 2);
+    for (let z = ZN; z <= ZM; z += 10) P.push(boxAt(0.3, HT - FH, 0.3, x + o, IY + (HT + FH) / 2, z, DARK));
+  }
+  P.push(boxAt(CX1 - CX0 + 0.8, 1.0, 0.4, cx, IY + FH + 0.5, ZN - 0.2, DARK), boxAt(CX1 - CX0 + 0.8, 1.4, 0.4, cx, IY + HT - 0.7, ZN - 0.2, WALL)); glass(CX1 - CX0, HT - FH - 2.4, cx, FH + 1 + (HT - FH - 2.4) / 2, ZN - 0.2);
+  for (let z = ZN + 5; z < ZM; z += 15) for (const x of [CX0 + 1, CX1 - 1]) P.push(boxAt(1, FH - 0.5, 1, x, IY + (FH - 0.5) / 2, z, 0x9aa0a8));
+  for (const wv of R.walkways) { const zc = (wv.z0 + wv.z1) / 2, len = wv.z1 - wv.z0; P.push(boxAt(wv.x1 - wv.x0, 0.12, len, (wv.x0 + wv.x1) / 2, IY + FH + 0.06, zc, 0x3a3f46), boxAt(0.12, 0.95, len, wv.x0, IY + FH + 0.5, zc, 0xc9ced4), boxAt(0.12, 0.95, len, wv.x1, IY + FH + 0.5, zc, 0xc9ced4)); ob(wv.x0 - 0.1, wv.x0 + 0.1, wv.z0, wv.z1, FH, FH + 1.2); ob(wv.x1 - 0.1, wv.x1 + 0.1, wv.z0, wv.z1, FH, FH + 1.2); }
+  roomText(R, '← B1 · B3 · B5          B2 · B4 · B6 →', '#ffc857', cx, IY + FH + 4.4, ZM - 0.6, 11, 0.6);
+  const lp = []; for (let z = ZN + 5; z < ZM; z += 10) lp.push(boxAt(8, 0.08, 1.2, cx, IY + HT - 0.05, z));
+  for (let i = -2; i <= 2; i++) { lp.push(boxAt(4, 0.08, 1, cx + i * 11, IY + HT - 0.05, cz + 4), boxAt(4, 0.08, 1, cx + i * 11, IY + HT - 0.05, cz + 16), boxAt(4, 0.08, 1, cx + i * 11, IY + FH - 0.45, (ZM + ZMS) / 2)); }
+  R.group.add(new THREE.Mesh(mergeAll(lp), roomLightMat));
+  // gates B1–B6 with jet bridges and an airliner outside each
+  const names = [['B1', 'B3', 'B5'], ['B2', 'B4', 'B6']], wSpots = [], eSpots = [];
+  [-1, 1].forEach((side, si) => names[si].forEach((nm, i) => {
+    const gz = cz - 28 - i * 28, wx = side < 0 ? CX0 : CX1;
+    R.group.add(new THREE.Mesh(boxAt(0.1, 3, 2.4, wx - side * 0.08, IY + FH + 1.5, gz), roomLightMat));
+    roomText(R, 'GATE ' + nm, '#18b3a6', wx - side * 0.12, IY + FH + 3.8, gz, 3.2, 0.6, side < 0 ? Math.PI / 2 : -Math.PI / 2);
+    R.gates.push({ name: nm, x: wx - side * 1.3, z: gz, y: FH });
+    const dx = wx - side * 2.4; P.push(boxAt(1.0, 1.05, 2.4, dx, IY + FH + 0.525, gz - 4, 0x18b3a6)); ob(dx - 0.6, dx + 0.6, gz - 5.3, gz - 2.7, FH, FH + 2);
+    for (const [z0, z1] of [[gz + 2, gz + 8], [gz - 10, gz - 6]]) { const bx = wx - side * 5.5; benchZ(bx, z0, z1, side); for (let k = 0; k < 2; k++) if (Math.random() < 0.8) lift(addVisitor(R, bx + side * 0.05, z0 + 1 + k * 2.6, 'sit', Math.random() < 0.3, side < 0 ? -Math.PI / 2 : Math.PI / 2), FH); }
+    (side < 0 ? wSpots : eSpots).push([wx - side * 8.3, gz + 11], [wx - side * 8.3, gz - 3]);
+    const pl = makeAirliner(); scene.remove(pl); R.group.add(pl);
+    if (side < 0) { pl.position.set(CX0 - 26, IY + 3.4, gz + 2.1); pl.rotation.y = Math.PI / 2; } else { pl.position.set(CX1 + 26, IY + 3.4, gz - 2.1); pl.rotation.y = -Math.PI / 2; }
+    const bl = 13.6, bang = Math.atan2(FH - 3.0, bl), bg = new THREE.BoxGeometry(bl, 2.8, 3); bg.rotateZ(side < 0 ? bang : -bang); bg.translate(wx + side * (bl / 2 + 0.2), IY + (FH + 3.0) / 2 + 1.4, gz); P.push(colorize(bg, 0x9aa0a8), boxAt(0.5, 3.4, 0.5, wx + side * 10, IY + 1.7, gz, DARK));
+  }));
+  wSpots.forEach((p0, i) => { if (i % 2 === 0) lift(addVisitor(R, p0[0], p0[1], 'walk', i % 4 === 0), FH).spots = wSpots; });
+  eSpots.forEach((p0, i) => { if (i % 2 === 1) lift(addVisitor(R, p0[0], p0[1], 'walk', i % 4 === 1), FH).spots = eSpots; });
+  // crowds downstairs
+  const land = [[cx - 2, cz + 18], [cx + 8, cz + 20], [cx - 16, cz + 19], [cx + 4, cz + 12], [cx - 8, cz + 17], [cx + 22, cz + 14]], air = [[cx - 6, cz + 4], [cx - 20, cz - 2], [cx + 4, cz - 6], [cx - 10, cz + 5], [cx + 22, cz + 3]];
+  land.forEach((p0, i) => { addVisitor(R, p0[0], p0[1], 'walk', i % 2 === 0).spots = land; });
+  air.forEach((p0, i) => { if (i < 4) addVisitor(R, p0[0], p0[1], 'walk', i === 1).spots = air; });
+  addVisitor(R, cx - 16, cz + 16.2, 'stand', true, Math.PI); addVisitor(R, cx - 10, cz + 16.0, 'stand', true, Math.PI); addVisitor(R, cx - 10.2, cz + 17.4, 'stand', false, Math.PI);
+  for (const [x, z] of [[cx + 13, cz + 17.05], [cx + 19, cz + 20.55], [cx - 19, cz + 0.95], [cx - 13, cz - 5.05]]) addVisitor(R, x, z, 'sit', false, x > cx ? 0 : Math.PI);
+  // the apron and sky outside the glass
+  const tarmac = new THREE.Mesh(new THREE.PlaneGeometry(330, 170).rotateX(-Math.PI / 2), new THREE.MeshStandardMaterial({ color: 0x55565c, roughness: 0.85 })); tarmac.position.set(cx, IY - 0.02, CZ - 20); tarmac.receiveShadow = true; R.group.add(tarmac);
+  for (const [x, z, ry, w] of [[cx - 165, CZ - 20, Math.PI / 2, 340], [cx + 165, CZ - 20, -Math.PI / 2, 340], [cx, ZN - 80, 0, 340]]) { const bk = new THREE.Mesh(new THREE.PlaneGeometry(w, 160), skyBackMat); bk.position.set(x, IY + 75, z); bk.rotation.y = ry; R.group.add(bk); }
+  const m = new THREE.Mesh(mergeAll(P), vcolMat); m.castShadow = m.receiveShadow = true; R.group.add(m);
 }
 function buildAirstrip(R) {
   buildRoom(R, plankTex, 0xf4efe4, true); const { cx, cz, w, d } = R, P = R.parts, north = cz - d / 2;
@@ -1764,7 +1823,7 @@ function removeOfficer(o) { scene.remove(o.h.root); const i = officers.indexOf(o
 
 // ---------------------------------------------------------------- player
 const player = { pos: new THREE.Vector3(-494.6, 0, 16.5), vel: new THREE.Vector3(), yaw: -Math.PI / 2, onGround: true, car: null, h: null, knock: 0, health: 100, hurtT: 0, alive: true, lie: 0 };
-const game = { ticket: null, owned: ['coral'], counter: null, ride: null, inside: null, state: 'boot', cash: 500, shownCash: 500, wanted: 0, heat: 0, evadeT: 0, crimeT: 0, bustT: 0, tod: 17.62, job: null, quality: 'ultra', radio: true, sound: true, time: 0, downT: 0, seenDistrict: '', saveT: 0 };
+const game = { ticketGate: null, ticket: null, owned: ['coral'], counter: null, ride: null, inside: null, state: 'boot', cash: 500, shownCash: 500, wanted: 0, heat: 0, evadeT: 0, crimeT: 0, bustT: 0, tod: 17.62, job: null, quality: 'ultra', radio: true, sound: true, time: 0, downT: 0, seenDistrict: '', saveT: 0 };
 const STAR_AT = [1, 4, 9, 16, 26];
 function focusPos() { return game.ride ? flight.m.position : player.car ? player.car.pos : game.inside ? game.inside.out : player.pos; }
 function focusY() { return game.ride ? flight.y : player.car ? player.car.y : game.inside ? CURB : player.pos.y; }
@@ -1810,7 +1869,7 @@ function checkShopDoors(dt) {
     if (game.wanted > 0) { toast('The owner locks the door. Lose the cops first.'); shopCD = 3; return; }
     const Rm = ROOMS[s.type]; game.inside = { shop: s, room: Rm, out: new THREE.Vector3(s.dx + s.nx * 2.2, CURB, s.dz + s.nz * 2.2) };
     Rm.group.visible = true; player.pos.set(Rm.spawn.x, IY, Rm.spawn.z); player.vel.set(0, 0, 0); player.yaw = Math.PI;
-    cam.yaw = 0; cam.pitch = 0.16; interiorLight.position.set(Rm.cx, IY + Rm.H - 0.8, Rm.cz); interiorLight.intensity = Rm.w > 30 ? 90 : Rm.w > 20 ? 40 : 16; interiorLight.distance = Rm.w > 30 ? 80 : 34;
+    cam.yaw = 0; cam.pitch = 0.16; interiorLight.position.set(Rm.cx, IY + Rm.H - 0.8, Rm.cz); interiorLight.intensity = Rm.w > 30 ? 90 : Rm.w > 20 ? 40 : 16; interiorLight.distance = Rm.w > 30 ? 80 : 34; if (Rm.followLight) { interiorLight.intensity = 40; interiorLight.distance = 30; }
     toast(`${Rm.name} · walk up to the counter to buy`); shopCD = 1.2; return;
   }
 }
@@ -1830,26 +1889,35 @@ function updatePlayerInside(dt, ax, ay, sprint) {
   let dx = fx * ay + rx * ax, dz = fz * ay + rz * ax, maxS = 0; const mag = Math.min(1, Math.hypot(dx, dz));
   if (mag > 0.06) { const l = Math.hypot(dx, dz); dx /= l; dz /= l; p.yaw += angDiff(p.yaw, Math.atan2(dx, dz)) * (1 - Math.exp(-12 * dt)); maxS = sprint ? 4.5 : input.usingKeys ? 3 : 1 + 2.4 * mag; }
   p.vel.x = damp(p.vel.x, dx * maxS, 10, dt); p.vel.z = damp(p.vel.z, dz * maxS, 10, dt);
-  p.pos.x = clamp(p.pos.x + p.vel.x * dt, Rm.cx - Rm.w / 2 + 0.4, Rm.cx + Rm.w / 2 - 0.4); p.pos.z = clamp(p.pos.z + p.vel.z * dt, Rm.cz - Rm.d / 2 + 0.4, Rm.cz + Rm.d / 2 - 0.4); p.pos.y = IY;
-  for (const o of Rm.obst) pushBox(p.pos, 0.35, o);
-  p.h.root.position.set(p.pos.x, IY, p.pos.z); p.h.root.rotation.set(0, p.yaw, 0, 'YXZ');
+  if (Rm.areas) {
+    const yr = p.pos.y - IY, ok = (nx, nz) => { const h = roomFloor(Rm, nx, nz, yr); return h !== null && h > yr - 0.6 ? h : null; };
+    const mx = p.pos.x + p.vel.x * dt, mz = p.pos.z + p.vel.z * dt; let h;
+    if ((h = ok(mx, mz)) !== null) { p.pos.x = mx; p.pos.z = mz; } else if ((h = ok(mx, p.pos.z)) !== null) p.pos.x = mx; else if ((h = ok(p.pos.x, mz)) !== null) p.pos.z = mz; else h = roomFloor(Rm, p.pos.x, p.pos.z, yr) ?? yr;
+    if (h >= Rm.FH - 0.05) for (const wv of Rm.walkways) if (p.pos.x > wv.x0 && p.pos.x < wv.x1 && p.pos.z > wv.z0 && p.pos.z < wv.z1) p.pos.z = clamp(p.pos.z + wv.v * dt, wv.z0, wv.z1);
+    p.pos.y = IY + h;
+  } else { p.pos.x = clamp(p.pos.x + p.vel.x * dt, Rm.cx - Rm.w / 2 + 0.4, Rm.cx + Rm.w / 2 - 0.4); p.pos.z = clamp(p.pos.z + p.vel.z * dt, Rm.cz - Rm.d / 2 + 0.4, Rm.cz + Rm.d / 2 - 0.4); p.pos.y = IY; }
+  const pyr = p.pos.y - IY; for (const o of Rm.obst) if (hitsY(o, pyr)) pushBox(p.pos, 0.35, o);
+  if (Rm.followLight) interiorLight.position.set(p.pos.x, p.pos.y + 3.8, p.pos.z);
+  p.h.root.position.set(p.pos.x, p.pos.y, p.pos.z); p.h.root.rotation.set(0, p.yaw, 0, 'YXZ');
   poseHuman(p.h, dt, Math.hypot(p.vel.x, p.vel.z), false, game.time);
   for (const c of Rm.clerks) if (!c.mannequin) poseHuman(c, dt, 0, false, game.time);
   shopCD -= dt;
   if (shopCD <= 0 && Math.hypot(p.pos.x - Rm.door.x, p.pos.z - Rm.door.z) < 0.9) { exitShop(); return; }
   updateVisitors(Rm, dt);
-  if (shopCD <= 0) for (const ct of Rm.counters) if (Math.hypot(p.pos.x - ct.x, p.pos.z - ct.z) < 1.0) { openShopPanel(ct); return; }
+  if (shopCD <= 0) for (const ct of Rm.counters) if (Math.hypot(p.pos.x - ct.x, p.pos.z - ct.z) < 1.0 && Math.abs(p.pos.y - IY - (ct.y || 0)) < 1.2) { openShopPanel(ct); return; }
   if (Rm.gate && shopCD <= 0 && Math.hypot(p.pos.x - Rm.gate.x, p.pos.z - Rm.gate.z) < 1.4) board();
+  if (Rm.gates && shopCD <= 0) for (const gt of Rm.gates) if (Math.hypot(p.pos.x - gt.x, p.pos.z - gt.z) < 1.4 && Math.abs(p.pos.y - IY - gt.y) < 1.2) { board(gt); return; }
 }
 function startRide() {
   $('shop').hidden = true; const s = game.inside.shop; game.inside.room.group.visible = false; game.inside = null; interiorLight.intensity = 0;
   game.state = 'play'; game.ride = { back: s }; player.h.root.visible = false; player.vel.set(0, 0, 0);
   resetFlight(1.5); cam.yaw = flight.yaw + Math.PI; cam.pitch = 0.25; cam.manual = 0; radioOn(true);
 }
-function board() {
+function board(gt) {
   const Rm = game.inside.room, island = Rm === ROOMS.airstrip;
   if (!game.ticket) { toast(island ? 'You need a boarding pass · buy one at the desk' : 'You need a boarding pass · buy one at check-in'); shopCD = 2.5; return; }
-  const kind = game.ticket; game.ticket = null;
+  if (gt && game.ticketGate && gt.name !== game.ticketGate) { toast(`This is gate ${gt.name} · your flight boards at gate ${game.ticketGate}`); shopCD = 2.5; return; }
+  const kind = game.ticket; game.ticket = null; game.ticketGate = null;
   const from = island ? RUNWAYS.isla : RUNWAYS.solano, dest = kind === 'isla' ? RUNWAYS.isla : kind === 'solano' ? RUNWAYS.solano : null;
   const back = kind === 'loop' ? game.inside.shop : shopsData.find((sp) => sp.type === (kind === 'isla' ? 'airstrip' : 'terminal'));
   Rm.group.visible = false; game.inside = null; interiorLight.intensity = 0;
@@ -1878,11 +1946,11 @@ const SHOP_ITEMS = {
     { name: 'Cooler of sodas', desc: 'Restores 50 health.', price: 6, buy: () => { heal(50); return 'Ice cold · +50 health'; } },
   ],
   checkin: [
-    { name: 'Scenic loop over Solano', desc: 'Boarding pass. Take off, circle the whole city and land back here.', price: 150, buy: () => { game.ticket = 'loop'; return 'Boarding pass printed · go through security to gate B2'; } },
-    { name: 'Isla Verde · resort island', desc: 'Boarding pass to the island resort out west. Fly home from its airstrip.', price: 280, buy: () => { game.ticket = 'isla'; return 'Boarding pass to Isla Verde · through security to gate B2'; } },
+    { name: 'Scenic loop over Solano', desc: 'Boarding pass. Take off, circle the whole city and land back here.', price: 150, buy: () => { game.ticket = 'loop'; game.ticketGate = 'B2'; return 'Boarding pass · gate B2 · through security and up the escalators'; } },
+    { name: 'Isla Verde · resort island', desc: 'Boarding pass to the island resort out west. Fly home from its airstrip.', price: 280, buy: () => { game.ticket = 'isla'; game.ticketGate = 'B5'; return 'Boarding pass to Isla Verde · gate B5, upstairs at the far end'; } },
   ],
   checkin_isla: [
-    { name: 'Solano International', desc: 'Boarding pass home to the mainland. The gate is right behind the desk.', price: 280, buy: () => { game.ticket = 'solano'; return 'Boarding pass to Solano · walk to the gate'; } },
+    { name: 'Solano International', desc: 'Boarding pass home to the mainland. The gate is right behind the desk.', price: 280, buy: () => { game.ticket = 'solano'; game.ticketGate = null; return 'Boarding pass to Solano · walk to the gate'; } },
   ],
   cafe: [
     { name: 'Airport espresso', desc: 'Restores 25 health.', price: 5, buy: () => { heal(25); return 'Espresso · +25 health'; } },
@@ -2393,8 +2461,12 @@ function updateCamera(dt) {
     if (cam.manual <= 0 && Math.hypot(player.vel.x, player.vel.z) > 1) cam.yaw += angDiff(cam.yaw, player.yaw + Math.PI) * (1 - Math.exp(-1.5 * dt));
     const cp = Math.cos(cam.pitch); let dd = 3.4;
     if (Rm.walls) for (let k = 1; k <= 8; k++) { const t = 3.4 * k / 8, qx = p.x + Math.sin(cam.yaw) * cp * t, qz = p.z + Math.cos(cam.yaw) * cp * t; if (Rm.walls.some((o) => qx > o.minX - 0.25 && qx < o.maxX + 0.25 && qz > o.minZ - 0.25 && qz < o.maxZ + 0.25)) { dd = Math.max(0.8, t - 0.45); break; } }
-    camera.position.set(clamp(p.x + Math.sin(cam.yaw) * cp * dd, Rm.cx - Rm.w / 2 + 0.3, Rm.cx + Rm.w / 2 - 0.3), clamp(IY + 1.45 + Math.sin(cam.pitch) * dd, IY + 0.4, IY + Rm.H - 0.3), clamp(p.z + Math.cos(cam.yaw) * cp * dd, Rm.cz - Rm.d / 2 + 0.3, Rm.cz + Rm.d / 2 - 0.3));
-    cam.tgt.set(p.x, IY + 1.4, p.z); camera.lookAt(cam.tgt); cam.init = false;
+    const B = Rm.bounds || { x0: Rm.cx - Rm.w / 2, x1: Rm.cx + Rm.w / 2, z0: Rm.cz - Rm.d / 2, z1: Rm.cz + Rm.d / 2, h: Rm.H }, fyr = p.y - IY;
+    let bx0 = B.x0, bx1 = B.x1; if (Rm.areas && fyr > Rm.FH - 1 && p.z < Rm.areas[2].z1 - 1) { bx0 = Rm.areas[2].x0; bx1 = Rm.areas[2].x1; }
+    const camX = clamp(p.x + Math.sin(cam.yaw) * cp * dd, bx0 + 0.3, bx1 - 0.3), camZ = clamp(p.z + Math.cos(cam.yaw) * cp * dd, B.z0 + 0.3, B.z1 - 0.3);
+    let camY = clamp(p.y + 1.45 + Math.sin(cam.pitch) * dd, p.y + 0.4, IY + B.h - 0.3); if (Rm.FH && fyr < Rm.FH - 1 && camZ < Rm.mezzZ + 0.4) camY = Math.min(camY, IY + Rm.FH - 0.7);
+    camera.position.set(camX, camY, camZ);
+    cam.tgt.set(p.x, p.y + 1.4, p.z); camera.lookAt(cam.tgt); cam.init = false;
     if (Math.abs(camera.fov - baseFov) > 0.05) { camera.fov = baseFov; camera.updateProjectionMatrix(); }
     return;
   }
@@ -2509,6 +2581,7 @@ function updateHUD(dt) {
   if (near && !TOUCH) hint = near.driver === 'ai' ? 'Press F to carjack' : near.isCop && near.driver ? 'Press F to steal the cruiser' : 'Press F to get in';
   else if (near && TOUCH) hint = near.driver === 'ai' ? 'Tap GET IN to carjack' : 'Tap GET IN to drive';
   else if (game.bustT > 0.4) hint = 'Cops are boxing you in · move!';
+  if (game.inside && game.ticketGate) hint = `Boarding pass · gate ${game.ticketGate} · upstairs`;
   if (game.ride) hint = TOUCH ? 'Scenic flight · tap LAND to skip ahead' : 'Scenic flight · press F to skip ahead';
   if (hint !== lastHint) { lastHint = hint; ui.hint.textContent = hint; ui.hint.hidden = !hint; }
   const j = game.job;
@@ -2785,7 +2858,7 @@ function start(data) {
     applyQuality(data.quality || store.get('quality', 'ultra'));
     updateDaylight(0); refreshEnv(true);
     renderer.compile(scene, camera);
-    game.state = 'title'; window.__solanoRunning = true; window.__solanoDebug = { renderer, game, camera, player, officers, police, shopsData, vehicles, flight, RING_H, peek: () => ({ shopCD, t: +game.time.toFixed(2) }), crime: (n) => crime(n, 'Test heat') };
+    game.state = 'title'; window.__solanoRunning = true; window.__solanoDebug = { renderer, game, camera, cam, player, officers, police, shopsData, vehicles, flight, RING_H, peek: () => ({ shopCD, t: +game.time.toFixed(2) }), crime: (n) => crime(n, 'Test heat') };
     $('loading').hidden = true; $('title').hidden = false;
     renderer.setAnimationLoop(frame);
   } catch (e) { console.error(e); fail('The city failed to build: ' + e.message); }
