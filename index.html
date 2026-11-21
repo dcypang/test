@@ -129,6 +129,8 @@ button:focus-visible{outline:3px solid var(--lagoon);outline-offset:3px}
 .pcard{width:min(440px,100%);display:flex;flex-direction:column;gap:14px;background:var(--plum);border:1px solid var(--line);border-radius:18px;padding:20px 22px}
 .pcard h2{font-family:var(--font-display);font-weight:400;font-size:30px;margin:0;color:var(--marigold)}
 .prow{display:flex;gap:8px;flex-wrap:wrap}
+#pause [hidden]{display:none !important}
+@media (max-height:520px){#pause .pcard{width:min(760px,100%);gap:6px;padding:12px 18px}#pause .pcard h2{font-size:24px}#pause .ghost,#pause .qrow button{padding:6px 12px;font-size:13px}#pause .cta{padding-top:9px;padding-bottom:9px}}
 .ghost{font-family:var(--font-hud);font-weight:700;font-size:15px;letter-spacing:.08em;text-transform:uppercase;padding:8px 14px;border-radius:10px;border:1.5px solid var(--line);background:transparent}
 .stat{font-family:var(--font-hud);font-size:15px;letter-spacing:.06em;color:rgba(255,243,232,.75);font-variant-numeric:tabular-nums}
 #loading{position:absolute;inset:0;display:grid;place-content:center;gap:12px;text-align:center;background:var(--night);padding:0 24px}
@@ -225,6 +227,8 @@ button:focus-visible{outline:3px solid var(--lagoon);outline-offset:3px}
         <button class="ghost" data-tod="7.2">Sunrise</button><button class="ghost" data-tod="12.5">Noon</button>
         <button class="ghost" data-tod="17.62">Golden hour</button><button class="ghost" data-tod="22.5">Night</button>
       </div>
+      <div class="qlabel" id="pTripLabel">Family &amp; suitcase</div>
+      <div class="prow" id="pTripRow"><button class="ghost" id="famBtn">Call the family</button><button class="ghost" id="bagBtn">Put suitcase away</button></div>
       <div class="prow"><button class="ghost" id="soundBtn">Sound: on</button></div>
       <button class="cta" id="resumeBtn">Resume</button>
     </div>
@@ -1542,6 +1546,10 @@ function buildHome(R) {
     const ph = new THREE.Mesh(new THREE.PlaneGeometry(1.8, 0.6), new THREE.MeshBasicMaterial({ map: tex, color: new THREE.Color(1.2, 1.2, 1.2) })); ph.position.set(cx - 2.6, IY + 1.55, Z1 - 0.07); ph.rotation.y = Math.PI; R.group.add(ph);
     P.push(boxAt(1.95, 0.75, 0.04, cx - 2.6, IY + 1.55, Z1 - 0.03, WOOD));
     R.counters.push({ x: cx - 2.6, z: Z1 - 1.0, y: 0, r: 0.75, back: [0, -0.9], type: 'family', title: 'Family photo wall' }); }
+  P.push(boxAt(1.2, 0.08, 0.45, cx + 1.7, IY + 0.42, Z1 - 0.3, WOOD), boxAt(0.06, 0.42, 0.06, cx + 1.15, IY + 0.21, Z1 - 0.3, WOOD), boxAt(0.06, 0.42, 0.06, cx + 2.25, IY + 0.21, Z1 - 0.3, WOOD), boxAt(1.2, 0.08, 0.06, cx + 1.7, IY + 1.75, Z1 - 0.06, WOOD));
+  for (const hx of [-0.4, 0, 0.4]) P.push(boxAt(0.05, 0.05, 0.14, cx + 1.7 + hx, IY + 1.68, Z1 - 0.12, 0x2b2b30));
+  ob(cx + 1.1, cx + 2.3, Z1 - 0.55, Z1, 0, 1.2); R.counters.push({ x: cx + 1.7, z: Z1 - 1.2, y: 0, r: 0.7, back: [0, -0.9], type: 'luggage', title: 'Suitcase rack by the door' });
+  roomText(R, 'SUITCASES', '#1f6fb2', cx + 1.7, IY + 2.0, Z1 - 0.03, 1.2, 0.22, Math.PI);
   // ---- upstairs ----
   const wallU = (x0, x1, z0, z1) => { P.push(boxAt(x1 - x0, H - FH, z1 - z0, (x0 + x1) / 2, IY + FH + (H - FH) / 2, (z0 + z1) / 2, WALL)); ob(x0, x1, z0, z1, FH, H, true); };
   wallU(cx - 1.35, cx - 1.2, Z0, cz - 4.6); wallU(cx - 1.35, cx - 1.2, cz - 3.4, Z1); P.push(boxAt(0.15, H - FH - 2.4, 1.2, cx - 1.275, IY + FH + 2.4 + (H - FH - 2.4) / 2, cz - 4, WALL));
@@ -2423,7 +2431,7 @@ function holdBag(h) { if (!player.bag || !player.bag.visible || h !== player.h) 
 function bagItems() {
   const sc = SUITCASES.find((x) => x.id === game.luggage); if (!sc) return [];
   return [game.bagChecked ? { name: `${sc.name} · checked`, desc: 'Tagged for your flight · it meets you when you land', price: 0, sw: sc.hex, disabled: true, buy: () => null }
-    : { name: `Check your ${sc.name.toLowerCase()}`, desc: 'Free · it rides in the hold and meets you when you land', price: 0, sw: sc.hex, buy: () => { game.bagChecked = true; return 'Bag tag printed · your suitcase rolls away down the belt'; } }];
+    : { name: `Check your ${sc.name.toLowerCase()}`, desc: 'Free · it rides in the hold and meets you when you land', price: 0, sw: sc.hex, buy: () => { game.bagChecked = true; return fam.out && fam.list.length ? 'Bag tags printed · the whole family\'s suitcases roll away down the belt' : 'Bag tag printed · your suitcase rolls away down the belt'; } }];
 }
 // ---------------------------------------------------------------- family
 const PARTNER_NAMES = ['Sofia', 'Mateo', 'Camila', 'Diego', 'Lucia', 'Andres', 'Valeria', 'Gabriel'], KID_NAMES = ['Leo', 'Mia', 'Nico', 'Ana', 'Tomas', 'Isla', 'Pablo', 'Rosa', 'Max', 'Luna'];
@@ -2521,7 +2529,7 @@ function famUpdate(dt) {
 function famEnter() {
   const R = ROOMS.home, wasOut = fam.out; fam.out = false;
   for (const d of game.family) if (!fam.list.find((m) => m.d === d)) famSpawn(d);
-  for (const m of fam.list) { R.group.add(m.h.root); m.h.root.visible = true; m.hugT = 0; famPlace(m, wasOut ? R.famNodes[3] : null); }
+  for (const m of fam.list) { R.group.add(m.h.root); m.h.root.visible = true; m.hugT = 0; if (m.bag) m.bag.visible = false; famPlace(m, wasOut ? R.famNodes[3] : null); }
   if (wasOut && game.family.length) return 'Home sweet home · the family is back home with you';
   if (!game.family.length) return 'Home sweet home · start a family at the photo wall by the door';
   const n = game.family.map((d) => d.name), list = n.length > 1 ? n.slice(0, -1).join(', ') + ' and ' + n[n.length - 1] : n[0];
@@ -2554,7 +2562,7 @@ function trailAt(d) {
 function followUpdate(dt) {
   game.nearFam = null; game.famD = 1.3;
   if (game.wheel) { // everyone sits on the gondola benches with you
-    const c = game.wheel.pos; fam.snap = true;
+    const c = game.wheel.pos; fam.snap = true; for (const m of fam.list) if (m.bag) m.bag.visible = false;
     fam.list.forEach((m, i) => { const sd = i % 2 ? -1 : 1, bx = i < 2 ? -0.55 : 0.55; m.h.root.visible = true; m.h.root.position.set(c.x + bx, c.y - 0.6 - m.sc * 0.45, c.z + sd * 1.3); m.h.root.rotation.set(0, sd > 0 ? Math.PI : 0, 0, 'YXZ'); poseSit(m.h, 0.5, false); });
     return;
   }
@@ -2564,6 +2572,9 @@ function followUpdate(dt) {
   if (!player.sit && (Rm || player.onGround)) trailPush();
   fam.list.forEach((m, i) => {
     const h = m.h, S = FAM_SLOTS[i % FAM_SLOTS.length]; h.root.visible = true; m.hugT = Math.max(0, (m.hugT || 0) - dt);
+    const carry = !!player.bag && player.bag.visible && !player.sit;
+    if (carry && !m.bag) { m.bag = new THREE.Mesh(suitcaseGeo([0x2a9d8f, 0x9b5de5, 0xff7aa8, 0xf4a261][i % 4], m.kid ? 0.8 : 0.9), vcolMat); m.bag.castShadow = true; m.bag.position.set(-0.42, 0, -0.06); h.root.add(m.bag); }
+    if (m.bag) m.bag.visible = carry;
     // you sat down: take the nearest free seats around you
     if (player.sit && Rm) {
       if (!m.seat) { let best = null, bd = 7; for (const st of Rm.seats) { if (st.taken || st.toilet || st.bed || Math.abs(st.y - player.sit.y) > 0.5) continue; const d = Math.hypot(st.x - player.sit.x, st.z - player.sit.z); if (d < bd) { bd = d; best = st; } } if (best) { best.taken = m; m.seat = best; m.seatT = 0; } }
@@ -2584,6 +2595,7 @@ function followUpdate(dt) {
     const sp = Math.hypot(m.fx - ox, m.fz - oz) / Math.max(dt, 1e-3);
     if (sp > 0.3) m.yaw += angDiff(m.yaw, Math.atan2(m.fx - ox, m.fz - oz)) * (1 - Math.exp(-10 * dt)); else m.yaw += angDiff(m.yaw, Math.atan2(player.pos.x - m.fx, player.pos.z - m.fz)) * (1 - Math.exp(-3 * dt));
     h.root.position.set(m.fx, m.fy, m.fz); h.root.rotation.set(0, m.yaw, 0, 'YXZ'); poseHuman(h, dt, sp < 0.25 ? 0 : sp, false, game.time);
+    if (m.bag && m.bag.visible) { h.armR.rotation.x = 0.1; h.armR.rotation.z = -0.2; h.elbowR.rotation.x = -0.08; }
     if (m.hugT > 0) { h.armL.rotation.x = h.armR.rotation.x = -1.25; h.armL.rotation.z = 0.35; h.armR.rotation.z = -0.35; h.elbowL.rotation.x = h.elbowR.rotation.x = -0.5; m.yaw += angDiff(m.yaw, Math.atan2(player.pos.x - m.fx, player.pos.z - m.fz)) * (1 - Math.exp(-10 * dt)); }
     if (Math.abs(m.fy - player.pos.y) < 1) { const d = Math.hypot(m.fx - player.pos.x, m.fz - player.pos.z); if (d < game.famD) { game.famD = d; game.nearFam = m; } }
   });
@@ -3426,13 +3438,24 @@ function knockedOut() {
 }
 function pause(on) {
   if (on && game.state === 'play') {
-    game.state = 'pause'; $('pause').hidden = false; $('pStats').textContent = `Cash $${game.cash.toLocaleString('en-US')} · Heat ${game.wanted}/5 · ${districtAt(focusPos().x, focusPos().z)}`;
+    game.state = 'pause'; $('pause').hidden = false; refreshTripButtons(); $('pStats').textContent = `Cash $${game.cash.toLocaleString('en-US')} · Heat ${game.wanted}/5 · ${districtAt(focusPos().x, focusPos().z)}`;
     if (document.pointerLockElement) document.exitPointerLock(); if (audio.ctx) audio.ctx.suspend();
   } else if (!on && game.state === 'pause') { game.state = 'play'; $('pause').hidden = true; if (audio.ctx) audio.ctx.resume(); }
 }
 $('pauseBtn').addEventListener('click', () => pause(true));
 $('resumeBtn').addEventListener('click', () => pause(false));
 $('soundBtn').addEventListener('click', () => setSound(!game.sound));
+function refreshTripButtons() {
+  const atHome = game.inside && game.inside.room === ROOMS.home, hasFam = game.family.length > 0, fb = $('famBtn'), bb = $('bagBtn');
+  fb.hidden = !hasFam || atHome; fb.textContent = fam.out ? 'Send the family home' : 'Call the family to join you';
+  bb.hidden = !game.luggage; $('pTripLabel').hidden = $('pTripRow').hidden = fb.hidden && bb.hidden;
+}
+$('famBtn').addEventListener('click', () => {
+  if (fam.out) { const R = ROOMS.home; fam.out = false; game.nearFam = null; for (const m of fam.list) { famFree(m); R.group.add(m.h.root); m.mode = 'idle'; if (m.bag) m.bag.visible = false; } toast('The family heads home · they will be there when you get back'); }
+  else { famGoOut(); toast(game.family.length > 1 ? 'The family hops in a taxi and meets you here' : `${game.family[0].name} hops in a taxi and meets you here`); }
+  refreshTripButtons();
+});
+$('bagBtn').addEventListener('click', () => { const was = SUITCASES.find((x) => x.id === game.luggage); setLuggage(null); toast(was ? `Your ${was.name.toLowerCase()} is back home` : 'Suitcase put away'); refreshTripButtons(); });
 for (const b of document.querySelectorAll('[data-tod]')) b.addEventListener('click', () => { game.tod = parseFloat(b.dataset.tod); refreshEnv(true); });
 for (const b of document.querySelectorAll('[data-q]')) b.addEventListener('click', () => applyQuality(b.dataset.q));
 document.addEventListener('visibilitychange', () => { if (document.hidden) pause(true); });

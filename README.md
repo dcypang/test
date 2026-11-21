@@ -31,7 +31,8 @@ Open `index.html` in Safari (or any modern browser). Landscape works best on a p
 | Start a family: walk up to the photo wall by your front door (a partner, up to three kids) | walk up | walk up |
 | Hug a family member | HUG | F |
 | Family trips: with 'Family comes with you' ON (photo wall), they follow you out of the house, ride in your car, come into shops, sit with you, fly with you and ride the Ferris wheel | automatic | automatic |
-| Take a suitcase: walk up to the suitcases in your bedroom; check it in at the airport desk, it comes back when you land | walk up | walk up |
+| Take or put away a suitcase: the rack by your front door or the suitcases in your bedroom; check it in at the airport desk, it comes back when you land | walk up | walk up |
+| Put your suitcase away, call the family to join you, or send them home (from anywhere) | Pause → Family & suitcase | Esc → Family & suitcase |
 | Ride the Ferris wheel at Bayside ($10, one full turn, look around while you ride) | RIDE, GET OFF | F |
 | Pause (quality, time of day, sound) | II button | Esc |
 
