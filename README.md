@@ -41,6 +41,7 @@ Open `index.html` in Safari (or any modern browser). Landscape works best on a p
 - PBR materials with image-based lighting from a physically based sky, ACES tone mapping
 - Dynamic day/night cycle (16 min per day), moon, stars, night sky dome
 - 4096 px sun/moon shadows that follow the camera (texel-snapped)
+- Detailed original car models: sculpted bodies with wheel arches, tinted glass with a painted roof, LED headlight strips and full-width tail-light bars, grille, mirrors, door lines, chrome trim, plates, diffuser and exhaust tips, 5-spoke rims on rounded tyres (sports cars get dark rims and a wing, SUVs roof rails), with a matching low-detail version for distant cars
 - HDR bloom, 4x MSAA, clear-coat car paint, procedural glass curtain walls
 - Ocean with analytic shoreline depth, multi-wave normals, foam
 - Wind-swayed palm fronds, tire smoke, street-light pools at night
