@@ -331,9 +331,10 @@ SG.Renderer3D = class Renderer3D {
     this.dist = Math.max(Math.max(...xs) - Math.min(...xs), Math.max(...ys) - Math.min(...ys)) * 0.95;
     this.yaw = 0.35; this.pitch = 0.62;
     // open on a closer view of the Village (Big Basin Way) when the map has it
+    // the Village is at the east end of Big Basin Way, where it meets Saratoga-Sunnyvale Road
     const v = w.pois.find(p => /saratoga village/i.test(p.name));
-    const bb = w.roads.find(r => /big basin/i.test(r.name));
-    const at = v ? [v.x, v.y] : bb ? [bb.pts[0], bb.pts[1]] : null;
+    let at = v ? [v.x, v.y] : null;
+    if (!at) for (const r of w.roads) if (/big basin/i.test(r.name)) for (let i = 0; i < r.pts.length; i += 2) if (!at || r.pts[i] > at[0]) at = [r.pts[i], r.pts[i + 1]];
     if (at) { this.tx = at[0]; this.ty = at[1]; this.dist = 1500; this.yaw = 0.9; this.pitch = 0.42; }
     this.dirty = true;
   }
@@ -618,7 +619,8 @@ SG.Renderer3D = class Renderer3D {
     g.strokeStyle = '#8c8b84'; g.lineCap = 'round'; g.lineJoin = 'round';
     for (const r of w.roads) {
       if (r.removed || r.cls > 4) continue;
-      g.lineWidth = Math.max(1, SG.ROAD_STYLE[r.cls][0] * k * 1.2);
+      if (r.rail || (r.el && Math.max(...r.el) > 2)) continue; // no road bed under bridges or rail
+      g.lineWidth = Math.max(1, SG.roadWidth(r) * k * 1.2);
       g.beginPath(); path(r.pts, false); g.stroke();
     }
     g.beginPath(); for (const r of w.boundary) path(r);
@@ -648,40 +650,57 @@ SG.Renderer3D = class Renderer3D {
   gridCanvas(fill) { return SG.Renderer.prototype.gridCanvas.call(this, fill); }
 
   // ---------- streets, markings, creeks ----------
-  // Flat ribbons along polylines. opts: width(item), color(item), lift, offset(item), dash [on, off], step
+  // Sample a polyline every `step` m: position, deck height above ground (item.el, per vertex) and left normal.
+  samples(item, step, useEl = true) {
+    const p = item.pts, el = useEl ? item.el : null, out = [];
+    for (let i = 0; i < p.length - 2; i += 2) {
+      const ax = p[i], ay = p[i + 1], bx = p[i + 2], by = p[i + 3];
+      const n = Math.max(1, Math.ceil(Math.hypot(bx - ax, by - ay) / step));
+      const e0 = el ? el[i / 2] : 0, e1 = el ? el[i / 2 + 1] : 0;
+      for (let s = 0; s < n; s++) out.push([ax + (bx - ax) * s / n, ay + (by - ay) * s / n, e0 + (e1 - e0) * s / n]);
+    }
+    out.push([p[p.length - 2], p[p.length - 1], el ? el[el.length - 1] : 0]);
+    for (let i = 0; i < out.length; i++) {
+      const a = out[Math.max(0, i - 1)], b = out[Math.min(out.length - 1, i + 1)];
+      let dx = b[0] - a[0], dy = b[1] - a[1]; const L = Math.hypot(dx, dy) || 1;
+      out[i].push(-dy / L, dx / L); // [x, y, e, nx, ny]
+    }
+    return out;
+  }
+  // height of a point on a road surface: follows the ground, and on a bridge stays level across the deck
+  deckY(sm, qx, qy, lift) {
+    const g = this.w.heightAt(qx, qy), e = sm[2];
+    if (e <= 0.05) return g + lift;
+    const t = Math.min(1, e / 1.2), c = this.w.heightAt(sm[0], sm[1]) + e;
+    return g * (1 - t) + c * t + lift;
+  }
+  // Flat ribbons along polylines. opts: width(item), color(item), lift, offset(item), dash [on, off], step, noElev
   ribbon(list, opts) {
-    const w = this.w, pos = [], col = [];
+    const pos = [], col = [];
     const color = new THREE.Color();
     const step = opts.step || 18;
     for (const item of list) {
-      const p = item.pts;
-      const pts = [];
-      for (let i = 0; i < p.length - 2; i += 2) {
-        const ax = p[i], ay = p[i + 1], bx = p[i + 2], by = p[i + 3];
-        const n = Math.max(1, Math.ceil(Math.hypot(bx - ax, by - ay) / step));
-        for (let s = 0; s < n; s++) pts.push([ax + (bx - ax) * s / n, ay + (by - ay) * s / n]);
-      }
-      pts.push([p[p.length - 2], p[p.length - 1]]);
-      if (pts.length < 2) continue;
+      if (item.pts.length < 4) continue;
+      const S = this.samples(item, step, !opts.noElev);
       const hw = opts.width(item) / 2, off = opts.offset ? opts.offset(item) : 0;
       color.set(opts.color(item));
       const L = [], R = [];
-      for (let i = 0; i < pts.length; i++) {
-        const a = pts[Math.max(0, i - 1)], b = pts[Math.min(pts.length - 1, i + 1)];
-        let dx = b[0] - a[0], dy = b[1] - a[1]; const len = Math.hypot(dx, dy) || 1; dx /= len; dy /= len;
-        const x = pts[i][0] - dy * off, y = pts[i][1] + dx * off;
-        L.push([x - dy * hw, y + dx * hw]); R.push([x + dy * hw, y - dx * hw]);
+      for (const sm of S) {
+        const x = sm[0] + sm[3] * off, y = sm[1] + sm[4] * off;
+        L.push([x + sm[3] * hw, y + sm[4] * hw]); R.push([x - sm[3] * hw, y - sm[4] * hw]);
       }
-      const H = q => w.heightAt(q[0], q[1]) + opts.lift;
       let run = 0;
-      for (let i = 0; i < pts.length - 1; i++) {
-        const segLen = Math.hypot(pts[i + 1][0] - pts[i][0], pts[i + 1][1] - pts[i][1]);
+      for (let i = 0; i < S.length - 1; i++) {
+        const segLen = Math.hypot(S[i + 1][0] - S[i][0], S[i + 1][1] - S[i][1]);
         const on = !opts.dash || (run % (opts.dash[0] + opts.dash[1])) < opts.dash[0];
         run += segLen;
         if (!on) continue;
+        if (opts.only === 'deck' && S[i][2] < 0.3 && S[i + 1][2] < 0.3) continue;
         const a = L[i], b = R[i], c = L[i + 1], d = R[i + 1];
-        pos.push(a[0], H(a), a[1], c[0], H(c), c[1], b[0], H(b), b[1]);
-        pos.push(b[0], H(b), b[1], c[0], H(c), c[1], d[0], H(d), d[1]);
+        const ya = this.deckY(S[i], a[0], a[1], opts.lift), yb = this.deckY(S[i], b[0], b[1], opts.lift);
+        const yc = this.deckY(S[i + 1], c[0], c[1], opts.lift), yd = this.deckY(S[i + 1], d[0], d[1], opts.lift);
+        pos.push(a[0], ya, a[1], c[0], yc, c[1], b[0], yb, b[1]);
+        pos.push(b[0], yb, b[1], c[0], yc, c[1], d[0], yd, d[1]);
         for (let k = 0; k < 6; k++) col.push(color.r, color.g, color.b);
       }
     }
@@ -692,6 +711,32 @@ SG.Renderer3D = class Renderer3D {
     }
     const g = new THREE.BufferGeometry();
     g.setAttribute('position', new THREE.BufferAttribute(P, 3));
+    g.setAttribute('color', new THREE.Float32BufferAttribute(col, 3));
+    g.computeVertexNormals();
+    return g;
+  }
+  // Vertical strips along polylines (barriers, rails, bridge girders). Heights are relative to the deck.
+  // opts: offset(item), top, bottom, color, step, onlyDeck
+  walls(list, opts) {
+    const pos = [], col = [], c = new THREE.Color(opts.color);
+    for (const item of list) {
+      if (item.pts.length < 4) continue;
+      const S = this.samples(item, opts.step || 12, true);
+      for (const off of [].concat(opts.offset(item))) {
+        for (let i = 0; i < S.length - 1; i++) {
+          if (opts.onlyDeck && S[i][2] < 0.4 && S[i + 1][2] < 0.4) continue;
+          const A = S[i], B = S[i + 1];
+          const ax = A[0] + A[3] * off, ay = A[1] + A[4] * off, bx = B[0] + B[3] * off, by = B[1] + B[4] * off;
+          const da = this.deckY(A, ax, ay, 0), db = this.deckY(B, bx, by, 0);
+          const v = [[ax, da + opts.bottom, ay], [bx, db + opts.bottom, by], [bx, db + opts.top, by], [ax, da + opts.top, ay]];
+          pos.push(...v[0], ...v[1], ...v[2], ...v[0], ...v[2], ...v[3]);
+          const shade = opts.bottom < -0.5 ? 0.8 : 1;
+          for (let k = 0; k < 6; k++) col.push(c.r * shade, c.g * shade, c.b * shade);
+        }
+      }
+    }
+    const g = new THREE.BufferGeometry();
+    g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
     g.setAttribute('color', new THREE.Float32BufferAttribute(col, 3));
     g.computeVertexNormals();
     return g;
@@ -710,23 +755,82 @@ SG.Renderer3D = class Renderer3D {
   }
   buildRoads() {
     const T = THREE, w = this.w;
-    for (const k of ['walkMesh', 'roadMesh', 'markMesh']) if (this[k]) { this.scene.remove(this[k]); this[k].geometry.dispose(); }
-    const W = r => SG.ROAD_STYLE[r.cls][0];
-    const drive = w.roads.filter(r => !r.removed && r.cls <= 4).sort((a, b) => b.cls - a.cls);
-    const asphalt = ['#5d5f63', '#66676b', '#6e6f72', '#77787a', '#8f8d87'];
+    for (const k of ['walkMesh', 'roadMesh', 'markMesh', 'wallMesh', 'railMesh', 'pillarMesh']) if (this[k]) { this.scene.remove(this[k]); this[k].geometry.dispose(); this[k] = null; }
+    const W = r => SG.roadWidth(r);
+    const live = w.roads.filter(r => !r.removed);
+    const drive = live.filter(r => r.cls <= 4 && !r.rail).sort((a, b) => b.cls - a.cls);
+    const rails = live.filter(r => r.rail);
+    const divided = drive.filter(r => r.cls === 0 && !r.oneway && !r.ramp);
+    const oneway = drive.filter(r => r.cls === 0 && r.oneway && !r.ramp);
+    const ramps = drive.filter(r => r.ramp);
+    const asphalt = ['#4f5155', '#66676b', '#6e6f72', '#77787a', '#8f8d87'];
     this.walkMesh = new T.Mesh(this.ribbon(drive.filter(r => r.cls >= 1 && r.cls <= 3), { width: r => W(r) + 3.4, color: () => '#c2bfb6', lift: 0.16 }), this.walkMat);
-    this.roadMesh = new T.Mesh(this.ribbon(drive, { width: W, color: r => asphalt[r.cls], lift: 0.3 }), this.roadMat);
-    const major = drive.filter(r => r.cls <= 2), art = drive.filter(r => r.cls <= 1), fwy = drive.filter(r => r.cls === 0);
-    const lane = (list, off) => this.ribbon(list, { width: () => 0.22, color: () => '#e9e9e4', lift: 0.42, offset: () => off, dash: [3, 9], step: 3 });
+    this.roadMesh = new T.Mesh(this.ribbon(drive, { width: W, color: r => asphalt[r.cls], lift: 0.3, step: 14 }), this.roadMat);
+    const major = drive.filter(r => r.cls >= 1 && r.cls <= 2), art = drive.filter(r => r.cls === 1);
+    const line = (list, off, col, wd, dash) => this.ribbon(list, { width: () => wd || 0.22, color: () => col || '#e9e9e4', lift: 0.42, offset: typeof off === 'function' ? off : () => off, dash, step: dash ? 3 : 12 });
+    const dashes = (list, off) => line(list, off, '#e9e9e4', 0.22, [3, 9]);
     const marks = [
-      this.ribbon(major, { width: r => r.cls === 0 ? 1.6 : 0.5, color: r => r.cls === 0 ? '#aeaca4' : '#e3bd3a', lift: 0.42, step: 12 }),
-      lane(art, 3.6), lane(art, -3.6), lane(fwy, 7.2), lane(fwy, -7.2),
-      this.ribbon(fwy, { width: () => 0.25, color: () => '#e9e9e4', lift: 0.42, offset: () => 11, step: 12 }),
-      this.ribbon(fwy, { width: () => 0.25, color: () => '#e9e9e4', lift: 0.42, offset: () => -11, step: 12 }),
+      line(major, 0, '#e3bd3a', 0.5),                                   // centre line
+      dashes(art, 3.6), dashes(art, -3.6),
+      // divided highway: three lanes each way either side of the median
+      dashes(divided, 4.8), dashes(divided, 8.4), dashes(divided, -4.8), dashes(divided, -8.4),
+      line(divided, 1.1, '#e3bd3a', 0.2), line(divided, -1.1, '#e3bd3a', 0.2),
+      line(divided, r => W(r) / 2 - 1.6), line(divided, r => -(W(r) / 2 - 1.6)),
+      // one carriageway of a mapped freeway: three lanes
+      dashes(oneway, 1.8), dashes(oneway, -1.8), line(oneway, r => W(r) / 2 - 1.2), line(oneway, r => -(W(r) / 2 - 1.2)),
+      // ramps: edge lines
+      line(ramps, r => W(r) / 2 - 0.7), line(ramps, r => -(W(r) / 2 - 0.7)),
     ];
     this.markMesh = new T.Mesh(this.mergeGeos(marks), this.markMat);
+
+    // walls: highway median barrier, bridge parapets and girders, rails
+    const raised = live.filter(r => r.el && (r.cls <= 4 || r.rail));
+    const wallGeos = [
+      this.walls(divided, { offset: () => [0.35, -0.35], bottom: 0, top: 0.95, color: '#c9c6bd' }),
+      this.ribbon(divided, { width: () => 0.75, color: () => '#d6d3ca', lift: 0.95, step: 14 }),
+      this.walls(raised, { offset: r => [W(r) / 2 + 0.05, -(W(r) / 2 + 0.05)], bottom: -1.7, top: 1.05, color: '#bdb8ae', onlyDeck: true }),
+      this.ribbon(raised, { width: r => 0.4, offset: r => W(r) / 2 - 0.2, color: () => '#d4d0c6', lift: 1.05, only: 'deck', step: 12 }),
+      this.ribbon(raised, { width: r => 0.4, offset: r => -(W(r) / 2 - 0.2), color: () => '#d4d0c6', lift: 1.05, only: 'deck', step: 12 }),
+      // underside of the deck, seen from below and from the side
+      this.ribbon(raised, { width: r => W(r) + 0.1, color: () => '#8f8b84', lift: -1.7, only: 'deck', step: 12 }),
+    ];
+    const railGeos = [
+      this.ribbon(rails, { width: () => 5.6, color: () => '#8b8176', lift: 0.25, step: 10 }),             // ballast
+      this.ribbon(rails, { width: () => 2.6, color: () => '#5b4636', lift: 0.36, offset: () => 1.9, dash: [0.3, 0.32], step: 0.62 }),
+      this.ribbon(rails, { width: () => 2.6, color: () => '#5b4636', lift: 0.36, offset: () => -1.9, dash: [0.3, 0.32], step: 0.62 }),
+      this.walls(rails, { offset: () => [1.9 + 0.72, 1.9 - 0.72, -1.9 + 0.72, -1.9 - 0.72], bottom: 0.36, top: 0.55, color: '#9aa1a8', step: 8 }),
+      this.ribbon(rails, { width: () => 0.12, offset: () => 1.9 + 0.72, color: () => '#c8ced4', lift: 0.56, step: 8 }),
+      this.ribbon(rails, { width: () => 0.12, offset: () => 1.9 - 0.72, color: () => '#c8ced4', lift: 0.56, step: 8 }),
+      this.ribbon(rails, { width: () => 0.12, offset: () => -1.9 + 0.72, color: () => '#c8ced4', lift: 0.56, step: 8 }),
+      this.ribbon(rails, { width: () => 0.12, offset: () => -1.9 - 0.72, color: () => '#c8ced4', lift: 0.56, step: 8 }),
+    ];
+    this.wallMesh = new T.Mesh(this.mergeGeos(wallGeos.concat(railGeos)), this.wallMat || (this.wallMat = new T.MeshStandardMaterial({ vertexColors: true, roughness: 0.85, side: T.DoubleSide })));
+    this.wallMesh.castShadow = true; this.wallMesh.receiveShadow = true;
+
+    // bridge pillars
+    const spots = [];
+    for (const r of raised) {
+      const S = this.samples(r, 30, true), wd = W(r);
+      for (const sm of S) {
+        if (sm[2] < 3) continue;
+        const offs = wd > 20 ? [wd / 4, -wd / 4] : [0];
+        for (const o of offs) {
+          const x = sm[0] + sm[3] * o, y = sm[1] + sm[4] * o, g = w.heightAt(x, y);
+          const top = this.deckY(sm, x, y, 0) - 1.7;
+          if (top - g > 1) spots.push([x, y, g, top - g + 0.5]);
+        }
+      }
+    }
+    const pg = new T.BoxGeometry(1.8, 1, 1.8); pg.translate(0, 0.5, 0);
+    this.pillarMesh = new T.InstancedMesh(pg, this.pillarMat || (this.pillarMat = new T.MeshStandardMaterial({ color: '#b5b0a6', roughness: 0.9 })), Math.max(1, spots.length));
+    const m4 = new T.Matrix4(), q = new T.Quaternion(), v = new T.Vector3(), sc = new T.Vector3();
+    spots.forEach(([x, y, g, h], i) => { m4.compose(v.set(x, g - 0.5, y), q, sc.set(1, h, 1)); this.pillarMesh.setMatrixAt(i, m4); });
+    this.pillarMesh.count = spots.length;
+    this.pillarMesh.castShadow = true; this.pillarMesh.receiveShadow = true;
+
     for (const m of [this.walkMesh, this.roadMesh, this.markMesh]) { m.receiveShadow = true; this.scene.add(m); }
-    this.buildStreetlights(major.filter(r => r.cls >= 1));
+    this.scene.add(this.wallMesh, this.pillarMesh);
+    this.buildStreetlights(major);
     this.buildTraffic();
   }
   buildWater() {
@@ -786,7 +890,7 @@ SG.Renderer3D = class Renderer3D {
     for (const m of this.lightMeshes || []) { this.scene.remove(m); }
     const spots = [];
     for (const r of roads) {
-      const p = r.pts, half = SG.ROAD_STYLE[r.cls][0] / 2 + 1.3;
+      const p = r.pts, half = SG.roadWidth(r) / 2 + 1.3;
       let acc = 20, side = 1;
       for (let i = 2; i < p.length; i += 2) {
         const ax = p[i - 2], ay = p[i - 1], dx = p[i] - ax, dy = p[i + 1] - ay, L = Math.hypot(dx, dy);
@@ -827,28 +931,28 @@ SG.Renderer3D = class Renderer3D {
   // ---------- traffic ----------
   buildTraffic() {
     const T = THREE, w = this.w;
-    for (const m of [this.carMesh, this.carLights]) if (m) this.scene.remove(m);
+    for (const m of [this.carMesh, this.carLights, this.trainMesh]) if (m) this.scene.remove(m);
     const rnd = (() => { let s = 4711; return () => { s = (s * 1664525 + 1013904223) >>> 0; return s / 4294967296; }; })();
-    const spacing = [55, 120, 210, 900], speed = [29, 15, 12, 8];
-    const lanes = [[2, 5.6, 9.2], [1.9, 5.3], [2.2], [2.1]];
+    const cum = r => { if (!r._cum) { const p = r.pts, c = new Float32Array(p.length / 2); for (let i = 1; i < c.length; i++) c[i] = c[i - 1] + Math.hypot(p[2 * i] - p[2 * i - 2], p[2 * i + 1] - p[2 * i - 1]); r._cum = c; } };
+    // lane offsets to the right of travel, directions, spacing (m between cars per lane) and speed
+    const plan = r => r.ramp ? { dirs: [1], lanes: [0], gap: 110, v: 15 }
+      : r.cls === 0 && r.oneway ? { dirs: [1], lanes: [-3.6, 0, 3.6], gap: 70, v: 29 }
+      : r.cls === 0 ? { dirs: [1, -1], lanes: [3.0, 6.6, 10.2], gap: 70, v: 29 }
+      : r.cls === 1 ? { dirs: [1, -1], lanes: [1.9, 5.3], gap: 130, v: 15 }
+      : r.cls === 2 ? { dirs: [1, -1], lanes: [2.2], gap: 210, v: 12 }
+      : { dirs: [1, -1], lanes: [2.1], gap: 900, v: 8 };
     const cars = [];
     for (const r of w.roads) {
-      if (r.removed || r.cls > 3 || r.len < 60) continue;
-      if (!r._cum) {
-        const p = r.pts, cum = new Float32Array(p.length / 2);
-        for (let i = 1; i < cum.length; i++) cum[i] = cum[i - 1] + Math.hypot(p[2 * i] - p[2 * i - 2], p[2 * i + 1] - p[2 * i - 1]);
-        r._cum = cum;
-      }
-      for (const dir of [1, -1]) {
-        let n = r.len / spacing[r.cls];
-        n = Math.floor(n) + (rnd() < n % 1 ? 1 : 0);
-        for (let k = 0; k < n; k++) {
-          const ln = lanes[r.cls];
-          cars.push({ road: r, s: rnd() * r.len, dir, v: speed[r.cls] * (0.82 + rnd() * 0.36), lane: ln[Math.floor(rnd() * ln.length)], i: 1 });
-        }
+      if (r.removed || r.rail || r.cls > 3 || r.len < 40) continue;
+      cum(r);
+      const pl = plan(r);
+      for (const dir of pl.dirs) for (const lane of pl.lanes) {
+        let n = r.len / pl.gap; n = Math.floor(n) + (rnd() < n % 1 ? 1 : 0);
+        for (let k = 0; k < n; k++) cars.push({ road: r, s: rnd() * r.len, dir, v: pl.v * (0.82 + rnd() * 0.36), lane, i: 1 });
       }
     }
-    if (cars.length > 1800) cars.length = 1800;
+    for (let i = cars.length - 1; i > 0; i--) { const j = Math.floor(rnd() * (i + 1)); [cars[i], cars[j]] = [cars[j], cars[i]]; }
+    if (cars.length > 2400) cars.length = 2400;
     this.cars = cars;
     const body = new T.BoxGeometry(4.4, 0.62, 1.82); body.translate(0, 0.66, 0);
     const cabin = new T.BoxGeometry(2.3, 0.56, 1.6); cabin.translate(-0.25, 1.25, 0);
@@ -868,31 +972,77 @@ SG.Renderer3D = class Renderer3D {
     cars.forEach((car, i) => { this.carMesh.setColorAt(i, c.set(palette[Math.floor(rnd() * palette.length)])); });
     for (const m of [this.carMesh, this.carLights]) { m.frustumCulled = false; this.scene.add(m); }
     this.carMesh.castShadow = false;
+
+    // trains: four cars each, shuttling end to end on their line
+    const trains = [];
+    for (const r of w.roads) {
+      if (r.removed || !r.rail || r.len < 150) continue;
+      cum(r);
+      const n = Math.max(1, Math.floor(r.len / 1500));
+      for (let k = 0; k < n; k++) trains.push({ road: r, u: (k + 0.5) / n * r.len, dir: k % 2 ? -1 : 1, v: 24 * (0.9 + rnd() * 0.2) });
+    }
+    this.trains = trains;
+    const tb = new T.BoxGeometry(19.5, 3.2, 3.0); tb.translate(0, 2.2, 0);
+    const tw = new T.BoxGeometry(17.5, 0.9, 3.04); tw.translate(0, 2.7, 0);
+    const tr = new T.BoxGeometry(18.5, 0.35, 2.4); tr.translate(0, 3.95, 0);
+    const tbog = new T.BoxGeometry(17, 0.7, 2.2); tbog.translate(0, 0.75, 0);
+    this.trainMesh = new T.InstancedMesh(this.partsGeo([[tb, '#ffffff'], [tw, '#26303a'], [tr, '#b7bcc2'], [tbog, '#2a2a2a']]), this.carMat, Math.max(1, trains.length * 4));
+    trains.forEach((t, i) => { for (let k = 0; k < 4; k++) this.trainMesh.setColorAt(i * 4 + k, c.set(k === 0 ? '#d2a531' : '#e9ecef')); });
+    this.trainMesh.count = trains.length * 4;
+    this.trainMesh.frustumCulled = false; this.trainMesh.castShadow = true;
+    this.scene.add(this.trainMesh);
     this.moveCars(0);
   }
+  // position on a road: distance u along it, lateral offset, direction -> [x, y, height, heading]
+  along(r, u, off, dir, hint) {
+    const cum = r._cum, p = r.pts;
+    let i = Math.max(1, Math.min(cum.length - 1, hint || 1));
+    while (i < cum.length - 1 && cum[i] < u) i++;
+    while (i > 1 && cum[i - 1] > u) i--;
+    const seg = cum[i] - cum[i - 1] || 1, t = Math.max(0, Math.min(1, (u - cum[i - 1]) / seg));
+    const dx = (p[2 * i] - p[2 * i - 2]) / seg * dir, dy = (p[2 * i + 1] - p[2 * i - 1]) / seg * dir;
+    const cx = p[2 * i - 2] + (p[2 * i] - p[2 * i - 2]) * t, cy = p[2 * i - 1] + (p[2 * i + 1] - p[2 * i - 1]) * t;
+    const x = cx - dy * off, y = cy + dx * off;
+    const e = r.el ? r.el[i - 1] + (r.el[i] - r.el[i - 1]) * t : 0;
+    const h = e > 0.05 ? this.w.heightAt(cx, cy) + e : this.w.heightAt(x, y);
+    return [x, y, h, Math.atan2(-dy, dx), i];
+  }
   moveCars(dt) {
-    const T = THREE, w = this.w, cars = this.cars;
-    if (!cars || !cars.length) return;
+    const T = THREE, cars = this.cars;
     const m4 = this._m4 || (this._m4 = new T.Matrix4()), q = this._q || (this._q = new T.Quaternion());
     const v = this._cv || (this._cv = new T.Vector3()), up = this._up || (this._up = new T.Vector3(0, 1, 0));
-    const sc = this._sc || (this._sc = new T.Vector3(1.2, 1.2, 1.2));
-    for (let n = 0; n < cars.length; n++) {
-      const c = cars[n], r = c.road, cum = r._cum, p = r.pts;
-      c.s += c.v * dt;
-      if (c.s >= r.len) { c.s -= r.len; c.i = c.dir > 0 ? 1 : cum.length - 1; }
-      const u = c.dir > 0 ? c.s : r.len - c.s;
-      let i = c.i;
-      while (i < cum.length - 1 && cum[i] < u) i++;
-      while (i > 1 && cum[i - 1] > u) i--;
-      c.i = i;
-      const seg = cum[i] - cum[i - 1] || 1, t = (u - cum[i - 1]) / seg;
-      let dx = (p[2 * i] - p[2 * i - 2]) / seg * c.dir, dy = (p[2 * i + 1] - p[2 * i - 1]) / seg * c.dir;
-      const x = p[2 * i - 2] + (p[2 * i] - p[2 * i - 2]) * t - dy * c.lane, y = p[2 * i - 1] + (p[2 * i + 1] - p[2 * i - 1]) * t + dx * c.lane;
-      q.setFromAxisAngle(up, Math.atan2(-dy, dx));
-      m4.compose(v.set(x, w.heightAt(x, y) + 0.3, y), q, r.removed ? v.clone().set(0, 0, 0) : sc);
-      this.carMesh.setMatrixAt(n, m4);
+    const sc = this._sc || (this._sc = new T.Vector3(1.2, 1.2, 1.2)), zero = new T.Vector3(0, 0, 0);
+    if (cars && cars.length) {
+      for (let n = 0; n < cars.length; n++) {
+        const c = cars[n], r = c.road;
+        c.s += c.v * dt;
+        if (c.s >= r.len) c.s -= r.len;
+        const u = c.dir > 0 ? c.s : r.len - c.s;
+        const [x, y, h, hd, i] = this.along(r, u, c.lane, c.dir, c.i);
+        c.i = i;
+        q.setFromAxisAngle(up, hd);
+        m4.compose(v.set(x, h + 0.3, y), q, r.removed ? zero : sc);
+        this.carMesh.setMatrixAt(n, m4);
+      }
+      this.carMesh.instanceMatrix.needsUpdate = true;
     }
-    this.carMesh.instanceMatrix.needsUpdate = true;
+    const tr = this.trains;
+    if (tr && tr.length && this.trainMesh) {
+      const one = new T.Vector3(1, 1, 1);
+      tr.forEach((t, n) => {
+        const r = t.road;
+        t.u += t.v * dt * t.dir;
+        if (t.u > r.len) { t.u = r.len; t.dir = -1; } else if (t.u < 0) { t.u = 0; t.dir = 1; }
+        for (let k = 0; k < 4; k++) {
+          const u = Math.max(0, Math.min(r.len, t.u - k * 20.5 * t.dir));
+          const [x, y, h, hd] = this.along(r, u, 1.9, t.dir, 1);
+          q.setFromAxisAngle(up, hd);
+          m4.compose(v.set(x, h + 0.4, y), q, r.removed ? zero : one);
+          this.trainMesh.setMatrixAt(n * 4 + k, m4);
+        }
+      });
+      this.trainMesh.instanceMatrix.needsUpdate = true;
+    }
   }
 
   // ---------- buildings ----------
@@ -1277,7 +1427,7 @@ SG.Renderer3D = class Renderer3D {
         const c = w.cellOf(s[0], s[1]);
         if (c >= 0 && w.roadMask[c]) { // a new road was cut through here
           const nr = w.nearestRoad(s[0], s[1], 16, false);
-          if (nr && nr.road.player && nr.dist < SG.ROAD_STYLE[nr.road.cls][0] / 2 + 2.5) { s.gone = true; im.setMatrixAt(i, m4); changed = true; return; }
+          if (nr && nr.road.player && nr.dist < SG.roadWidth(nr.road) / 2 + 2.5) { s.gone = true; im.setMatrixAt(i, m4); changed = true; return; }
         }
         for (const b of w.buildingsIn([s[0] - 4, s[1] - 4, s[0] + 4, s[1] + 4])) {
           if (b.player && (SG.World.pointInPoly(s[0], s[1], b.pts) || Math.hypot(b.cx - s[0], b.cy - s[1]) < Math.sqrt(b.area) / 2 + 3)) {
@@ -1326,6 +1476,7 @@ SG.Renderer3D = class Renderer3D {
     const [poles, lamps, glows] = this.lightMeshes;
     poles.visible = close; lamps.visible = close && night > 0.2; glows.visible = night > 0.05 && this.dist < 9000;
     this.carMesh.visible = this.dist < 3800 && this.q < 3;
+    if (this.trainMesh) this.trainMesh.visible = this.dist < 6000 && this.q < 3;
     this.carLights.visible = this.carMesh.visible && night > 0.2;
     this.cityLights.visible = night > 0.2;
   }
@@ -1356,7 +1507,7 @@ SG.Renderer3D = class Renderer3D {
     }
     if (anim) {
       this.time += dt; this.uTime.value = this.time;
-      if (this.carMesh.visible) this.moveCars(dt);
+      if (this.carMesh.visible || (this.trainMesh && this.trainMesh.visible)) this.moveCars(dt);
     }
     if (this.envDirty && (this.todT >= 1 || (this.envTick = (this.envTick || 0) + 1) % 8 === 0)) this.updateEnv();
     if (this.post) {
@@ -1412,7 +1563,7 @@ SG.Renderer3D = class Renderer3D {
         if (g.ctrl) for (let i = 0; i < g.ctrl.length; i += 2) {
           const q = this.toScreen(g.ctrl[i], g.ctrl[i + 1], w.heightAt(g.ctrl[i], g.ctrl[i + 1]) + 1);
           if (q[2] > 1) continue;
-          ctx.beginPath(); ctx.arc(q[0], q[1], 5, 0, Math.PI * 2); ctx.fillStyle = '#fff'; ctx.fill(); ctx.strokeStyle = '#1d4f91'; ctx.lineWidth = 2; ctx.stroke();
+          const sel = i / 2 === g.sel; ctx.beginPath(); ctx.arc(q[0], q[1], sel ? 9 : 6, 0, Math.PI * 2); ctx.fillStyle = sel ? '#f2b544' : '#fff'; ctx.fill(); ctx.strokeStyle = '#1d4f91'; ctx.lineWidth = 2.5; ctx.stroke();
         }
       } else if (g.type === 'poly') {
         ctx.strokeStyle = !g.ok ? '#c42323' : g.warn ? '#b07a00' : '#1f9a4e';
@@ -1466,7 +1617,7 @@ SG.Renderer3D = class Renderer3D {
       }
     }
     // compass
-    ctx.save(); ctx.translate(this.vw - 34, 34); ctx.rotate(this.yaw);
+    ctx.save(); ctx.translate(this.vw < 700 ? 30 : this.vw - 34, this.vw < 700 ? this.vh - 30 : 34); ctx.rotate(this.yaw);
     ctx.fillStyle = 'rgba(21,26,31,.8)'; ctx.beginPath(); ctx.arc(0, 0, 18, 0, Math.PI * 2); ctx.fill();
     ctx.fillStyle = '#e5705f'; ctx.beginPath(); ctx.moveTo(0, -14); ctx.lineTo(5, 0); ctx.lineTo(-5, 0); ctx.fill();
     ctx.fillStyle = '#e8edf1'; ctx.beginPath(); ctx.moveTo(0, 14); ctx.lineTo(5, 0); ctx.lineTo(-5, 0); ctx.fill();

@@ -15,6 +15,7 @@ SG.ROAD_STYLE = [
   [6, 0.7, '#f4f1ea', '#c4bfb4'],   // service/driveway
   [3, 0.5, '#d9cfb3', null],        // track
   [2, 0.5, '#c9b68e', null],        // path
+  [6, 1.4, '#55504a', '#8a8178'],   // 7: rail
 ];
 
 SG.Renderer = class Renderer {
@@ -144,25 +145,63 @@ SG.Renderer = class Renderer {
       ctx.imageSmoothingEnabled = true;
     }
 
-    // roads: casing pass then fill pass, minor to major
-    const roads = s < 0.25 ? w.roads.filter(r => !r.removed && r.cls <= 3) : w.roadsIn(vb);
-    const byCls = [[], [], [], [], [], [], []];
-    for (const r of roads) if (!r.removed) byCls[r.cls].push(r);
-    for (let pass = 0; pass < 2; pass++) {
-      for (let c = 6; c >= 0; c--) {
+    // roads: casing pass then fill pass, minor to major; widths per road (highways, ramps);
+    // bridges are drawn again on top of whatever they cross
+    const roads = (s < 0.25 ? w.roads.filter(r => !r.removed && (r.cls <= 3 || r.rail)) : w.roadsIn(vb)).filter(r => !r.removed);
+    const groups = new Map(); // "cls|width" -> roads
+    for (const r of roads) {
+      if (r.rail) continue;
+      const key = r.cls + '|' + SG.roadWidth(r);
+      let g = groups.get(key); if (!g) groups.set(key, g = []); g.push(r);
+    }
+    const order = [...groups.keys()].sort((a, b) => +b.split('|')[0] - +a.split('|')[0] || +a.split('|')[1] - +b.split('|')[1]);
+    const strokeRoads = (list, c, wm, pass) => {
+      const [, minPx, fill, casing] = SG.ROAD_STYLE[c];
+      const lw = Math.max(minPx, wm * s);
+      if (pass === 0 && (!casing || lw < 2)) return;
+      ctx.strokeStyle = pass === 0 ? casing : (s < 0.3 && c >= 2 ? '#fffdf7' : fill);
+      ctx.lineWidth = pass === 0 ? lw + Math.max(1, 1.5 * s) : lw;
+      if (c >= 5) ctx.setLineDash(pass ? [Math.max(2, 3 * s), Math.max(2, 2 * s)] : []);
+      ctx.beginPath();
+      for (const r of list) this.path(r.pts, false);
+      ctx.stroke();
+      ctx.setLineDash([]);
+    };
+    for (let pass = 0; pass < 2; pass++)
+      for (const key of order) {
+        const [c, wm] = key.split('|').map(Number);
         if (c >= 4 && s < 0.6) continue;
-        const [wm, minPx, fill, casing] = SG.ROAD_STYLE[c];
-        const lw = Math.max(minPx, wm * s);
-        if (pass === 0 && !casing) continue;
-        if (pass === 0 && lw < 2) continue;
-        ctx.strokeStyle = pass === 0 ? casing : (s < 0.3 && c >= 2 ? '#fffdf7' : fill);
-        ctx.lineWidth = pass === 0 ? lw + Math.max(1, 1.5 * s) : lw;
-        if (c >= 5) ctx.setLineDash(pass ? [Math.max(2, 3 * s), Math.max(2, 2 * s)] : []);
-        ctx.beginPath();
-        for (const r of byCls[c]) this.path(r.pts, false);
-        ctx.stroke();
-        ctx.setLineDash([]);
+        strokeRoads(groups.get(key), c, wm, pass);
       }
+    // divided highways: median line
+    const divided = roads.filter(r => r.cls === 0 && !r.oneway && !r.ramp && !r.rail);
+    if (divided.length && s > 0.4) { ctx.strokeStyle = '#a7804a'; ctx.lineWidth = Math.max(1, 1 * s); ctx.beginPath(); for (const r of divided) this.path(r.pts, false); ctx.stroke(); }
+    // rail: dark ballast with white ties
+    const rails = roads.filter(r => r.rail);
+    if (rails.length) {
+      ctx.strokeStyle = '#4a4540'; ctx.lineWidth = Math.max(2.5, 5 * s); ctx.beginPath(); for (const r of rails) this.path(r.pts, false); ctx.stroke();
+      ctx.strokeStyle = '#efeae0'; ctx.lineWidth = Math.max(1, 2.4 * s); ctx.setLineDash([Math.max(1.5, 1.2 * s), Math.max(3, 3 * s)]);
+      ctx.beginPath(); for (const r of rails) this.path(r.pts, false); ctx.stroke(); ctx.setLineDash([]);
+    }
+    // bridges on top, with a shadow
+    const bridges = roads.filter(r => r.el && r.el.some(v => v > 2));
+    if (bridges.length && s > 0.15) for (const r of bridges) {
+      const c = r.rail ? 7 : r.cls, wm = SG.roadWidth(r), [, minPx, fill, casing] = SG.ROAD_STYLE[c];
+      const p = r.pts, n = p.length / 2;
+      ctx.lineCap = 'butt';
+      for (let pass = 0; pass < 3; pass++) {
+        ctx.beginPath();
+        let on = false;
+        for (let i = 0; i < n; i++) {
+          const up = r.el[i] > 2;
+          const [x, y] = this.toScreen(p[2 * i] + (pass === 0 ? 4 : 0), p[2 * i + 1] + (pass === 0 ? 4 : 0));
+          if (up && !on) { ctx.moveTo(x, y); on = true; } else if (up) ctx.lineTo(x, y); else on = false;
+        }
+        ctx.strokeStyle = pass === 0 ? 'rgba(0,0,0,.25)' : pass === 1 ? '#6f6a62' : (r.rail ? '#55504a' : fill);
+        ctx.lineWidth = Math.max(minPx, wm * s) + (pass === 1 ? Math.max(2, 2.4 * s) : 0);
+        ctx.stroke();
+      }
+      ctx.lineCap = 'round';
     }
 
     // buildings
@@ -311,7 +350,7 @@ SG.Renderer = class Renderer {
       ctx.strokeStyle = g.ok ? 'rgba(60,140,255,.8)' : 'rgba(230,60,60,.8)'; ctx.lineWidth = Math.max(3, (g.w || 9) * this.scale); ctx.lineCap = 'round'; ctx.stroke();
       if (g.ctrl) for (let i = 0; i < g.ctrl.length; i += 2) {
         const [x, y] = this.toScreen(g.ctrl[i], g.ctrl[i + 1]);
-        ctx.beginPath(); ctx.arc(x, y, 5, 0, Math.PI * 2); ctx.fillStyle = '#fff'; ctx.fill(); ctx.strokeStyle = '#1d4f91'; ctx.lineWidth = 2; ctx.stroke();
+        const sel = i / 2 === g.sel; ctx.beginPath(); ctx.arc(x, y, sel ? 9 : 6, 0, Math.PI * 2); ctx.fillStyle = sel ? '#f2b544' : '#fff'; ctx.fill(); ctx.strokeStyle = '#1d4f91'; ctx.lineWidth = 2.5; ctx.stroke();
       }
     } else if (g.type === 'poly') {
       ctx.beginPath(); this.path(g.pts);

@@ -51,13 +51,38 @@ SG.Sim = class Sim {
     this.parkHa = parkHa;
     this.services = this.w.buildings.filter(b => !b.removed && b.service).map(b => ({ x: b.cx, y: b.cy, service: b.service, radius: b.radius }));
   }
+  // km of city streets, plus traffic capacity (lane-km weighted) and rail
   roadKm() {
-    let m = 0;
-    for (const r of this.w.roads) if (!r.removed && r.cls <= 3) {
+    let m = 0, cap = 0, rail = 0, hwy = 0;
+    const weight = r => r.ramp ? 0.6 : r.cls === 0 ? (r.oneway ? 2 : 3.5) : r.cls === 1 ? 2 : r.cls === 2 ? 1.3 : 1;
+    for (const r of this.w.roads) {
+      if (r.removed) continue;
       const c = this.w.cellOf(r.pts[0], r.pts[1]);
-      if (c >= 0 && this.w.inCity[c]) m += r.len;
+      if (c < 0 || !this.w.inCity[c]) continue;
+      if (r.rail) { rail += r.len; continue; }
+      if (r.cls > 3) continue;
+      if (r.cls === 0) hwy += r.len; else m += r.len;
+      cap += r.len * weight(r);
     }
+    this.capKm = cap / 1000; this.railKm = rail / 1000; this.hwyKm = hwy / 1000;
     return m / 1000;
+  }
+  // stations that sit on a rail line, grouped by line; a line with 2+ stations carries commuters
+  transit() {
+    const lines = new Map();
+    for (const b of this.w.buildings) {
+      if (b.removed || b.kind !== 'trainstation' || b.construction) continue;
+      let best = null, bd = 45;
+      for (const r of this.w.roadsIn([b.cx - 45, b.cy - 45, b.cx + 45, b.cy + 45])) {
+        if (!r.rail || r.removed) continue;
+        const p = r.pts;
+        for (let i = 2; i < p.length; i += 2) { const d = Math.sqrt(SG.World.segDist2(b.cx, b.cy, p[i - 2], p[i - 1], p[i], p[i + 1])); if (d < bd) { bd = d; best = r; } }
+      }
+      if (best) lines.set(best.name || best.id, (lines.get(best.name || best.id) || 0) + 1);
+    }
+    let served = 0;
+    for (const n of lines.values()) if (n >= 2) served += n;
+    return { stations: served, share: Math.min(0.3, served * 0.06) };
   }
 
   computeBudget() {
@@ -72,7 +97,8 @@ SG.Sim = class Sim {
     for (const b of this.w.buildings) if (!b.removed && b.player && b.upkeep) svcUpkeep += b.upkeep;
     const exp = {
       'Sheriff contract': this.pop * E.lawPerCapita,
-      'Streets & storm drains': this.roadKmCache * E.roadPerKm,
+      'Streets & storm drains': this.roadKmCache * E.roadPerKm + (this.hwyKm || 0) * E.roadPerKm * 4,
+      'Rail operations': (this.railKm || 0) * 45000,
       'Parks & open space': this.parkHa * E.parkPerHa,
       'Administration & planning': E.adminBase + this.units * 60,
       'New city facilities': svcUpkeep,
@@ -373,8 +399,10 @@ SG.Sim = class Sim {
     f['Budget'] = this.budget.net >= 0 ? 6 : Math.max(-15, this.budget.net / 400000);
     if (this.funds < 0) f['Budget'] -= 10;
     f['Parks per resident'] = Math.max(-8, Math.min(8, (this.parkHa / Math.max(1, this.pop / 1000) - 3) * 2));
-    const roadCap = this.roadKmCache * 260;
-    const trips = this.pop * 0.8 + this.jobs * 0.6;
+    const roadCap = (this.capKm || this.roadKmCache) * 260;
+    const tr = this.transit();
+    const trips = (this.pop * 0.8 + this.jobs * 0.6) * (1 - tr.share);
+    f['Public transit'] = tr.stations ? Math.min(6, tr.stations * 1.2) : 0;
     f['Traffic'] = Math.max(-15, Math.min(4, (roadCap - trips) / Math.max(1, roadCap) * 10));
     f['Parcel tax'] = -this.parcelTax / 40;
     f['Fire protection'] = this.fireCoverage() * 8 - 4;
@@ -440,7 +468,12 @@ SG.Sim = class Sim {
       service: b.service, radius: b.radius, upkeep: b.upkeep, name: b.name,
     }));
     const removedRoads = w.roads.filter(r => r.original && r.removed).map(r => r.id);
-    const addedRoads = w.roads.filter(r => !r.original && !r.removed).map(r => ({ cls: r.cls, pts: Array.from(r.pts, v => Math.round(v * 10) / 10), name: r.name }));
+    const R1 = v => Math.round(v * 10) / 10;
+    const roadProps = r => ({ cls: r.cls, w: r.w, o: r.oneway ? 1 : 0, k: r.ramp ? 1 : 0, rail: r.rail ? 1 : 0, dv: r.divided ? 1 : 0,
+      mode: r.mode, ctrl: r.ctrl ? r.ctrl.map(q => [R1(q[0]), R1(q[1])]) : undefined, built: r.built });
+    const addedRoads = w.roads.filter(r => !r.original && !r.removed).map(r => Object.assign({ pts: Array.from(r.pts, R1), name: r.name }, roadProps(r)));
+    // mapped roads that were renamed, upgraded or reshaped
+    const editedRoads = w.roads.filter(r => r.original && !r.removed && (r.edited || r.renamed)).map(r => Object.assign({ id: r.id, pts: Array.from(r.pts, R1), name: r.name }, roadProps(r)));
     const parks = w.playerParks.map(p => Array.from(p.pts, v => Math.round(v * 10) / 10));
     // run-length encode the zoning grid
     const z = w.zone, rle = [];
@@ -451,12 +484,23 @@ SG.Sim = class Sim {
       v: 2, W: w.W, H: w.H, city, year: this.year, month: this.month, funds: this.funds, parcelTax: this.parcelTax, approval: this.approval,
       rhnaPermitted: this.rhnaPermitted, compliant: this.compliant, seed: this.seed, baseUnits: this.baseUnits,
       history: this.history, news: this.news.slice(0, 15), nextAppId: this.nextAppId, denials: this.denials,
-      removedOrig, added, removedRoads, addedRoads, parks, zone: rle,
+      removedOrig, added, removedRoads, addedRoads, editedRoads, parks, zone: rle,
     };
   }
   static fromJSON(world, s) {
     for (const id of s.removedRoads) world.roads[id].removed = true;
-    for (const r of s.addedRoads) { const rr = world.addRoadRaw({ cls: r.cls, pts: new Float32Array(r.pts), name: r.name, player: true }); world.indexRoad(rr); }
+    const props = r => ({ cls: r.cls, w: r.w, oneway: !!r.o, ramp: !!r.k, rail: !!r.rail, divided: !!r.dv, mode: r.mode, ctrl: r.ctrl, built: r.built });
+    for (const e of s.editedRoads || []) {
+      const r = world.roads[e.id]; if (!r) continue;
+      Object.assign(r, props(e), { pts: new Float32Array(e.pts), name: e.name, edited: true });
+      world.measureRoad(r); world.indexRoad(r);
+      r.el = null; if (r.ramp || r.rail || r.divided || r.bridge) world.bridgeProfile(r);
+    }
+    for (const r of s.addedRoads) {
+      const rr = world.addRoadRaw(Object.assign({ pts: new Float32Array(r.pts), name: r.name, player: true }, props(r)));
+      if (rr.ramp || rr.rail || rr.divided) world.bridgeProfile(rr);
+      world.indexRoad(rr);
+    }
     world.computeRoadDist();
     for (const id of s.removedOrig) world.buildings[id].removed = true;
     // zoning and city limits are stored per grid cell; skip them if the map size has changed

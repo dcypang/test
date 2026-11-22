@@ -38,6 +38,12 @@ python3 -m http.server 8000
 
 No build step and no dependencies. The game saves to your browser's local storage.
 
+**On a phone** (laid out for iPhone 17 Pro and similar): the map fills the screen, the tools sit in
+a tab bar at the bottom (Inspect, Roads, Zones, Homes, City, Demolish), and ⓘ opens a sheet with
+the inspector, Planning Commission and budget. One finger pans, two fingers zoom and twist. Tap
+to place road points and ✓ to finish; for buildings, the first tap shows where it would go and
+a second tap (or ✓) builds it. Add it to the home screen to play full screen.
+
 The 3D view needs WebGL and falls back to the flat map without it. Graphics quality adapts to the
 device: if frames get slow it lowers the resolution, then turns off shadows, ambient occlusion
 and depth of field, then stops the ambient animation. The full effects need WebGL2; older
@@ -54,6 +60,7 @@ browsers get a simpler lighting path. You can pin it from the menu (☰ → 3D g
 | Circle the camera (3D) | `C` or the 🎥 button |
 | Photo mode (3D) | `P` or the 📷 button; 💾 saves a PNG; `Esc` leaves |
 | Switch 3D / 2D | `V` or the 2D/3D button |
+| Finish / undo / cancel a road | `Enter` / `Backspace` / `Esc`, or ✓ ↶ ✕ in the bar above the map |
 | Zoom | Mouse wheel, pinch, or `+` / `-` |
 | Inspect | Click a building, street or lot |
 | Pause / resume | Space |
@@ -62,12 +69,24 @@ browsers get a simpler lighting path. You can pin it from the menu (☰ → 3D g
 
 ### What you can do
 
-- **Build roads**: pick Street, Avenue, Boulevard or Highway. Click to place points and the road
-  curves through them; click the last point again, press Enter, or connect into an existing road
-  to finish. A single press-drag-release draws a straight road. Every new road gets a name
-  ("Madrone Court", "Via del Sol", "Foothill Expressway"); a road that extends an existing one of
-  the same type keeps its name. Click a road to rename it. Roads through buildings buy and
-  demolish them, after asking. Highways carry traffic, but nothing can be built facing them.
+- **Build roads, highways, ramps and rail**: Street, Avenue, Boulevard, Highway (a divided
+  six-lane freeway, 32 m wide), Ramp (one-way, to join highways to streets) and Rail (double track).
+  Three drawing modes: **Straight** (corners where you click), **Curve** (start, bend, end) and
+  **Free** (curves smoothly through every point), with 15° angle snapping and a live length and
+  angle readout. Finish by clicking the last point again, pressing Enter or ✓ Done, or by joining
+  an existing road; Backspace or ↶ Undo removes a point. Highways, ramps and rail rise on bridges
+  over anything they cross, with pillars underneath, and come down to meet the roads they join.
+  OpenStreetMap's own bridges (Highway 85's overpasses) are raised too.
+- **Reshape and upgrade**: the Reshape tool shows handles on any road, mapped or yours; drag them
+  to bend it, tap the road to add a handle, ⌫ to remove one, ↶ to undo. Upgrade turns a road into
+  another type in place (street → avenue → boulevard → highway), buying out buildings in the way.
+- **Trains**: Train Stations go beside a rail line. Two or more on a line carry commuters, which
+  eases traffic and pleases residents. Trains run back and forth on every line.
+- **Zone along a street**: with a zoning tool, switch to *Along street* and tap a street to zone
+  both sides of it in one go.
+- Every new road gets a name ("Madrone Court", "Via del Sol", "Foothill Expressway",
+  "Vineyard Line"); ramps are named after their highway and street; a road that extends one of
+  the same type keeps its name. Click a road to rename it.
 - **Put homes and apartments where you want them**: paint a zone along a street (HR or R-1 for
   houses, R-M or MU for apartments and townhomes). Developers build on land you've just zoned or
   opened with a new road first, so a new street fills in over the following months. Or place a

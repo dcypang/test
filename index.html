@@ -2,7 +2,11 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="theme-color" content="#151a1f">
 <title>SimSaratoga</title>
 <link rel="stylesheet" href="css/style.css">
 </head>
@@ -24,6 +28,7 @@
       <button data-speed="1" title="Normal">▶</button>
       <button data-speed="2" title="Fast">▶▶</button>
       <button data-speed="3" title="Fastest">▶▶▶</button>
+      <button id="sheet-btn" title="City info: inspector, Planning Commission, budget">ⓘ<span id="sheet-badge"></span></button>
       <button id="menu-btn" title="Menu">☰</button>
     </div>
   </header>
@@ -52,10 +57,14 @@
     <div id="overlays"></div>
     <canvas id="minimap" width="180" height="180"></canvas>
     <div id="hint"></div>
+    <div id="toolopts"></div>
     <div id="loading">Loading Saratoga…</div>
   </main>
 
+  <nav id="tooltabs"></nav>
+
   <aside id="panel">
+    <div id="sheet-grip"><span></span><button id="sheet-close" title="Close">✕</button></div>
     <section id="inspector"><h3>Inspector</h3><div id="inspect-body" class="muted">Pick a building, road or lot to see its details.</div></section>
     <section id="apps"><h3>Planning Commission <span id="apps-count" class="pill">0</span></h3>
       <label class="tog"><input type="checkbox" id="auto-approve" checked> Approve projects that meet the code automatically</label>
@@ -77,6 +86,8 @@
 <script src="js/post3d.js"></script>
 <script src="js/render3d.js"></script>
 <script src="js/ui.js"></script>
+<script src="js/roads.js"></script>
+<script src="js/mobile.js"></script>
 <script src="js/main.js"></script>
 </body>
 </html>

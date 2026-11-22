@@ -18,21 +18,24 @@ SG.UI = class UI {
   // ---------- toolbar ----------
   buildToolbar() {
     const tb = this.$('toolbar');
+    let grp = 'Tools';
     const add = (id, icon, label, title, swatch) => {
       const b = document.createElement('button');
-      b.className = 'tool'; b.dataset.tool = id; b.title = title || label;
+      b.className = 'tool'; b.dataset.tool = id; b.dataset.group = grp; b.title = title || label;
       b.innerHTML = swatch ? `<span class="ic"><span class="sw" style="background:${swatch}"></span></span>${label}` : `<span class="ic">${icon}</span>${label}`;
       b.onclick = () => this.setTool(id);
       tb.appendChild(b);
     };
-    const group = t => { const d = document.createElement('div'); d.className = 'tgroup'; d.textContent = t; tb.appendChild(d); };
+    const group = t => { grp = t; const d = document.createElement('div'); d.className = 'tgroup'; d.textContent = t; d.dataset.group = t; tb.appendChild(d); };
     add('inspect', '🔍', 'Inspect', 'Inspect and pan (drag)');
     add('bulldoze', '🚜', 'Bulldoze', 'Demolish a building or road');
     group('Roads');
-    for (const cls of [3, 2, 1, 0]) {
-      const t = SG.ROAD_TYPES[cls];
-      add('road:' + cls, t.icon, t.label, `${t.label} ($${SG.fmtInt(t.cost)}/m): ${t.desc} Click to place points, click the last point again or press Enter to finish.`);
+    for (const k of SG.ROAD_TYPE_ORDER) {
+      const t = SG.ROAD_TYPES[k];
+      add('road:' + k, t.icon, t.label, `${t.label} ($${SG.fmtInt(t.cost)}/m): ${t.desc}`);
     }
+    add('upgrade', '⬆️', 'Upgrade', 'Change a road to another type in place (street → avenue → boulevard → highway)');
+    add('reshape', '✏️', 'Reshape', 'Pick a road, then drag its handles to bend or move it');
     group('Zoning');
     for (const z of SG.ZONES) if (z.id) add('zone:' + z.id, '', z.code.replace(',000', 'k'), `${z.code}: ${z.name}`, z.color);
     group('Private');
@@ -40,7 +43,7 @@ SG.UI = class UI {
       const s = SG.BUILDS[k]; add('build:' + k, s.icon, s.label, `${s.label}: ${s.desc}`);
     }
     group('City');
-    for (const k of ['park', 'firestation', 'library', 'community']) {
+    for (const k of ['park', 'firestation', 'library', 'community', 'trainstation']) {
       const s = SG.BUILDS[k]; add('build:' + k, s.icon, s.label, `${s.label} (${SG.fmtMoney(s.cost)}): ${s.desc}`);
     }
     this.setTool('inspect');
@@ -59,6 +62,11 @@ SG.UI = class UI {
   }
   setTool(id) {
     if (this.roadPts && !(id.startsWith('road:') && id === this.tool)) this.cancelRoad();
+    if (id !== this.tool) { this.armed = null; if (id !== 'reshape') this.reshape = null; }
+    if (this.roadMode == null) {
+      let o = {}; try { o = JSON.parse(localStorage.getItem('simsaratoga.roadopts') || '{}'); } catch (e) { /* ignore */ }
+      this.roadMode = o.m || 'straight'; this.angleSnap = o.s !== false;
+    }
     this.tool = id;
     document.querySelectorAll('.tool').forEach(b => b.classList.toggle('on', b.dataset.tool === id));
     this.r.ghost = null; this.r.dirty = true;
@@ -68,10 +76,8 @@ SG.UI = class UI {
       const z = SG.ZONES[+id.slice(5)];
       msg = `Paint ${z.code} (${z.name}). Drag to paint, [ ] change brush size.`;
       if (this.r.overlay !== 'zoning') this.setOverlay('zoning');
-    } else if (id.startsWith('road:')) {
-      const t = SG.ROAD_TYPES[+id.slice(5)];
-      msg = `${t.label}: click to start, click again to add bends (it curves through them), click the last point again or press Enter to finish. Esc cancels.`;
-    }
+    } else if (id === 'upgrade') msg = `Upgrade: pick the new type below, then ${this.touchMode ? 'tap' : 'click'} a road.`;
+    else if (id === 'reshape') msg = `Reshape: ${this.touchMode ? 'tap' : 'click'} a road, then drag its handles.`;
     else if (id === 'bulldoze') msg = 'Click a building or road to demolish it.';
     else if (id.startsWith('build:')) {
       const s = SG.BUILDS[id.slice(6)];
@@ -79,6 +85,10 @@ SG.UI = class UI {
         : `${s.label}: ${SG.fmtMoney(s.cost)}. Click to build.`;
     }
     hint.textContent = msg; hint.style.display = msg ? 'block' : 'none';
+    if (id.startsWith('road:')) this.roadHint();
+    if (id.startsWith('zone:') && this.zoneMode === 'along') this.setHint(`${this.touchMode ? 'Tap' : 'Click'} a street to zone both sides of it ${SG.ZONES[+id.slice(5)].code}.`);
+    this.renderToolOpts();
+    if (this.onToolChange) this.onToolChange(id);
   }
 
   // ---------- input ----------
@@ -105,9 +115,15 @@ SG.UI = class UI {
         drag = null; return;
       }
       const [x, y] = pos(e);
-      const panMode = e.button === 1 || e.button === 2 || this.tool === 'inspect' || this.spaceDown;
+      const touch = e.pointerType === 'touch';
+      if (touch !== this.touchMode) { this.touchMode = touch; this.renderToolOpts(); }
       const orbit = !!this.r.orbit && (e.button === 2 || (e.button === 0 && (e.shiftKey || e.altKey)));
-      drag = { x, y, sx: x, sy: y, pan: panMode || orbit, orbit, moved: false, button: e.button };
+      // which tool takes this press? Otherwise it pans (and a press without movement is a tap/click)
+      let consume = !(e.button === 1 || e.button === 2 || this.tool === 'inspect' || this.spaceDown || orbit);
+      if (consume && this.tool === 'reshape') consume = this.reshapeDown(x, y);
+      else if (consume && touch && this.tapTool()) consume = false; // on touch: drag pans, tap acts
+      else if (consume && this.tool.startsWith('zone:') && this.zoneMode === 'along') consume = false;
+      drag = { x, y, sx: x, sy: y, pan: !consume, orbit, moved: false, button: e.button, touch };
       if (!drag.pan) this.toolDown(...this.r.toWorld(x, y));
     });
     cv.addEventListener('pointermove', e => {
@@ -140,9 +156,14 @@ SG.UI = class UI {
       if (!drag) return;
       const p = pos(e);
       const [wx, wy] = this.worldAt(p, drag.pan);
-      if (drag.pan && !drag.moved && drag.button === 0) this.inspect(wx, wy);
-      else if (!drag.pan) this.toolUp(wx, wy);
-      drag = null;
+      const d0 = drag; drag = null;
+      if (d0.pan && !d0.moved && d0.button === 0 && !d0.orbit) {
+        const t = this.tool;
+        if (t === 'inspect') this.inspect(wx, wy);
+        else if (t === 'reshape') this.reshapeTap(wx, wy);
+        else if (t.startsWith('zone:') && this.zoneMode === 'along') this.zoneAlong(wx, wy);
+        else if (d0.touch && this.tapTool()) this.tap(wx, wy, p[0], p[1]);
+      } else if (!d0.pan) this.toolUp(wx, wy);
     };
     cv.addEventListener('pointerup', up);
     cv.addEventListener('pointercancel', up);
@@ -152,6 +173,9 @@ SG.UI = class UI {
       if (e.code === 'Space') { e.preventDefault(); this.g.setSpeed(this.g.speed ? 0 : (this.g.lastSpeed || 1)); }
       if (e.key === 'Enter' && this.roadPts) { this.finishRoad(); return; }
       if (e.key === 'Escape' && this.roadPts) { this.cancelRoad(); return; }
+      if (e.key === 'Backspace' && this.roadPts) { e.preventDefault(); this.undoPoint(); return; }
+      if ((e.key === 'Backspace' || e.key === 'Delete') && this.reshape) { e.preventDefault(); this.removeHandle(); return; }
+      if (e.key === 'Escape' && (this.armed || this.reshape)) { this.disarm(); this.reshape = null; this.renderToolOpts(); return; }
       if (e.key === 'Escape') { this.setTool('inspect'); this.select(null); if (this.g.photo) this.g.setPhoto(false); }
       if (e.key === '[') { this.brush = Math.max(0, this.brush - 1); }
       if (e.key === ']') { this.brush = Math.min(12, this.brush + 1); }
@@ -184,10 +208,18 @@ SG.UI = class UI {
   }
   toolHover(x, y) {
     const t = this.tool;
-    if (t.startsWith('zone:')) {
+    if (t.startsWith('zone:') && this.zoneMode === 'along') {
+      const road = this.roadAt(x, y);
+      this.r.selected = road && road.cls <= 3 && !road.rail ? road : null; this.r.ghost = null;
+    } else if (t.startsWith('zone:')) {
       this.r.ghost = { type: 'brush', x, y, r: (this.brush + 0.5) * SG.CELL, color: SG.ZONES[+t.slice(5)].color };
     } else if (t.startsWith('road:')) {
       this.roadPreview(x, y);
+      return;
+    } else if (t === 'upgrade') {
+      this.upgradeHover(x, y); return;
+    } else if (t === 'reshape') {
+      return;
     } else if (t.startsWith('build:')) {
       const spec = SG.BUILDS[t.slice(6)];
       const st = this.site(spec, x, y);
@@ -199,6 +231,7 @@ SG.UI = class UI {
       hint.style.display = 'block';
       hint.textContent = !st.ok ? `✗ ${st.why}.`
         : spec.private && !st.meetsZoning ? `⚠ ${spec.label} isn't allowed in ${z.code} (needs ${SG.ZONE_NEEDS[spec.zones]}). Click to rezone the lot and build, or file for a variance.${repl}`
+        : !spec.private && st.annex ? `✓ ${spec.label} fits here. It's outside the city limits, so the city annexes the lot (${SG.fmtMoney(spec.cost)}).${repl}`
         : !spec.private && !st.meetsZoning ? `✓ ${spec.label} fits here. The lot is ${z.code}, so the city rezones it to PF when you build (${SG.fmtMoney(spec.cost)}).${repl}`
         : `✓ ${spec.label} fits here (${z ? z.code : ''}). Click to build${spec.private ? '' : ' (' + SG.fmtMoney(spec.cost) + ')'}.${repl}`;
     } else if (t === 'bulldoze') {
@@ -215,17 +248,42 @@ SG.UI = class UI {
   // otherwise it replaces what stands there. Returns { ok, why, x, y, pts, replace: [buildings], meetsZoning, zid }.
   site(spec, x, y) {
     const w = this.w;
+    if (spec.needsRail) { // line the station up along the nearest track, platform beside it
+      let best = null, bd = 60;
+      for (const r of w.roadsIn([x - 60, y - 60, x + 60, y + 60])) {
+        if (!r.rail || r.removed) continue;
+        const p = r.pts;
+        for (let i = 2; i < p.length; i += 2) {
+          const d = Math.sqrt(SG.World.segDist2(x, y, p[i - 2], p[i - 1], p[i], p[i + 1]));
+          if (d < bd) { bd = d; best = [p[i - 2], p[i - 1], p[i], p[i + 1]]; }
+        }
+      }
+      if (!best) return { ok: false, why: 'A train station has to be next to a rail line (build Rail first)', x, y, pts: SG.World.rect(x, y, spec.w, spec.d, 0), replace: [] };
+      const [ax, ay, bx, by] = best, L = Math.hypot(bx - ax, by - ay) || 1, ux = (bx - ax) / L, uy = (by - ay) / L;
+      const t = Math.max(0, Math.min(L, (x - ax) * ux + (y - ay) * uy)), side = (x - ax) * -uy + (y - ay) * ux >= 0 ? 1 : -1;
+      const off = SG.ROAD_TYPES.rail.w / 2 + spec.d / 2 + 2;
+      const cx = ax + ux * t - uy * off * side, cy = ay + uy * t + ux * off * side;
+      const pts = SG.World.rect(cx, cy, spec.w, spec.d, Math.atan2(uy, ux));
+      const blk = w.siteBlockers(pts), zid = w.zoneAt(cx, cy);
+      const res = { ok: true, x: cx, y: cy, pts, replace: blk.buildings, zid, meetsZoning: SG.zoneAllows(zid, spec), angle: Math.atan2(uy, ux) };
+      if (!zid) res.annex = true; // the city annexes the station's lot
+      if (blk.road) return Object.assign(res, { ok: false, why: `${blk.road.name || 'A road'} is in the way` });
+      if (blk.water) return Object.assign(res, { ok: false, why: 'That spot is in a creek or pond' });
+      const keep = blk.buildings.find(b => !this.replaceable(b, spec));
+      if (keep) return Object.assign(res, { ok: false, why: `${(SG.KIND[keep.kind] || SG.KIND.other).name} in the way can't be replaced` });
+      return res;
+    }
     const at = (px, py) => {
       const nr = w.nearestRoad(px, py, 120);
       const pts = SG.World.rect(px, py, spec.w, spec.d, nr ? nr.angle : 0);
       return { x: px, y: py, pts, nr, blk: spec.area ? { buildings: [], road: null, water: w.areaK[w.cellOf(px, py)] === 4 } : w.siteBlockers(pts) };
     };
-    const zid = w.zoneAt(x, y);
-    if (!zid) return { ok: false, why: 'Outside city limits: paint a zone here first to annex the land', x, y, pts: at(x, y).pts, replace: [] };
+    const zid = w.zoneAt(x, y), annexOK = !spec.private; // the city can annex land for its own facilities
+    if (!zid && !annexOK) return { ok: false, why: 'Outside city limits: paint a zone here first to annex the land', x, y, pts: at(x, y).pts, replace: [] };
     // the spot under the cursor if it's clear; otherwise the nearest spot within ~30 m that isn't on a
     // street or in water, preferring ones that need fewer buildings replaced
     let best = at(x, y);
-    const fine = c => !c.blk.road && !c.blk.water && w.zoneAt(c.x, c.y) && c.blk.buildings.every(b => this.replaceable(b, spec));
+    const fine = c => !c.blk.road && !c.blk.water && (annexOK || w.zoneAt(c.x, c.y)) && c.blk.buildings.every(b => this.replaceable(b, spec));
     if (!spec.area && (best.blk.buildings.length || best.blk.road || best.blk.water)) {
       let bestScore = fine(best) ? best.blk.buildings.length * 100 : Infinity;
       for (let r = 3; r <= 30; r += 3)
@@ -237,6 +295,7 @@ SG.UI = class UI {
         }
     }
     const res = { ok: true, x: best.x, y: best.y, pts: best.pts, replace: best.blk.buildings, zid: w.zoneAt(best.x, best.y) };
+    if (!res.zid) res.annex = true;
     if (best.blk.water) return Object.assign(res, { ok: false, why: 'That spot is in a creek or pond' });
     if (best.blk.road) return Object.assign(res, { ok: false, why: `${best.blk.road.name || 'A street'} is in the way` });
     const keep = res.replace.find(b => !this.replaceable(b, spec));
@@ -261,14 +320,22 @@ SG.UI = class UI {
   zoneFor(spec) {
     return { sfr: SG.Z.R_1_10_000, res: SG.Z.R_1_10_000, multi: SG.Z.R_M, mu: SG.Z.MU, com: SG.Z.C_N, pf: SG.Z.PF }[spec.zones] || SG.Z.R_M;
   }
-  rezoneSite(pts, zid) {
+  stationName(x, y) {
+    const w = this.w, st = w.nearestNamedRoad(x, y, 300);
+    if (st) return `${st.name.replace(/ (Road|Avenue|Drive|Way|Street|Boulevard|Lane|Court|Place|Circle|Terrace)$/, '')} Station`;
+    const rail = w.roadsIn([x - 60, y - 60, x + 60, y + 60]).find(r => r.rail && !r.removed);
+    const n = w.buildings.filter(b => b.kind === 'trainstation' && !b.removed).length + 1;
+    return rail && rail.name ? `${rail.name.replace(/ (Line|Railway|Rail Line|Branch)$/, '')} Station ${n}` : `Station ${n}`;
+  }
+  rezoneSite(pts, zid, annex = false) {
     const w = this.w, bb = SG.World.bbox(pts), cells = [];
     const c0 = Math.floor((bb[0] - 8 - w.x0) / SG.CELL), c1 = Math.floor((bb[2] + 8 - w.x0) / SG.CELL);
     const r0 = Math.floor((bb[1] - 8 - w.y0) / SG.CELL), r1 = Math.floor((bb[3] + 8 - w.y0) / SG.CELL);
     for (let r = Math.max(0, r0); r <= Math.min(w.H - 1, r1); r++)
       for (let c = Math.max(0, c0); c <= Math.min(w.W - 1, c1); c++) {
         const i = r * w.W + c;
-        if (!w.inCity[i] || w.zone[i] === zid) continue;
+        if (!w.inCity[i] && !(annex && w.annexCells([i]))) continue;
+        if (w.zone[i] === zid) continue;
         w.zone[i] = zid; cells.push(i);
       }
     this.sim.funds -= cells.length * 400;
@@ -305,11 +372,14 @@ SG.UI = class UI {
     const t = this.tool;
     if (t.startsWith('zone:')) { this.paintZone(x, y); this.toolHover(x, y); }
     else if (t.startsWith('road:')) this.roadPreview(x, y);
+    else if (t === 'reshape') this.reshapeMove(x, y);
   }
   toolUp(x, y) {
     const t = this.tool, sim = this.sim, w = this.w;
     if (t.startsWith('zone:')) { this.flushZoneNews(+t.slice(5)); this.g.onWorldChange(); return; }
     if (t.startsWith('road:')) { this.roadUp(x, y); return; }
+    if (t === 'reshape') { this.reshapeUp(); return; }
+    if (t === 'upgrade') { this.upgradeAt(x, y); return; }
     if (t === 'bulldoze') { this.bulldozeAt(x, y); return; }
     if (t.startsWith('build:')) this.placeBuild(t.slice(6), x, y);
   }
@@ -359,13 +429,16 @@ SG.UI = class UI {
     if (!spec.private) {
       const z = SG.ZONES[st.zid], parts = [];
       if (n) parts.push(`The city buys and demolishes ${list} for ${SG.fmtMoney(buy)}.`);
-      if (!st.meetsZoning) parts.push(`The lot is zoned ${esc(z.code)}, so the Council rezones it to PF (public facility) first.`);
+      if (st.annex) parts.push('The lot is outside the city limits, so the city annexes it and zones it PF (public facility).');
+      else if (!st.meetsZoning) parts.push(`The lot is zoned ${esc(z.code)}, so the Council rezones it to PF (public facility) first.`);
       if (parts.length && (await this.choose(`Build the ${spec.label.toLowerCase()} here?`, parts.join('<br><br>') + `<br><br>Construction: ${SG.fmtMoney(spec.cost)}.`,
         [['build', 'Build it'], ['cancel', 'Cancel']])) !== 'build') return;
       if (!sim.spend(spec.cost + buy, spec.label)) return;
-      if (!st.meetsZoning) { const cells = this.rezoneSite(st.pts, SG.Z.PF); sim.say(`City Council rezones ${(cells * SG.CELL * SG.CELL / 4046.86).toFixed(1)} acres to PF for the ${spec.label.toLowerCase()}.`); }
+      if (!st.meetsZoning) { const cells = this.rezoneSite(st.pts, SG.Z.PF, !!st.annex); sim.say(`City Council ${st.annex ? 'annexes and zones' : 'rezones'} ${(cells * SG.CELL * SG.CELL / 4046.86).toFixed(1)} acres PF for the ${spec.label.replace('Stn', 'Station').toLowerCase()}.`); }
       for (const b of rep) { w.removeBuilding(b); sim.construction = sim.construction.filter(c => c !== b); }
-      const b = w.placeBuilding(x, y, spec, { service: spec.service, radius: spec.radius, upkeep: spec.upkeep, name: 'New ' + spec.label.replace('Stn', 'Station').replace('Comm. Ctr', 'Community Center') });
+      const nice = spec.label.replace('Train Stn', 'Train Station').replace('Fire Stn', 'Fire Station').replace('Comm. Ctr', 'Community Center');
+      const b = w.placeBuilding(x, y, spec, { service: spec.service, radius: spec.radius, upkeep: spec.upkeep, angle: st.angle,
+        name: spec.needsRail ? this.stationName(x, y) : 'New ' + nice });
       b.built = sim.year;
       sim.say(`${b.name} opens${b.street ? ' on ' + b.street : ''}.`, true);
       this.g.onWorldChange(); return;
@@ -467,27 +540,7 @@ SG.UI = class UI {
     return best || [x, y, null, false];
   }
 
-  // ---------- road building ----------
-  roadDown(x, y) {
-    const cls = +this.tool.slice(5);
-    const p = this.snapRoad(x, y);
-    if (!this.roadPts) { this.roadPts = [p]; this.roadCls = cls; this.roadDownAt = [x, y]; this.roadPreview(x, y); return; }
-    const last = this.roadPts[this.roadPts.length - 1];
-    const tol = 10 / Math.max(0.15, this.r.scale) + 3;
-    if (Math.hypot(p[0] - last[0], p[1] - last[1]) < tol) { this.finishRoad(); return; } // clicked the last point again
-    this.roadPts.push(p);
-    this.roadDownAt = null;
-    if (p[2] && this.roadPts.length >= 2) { this.finishRoad(); return; } // joined an existing road
-    this.roadPreview(x, y);
-  }
-  roadUp(x, y) {
-    // a single press-drag-release draws a straight road
-    if (this.roadPts && this.roadPts.length === 1 && this.roadDownAt) {
-      const d = Math.hypot(x - this.roadDownAt[0], y - this.roadDownAt[1]);
-      if (d > 20 / Math.max(0.15, this.r.scale)) { this.roadPts.push(this.snapRoad(x, y)); this.finishRoad(); }
-    }
-    this.roadDownAt = null;
-  }
+  // ---------- road building: see roads.js ----------
   // Catmull-Rom through the control points, sampled every ~12 m.
   roadCurve(ctrl) {
     const P = ctrl.map(p => [p[0], p[1]]);
@@ -504,70 +557,6 @@ SG.UI = class UI {
     }
     out.push(P[P.length - 1][0], P[P.length - 1][1]);
     return out;
-  }
-  roadLength(pts) { let L = 0; for (let i = 2; i < pts.length; i += 2) L += Math.hypot(pts[i] - pts[i - 2], pts[i + 1] - pts[i - 1]); return L; }
-  // buildings a new road would run through
-  roadVictims(pts, cls) {
-    const hw = SG.ROAD_STYLE[cls][0] / 2 + 1;
-    const bb = SG.World.bbox(pts), out = [];
-    for (const b of this.w.buildingsIn([bb[0] - 30, bb[1] - 30, bb[2] + 30, bb[3] + 30])) {
-      const r = Math.sqrt(b.area) * 0.42 + hw;
-      for (let i = 2; i < pts.length; i += 2)
-        if (SG.World.segDist2(b.cx, b.cy, pts[i - 2], pts[i - 1], pts[i], pts[i + 1]) < r * r) { out.push(b); break; }
-    }
-    return out;
-  }
-  roadCost(pts, cls, victims) {
-    const build = this.roadLength(pts) * SG.ROAD_TYPES[cls].cost;
-    const buy = victims.reduce((s, b) => s + (b.player ? 20000 : (b.units || b.jobs ? b.value * 1.6 : 20000)), 0);
-    return { build, buy, total: build + buy };
-  }
-  roadPreview(x, y) {
-    if (!this.roadPts) { this.r.ghost = null; this.r.dirty = true; return; }
-    const cls = this.roadCls, p = this.snapRoad(x, y);
-    const pts = this.roadCurve(this.roadPts.concat([p]));
-    const len = this.roadLength(pts), victims = this.roadVictims(pts, cls), c = this.roadCost(pts, cls, victims);
-    const ok = len > 10 && this.sim.funds - c.total > -2000000;
-    this.r.ghost = { type: 'line', pts, ok, w: SG.ROAD_STYLE[cls][0], ctrl: this.roadPts.map(q => [q[0], q[1]]).flat() };
-    this.r.dirty = true;
-    const t = SG.ROAD_TYPES[cls], hint = this.$('hint');
-    hint.style.display = 'block';
-    hint.textContent = `${t.label}: ${Math.round(len)} m, ${SG.fmtMoney(c.build)}` +
-      (victims.length ? ` + ${SG.fmtMoney(c.buy)} to buy ${victims.length} building${victims.length > 1 ? 's' : ''} in the way` : '') +
-      (p[2] ? ` · joins ${p[2].name || 'a road'}` : '') + '. Click to add a bend; click the last point again or press Enter to finish.';
-  }
-  cancelRoad() { this.roadPts = null; this.r.ghost = null; this.r.dirty = true; }
-  async finishRoad() {
-    const ctrl = this.roadPts, cls = this.roadCls, sim = this.sim, w = this.w;
-    this.roadPts = null;
-    if (!ctrl || ctrl.length < 2) { this.r.ghost = null; this.r.dirty = true; return; }
-    const pts = this.roadCurve(ctrl), len = this.roadLength(pts);
-    if (len < 10) { this.r.ghost = null; this.r.dirty = true; return; }
-    const victims = this.roadVictims(pts, cls).filter(b => !b.removed), c = this.roadCost(pts, cls, victims);
-    const t = SG.ROAD_TYPES[cls];
-    if (victims.length && !(await this.ask(`Build through ${victims.length} building${victims.length > 1 ? 's' : ''}?`,
-      `This ${t.label.toLowerCase()} runs through ${victims.length} building${victims.length > 1 ? 's' : ''}. The city would buy and demolish ${victims.length > 1 ? 'them' : 'it'} for ${SG.fmtMoney(c.buy)}, on top of ${SG.fmtMoney(c.build)} to build the road.`, 'Build it'))) {
-      this.r.ghost = null; this.r.dirty = true; return;
-    }
-    if (!sim.spend(c.total, 'this ' + t.label.toLowerCase())) { this.r.ghost = null; this.r.dirty = true; return; }
-    for (const b of victims) { w.removeBuilding(b); sim.construction = sim.construction.filter(x => x !== b); }
-    // name it: carry on the name of a same-type road it extends from either end, otherwise a new name
-    const a = ctrl[0], z = ctrl[ctrl.length - 1];
-    const cont = [a, z].find(q => q[2] && q[3] && q[2].cls === cls && q[2].name);
-    const name = cont ? cont[2].name : SG.roadName(w, cls, () => sim.rand());
-    const road = w.addRoad(pts, cls, name);
-    road.built = sim.year;
-    // lots along the new road are where developers look first
-    const near = [];
-    w.traceLine(pts, c => { for (let dy = -2; dy <= 2; dy++) for (let dx = -2; dx <= 2; dx++) { const k = c + dy * w.W + dx; if (k >= 0 && k < w.zone.length) near.push(k); } });
-    sim.markHot(near);
-    // the new road's ends become valid junctions for the next one
-    sim._roadsDirty = true;
-    sim.say(cont ? `${name} extended by ${Math.round(len)} m (${SG.fmtMoney(c.total)}).`
-      : `${name} opens: ${Math.round(len)} m of new ${t.label.toLowerCase()} (${SG.fmtMoney(c.total)}).`, true);
-    this.r.ghost = null;
-    this.select(road);
-    this.g.onWorldChange();
   }
   roadAt(x, y) {
     const tol = Math.max(6, 8 / this.r.scale);
@@ -614,21 +603,25 @@ SG.UI = class UI {
       return;
     }
     if (o.cls != null) {
-      const cls = ['Freeway', 'Arterial', 'Collector', 'Residential street', 'Service road / driveway', 'Track', 'Path or trail'][o.cls];
+      const cls = o.rail ? 'Rail line' : o.ramp ? 'Highway ramp (one-way)' : o.cls === 0 ? (o.oneway ? 'Freeway (one direction)' : 'Freeway') : ['Freeway', 'Arterial', 'Collector', 'Residential street', 'Service road / driveway', 'Track', 'Path or trail'][o.cls] || 'Road';
       el.innerHTML = `<div class="ititle">${esc(o.name) || 'Unnamed ' + cls.toLowerCase()}</div><div class="isub">${cls}</div>` +
-        kv([['Segment length', Math.round(o.len) + ' m'], ...(o.built ? [['Built', o.built]] : []), ['Source', o.player ? 'Built in game' : 'OpenStreetMap']]) +
+        kv([['Segment length', Math.round(o.len) + ' m'], ['Width', Math.round(SG.roadWidth(o)) + ' m'], ...(o.el ? [['Bridge', `up to ${Math.round(Math.max(...o.el))} m high`]] : []),
+          ...(o.built ? [['Built', o.built]] : []), ['Source', o.player ? 'Built in game' : 'OpenStreetMap']]) +
+        `<div class="row" style="margin-top:8px"><button class="btn" id="road-reshape">✏️ Reshape</button><button class="btn" id="road-upgrade">⬆️ Upgrade…</button></div>` +
         `<div class="rename"><input id="road-name" maxlength="40" value="${esc(o.name)}" aria-label="Road name"><button class="btn" id="road-rename">Rename</button></div>`;
       const go = () => {
         const v = this.$('road-name').value.trim().replace(/\s+/g, ' ');
         if (!v || v === o.name) return;
         const old = o.name;
         // rename every segment that carries the same name, so the whole road changes
-        for (const r of w.roads) if (!r.removed && old && r.name === old) r.name = v;
-        o.name = v;
+        for (const r of w.roads) if (!r.removed && old && r.name === old) { r.name = v; r.renamed = true; }
+        o.name = v; o.renamed = true;
         this.sim.say(old ? `${old} is renamed ${v}.` : `The road is named ${v}.`);
         this.r.dirty = true; this.r.hudDirty = true; this.renderInspector();
       };
       this.$('road-rename').onclick = go;
+      this.$('road-reshape').onclick = () => { this.setTool('reshape'); this.startReshape(o); };
+      this.$('road-upgrade').onclick = () => { this.setTool('upgrade'); this.r.selected = o; this.r.dirty = true; };
       this.$('road-name').onkeydown = e => { if (e.key === 'Enter') go(); };
       return;
     }

@@ -263,6 +263,18 @@ def compile_map():
                 r = {"c": cls, "p": flat}
                 if t.get("name"):
                     r["n"] = t["name"]
+                hw = t["highway"]
+                if t.get("oneway") in ("yes", "1", "true") or hw in ("motorway", "motorway_link"):
+                    r["o"] = 1
+                if cls == 0 and hw.endswith("_link"):
+                    r["k"] = 1  # on/off ramp
+                if t.get("bridge", "no") != "no":
+                    try:
+                        layer = int(t.get("layer", "1"))
+                    except ValueError:
+                        layer = 1
+                    if layer >= 0:
+                        r["b"] = max(1, min(3, layer))
                 roads.append(r)
             elif "waterway" in t:
                 if t["waterway"] in ("river", "stream", "canal", "ditch", "drain"):

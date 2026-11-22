@@ -22,7 +22,9 @@ SG.World = class World {
       name: b.n || '', hn: b.h || '', street: b.s || '', amenity: b.a || '', original: true, src: b.src || 'osm',
     });
     this.roads = [];
-    for (const r of map.roads) this.addRoadRaw({ cls: r.c, pts: toM(r.p), name: r.n || '', original: true });
+    for (const r of map.roads) {
+      this.addRoadRaw({ cls: r.c, pts: toM(r.p), name: r.n || '', original: true, oneway: !!r.o, ramp: !!r.k, bridge: r.b || 0 }); // bridge: OSM layer
+    }
     this.areas = map.areas.map((a, i) => ({ id: i, kind: a.k, pts: toM(a.p), name: a.n || '' }));
     this.water = map.water.map(w => ({ pts: toM(w.p), name: w.n || '' }));
     this.pois = map.pois.map(([name, kind, x, y]) => ({ name, kind, x: x * d, y: y * d }));
@@ -138,13 +140,112 @@ SG.World = class World {
   }
   addRoadRaw(r) {
     r.id = this.roads.length;
+    this.measureRoad(r);
+    r.removed = false;
+    this.roads.push(r);
+    if (r.bridge) this.bridgeProfile(r);
+    return r;
+  }
+  measureRoad(r) {
     r.bb = World.bbox(r.pts);
     let len = 0;
     for (let i = 2; i < r.pts.length; i += 2) len += Math.hypot(r.pts[i] - r.pts[i - 2], r.pts[i + 1] - r.pts[i - 1]);
     r.len = len;
-    r.removed = false;
-    this.roads.push(r);
-    return r;
+    r._cum = null;
+  }
+  // split long straight runs so the road can follow the terrain and lift into bridges
+  static densify(pts, step = 12) {
+    const out = [pts[0], pts[1]];
+    for (let i = 2; i < pts.length; i += 2) {
+      const ax = pts[i - 2], ay = pts[i - 1], bx = pts[i], by = pts[i + 1];
+      const n = Math.max(1, Math.ceil(Math.hypot(bx - ax, by - ay) / step));
+      for (let k = 1; k <= n; k++) out.push(ax + (bx - ax) * k / n, ay + (by - ay) * k / n);
+    }
+    return new Float32Array(out);
+  }
+  // Height of the deck above the ground at each vertex. OSM bridges get a gentle arch;
+  // player-built highways, ramps and rail lift over whatever they cross and come down
+  // where they join another road.
+  bridgeProfile(r) {
+    const p = r.pts, n = p.length / 2;
+    const cum = new Float32Array(n);
+    for (let i = 1; i < n; i++) cum[i] = cum[i - 1] + Math.hypot(p[2 * i] - p[2 * i - 2], p[2 * i + 1] - p[2 * i - 1]);
+    const L = cum[n - 1] || 1, el = new Float32Array(n);
+    if (r.original) { // OSM bridge way: arch to a height that suits its length
+      const top = Math.min(6.5 * Math.max(1, r.bridge), L / 9), ramp = Math.min(30, L / 2);
+      for (let i = 0; i < n; i++) el[i] = top * Math.min(1, cum[i] / ramp, (L - cum[i]) / ramp);
+      r.el = el; return;
+    }
+    const CLEAR = 7.5, SLOPE = 0.075; // clearance over a road, and climb per metre (7.5%)
+    const spans = [];
+    const myW = SG.roadWidth(r) / 2;
+    for (const o of this.roadsIn([r.bb[0] - 20, r.bb[1] - 20, r.bb[2] + 20, r.bb[3] + 20])) {
+      if (o === r || o.removed || (o.cls > 4 && !o.rail)) continue;
+      const q = o.pts, oHalf = SG.roadWidth(o) / 2;
+      for (let i = 1; i < n; i++) {
+        const ax = p[2 * i - 2], ay = p[2 * i - 1], bx = p[2 * i], by = p[2 * i + 1];
+        for (let j = 2; j < q.length; j += 2) {
+          const t = World.segIntersect(ax, ay, bx, by, q[j - 2], q[j - 1], q[j], q[j + 1]);
+          if (t == null) continue;
+          const s = cum[i - 1] + t * (cum[i] - cum[i - 1]);
+          if (s < 12 || s > L - 12) continue; // that's a junction at our end, not a crossing
+          const oe = o.el ? this.elevAlong(o, World.closestS(o, ax + (bx - ax) * t, ay + (by - ay) * t)) : 0;
+          if (oe > 3) continue; // the other one is already a bridge: pass under it
+          spans.push([s, oHalf + myW + 4]);
+        }
+      }
+    }
+    // ends that meet a raised road start at its height
+    const endH = [0, 0];
+    for (const [k, idx] of [[0, 0], [1, n - 1]]) {
+      const x = p[2 * idx], y = p[2 * idx + 1];
+      for (const o of this.roadsIn([x - 6, y - 6, x + 6, y + 6])) {
+        if (o === r || o.removed || !o.el) continue;
+        const s = World.closestS(o, x, y);
+        endH[k] = Math.max(endH[k], this.elevAtPoint(o, s, x, y));
+      }
+    }
+    for (let i = 0; i < n; i++) {
+      let e = Math.max(0, endH[0] - cum[i] * SLOPE, endH[1] - (L - cum[i]) * SLOPE);
+      for (const [s, half] of spans) e = Math.max(e, CLEAR - Math.max(0, Math.abs(cum[i] - s) - half) * SLOPE);
+      el[i] = e;
+    }
+    r.el = el.some(v => v > 0.2) ? el : null;
+  }
+  elevAtPoint(o, s, x, y) {
+    const q = o.pts; let bd = Infinity;
+    for (let j = 0; j < q.length; j += 2) bd = Math.min(bd, Math.hypot(q[j] - x, q[j + 1] - y));
+    return bd < 8 ? this.elevAlong(o, s) : 0;
+  }
+  // deck height at distance s along a road
+  elevAlong(r, s) {
+    if (!r.el) return 0;
+    const p = r.pts, n = p.length / 2;
+    let acc = 0;
+    for (let i = 1; i < n; i++) {
+      const L = Math.hypot(p[2 * i] - p[2 * i - 2], p[2 * i + 1] - p[2 * i - 1]);
+      if (acc + L >= s) { const t = L ? (s - acc) / L : 0; return r.el[i - 1] + (r.el[i] - r.el[i - 1]) * t; }
+      acc += L;
+    }
+    return r.el[n - 1];
+  }
+  static closestS(r, x, y) {
+    const p = r.pts; let best = Infinity, bs = 0, acc = 0;
+    for (let i = 2; i < p.length; i += 2) {
+      const ax = p[i - 2], ay = p[i - 1], dx = p[i] - ax, dy = p[i + 1] - ay, L = Math.hypot(dx, dy);
+      const t = L ? Math.max(0, Math.min(1, ((x - ax) * dx + (y - ay) * dy) / (L * L))) : 0;
+      const d = Math.hypot(ax + dx * t - x, ay + dy * t - y);
+      if (d < best) { best = d; bs = acc + t * L; }
+      acc += L;
+    }
+    return bs;
+  }
+  // parameter t along segment AB where it crosses CD, or null
+  static segIntersect(ax, ay, bx, by, cx, cy, dx, dy) {
+    const rx = bx - ax, ry = by - ay, sx = dx - cx, sy = dy - cy, den = rx * sy - ry * sx;
+    if (Math.abs(den) < 1e-9) return null;
+    const t = ((cx - ax) * sy - (cy - ay) * sx) / den, u = ((cx - ax) * ry - (cy - ay) * rx) / den;
+    return t >= 0 && t <= 1 && u >= 0 && u <= 1 ? t : null;
   }
 
   // Bucket index (100 m buckets) for picking and culling.
@@ -284,7 +385,7 @@ SG.World = class World {
     const dist = this.roadDist = new Uint8Array(N).fill(255);
     const mask = this.roadMask = new Uint8Array(N);
     let q = [];
-    for (const r of this.roads) if (!r.removed && r.cls <= 4) this.traceLine(r.pts, c => { mask[c] = 1; });
+    for (const r of this.roads) if (!r.removed && (r.cls <= 4 || r.rail)) this.traceLine(r.pts, c => { mask[c] = 1; });
     // highways carry traffic but give no driveway access
     for (const r of this.roads) if (!r.removed && r.cls >= 1 && r.cls <= 4)
       this.traceLine(r.pts, c => { if (dist[c]) { dist[c] = 0; q.push(c); } });
@@ -463,8 +564,8 @@ SG.World = class World {
     const probes = [[fcx, fcy]];
     for (let k = 0; k < pts.length; k += 2) probes.push([pts[k], pts[k + 1]], [(pts[k] + pts[(k + 2) % pts.length]) / 2, (pts[k + 1] + pts[(k + 3) % pts.length]) / 2]);
     outer: for (const r of this.roadsIn([bb[0] - 14, bb[1] - 14, bb[2] + 14, bb[3] + 14])) {
-      if (r.cls > 3) continue;
-      const p = r.pts, hw = (SG.ROAD_STYLE ? SG.ROAD_STYLE[r.cls][0] : 9) / 2 + 1.5, hw2 = hw * hw;
+      if (r.cls > 3 && !r.rail) continue;
+      const p = r.pts, hw = SG.roadWidth(r) / 2 + 1.5, hw2 = hw * hw;
       for (let i = 0; i < p.length; i += 2) if (World.pointInPoly(p[i], p[i + 1], pts)) { road = r; break outer; }
       for (let i = 2; i < p.length; i += 2)
         for (const [px, py] of probes) if (World.segDist2(px, py, p[i - 2], p[i - 1], p[i], p[i + 1]) < hw2) { road = r; break outer; }
@@ -502,8 +603,9 @@ SG.World = class World {
     const nr = this.nearestRoad(x, y, 120);
     const named = this.nearestNamedRoad(x, y);
     if (named && !extra.hn) extra = Object.assign({ hn: this.houseNumber(x, y, named), street: named.name }, extra);
-    const ang = nr ? nr.angle : 0;
+    const ang = extra.angle != null ? extra.angle : nr ? nr.angle : 0;
     const pts = World.rect(x, y, spec.w, spec.d, ang);
+    delete extra.angle;
     const b = this.addBuildingRaw(Object.assign({
       kind: spec.kind, pts, inCity: true, levels: spec.levels || 1, name: extra.name || '',
       hn: extra.hn || '', street: extra.street || (nr ? nr.road.name : ''), units: spec.units || 0, jobs: spec.jobs,
@@ -520,12 +622,28 @@ SG.World = class World {
     this.version++;
     for (let i = 0; i < this.claim.length; i++) if (this.claim[i] === b.id) this.claim[i] = -1;
   }
-  addRoad(pts, cls = 3, name = '') {
-    const r = this.addRoadRaw({ cls, pts: new Float32Array(pts), name, player: true });
+  // opts: { type: key of SG.ROAD_TYPES, ctrl: control points, mode: 'straight' | 'curve' | 'free' }
+  addRoad(pts, cls = 3, name = '', opts = {}) {
+    const t = SG.ROAD_TYPES[opts.type] || {};
+    const r = this.addRoadRaw({ cls, pts: World.densify(pts), name, player: true, w: t.w, oneway: !!t.oneway, ramp: !!t.ramp,
+      rail: !!t.rail, divided: !!t.divided, ctrl: opts.ctrl, mode: opts.mode });
+    if (t.bridge) this.bridgeProfile(r);
     this.indexRoad(r);
     this.computeRoadDist();
     this.version++; this.roadVersion++;
     return r;
+  }
+  // change a road's shape or type in place (reshape and upgrade tools)
+  editRoad(r, changes) {
+    if (changes.pts) { r.pts = World.densify(changes.pts); this.measureRoad(r); }
+    for (const k of ['cls', 'w', 'oneway', 'ramp', 'rail', 'divided', 'ctrl', 'mode', 'name']) if (k in changes) r[k] = changes[k];
+    r.el = null;
+    if (r.ramp || r.rail || r.divided) this.bridgeProfile(r);
+    else if (r.bridge && r.original) this.bridgeProfile(r);
+    r.edited = true;
+    this.indexRoad(r); // index the new extent (stale buckets are harmless: queries filter by bbox)
+    this.computeRoadDist();
+    this.version++; this.roadVersion++;
   }
   removeRoad(r) { r.removed = true; this.computeRoadDist(); this.version++; this.roadVersion++; }
   addPark(x, y, w, d) {

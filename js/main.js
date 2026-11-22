@@ -20,6 +20,7 @@ SG.Game = class Game {
     this.setViewClass();
     this.ui = new SG.UI(this);
     this.hook();
+    if (SG.Mobile) SG.Mobile.init(this);
     window.addEventListener('resize', () => { this.r2d.resize(); if (this.r3d) this.r3d.resize(); });
     document.getElementById('loading').style.display = 'none';
     this.acc = 0; this.last = performance.now();

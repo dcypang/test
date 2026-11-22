@@ -57,6 +57,7 @@ SG.KIND = {
   other:       { name: 'Building', color: '#e0d6c8', roof: '#a89c8c', units: 0 },
   firestation: { name: 'Fire station', color: '#f2b7ad', roof: '#c0503f', units: 0 },
   library:     { name: 'Library', color: '#dcd3ee', roof: '#7d6bb0', units: 0 },
+  trainstation: { name: 'Train station', color: '#d8d2c4', roof: '#6c7a86', units: 0 },
   community:   { name: 'Community center', color: '#dcd3ee', roof: '#7d6bb0', units: 0 },
 };
 
@@ -86,6 +87,9 @@ SG.BUILDS = {
                 desc: 'Engine company. Covers about 2.5 km. Essential in the wildland interface.' },
   library:    { kind: 'library', label: 'Library', icon: '📚', w: 34, d: 28, levels: 1, cost: 8000000, upkeep: 600000,
                 jobs: 12, zones: 'pf', service: 'library', radius: 3000, desc: 'Branch library.' },
+  trainstation: { kind: 'trainstation', label: 'Train Stn', icon: '🚉', w: 72, d: 18, levels: 1, cost: 12000000, upkeep: 900000,
+                jobs: 25, zones: 'pf', service: 'rail', radius: 1500, needsRail: true,
+                desc: 'Station on a rail line. Two or more stations on a line take commuters off the roads.' },
   community:  { kind: 'community', label: 'Comm. Ctr', icon: '🎭', w: 30, d: 26, levels: 1, cost: 5000000, upkeep: 400000,
                 jobs: 8, zones: 'pf', service: 'community', radius: 3000, desc: 'Community and senior center.' },
 };
@@ -140,12 +144,23 @@ SG.MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct
 SG.WORLD_MARGIN = 3000;
 
 // Road types the player can build. cost is $ per metre (grading, paving, drainage, lights).
+// w is the full width in metres. A highway is divided (two carriageways and a median); a ramp is one-way.
 SG.ROAD_TYPES = {
-  3: { label: 'Street', icon: '🛣️', cost: 900, kind: 'street', desc: 'Two-lane neighborhood street. Homes can be built along it.' },
-  2: { label: 'Avenue', icon: '🛤️', cost: 1600, kind: 'avenue', desc: 'Wider collector road with a center line.' },
-  1: { label: 'Boulevard', icon: '🚦', cost: 2600, kind: 'boulevard', desc: 'Four-lane arterial with sidewalks and streetlights.' },
-  0: { label: 'Highway', icon: '🛣', cost: 9000, kind: 'highway', desc: 'Six-lane freeway. Moves traffic, but nothing can be built facing it.' },
+  street:    { key: 'street', cls: 3, w: 9, label: 'Street', icon: '🛣️', cost: 900, desc: 'Two-lane neighborhood street. Homes can be built along it.' },
+  avenue:    { key: 'avenue', cls: 2, w: 12, label: 'Avenue', icon: '🛤️', cost: 1600, desc: 'Wider collector road with a center line.' },
+  boulevard: { key: 'boulevard', cls: 1, w: 18, label: 'Boulevard', icon: '🚦', cost: 2600, desc: 'Four-lane arterial with sidewalks and streetlights.' },
+  highway:   { key: 'highway', cls: 0, w: 32, label: 'Highway', icon: '🛣', cost: 9000, divided: true, bridge: true,
+               desc: 'Divided six-lane freeway. Bridges over anything it crosses. Connect it to streets with ramps; nothing can face it.' },
+  ramp:      { key: 'ramp', cls: 0, w: 7, label: 'Ramp', icon: '↗️', cost: 4000, oneway: true, ramp: true, bridge: true,
+               desc: 'One-way on/off ramp. Draw it from a highway to a street (off-ramp) or from a street to a highway (on-ramp).' },
+  rail:      { key: 'rail', cls: 7, w: 6, label: 'Rail', icon: '🚆', cost: 6500, rail: true, bridge: true,
+               desc: 'Double rail track. Bridges over roads. Add train stations along it so trains take cars off the road.' },
 };
+SG.ROAD_TYPE_ORDER = ['street', 'avenue', 'boulevard', 'highway', 'ramp', 'rail'];
+SG.roadTypeOf = r => r.rail ? SG.ROAD_TYPES.rail : r.ramp ? SG.ROAD_TYPES.ramp : SG.ROAD_TYPE_ORDER.map(k => SG.ROAD_TYPES[k]).find(t => t.cls === r.cls && !t.ramp && !t.rail) || SG.ROAD_TYPES.street;
+// Width of any road in metres, OSM or player-built.
+SG.roadWidth = r => r.w || (r.cls === 0 ? (r.ramp ? 7 : r.oneway ? 14 : 28) : SG.ROAD_STYLE ? SG.ROAD_STYLE[r.cls][0] : 9);
+
 // Which zones each private project needs, in words.
 SG.ZONE_NEEDS = { sfr: 'a single-family zone (HR or R-1)', res: 'a residential zone', multi: 'R-M, MU or C-H', mu: 'MU or C-H',
   com: 'C-N, C-H or MU', pf: 'PF, C-N or MU', any: 'any zone' };
@@ -170,6 +185,8 @@ SG.roadName = function (world, cls, rand = Math.random) {
       name = rand() < 0.35 ? `State Route ${pick([212, 231, 238, 263, 277, 285, 291, 309, 317, 329])}` : `${pick(['Foothill', 'Skyline', 'Saratoga', 'Sanborn', 'Redwood', 'Vineyard', 'Summit', 'Mission', 'Orchard Valley', 'Santa Cruz Mountains'])} ${pick(suffix[0])}`;
     } else if (cls === 3 && rand() < 0.2) {
       const [pre, rest] = pick(spanish); name = `${pre} ${pick(rest)}`;
+    } else if (cls === 7) {
+      name = `${pick(['Saratoga', 'Foothill', 'Vineyard', 'Orchard', 'Redwood', 'Montalvo', 'Congress Springs', 'Quito', 'Blossom', 'Sunnyvale'])} ${pick(['Line', 'Railway', 'Rail Line', 'Branch'])}`;
     } else name = `${pick(roots)} ${pick(suffix[cls] || suffix[3])}`;
     if (!used.has(name.toLowerCase())) return name;
   }

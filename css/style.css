@@ -131,23 +131,82 @@ button { font: inherit; color: inherit; cursor: pointer; }
 #modal ul { padding-left: 18px; font-size: 14px; line-height: 1.5; }
 
 @media (max-width: 900px) {
-  #topbar { flex-wrap: wrap; gap: 6px 10px; padding: 6px 8px; }
+  /* phones: map fills the screen; tools along the bottom; info in a slide-up sheet */
+  html, body { overscroll-behavior: none; -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }
+  #app { grid-template-columns: 1fr; grid-template-rows: auto 1fr auto auto 0;
+    grid-template-areas: "top" "view" "tools" "tabs" "tick";
+    padding-left: env(safe-area-inset-left); padding-right: env(safe-area-inset-right); }
+  #topbar { flex-wrap: wrap; gap: 4px 10px; padding: max(6px, env(safe-area-inset-top)) 10px 6px; }
   .brand { display: none; }
-  .stats { order: 2; flex-basis: 100%; gap: 4px 12px; }
-  .speed { order: 1; margin-left: auto; }
-  .speed button { padding: 3px 7px; }
-  #demand { height: 56px; padding: 4px 6px; }
-  #overlays button { padding: 3px 8px; font-size: 11px; }
-  #app { grid-template-columns: 62px 1fr; grid-template-rows: auto 1fr 38vh 28px;
-    grid-template-areas: "top top" "tools view" "panel panel" "tick tick"; }
-  #panel { border-left: 0; border-top: 1px solid var(--line); }
-  .stats { gap: 10px; } .stat { font-size: 12px; } .brand .sub { display: none; }
-  .stat.rhna { min-width: 130px; }
-  #minimap { width: 96px; height: 96px; }
-  #camctl { flex-direction: row; flex-wrap: wrap; justify-content: flex-end; max-width: 140px; top: 8px; right: 62px; }
-  #camctl button { width: 30px; height: 28px; font-size: 13px; }
-  #overlays { max-width: calc(100% - 140px); }
+  .stats { order: 2; flex-basis: 100%; gap: 4px 14px; }
+  .stat { font-size: 13px; } .stat .lbl { font-size: 9px; }
+  .stat:nth-child(4) { display: none; } /* homes: in the info sheet */
+  .stat.rhna { min-width: 0; flex: 1 1 100%; flex-direction: row; align-items: center; gap: 8px; }
+  .stat.rhna .lbl { white-space: nowrap; }
+  .stat.rhna .bar { flex: 1; margin: 0; }
+  .stat.rhna #s-rhna { font-size: 11px; white-space: nowrap; }
+  .speed { order: 1; margin-left: auto; gap: 6px; }
+  .speed button, #sheet-btn, #menu-btn { min-width: 44px; min-height: 44px; padding: 4px 8px; font-size: 14px; }
+  .speed { gap: 4px; }
+  #ticker { display: none; }
+
+  #toolbar { grid-area: tools; flex-direction: row; overflow-x: auto; overflow-y: hidden; gap: 4px; padding: 6px 8px;
+    border-right: 0; border-top: 1px solid var(--line); -webkit-overflow-scrolling: touch; scrollbar-width: none; display: none; }
+  #app.tools-open #toolbar { display: flex; }
+  #toolbar::-webkit-scrollbar { display: none; }
+  #toolbar .tgroup { display: none; }
+  #toolbar .tool { flex: 0 0 auto; min-width: 66px; min-height: 58px; font-size: 11px; justify-content: center; }
+  #toolbar .tool .ic { font-size: 22px; }
+  #toolbar[data-tab="Roads"] .tool:not([data-group="Roads"]),
+  #toolbar[data-tab="Zoning"] .tool:not([data-group="Zoning"]),
+  #toolbar[data-tab="Private"] .tool:not([data-group="Private"]),
+  #toolbar[data-tab="City"] .tool:not([data-group="City"]),
+  #toolbar[data-tab="inspect"] .tool, #toolbar[data-tab="bulldoze"] .tool { display: none; }
+  #tooltabs { grid-area: tabs; display: flex; background: #151a1f; border-top: 1px solid var(--line);
+    padding: 4px 4px max(4px, env(safe-area-inset-bottom)); }
+  #tooltabs button { flex: 1; background: none; border: 0; color: var(--muted); font-size: 10px; padding: 4px 0 2px;
+    display: flex; flex-direction: column; align-items: center; gap: 1px; min-height: 48px; border-radius: 10px; }
+  #tooltabs button span { font-size: 21px; line-height: 1.1; }
+  #tooltabs button.on { color: var(--accent); background: var(--panel-2); }
+
+  #panel { position: fixed; left: 0; right: 0; bottom: 0; z-index: 8; max-height: 64vh; max-height: 64dvh;
+    border: 0; border-top: 1px solid var(--line); border-radius: 16px 16px 0 0; box-shadow: 0 -8px 24px rgba(0,0,0,.45);
+    transform: translateY(105%); transition: transform .25s ease; padding-bottom: env(safe-area-inset-bottom); }
+  #app.sheet-open #panel { transform: none; }
+  #sheet-grip { display: flex; position: sticky; top: 0; z-index: 1; background: var(--panel); justify-content: center; align-items: center; height: 26px; }
+  #sheet-grip span { width: 40px; height: 5px; border-radius: 3px; background: var(--line); }
+  #sheet-grip button { position: absolute; right: 8px; top: 2px; background: none; border: 0; color: var(--muted); font-size: 16px; padding: 2px 8px; }
+  #sheet-btn { display: inline-block; position: relative; }
+
+  #overlays { left: 6px; right: 52px; top: 6px; bottom: auto; max-width: none; flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; }
+  #overlays::-webkit-scrollbar { display: none; }
+  #overlays button { padding: 6px 12px; font-size: 13px; flex: 0 0 auto; min-height: 38px; }
+  #demand { display: none; }
+  #minimap { display: none; }
+  #camctl { top: 6px; right: 6px; flex-direction: column; flex-wrap: nowrap; max-width: none; max-height: none; }
+  #camctl { top: 50px; }
+  #camctl button { width: 44px; height: 42px; font-size: 16px; }
+  #camctl #save-btn { display: none; }
+  #hint { top: 50px; left: 6px; right: 52px; transform: none; max-width: none; font-size: 12px; border-radius: 10px; }
+  #toolopts { bottom: 8px; left: 6px; right: 6px; transform: none; justify-content: center; }
+  #toolopts button { min-height: 40px; padding: 6px 10px; font-size: 13px; }
+  .modal .card, #modal .card { max-height: 80vh; }
+  .rename input { font-size: 16px; } /* no iOS zoom on focus */
 }
+#sheet-grip { display: none; }
+#sheet-btn { display: none; }
+#sheet-badge:not(:empty) { position: absolute; top: -4px; right: -4px; background: var(--bad); color: #fff; border-radius: 9px; font-size: 10px; min-width: 17px; height: 17px; line-height: 17px; padding: 0 4px; }
+#tooltabs { display: none; }
+@media (max-width: 900px) { #tooltabs { display: flex; } #sheet-btn { display: inline-block; } #sheet-grip { display: flex; } }
+
+/* tool options bar (road modes, done/undo, zoning mode, confirm on touch) */
+#toolopts { position: absolute; left: 50%; bottom: 52px; transform: translateX(-50%); display: none; gap: 8px; flex-wrap: wrap; z-index: 3; max-width: calc(100% - 20px); }
+#toolopts .grp { display: flex; gap: 2px; background: rgba(21,26,31,.92); border: 1px solid var(--line); border-radius: 10px; padding: 3px; align-items: center; }
+#toolopts button { background: transparent; border: 0; border-radius: 7px; padding: 5px 10px; font-size: 13px; white-space: nowrap; }
+#toolopts button.on { background: var(--accent); color: #222; }
+#toolopts button:hover { background: var(--panel-2); }
+#toolopts button.on:hover { background: var(--accent); }
+#toolopts .lbl { font-size: 12px; color: var(--muted); padding: 0 6px; }
 
 .rename { display: flex; gap: 6px; margin-top: 10px; }
 .rename input { flex: 1; min-width: 0; background: var(--panel-2); border: 1px solid var(--line); border-radius: 6px; color: var(--text); padding: 6px 8px; font: inherit; font-size: 13px; }
