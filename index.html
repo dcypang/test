@@ -1034,7 +1034,7 @@ function jetGeo() {
   C(new THREE.BoxGeometry(0.12, 1.4, 0.12).translate(0, 0.9, 4.6), 0x3a3d42); const nw = new THREE.CylinderGeometry(0.28, 0.28, 0.18, 12); nw.rotateZ(Math.PI / 2); C(nw.translate(0, 0.28, 4.6), 0x111111);
   return mergeAll(G);
 }
-function heliGeo() {
+function heliGeo(withRotor = true) {
   const G = [], C = (g, hex) => G.push(colorize(g, hex)), OLV = 0x4b5320;
   const body = new THREE.SphereGeometry(1.6, 14, 10); body.scale(1, 0.95, 1.9); C(body.translate(0, 2.1, 0.4), OLV);
   const glass = new THREE.SphereGeometry(1.25, 12, 8); glass.scale(1, 0.8, 1.2); C(glass.translate(0, 2.35, 2.2), 0x1d2733);
@@ -1042,7 +1042,7 @@ function heliGeo() {
   C(new THREE.BoxGeometry(0.12, 1.6, 1.0).translate(0, 3.3, -8.0), OLV); const tr = new THREE.CylinderGeometry(0.9, 0.9, 0.05, 14); tr.rotateZ(Math.PI / 2); C(tr.translate(0.2, 3.4, -8.1), 0x222326);
   for (const sd of [-1, 1]) { C(new THREE.BoxGeometry(0.12, 0.12, 4.2).translate(sd * 1.25, 0.15, 0.4), 0x2b2e33); for (const z of [-0.6, 1.4]) C(new THREE.BoxGeometry(0.1, 1.0, 0.1).translate(sd * 1.15, 0.65, z), 0x2b2e33); }
   C(new THREE.CylinderGeometry(0.15, 0.15, 0.8, 8).translate(0, 3.95, 0.3), 0x2b2e33);
-  for (let k = 0; k < 4; k++) { const b = new THREE.BoxGeometry(0.35, 0.06, 6.2); b.translate(0, 0, 3.1); b.rotateY(k * Math.PI / 2 + Math.PI / 4); C(b.translate(0, 4.32, 0.3), 0x1c1d20); }
+  if (withRotor) for (let k = 0; k < 4; k++) { const b = new THREE.BoxGeometry(0.35, 0.06, 6.2); b.translate(0, 0, 3.1); b.rotateY(k * Math.PI / 2 + Math.PI / 4); C(b.translate(0, 4.32, 0.3), 0x1c1d20); }
   return mergeAll(G);
 }
 function tankGeo() {
@@ -1087,23 +1087,31 @@ function buildMilitary(addB) {
   const chain = canvasTex(64, 64, (g) => { g.clearRect(0, 0, 64, 64); g.strokeStyle = '#c9ced4'; g.lineWidth = 3; g.beginPath(); g.moveTo(0, 32); g.lineTo(32, 0); g.lineTo(64, 32); g.lineTo(32, 64); g.closePath(); g.stroke(); });
   const FH2 = 4.2, posts = [], sides = [[F.x0, F.z1, F.x1, F.z1, 0], [F.x1, F.z1, F.x1, F.z0, Math.PI / 2], [F.x1, F.z0, F.x0, F.z0, Math.PI], [F.x0, F.z0, F.x0, F.z1, -Math.PI / 2]];
   const warnTex = canvasTex(512, 256, (g) => { g.fillStyle = '#f4f4f0'; g.fillRect(0, 0, 512, 256); g.fillStyle = '#c0392b'; g.fillRect(0, 0, 512, 80); g.fillStyle = '#ffffff'; g.textAlign = 'center'; g.textBaseline = 'middle'; fitText(g, 'WARNING', 256, 42, 480, 64); g.fillStyle = '#15161a'; fitText(g, 'RESTRICTED MILITARY AREA', 256, 128, 480, 46); fitText(g, 'NO ENTRY · AUTHORIZED PERSONNEL ONLY', 256, 196, 480, 32); g.strokeStyle = '#15161a'; g.lineWidth = 8; g.strokeRect(4, 4, 504, 248); });
-  const signs = [];
+  const signs = [], panel = (ax, az, bx, bz) => { const len = Math.hypot(bx - ax, bz - az), t = chain.clone(); t.repeat.set(len / 1.2, FH2 / 1.2); t.needsUpdate = true; const m = new THREE.Mesh(new THREE.PlaneGeometry(len, FH2), new THREE.MeshStandardMaterial({ map: t, alphaTest: 0.4, side: THREE.DoubleSide, roughness: 0.55, metalness: 0.5 })); m.position.set((ax + bx) / 2, FH2 / 2, (az + bz) / 2); m.rotation.y = az === bz ? 0 : Math.PI / 2; scene.add(m); return m; };
   for (const [ax, az, bx, bz, out] of sides) {
-    const len = Math.hypot(bx - ax, bz - az), alongX = az === bz, t = chain.clone(); t.repeat.set(len / 1.2, FH2 / 1.2); t.needsUpdate = true;
-    const m = new THREE.Mesh(new THREE.PlaneGeometry(len, FH2), new THREE.MeshStandardMaterial({ map: t, alphaTest: 0.4, side: THREE.DoubleSide, roughness: 0.55, metalness: 0.5 }));
-    m.position.set((ax + bx) / 2, FH2 / 2, (az + bz) / 2); m.rotation.y = alongX ? 0 : Math.PI / 2; scene.add(m);
+    const len = Math.hypot(bx - ax, bz - az), alongX = az === bz;
+    if (out === 0) { panel(ax, az, GATE.x - 7, az); panel(GATE.x + 7, az, bx, bz); } else panel(ax, az, bx, bz);
     for (const y of [4.35, 4.6, 4.85]) P.push(alongX ? boxAt(len, 0.035, 0.035, (ax + bx) / 2, y, az, 0x2b2b2b) : boxAt(0.035, 0.035, len, ax, y, (az + bz) / 2, 0x2b2b2b));
     for (let k = 0; k <= len; k += 6) posts.push({ x: ax + (bx - ax) * k / len, z: az + (bz - az) * k / len });
-    addBox(Math.min(ax, bx) - 0.4, Math.max(ax, bx) + 0.4, Math.min(az, bz) - 0.4, Math.max(az, bz) + 0.4, 7);
+    const ox = Math.sin(out), oz = Math.cos(out), thick = (o, lo, hi) => (o > 0.5 ? [lo - 4, hi + 0.4] : o < -0.5 ? [lo - 0.4, hi + 4] : [lo - 0.4, hi + 0.4]);
+    const [cx0, cx1] = thick(ox, Math.min(ax, bx), Math.max(ax, bx)), [cz0, cz1] = thick(oz, Math.min(az, bz), Math.max(az, bz));
+    if (out === 0) { addBox(cx0, GATE.x - 7, cz0, cz1, 7); addBox(GATE.x + 7, cx1, cz0, cz1, 7); mil.gateCol = { box: true, minX: GATE.x - 7, maxX: GATE.x + 7, minZ: cz0, maxZ: cz1, h: 7 }; addCollider(mil.gateCol); }
+    else addBox(cx0, cx1, cz0, cz1, 7);
     for (let k = 60; k < len - 30; k += 120) { const g = new THREE.PlaneGeometry(2.4, 1.2); g.rotateY(out); const ox = Math.sin(out) * 0.12, oz = Math.cos(out) * 0.12; signs.push(T(g, ax + (bx - ax) * k / len + ox, 2.2, az + (bz - az) * k / len + oz)); }
   }
   instanced(new THREE.BoxGeometry(0.14, 4.9, 0.14).translate(0, 2.45, 0), new THREE.MeshStandardMaterial({ color: 0x8a8f96, roughness: 0.5, metalness: 0.6 }), posts, (it, p, q, s2) => { p.set(it.x, 0, it.z); q.identity(); s2.set(1, 1, 1); });
   // the main gate: closed gate, guard booth, boom barriers, signs
   for (const gx of [GATE.x - 7, GATE.x + 7]) P.push(boxAt(0.6, 6, 0.6, gx, 3, F.z1, 0x2b2e33));
-  P.push(boxAt(14.6, 0.5, 0.5, GATE.x, 6.2, F.z1, 0x2b2e33), boxAt(14, 0.12, 0.12, GATE.x, 2.1, F.z1 + 0.05, 0x9aa0a8), boxAt(0.12, 4, 0.12, GATE.x, 2.1, F.z1 + 0.05, 0x9aa0a8));
+  P.push(boxAt(14.6, 0.5, 0.5, GATE.x, 6.2, F.z1, 0x2b2e33));
+  { const g = new THREE.Group(), t = chain.clone(); t.repeat.set(14 / 1.2, 4 / 1.2); t.needsUpdate = true; const pm = new THREE.Mesh(new THREE.PlaneGeometry(14, 4), new THREE.MeshStandardMaterial({ map: t, alphaTest: 0.4, side: THREE.DoubleSide, roughness: 0.55, metalness: 0.5 })); pm.position.y = 2.1; g.add(pm);
+    g.add(new THREE.Mesh(mergeAll([boxAt(14, 0.14, 0.14, 0, 0.1, 0, 0x9aa0a8), boxAt(14, 0.14, 0.14, 0, 4.1, 0, 0x9aa0a8), boxAt(14, 0.12, 0.12, 0, 2.1, 0, 0x9aa0a8), boxAt(0.14, 4.1, 0.14, -7, 2.1, 0, 0x9aa0a8), boxAt(0.14, 4.1, 0.14, 7, 2.1, 0, 0x9aa0a8), boxAt(0.12, 4, 0.12, 0, 2.1, 0, 0x9aa0a8)]), vcolMat));
+    g.position.set(GATE.x, 0, F.z1 + 0.22); scene.add(g); mil.gate = g; mil.gateT = 0; }
   P.push(boxAt(4, 2.8, 3.2, 31.5, 1.4, -760, 0xe8e6df), boxAt(4.05, 0.9, 3.25, 31.5, 1.9, -760, 0x1d2733), boxAt(5, 0.25, 4.2, 31.5, 2.95, -760, 0x3a3d42)); addBox(29.4, 33.6, -761.7, -758.3, 3.2);
-  for (const [px, dir] of [[GATE.x - 7.5, 1], [GATE.x + 7.5, -1]]) { P.push(boxAt(0.5, 1.1, 0.5, px, 0.55, GATE.z, 0xffc857)); for (let k = 0; k < 7; k++) P.push(boxAt(1, 0.18, 0.18, px + dir * (k + 0.5), 1.0, GATE.z, k % 2 ? 0xf4f4f0 : 0xc0392b)); }
-  addBox(CAUSE.x0, CAUSE.x1, GATE.z - 1, GATE.z + 1, 3);
+  mil.booms = [];
+  for (const [px, dir] of [[GATE.x - 7.5, 1], [GATE.x + 7.5, -1]]) { P.push(boxAt(0.5, 1.1, 0.5, px, 0.55, GATE.z, 0xffc857)); const arm = []; for (let k = 0; k < 7; k++) arm.push(boxAt(1, 0.18, 0.18, dir * (k + 0.5), 0, 0, k % 2 ? 0xf4f4f0 : 0xc0392b)); const g = new THREE.Group(); g.position.set(px, 1.0, GATE.z); g.add(new THREE.Mesh(mergeAll(arm), vcolMat)); scene.add(g); mil.booms.push({ g, dir }); }
+  mil.boomCol = { box: true, minX: CAUSE.x0, maxX: CAUSE.x1, minZ: GATE.z - 1, maxZ: GATE.z + 1, h: 3 }; addCollider(mil.boomCol);
+  const ringMat = (c) => new THREE.MeshBasicMaterial({ color: c, map: beamTex, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, side: THREE.DoubleSide });
+  mil.enlistRing = new THREE.Mesh(new THREE.CylinderGeometry(1.0, 1.0, 0.7, 24, 1, true), ringMat(new THREE.Color(0.8, 2.2, 0.6))); mil.enlistRing.position.set(31.5, 0.35, -751.5); scene.add(mil.enlistRing);
   const redTex = canvasTex(512, 256, (g) => { g.fillStyle = '#c0392b'; g.fillRect(0, 0, 512, 256); g.fillStyle = '#ffffff'; g.textAlign = 'center'; g.textBaseline = 'middle'; fitText(g, 'RESTRICTED AREA', 256, 92, 470, 70); fitText(g, 'STOP · NO ENTRY', 256, 180, 470, 48); });
   const gateTex = canvasTex(1024, 160, (g) => { g.fillStyle = '#3e4524'; g.fillRect(0, 0, 1024, 160); g.strokeStyle = '#ffc857'; g.lineWidth = 8; g.strokeRect(6, 6, 1012, 148); g.fillStyle = '#ffc857'; g.textAlign = 'center'; g.textBaseline = 'middle'; fitText(g, 'FORT HALCÓN · MAIN GATE', 512, 84, 960, 92); });
   const entTex = canvasTex(1024, 448, (g) => { g.fillStyle = '#3e4524'; g.fillRect(0, 0, 1024, 448); g.strokeStyle = '#ffc857'; g.lineWidth = 12; g.strokeRect(10, 10, 1004, 428); g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillStyle = '#ffc857'; fitText(g, 'FORT HALCÓN', 512, 130, 940, 150); g.fillStyle = '#f4f4f0'; fitText(g, 'MILITARY RESERVATION', 512, 262, 940, 70); g.fillStyle = '#ff8a7a'; fitText(g, 'AUTHORIZED PERSONNEL ONLY', 512, 360, 940, 60); });
@@ -1134,6 +1142,11 @@ function buildMilitary(addB) {
   // jets on the apron, helicopters on their pads, control tower, radar
   const jet = jetGeo(); for (let i = 0; i < 6; i++) P.push(place(jet, -240 + i * 60, -1262));
   const heli = heliGeo(); P.push(place(heli, 230, -1270, 0.4), place(heli, 350, -1270, -0.3));
+  { const g = new THREE.Group(), body = new THREE.Mesh(heliGeo(false), vcolMat), rotor = new THREE.Group(); body.castShadow = true; g.add(body);
+    const bl = []; for (let k = 0; k < 4; k++) { const b = new THREE.BoxGeometry(0.35, 0.06, 6.2); b.translate(0, 0, 3.1); b.rotateY(k * Math.PI / 2 + Math.PI / 4); bl.push(colorize(b, 0x1c1d20)); }
+    const rm = new THREE.Mesh(mergeAll(bl), vcolMat); rotor.add(rm); rotor.position.set(0, 4.32, 0.3); g.add(rotor); g.position.set(290, 0, -1270); g.rotation.order = 'YXZ'; scene.add(g);
+    mil.heli = { g, rotor, yaw: 0, home: new THREE.Vector3(290, 0, -1270) };
+    mil.heliRing = new THREE.Mesh(new THREE.CylinderGeometry(1.0, 1.0, 0.7, 24, 1, true), ringMat(new THREE.Color(0.6, 1.6, 2.4))); mil.heliRing.position.set(290, 0.35, -1256); scene.add(mil.heliRing); }
   P.push(boxAt(7, 22, 7, 470, 11, -1285, 0xd8d4c8), boxAt(11, 0.6, 11, 470, 22.3, -1285, 0x3a3d42), boxAt(10, 3.6, 10, 470, 24.4, -1285, 0x1a232b), boxAt(11, 0.5, 11, 470, 26.45, -1285, 0x3a3d42), boxAt(0.2, 5, 0.2, 470, 29.2, -1285, 0x9aa0a8)); reds.push(boxAt(0.4, 0.4, 0.4, 470, 31.8, -1285));
   for (const [dx, dz] of [[-1.6, -1.6], [1.6, -1.6], [-1.6, 1.6], [1.6, 1.6]]) P.push(boxAt(0.25, 14, 0.25, 545 + dx, 7, -1320 + dz, 0xb5b9bf)); P.push(boxAt(6, 2.5, 6, 545, 1.25, -1320, 0xd8d4c8));
   { const g = new THREE.Group(); g.position.set(545, 15.2, -1320); const dish = new THREE.SphereGeometry(5, 18, 8, 0, Math.PI * 2, 0, 0.62); dish.rotateX(Math.PI / 2); dish.translate(0, 0, -3.6); const parts = [colorize(dish, 0xe8e8e8), boxAt(0.4, 0.4, 3.2, 0, 0, -1.6, 0x9aa0a8), boxAt(1.2, 1.2, 1.2, 0, 0, 0, 0x3a3d42)]; const dm = new THREE.Mesh(mergeAll(parts), new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.4, metalness: 0.3, side: THREE.DoubleSide })); dm.castShadow = true; g.add(dm); scene.add(g); mil.radar = g; }
@@ -1162,11 +1175,44 @@ function buildMilitary(addB) {
   add(-300, -785, Math.PI / 2, 'walk', [[-300, -785], [-30, -785]]); add(-280, -1236, Math.PI / 2, 'walk', [[-280, -1236], [110, -1236]]); add(210, -880, Math.PI / 2, 'walk', [[210, -880], [500, -880], [500, -1080], [210, -1080]]);
   add(560, -800, Math.PI, 'walk', [[570, -790], [570, -1330]]); add(-330, -1330, 0, 'walk', [[-330, -1330], [-330, -800]]);
   for (let r = 0; r < 2; r++) for (let c = 0; c < 4; c++) add(85 + c * 4, -845 - r * 4, 0, 'stand');
+  mil.trucks = [45, 52, 59].map((x) => { const v = new Vehicle('suv', 0x4b5320); v.place(x, -800, Math.PI); v.keep = true; return v; });
   mil.built = true;
+}
+const nearEnlist = () => mil.built && !game.enlisted && !player.car && !game.inside && !game.ride && !game.wheel && !game.heli && Math.hypot(player.pos.x - 31.5, player.pos.z + 751.5) < 2.6;
+const nearHeliPad = () => mil.built && game.enlisted && !player.car && !game.inside && !game.ride && !game.wheel && !game.heli && Math.hypot(player.pos.x - 290, player.pos.z + 1256) < 3;
+function enlist() {
+  game.enlisted = true; store.set('enlisted', true); fadeFlash('Welcome to Fort Halcón, recruit!', 1.6); sfxChime();
+  const o = OUTFITS.find((x) => x.id === 'fatigues'); if (o) setOutfit(o);
+  toast('You enlisted! Your pass opens the gate · army trucks by the gate, helicopter flights from the helipad', 5000);
+}
+const HELI_PATH = new THREE.CatmullRomCurve3([[290, 0.2, -1270], [290, 35, -1268], [250, 70, -1120], [110, 80, -820], [25, 90, -520], [-150, 105, -220], [-320, 110, 140], [-40, 120, 380], [300, 110, 180], [360, 100, -230], [260, 80, -700], [300, 55, -1120], [290, 14, -1262], [290, 0.2, -1270]].map(([x, y, z]) => new THREE.Vector3(x, y, z)), false, 'centripetal');
+const HELI_LEN = HELI_PATH.getLength();
+function startHeli() {
+  game.heli = { u: 0, yaw: 0, roll: 0 }; player.h.root.visible = false; player.vel.set(0, 0, 0);
+  cam.yaw = Math.PI; cam.pitch = 0.25; cam.manual = 0; radioOn(true); toast('Lift off! A helicopter tour over Solano · drag to look around', 3500);
+}
+function endHeli(skip) {
+  const H = mil.heli; game.heli = null; H.g.position.copy(H.home); H.g.rotation.set(0, 0, 0); player.h.root.visible = true; radioOn(false);
+  player.pos.set(290, 0.1, -1254); player.vel.set(0, 0, 0); player.yaw = Math.PI; cam.yaw = 0; cam.pitch = 0.2; cam.init = false;
+  if (skip) fadeFlash('Landing…', 0.8); toast('Back on the helipad · what a view!', 3000);
+}
+function updateHeli(dt) {
+  const H = mil.heli, st = game.heli, k = smooth(0, 0.05, st.u) * smooth(1, 0.93, st.u), v = lerp(6, 42, k);
+  st.u = Math.min(1, st.u + v * dt / HELI_LEN);
+  const p = HELI_PATH.getPointAt(st.u), tg = HELI_PATH.getTangentAt(Math.min(0.999, st.u + 0.002)), hz = Math.hypot(tg.x, tg.z);
+  if (hz > 0.3) { const ny = Math.atan2(tg.x, tg.z), d = angDiff(st.yaw, ny); st.yaw += d * (1 - Math.exp(-2.5 * dt)); st.roll = damp(st.roll, clamp(-d * 1.4, -0.45, 0.45), 3, dt); }
+  H.g.position.copy(p); H.g.rotation.set(-0.12 * k, st.yaw, st.roll, 'YXZ'); H.rotor.rotation.y += dt * 28;
+  player.pos.copy(p); player.vel.set(0, 0, 0);
+  if (st.u >= 1) endHeli(false);
 }
 function updateMilitary(dt) {
   if (!mil.built) return;
   const cp = camera.position, cd = Math.hypot(cp.x - 120, cp.z + 1060), nt = sunState.night, t = game.time;
+  { const f0 = player.car ? player.car.pos : player.pos, want = game.enlisted && !game.inside && Math.hypot(f0.x - GATE.x, f0.z - GATE.z - 8) < 32 ? 1 : 0; mil.gateT = clamp(mil.gateT + (want ? dt : -dt) * 0.6, 0, 1);
+    mil.gate.position.x = GATE.x + mil.gateT * 14.6; for (const b of mil.booms) b.g.rotation.z = b.dir * Math.min(1, mil.gateT * 1.6) * 1.35;
+    const open = mil.gateT > 0.85; mil.gateCol.h = open ? -1 : 7; mil.boomCol.h = open ? -1 : 3;
+    mil.enlistRing.visible = !game.enlisted; mil.heliRing.visible = game.enlisted && !game.heli; }
+  if (!game.heli) mil.heli.rotor.rotation.y += dt * (game.enlisted ? 0.4 : 0);
   mil.beamMat.opacity = nt * 0.3; mil.redMat.color.setRGB(1, 0.12, 0.06).multiplyScalar(0.7 + nt * 3 * (Math.sin(t * 3) > 0 ? 1 : 0.2));
   if (cd < 1500) { for (const b of mil.beams) { b.g.visible = nt > 0.05; b.g.rotation.y = b.base + Math.sin(t * 0.35 + b.ph) * 0.85; } mil.radar.rotation.y += dt * 0.9; mil.flag.rotation.y = Math.sin(t * 1.3) * 0.2; }
   if (cd < 700) for (const s of mil.soldiers) {
@@ -1174,21 +1220,22 @@ function updateMilitary(dt) {
     if (s.kind === 'walk') { const [tx, tz] = s.path[s.i], dx = tx - s.x, dz = tz - s.z, l = Math.hypot(dx, dz); if (l < 0.4) { s.i = (s.i + 1) % s.path.length; s.wait = 2; } else if (s.wait > 0) s.wait -= dt; else { s.x += dx / l * 1.3 * dt; s.z += dz / l * 1.3 * dt; sp = 1.3; s.yaw += angDiff(s.yaw, Math.atan2(dx, dz)) * (1 - Math.exp(-6 * dt)); } }
     else if (s.kind === 'guard') { const f = player.car ? player.car.pos : player.pos, dd = Math.hypot(f.x - s.x, f.z - s.z); s.yaw += angDiff(s.yaw, dd < 30 && !game.inside ? Math.atan2(f.x - s.x, f.z - s.z) : s.yaw0) * (1 - Math.exp(-3 * dt)); s.stop = dd < 18 && !game.inside; }
     s.h.root.position.set(s.x, 0, s.z); s.h.root.rotation.y = s.yaw; poseHuman(s.h, dt, sp, false, t);
-    if (s.stop) { s.h.armR.rotation.x = -1.5; s.h.armR.rotation.z = -0.15; s.h.elbowR.rotation.x = -0.1; }
+    if (s.stop && game.enlisted) { s.h.armR.rotation.x = -2.5; s.h.armR.rotation.z = -0.5; s.h.elbowR.rotation.x = -1.9; } else if (s.stop) { s.h.armR.rotation.x = -1.5; s.h.armR.rotation.z = -0.15; s.h.elbowR.rotation.x = -0.1; }
   }
   // keep everybody out
   if (game.state !== 'play') return;
   mil.warnCD -= dt;
-  if (game.inside || game.ride || game.wheel) { mil.inT = 0; mil.near = false; return; }
+  if (game.inside || game.ride || game.wheel || game.heli) { mil.inT = 0; mil.near = false; return; }
   const f = player.car ? player.car.pos : player.pos, inside = f.x > FENCE.x0 && f.x < FENCE.x1 && f.z > FENCE.z0 && f.z < FENCE.z1;
-  mil.near = !inside && rectD(FENCE, f.x, f.z) < 40;
-  if (inside) {
+  mil.near = !game.enlisted && !inside && rectD(FENCE, f.x, f.z) < 40;
+  if (inside && game.enlisted) mil.inT = 0;
+  else if (inside) {
     if (mil.inT === 0) { sfxAlarm(); crime(Math.max(1, STAR_AT[2] - game.heat), 'Trespassing on a military base'); toast('ALARM! Intruder on Fort Halcón · get out now!', 3500); }
     mil.inT += dt;
     if (mil.inT > 6) { mil.inT = 0; fadeFlash('Military police escort you off the base…', 1.4); if (player.car) player.car.place(GATE.x, GATE.z + 40, 0); else { player.pos.set(GATE.x, 0.1, GATE.z + 40); player.vel.set(0, 0, 0); } toast('Escorted off Fort Halcón · stay out!', 3500); }
   } else {
     mil.inT = 0;
-    if (Math.hypot(f.x - GATE.x, f.z - GATE.z) < 18 && mil.warnCD <= 0) { mil.warnCD = 14; toast(mpick(['Guard: "Halt! This is a restricted military area."', 'Guard: "No entry without clearance. Turn around, please."', 'Guard: "Authorized personnel only. Move along."']), 3400); }
+    if (Math.hypot(f.x - GATE.x, f.z - GATE.z) < 18 && mil.warnCD <= 0) { mil.warnCD = 14; toast(game.enlisted ? mpick(['Guard: "Welcome back, soldier."', 'Guard: "Pass checks out. Go on in."', 'Guard: "Morning, recruit!"']) : mpick(['Guard: "Halt! This is a restricted military area."', 'Guard: "No entry without a pass. You can enlist at the booth."', 'Guard: "Authorized personnel only. Want to join up? Ask at the booth."']), 3400); }
   }
 }
 function islandZone(addB) {
@@ -1784,6 +1831,7 @@ const OUTFITS = [
   { id: 'flamingo', name: 'Flamingo shirt & white shorts', shirt: 0xff3f8e, pants: 0xf2efe6, shorts: true, price: 90 },
   { id: 'sunset', name: 'Golden-hour polo & khakis', shirt: 0xffc857, pants: 0xb59b74, price: 75 },
   { id: 'midnight', name: 'Midnight suit', shirt: 0x1b1f2e, pants: 0x1b1f2e, price: 250 },
+  { id: 'fatigues', name: 'Army fatigues', shirt: 0x4b5320, pants: 0x55603a, price: 0, mil: true },
 ];
 function buildGrocery(R) {
   buildRoom(R, checkerTex, 0xf6efd9); const { cx, cz, w, d } = R, P = R.parts, F = [];
@@ -2504,10 +2552,10 @@ function removeOfficer(o) { scene.remove(o.h.root); const i = officers.indexOf(o
 
 // ---------------------------------------------------------------- player
 const player = { sit: null, autoTo: null, pos: new THREE.Vector3(-494.6, 0, 16.5), vel: new THREE.Vector3(), yaw: -Math.PI / 2, onGround: true, car: null, h: null, knock: 0, health: 100, hurtT: 0, alive: true, lie: 0 };
-const game = { pantry: {}, dishes: [], eat: null, fedT: 0, luggage: null, bagChecked: false, family: [], famFollow: true, nearFam: null, famD: 9, hugT: 0, tvWatch: false, visited: [], lastDest: null, ticketGate: null, ticket: null, owned: ['coral'], counter: null, ride: null, inside: null, state: 'boot', cash: 500, shownCash: 500, wanted: 0, heat: 0, evadeT: 0, crimeT: 0, bustT: 0, tod: 17.62, job: null, quality: 'ultra', radio: true, sound: true, time: 0, downT: 0, seenDistrict: '', saveT: 0 };
+const game = { pantry: {}, dishes: [], eat: null, fedT: 0, enlisted: false, heli: null, luggage: null, bagChecked: false, family: [], famFollow: true, nearFam: null, famD: 9, hugT: 0, tvWatch: false, visited: [], lastDest: null, ticketGate: null, ticket: null, owned: ['coral'], counter: null, ride: null, inside: null, state: 'boot', cash: 500, shownCash: 500, wanted: 0, heat: 0, evadeT: 0, crimeT: 0, bustT: 0, tod: 17.62, job: null, quality: 'ultra', radio: true, sound: true, time: 0, downT: 0, seenDistrict: '', saveT: 0 };
 const STAR_AT = [1, 4, 9, 16, 26];
 function focusPos() { return game.ride ? flight.m.position : player.car ? player.car.pos : game.inside ? game.inside.out : player.pos; }
-function focusY() { return game.wheel ? surfaceH(ferris.x, ferris.z + 6) : game.ride ? flight.y : player.car ? player.car.y : game.inside ? CURB : player.pos.y; }
+function focusY() { return game.heli ? 0.2 : game.wheel ? surfaceH(ferris.x, ferris.z + 6) : game.ride ? flight.y : player.car ? player.car.y : game.inside ? CURB : player.pos.y; }
 
 function nearestEnterable(range) {
   let best = null, bd = range;
@@ -2836,7 +2884,7 @@ function followUpdate(dt) {
     fam.list.forEach((m, i) => { const sd = i % 2 ? -1 : 1, bx = i < 2 ? -0.55 : 0.55; m.h.root.visible = true; m.h.root.position.set(c.x + bx, c.y - 0.6 - m.sc * 0.45, c.z + sd * 1.3); m.h.root.rotation.set(0, sd > 0 ? Math.PI : 0, 0, 'YXZ'); poseSit(m.h, 0.5, false); });
     return;
   }
-  if (player.car || game.ride || !player.alive) { for (const m of fam.list) { m.h.root.visible = false; if (m.seat) famFree(m); } fam.snap = true; return; }
+  if (player.car || game.ride || game.heli || !player.alive) { for (const m of fam.list) { m.h.root.visible = false; if (m.seat) famFree(m); } fam.snap = true; return; }
   if (fam.snap) { trailReset(); fam.snap = false; }
   const Rm = game.inside && game.inside.room;
   if (!player.sit && (Rm || player.onGround)) trailPush();
@@ -2938,7 +2986,7 @@ const SHOP_ITEMS = {
     { name: 'Wash your hands', desc: 'Soap and water.', price: 0, buy: () => { heal(3); return 'Squeaky clean'; } },
   ],
   closet: () => OUTFITS.filter((o) => game.owned.includes(o.id)).map((o) => ({ name: o.name, desc: 'In your closet', price: 0, sw: o.shirt, outfit: o, buy: () => { setOutfit(o); return `Changed into the ${o.name.toLowerCase()}`; } })),
-  threads: OUTFITS.map((o) => ({ name: o.name, desc: game.outfit === o.id ? 'You are wearing this' : 'Change into it right here', price: o.price, sw: o.shirt, outfit: o, buy: () => { setOutfit(o); return `Looking sharp in the ${o.name.toLowerCase()}`; } })),
+  threads: OUTFITS.filter((o) => !o.mil).map((o) => ({ name: o.name, desc: game.outfit === o.id ? 'You are wearing this' : 'Change into it right here', price: o.price, sw: o.shirt, outfit: o, buy: () => { setOutfit(o); return `Looking sharp in the ${o.name.toLowerCase()}`; } })),
 };
 function setOutfit(o) {
   game.outfit = o.id; store.set('outfit', o.id); if (game.owned && !game.owned.includes(o.id)) { game.owned.push(o.id); store.set('owned', game.owned); }
@@ -3411,7 +3459,7 @@ function axes() {
 function handleActions() {
   while (input.actions.length) {
     const a = input.actions.shift();
-    if (a === 'car') { if (game.wheel) { endWheel(false); continue; } if (game.ride) { const k = game.ride.kind; endRide(); if (k !== 'loop') flight.trip = null; continue; } if (game.inside) { const hm = hugTarget(); if (player.sit) standUp(); else if (hm) hugFamily(hm); else if (game.nearSeat) sitDown(game.nearSeat); continue; } if (player.car) exitCar(); else if (player.knock <= 0) { if (nearFerris()) { startWheel(); continue; } const c = nearestEnterable(3.8), hm = hugTarget(); if (hm && (!c || game.famD < 1.0)) { hugFamily(hm); continue; } if (c) enterCar(c); } }
+    if (a === 'car') { if (game.wheel) { endWheel(false); continue; } if (game.heli) { endHeli(true); continue; } if (game.ride) { const k = game.ride.kind; endRide(); if (k !== 'loop') flight.trip = null; continue; } if (game.inside) { const hm = hugTarget(); if (player.sit) standUp(); else if (hm) hugFamily(hm); else if (game.nearSeat) sitDown(game.nearSeat); continue; } if (player.car) exitCar(); else if (player.knock <= 0) { if (nearFerris()) { startWheel(); continue; } if (nearEnlist()) { enlist(); continue; } if (nearHeliPad()) { startHeli(); continue; } const c = nearestEnterable(3.8), hm = hugTarget(); if (hm && (!c || game.famD < 1.0)) { hugFamily(hm); continue; } if (c) enterCar(c); } }
     else if (a === 'horn') { if (player.car) { sfxHorn(1); for (const p of peds) if (p.pos.distanceTo(player.car.pos) < 14) p.scare(player.car.pos.x, player.car.pos.z, 3); } }
     else if (a === 'radio') { game.radio = !game.radio; store.set('radio', game.radio); radioOn(!!player.car); toast(game.radio ? 'Radio on · Solano 88.4' : 'Radio off'); }
     else if (a === 'cam') { cam.yaw = ((game.ride ? flight.yaw : player.car ? player.car.yaw : player.yaw)) + Math.PI; cam.pitch = 0.22; }
@@ -3451,6 +3499,15 @@ function updateCamera(dt) {
     camera.position.set(camX, camY, camZ);
     cam.tgt.set(p.x, p.y + 1.4, p.z); camera.lookAt(cam.tgt); cam.init = false;
     if (Math.abs(camera.fov - baseFov) > 0.05) { camera.fov = baseFov; camera.updateProjectionMatrix(); }
+    return;
+  }
+  if (game.heli) {
+    const tg = mil.heli.g.position; cam.manual -= dt;
+    if (cam.manual <= 0) { cam.yaw += angDiff(cam.yaw, game.heli.yaw + Math.PI) * (1 - Math.exp(-1.4 * dt)); cam.pitch = damp(cam.pitch, 0.28, 1, dt); }
+    const cp = Math.cos(cam.pitch), dd = 24;
+    camera.position.set(tg.x + Math.sin(cam.yaw) * cp * dd, Math.max(tg.y + 3 + Math.sin(cam.pitch) * dd, 2), tg.z + Math.cos(cam.yaw) * cp * dd);
+    cam.tgt.copy(tg); camera.lookAt(tg.x, tg.y + 2, tg.z); cam.init = false;
+    if (Math.abs(camera.fov - baseFov) > 0.05) { camera.fov = damp(camera.fov, baseFov, 3, dt); camera.updateProjectionMatrix(); }
     return;
   }
   if (game.ride) {
@@ -3557,10 +3614,10 @@ function updateHUD(dt) {
   if (dn !== game.seenDistrict) { game.seenDistrict = dn; ui.district.textContent = dn; ui.district.classList.add('show'); clearTimeout(districtT); districtT = setTimeout(() => ui.district.classList.remove('show'), 3500); }
   const c = player.car;
   ui.speedo.hidden = !c; if (c) { const mph = Math.round(Math.abs(c.vf) * 2.237); if (mph !== lastSpd) { lastSpd = mph; ui.spd.textContent = mph; } }
-  const fw = !c && nearFerris(), near = !c && !fw && !game.inside && !game.ride && !game.wheel && nearestEnterable(3.8);
+  const ne = !c && nearEnlist(), nh = !c && nearHeliPad(), fw = !c && nearFerris(), near = !c && !fw && !ne && !nh && !game.inside && !game.ride && !game.wheel && !game.heli && nearestEnterable(3.8);
   const seat = game.inside ? game.nearSeat : null, hug0 = hugTarget(), hugM = hug0 && (game.inside || !near || game.famD < 1.0) ? hug0 : null;
-  ui.bCar.textContent = game.wheel ? 'GET OFF' : fw ? 'RIDE' : game.ride ? 'LAND' : c ? 'GET OUT' : hugM && !game.inside ? 'HUG' : player.sit ? (player.sit.bed ? 'GET UP' : 'STAND') : hugM ? 'HUG' : seat ? (seat.bed ? 'LIE DOWN' : seat.toilet ? 'USE' : 'SIT') : 'GET IN'; ui.bCar.classList.toggle('ready', !!near || fw || !!hugM || (!!seat && !player.sit));
-  ui.bAction.textContent = c ? 'DRIFT' : player.sit && player.sit.bed ? 'SLEEP' : player.sit && player.sit.tv ? (game.tvWatch ? 'CHANNEL' : 'TV') : 'JUMP'; ui.bHorn.hidden = !c; ui.bRadio.hidden = !c; ui.bAction.style.visibility = game.wheel || game.ride ? 'hidden' : '';
+  ui.bCar.textContent = game.wheel ? 'GET OFF' : game.heli ? 'LAND' : ne ? 'ENLIST' : nh ? 'FLY' : fw ? 'RIDE' : game.ride ? 'LAND' : c ? 'GET OUT' : hugM && !game.inside ? 'HUG' : player.sit ? (player.sit.bed ? 'GET UP' : 'STAND') : hugM ? 'HUG' : seat ? (seat.bed ? 'LIE DOWN' : seat.toilet ? 'USE' : 'SIT') : 'GET IN'; ui.bCar.classList.toggle('ready', !!near || fw || ne || nh || !!hugM || (!!seat && !player.sit));
+  ui.bAction.textContent = c ? 'DRIFT' : player.sit && player.sit.bed ? 'SLEEP' : player.sit && player.sit.tv ? (game.tvWatch ? 'CHANNEL' : 'TV') : 'JUMP'; ui.bHorn.hidden = !c; ui.bRadio.hidden = !c; ui.bAction.style.visibility = game.wheel || game.ride || game.heli ? 'hidden' : '';
   let hint = '';
   if (near && !TOUCH) hint = near.driver === 'ai' ? 'Press F to carjack' : near.isCop && near.driver ? 'Press F to steal the cruiser' : 'Press F to get in';
   else if (near && TOUCH) hint = near.driver === 'ai' ? 'Tap GET IN to carjack' : 'Tap GET IN to drive';
@@ -3581,6 +3638,9 @@ function updateHUD(dt) {
   }
   if (game.ride) hint = TOUCH ? 'Scenic flight · tap LAND to skip ahead' : 'Scenic flight · press F to skip ahead';
   if (fw) hint = TOUCH ? 'Ferris wheel · $10 · tap RIDE' : 'Press F to ride the Ferris wheel · $10';
+  if (ne) hint = TOUCH ? 'Join the military · tap ENLIST' : 'Press F to enlist at Fort Halcón';
+  if (nh) hint = TOUCH ? 'Helicopter tour · tap FLY' : 'Press F to fly the helicopter tour';
+  if (game.heli) hint = TOUCH ? 'Helicopter tour · drag to look · tap LAND to skip' : 'Helicopter tour · mouse to look · F to land';
   if (game.wheel) hint = `Ferris wheel · ${Math.round(game.wheel.pos.y)} m up · ${TOUCH ? 'drag to look · GET OFF to stop' : 'mouse to look · F to get off'}`;
   if (!hint && mil.near) hint = 'Fort Halcón · restricted military area · keep out';
   if (hint !== lastHint) { lastHint = hint; ui.hint.textContent = hint; ui.hint.hidden = !hint; }
@@ -3766,7 +3826,7 @@ function step(dt) {
     if (playing) { const ex = Math.abs(ax) < 0.1 ? 0 : Math.sign(ax) * Math.pow(Math.abs(ax), 1.35); c.thr = Math.abs(ay) < 0.12 ? 0 : ay; c.str = damp(c.str, -ex, 10, dt); c.hb = input.keys.has('Space') || input.btnAction; }
     else { c.thr = 0; c.hb = true; }
     player.pos.set(c.pos.x, c.y, c.pos.z);
-  } else if (game.wheel) updateWheel(dt); else if (game.ride) { if (flight.st === 'parked') endRide(); } else if (game.inside) { updatePlayerInside(dt, ax, ay, sprint); if (game.inside && game.inside.room === ROOMS.home) famUpdate(dt); } else { updatePlayerFoot(dt, ax, ay, sprint); if (playing) checkShopDoors(dt); }
+  } else if (game.wheel) updateWheel(dt); else if (game.heli) updateHeli(dt); else if (game.ride) { if (flight.st === 'parked') endRide(); } else if (game.inside) { updatePlayerInside(dt, ax, ay, sprint); if (game.inside && game.inside.room === ROOMS.home) famUpdate(dt); } else { updatePlayerFoot(dt, ax, ay, sprint); if (playing) checkShopDoors(dt); }
   input.jumpQ = false; if (player.bag) player.bag.visible = !game.bagChecked && !player.sit;
   if (fam.out) followUpdate(dt); else if (!game.inside || game.inside.room !== ROOMS.home) game.nearFam = null;
   if (player.hurtT > 0) player.hurtT -= dt; else player.health = Math.min(100, player.health + dt * (game.fedT > 0 ? 12 : 4)); if (game.fedT > 0) game.fedT -= dt;
@@ -3866,7 +3926,7 @@ function start(data) {
     game.sound = store.get('sound', true); game.radio = store.get('radio', true); setSound(game.sound);
     player.pos.set(-494.6, 0, 16.5); player.yaw = -Math.PI / 2;
     starterCar = new Vehicle('sports', 0xff3f8e); starterCar.place(-492.4, 18.8, 0);
-    game.owned = store.get('owned', ['coral']); game.visited = store.get('visited', []); game.pantry = store.get('pantry', {}); game.dishes = store.get('dishes', []); refreshDishes(); game.family = store.get('family', []); 
+    game.owned = store.get('owned', ['coral']); game.visited = store.get('visited', []); game.pantry = store.get('pantry', {}); game.dishes = store.get('dishes', []); refreshDishes(); game.family = store.get('family', []); game.enlisted = store.get('enlisted', false); 
     setupMarkers(); setupCash(); spawnTraffic(); spawnPeds(); spawnLotCars();
     for (let i = 0; i < HWY_N; i++) { const c = new Vehicle(mpick(TRAFFIC_TYPES), mpick(PAINTS)); if (!placeHwy(c, false)) c.dispose(); }
     applyQuality(data.quality || store.get('quality', 'ultra'));
