@@ -317,6 +317,8 @@ function bfs(start) { const dist = new Int16Array(NN * NN).fill(-1), par = new I
 // land = city square + the port (east, steep quay) + the airport (south)
 const PORT = { x0: LAND - 20, x1: 820, z0: -LAND, z1: 300 };
 const AIRPORT = { x0: -360, x1: 860, z0: LAND - 20, z1: 1260 };
+// Fort Halcón: a fenced military base on its own land north of the city, reached by a causeway. Nobody gets in.
+const MIL = { x0: -360, x1: 600, z0: -1360, z1: -760 }, CAUSE = { x0: 5, x1: 35, z0: -790, z1: -LAND + 4 }, FENCE = { x0: -352, x1: 592, z0: -1352, z1: -768 }, GATE = { x: 20, z: -756 };
 const ISLA = { x0: -2650, x1: -1950, z0: -860, z1: -360 };
 const PASTEL_T = [0xf7b8c8, 0xa6e8d8, 0xfde6a0, 0xcdb9f4, 0xffcca8, 0xf4efe4, 0x9ad8f2];
 const DESTS = [
@@ -334,13 +336,13 @@ function beachSlope(x) { return lerp(0.04, 0.012, clamp((-x - (LAND - 140)) / 15
 function terrainH(x, z) {
   const dc = Math.hypot(Math.max(Math.abs(x) - LAND, 0), Math.max(Math.abs(z) - LAND, 0));
   if (dc === 0) return 0;
-  const dp = rectD(PORT, x, z), da = rectD(AIRPORT, x, z);
-  if (dp === 0 || da === 0) return 0;
-  let m = Math.max(-14, -dc * beachSlope(x) - dc * dc * 0.00012, -dp * 0.6, -da * 0.05 - da * da * 0.00012);
+  const dp = rectD(PORT, x, z), da = rectD(AIRPORT, x, z), dm = Math.min(rectD(MIL, x, z), rectD(CAUSE, x, z));
+  if (dp === 0 || da === 0 || dm === 0) return 0;
+  let m = Math.max(-14, -dc * beachSlope(x) - dc * dc * 0.00012, -dp * 0.6, -da * 0.05 - da * da * 0.00012, -dm * 0.5);
   for (let i = 0; i < ISLANDS.length; i++) { const di = rectD(ISLANDS[i], x, z); if (di === 0) return 0; const h = -di * 0.03 - di * di * 0.0002; if (h > m) m = h; }
   return m;
 }
-const zoneAt = (x, z) => (ISLANDS.some((r) => rectD(r, x, z) === 0) ? 'isla' : rectD(AIRPORT, x, z) === 0 && z > LAND ? 'airport' : rectD(PORT, x, z) === 0 && x > LAND ? 'port' : 'city');
+const zoneAt = (x, z) => (rectD(MIL, x, z) === 0 ? 'mil' : ISLANDS.some((r) => rectD(r, x, z) === 0) ? 'isla' : rectD(AIRPORT, x, z) === 0 && z > LAND ? 'airport' : rectD(PORT, x, z) === 0 && x > LAND ? 'port' : 'city');
 function axisBlock(v) { const t = v + HALF; if (t <= 0 || t >= NB * PITCH) return -1; const i = Math.floor(t / PITCH), l = t - i * PITCH; return (l < ROAD / 2 || l > PITCH - ROAD / 2) ? -1 : i; }
 const ramps = [];
 function rampH(r, x, z) { const dx = x - r.x, dz = z - r.z, lx = dx * r.c - dz * r.s, lz = dx * r.s + dz * r.c; if (Math.abs(lx) > r.w / 2 || lz < 0 || lz > r.len) return -99; return r.base + r.h * lz / r.len; }
@@ -542,9 +544,9 @@ const H_GLSL = `float h13(vec3 p){ p = fract(p * 0.1031); p += dot(p, p.zyx + 31
 const G4 = (r) => `vec4(${r.x0.toFixed(1)}, ${r.z0.toFixed(1)}, ${r.x1.toFixed(1)}, ${r.z1.toFixed(1)})`;
 const TERRAIN_GLSL = `float rectD(vec4 r, vec2 p){ return length(max(max(r.xy - p, p - r.zw), 0.0)); }
   float terrainH(vec2 p){ float dc = length(max(abs(p) - vec2(${LAND.toFixed(1)}), 0.0)); if (dc <= 0.0) return 0.0;
-  float dp = rectD(${G4(PORT)}, p), da = rectD(${G4(AIRPORT)}, p); if (dp <= 0.0 || da <= 0.0) return 0.0; float mi = -14.0; ${ISLANDS.map((r, i) => `float i${i} = rectD(${G4(r)}, p); if (i${i} <= 0.0) return 0.0; mi = max(mi, -i${i} * 0.03 - i${i} * i${i} * 0.0002);`).join(' ')}
+  float dp = rectD(${G4(PORT)}, p), da = rectD(${G4(AIRPORT)}, p), dm = min(rectD(${G4(MIL)}, p), rectD(${G4(CAUSE)}, p)); if (dp <= 0.0 || da <= 0.0 || dm <= 0.0) return 0.0; float mi = -14.0; ${ISLANDS.map((r, i) => `float i${i} = rectD(${G4(r)}, p); if (i${i} <= 0.0) return 0.0; mi = max(mi, -i${i} * 0.03 - i${i} * i${i} * 0.0002);`).join(' ')}
   float s = mix(0.04, 0.012, clamp((-p.x - ${(LAND - 140).toFixed(1)}) / 150.0, 0.0, 1.0));
-  return max(mi, max(-dc * s - dc * dc * 0.00012, max(-dp * 0.6, -da * 0.05 - da * da * 0.00012))); }`;
+  return max(mi, max(-dc * s - dc * dc * 0.00012, max(max(-dp * 0.6, -dm * 0.5), -da * 0.05 - da * da * 0.00012))); }`;
 
 // procedural facades: windows, storefronts, ledges, night lighting — all from world position
 const buildingMat = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.84, metalness: 0.04 });
@@ -700,7 +702,7 @@ function buildWorld() {
   const tp = tg.attributes.position, tc = new Float32Array(tp.count * 3);
   for (let i = 0; i < tp.count; i++) {
     const x = tp.getX(i), z = tp.getZ(i), h = terrainH(x, z); let r, g, b;
-    if (h === 0) { tp.setY(i, -0.02); const zn = zoneAt(x, z); if (zn === 'airport') { r = 0.3; g = 0.4; b = 0.2; } else if (zn === 'port') { r = 0.34; g = 0.34; b = 0.36; } else { r = 0.5; g = 0.47; b = 0.43; } }
+    if (h === 0) { tp.setY(i, -0.02); const zn = zoneAt(x, z); if (zn === 'airport') { r = 0.3; g = 0.4; b = 0.2; } else if (zn === 'port') { r = 0.34; g = 0.34; b = 0.36; } else if (zn === 'mil') { r = 0.4; g = 0.41; b = 0.32; } else { r = 0.5; g = 0.47; b = 0.43; } }
     else {
       tp.setY(i, h); const wet = smooth(-0.3, -0.72, h), under = smooth(-0.75, -3, h);
       r = lerp(lerp(0.84, 0.58, wet), 0.42, under); g = lerp(lerp(0.72, 0.48, wet), 0.4, under); b = lerp(lerp(0.52, 0.34, wet), 0.32, under);
@@ -998,6 +1000,185 @@ function updateDests(dt) {
   for (let k = 0; k < 16; k++) { const a = ferris.a + k * Math.PI / 8; _p.set(Math.cos(a) * 28, 32 + Math.sin(a) * 28 - 1.4, 0); _q.identity(); _s.set(1, 1, 1); _m4.compose(_p, _q, _s); ferris.gond.setMatrixAt(k, _m4); }
   ferris.gond.instanceMatrix.needsUpdate = true;
 }
+// ---------------------------------------------------------------- Fort Halcón (original military base)
+const mil = { built: false, beams: [], soldiers: [], radar: null, flag: null, beamMat: null, redMat: null, inT: 0, warnCD: 0, near: false };
+function fitText(g, txt, x, y, maxW, px) { let fs = px; g.font = `800 ${fs}px Impact, 'Arial Black', sans-serif`; const mw = g.measureText(txt).width; if (mw > maxW) { fs = Math.floor(fs * maxW / mw); g.font = `800 ${fs}px Impact, 'Arial Black', sans-serif`; } g.fillText(txt, x, y); }
+function jetGeo() {
+  const G = [], body = 0x7a828a, C = (g, hex) => G.push(colorize(g, hex));
+  const fus = new THREE.CylinderGeometry(0.95, 1.05, 10, 12); fus.rotateX(Math.PI / 2); C(fus.translate(0, 2.2, 0), body);
+  const nose = new THREE.ConeGeometry(0.95, 4.2, 12); nose.rotateX(Math.PI / 2); C(nose.translate(0, 2.2, 7.1), body);
+  const noz = new THREE.CylinderGeometry(0.85, 0.72, 1.2, 12); noz.rotateX(Math.PI / 2); C(noz.translate(0, 2.2, -5.6), 0x2b2e33);
+  const can = new THREE.SphereGeometry(0.75, 12, 8); can.scale(1, 0.75, 2.6); C(can.translate(0, 2.95, 3.4), 0x1d2733);
+  const tri = (pts, th) => { const sh = new THREE.Shape(); sh.moveTo(pts[0][0], -pts[0][1]); for (const [x, z] of pts.slice(1)) sh.lineTo(x, -z); const g = new THREE.ExtrudeGeometry(sh, { depth: th, bevelEnabled: false }); g.rotateX(-Math.PI / 2); return g; };
+  for (const sd of [-1, 1]) {
+    C(new THREE.BoxGeometry(0.7, 0.9, 3.2).translate(sd * 1.1, 2.0, 1.2), 0x6b737b);
+    C(tri([[sd * 0.9, 2.2], [sd * 6.6, -2.6], [sd * 6.6, -3.4], [sd * 0.9, -4.0]], 0.18).translate(0, 2.0, 0), body);
+    C(tri([[sd * 0.8, -3.9], [sd * 3.4, -5.6], [sd * 3.4, -6.1], [sd * 0.8, -6.1]], 0.12).translate(0, 2.1, 0), body);
+    const fin = new THREE.Shape(); fin.moveTo(4.0, 0); fin.lineTo(6.2, 0); fin.lineTo(6.8, 2.8); fin.lineTo(5.6, 2.8);
+    const fg = new THREE.ExtrudeGeometry(fin, { depth: 0.14, bevelEnabled: false }); fg.rotateY(Math.PI / 2); fg.translate(-0.07, 0, 0); fg.rotateZ(-sd * 0.25); C(fg.translate(sd * 0.9, 2.9, 0), body);
+    C(new THREE.CylinderGeometry(0.55, 0.55, 0.02, 16).translate(sd * 4.4, 2.2, -2.3), 0x18b3a6); C(new THREE.CylinderGeometry(0.24, 0.24, 0.022, 12).translate(sd * 4.4, 2.21, -2.3), 0xffc857);
+    C(new THREE.BoxGeometry(0.12, 1.4, 0.12).translate(sd * 1.5, 0.9, -1.4), 0x3a3d42); const mw = new THREE.CylinderGeometry(0.34, 0.34, 0.22, 12); mw.rotateZ(Math.PI / 2); C(mw.translate(sd * 1.5, 0.34, -1.4), 0x111111);
+  }
+  C(new THREE.BoxGeometry(0.12, 1.4, 0.12).translate(0, 0.9, 4.6), 0x3a3d42); const nw = new THREE.CylinderGeometry(0.28, 0.28, 0.18, 12); nw.rotateZ(Math.PI / 2); C(nw.translate(0, 0.28, 4.6), 0x111111);
+  return mergeAll(G);
+}
+function heliGeo() {
+  const G = [], C = (g, hex) => G.push(colorize(g, hex)), OLV = 0x4b5320;
+  const body = new THREE.SphereGeometry(1.6, 14, 10); body.scale(1, 0.95, 1.9); C(body.translate(0, 2.1, 0.4), OLV);
+  const glass = new THREE.SphereGeometry(1.25, 12, 8); glass.scale(1, 0.8, 1.2); C(glass.translate(0, 2.35, 2.2), 0x1d2733);
+  const boom = new THREE.CylinderGeometry(0.22, 0.45, 6.5, 10); boom.rotateX(Math.PI / 2); C(boom.translate(0, 2.5, -5), OLV);
+  C(new THREE.BoxGeometry(0.12, 1.6, 1.0).translate(0, 3.3, -8.0), OLV); const tr = new THREE.CylinderGeometry(0.9, 0.9, 0.05, 14); tr.rotateZ(Math.PI / 2); C(tr.translate(0.2, 3.4, -8.1), 0x222326);
+  for (const sd of [-1, 1]) { C(new THREE.BoxGeometry(0.12, 0.12, 4.2).translate(sd * 1.25, 0.15, 0.4), 0x2b2e33); for (const z of [-0.6, 1.4]) C(new THREE.BoxGeometry(0.1, 1.0, 0.1).translate(sd * 1.15, 0.65, z), 0x2b2e33); }
+  C(new THREE.CylinderGeometry(0.15, 0.15, 0.8, 8).translate(0, 3.95, 0.3), 0x2b2e33);
+  for (let k = 0; k < 4; k++) { const b = new THREE.BoxGeometry(0.35, 0.06, 6.2); b.translate(0, 0, 3.1); b.rotateY(k * Math.PI / 2 + Math.PI / 4); C(b.translate(0, 4.32, 0.3), 0x1c1d20); }
+  return mergeAll(G);
+}
+function tankGeo() {
+  const G = [], C = (g, hex) => G.push(colorize(g, hex)), OLV = 0x5b6236;
+  C(new RoundedBoxGeometry(3.4, 1.2, 6.8, 2, 0.15).translate(0, 1.05, 0), OLV);
+  for (const sd of [-1, 1]) { C(new RoundedBoxGeometry(0.85, 1.1, 7.3, 2, 0.35).translate(sd * 1.85, 0.56, 0), 0x2a2b2c); for (let k = 0; k < 6; k++) { const w = new THREE.CylinderGeometry(0.36, 0.36, 0.2, 10); w.rotateZ(Math.PI / 2); C(w.translate(sd * 2.3, 0.45, -2.6 + k * 1.04), 0x3a3b3c); } }
+  C(new RoundedBoxGeometry(2.6, 0.9, 3.1, 2, 0.25).translate(0, 2.1, -0.4), OLV);
+  const gun = new THREE.CylinderGeometry(0.11, 0.14, 4.8, 10); gun.rotateX(Math.PI / 2); C(gun.translate(0, 2.2, 3.4), 0x464b2c);
+  C(new THREE.CylinderGeometry(0.4, 0.4, 0.2, 10).translate(0.6, 2.62, -0.9), 0x464b2c); C(new THREE.BoxGeometry(0.03, 1.6, 0.03).translate(-0.9, 3.3, -1.6), 0x222222);
+  return mergeAll(G);
+}
+function truckGeo() {
+  const G = [], C = (g, hex) => G.push(colorize(g, hex)), OLV = 0x4b5320;
+  C(new RoundedBoxGeometry(2.4, 2.0, 2.0, 2, 0.12).translate(0, 1.7, 2.7), OLV); C(new THREE.BoxGeometry(2.1, 0.7, 0.05).translate(0, 2.15, 3.72), 0x1d2733);
+  C(new THREE.BoxGeometry(2.5, 0.4, 4.8).translate(0, 1.0, -0.8), 0x3d4228);
+  const cover = new THREE.CylinderGeometry(1.25, 1.25, 4.6, 14, 1, false, Math.PI / 2, Math.PI); cover.rotateX(Math.PI / 2); C(cover.translate(0, 1.25, -0.8), 0x5f6542);
+  C(new THREE.BoxGeometry(2.5, 1.25, 4.6).translate(0, 1.82, -0.8), 0x5f6542);
+  for (const sd of [-1, 1]) for (const z of [2.6, -0.4, -2.2]) { const w = new THREE.CylinderGeometry(0.52, 0.52, 0.4, 12); w.rotateZ(Math.PI / 2); C(w.translate(sd * 1.15, 0.52, z), 0x141414); }
+  return mergeAll(G);
+}
+function jeepGeo() {
+  const G = [], C = (g, hex) => G.push(colorize(g, hex)), OLV = 0x5b6236;
+  C(new RoundedBoxGeometry(1.9, 0.9, 3.9, 2, 0.12).translate(0, 0.95, 0), OLV); C(new THREE.BoxGeometry(1.7, 0.55, 0.05).translate(0, 1.65, 0.6), 0x1d2733);
+  for (const sd of [-1, 1]) C(new THREE.BoxGeometry(0.08, 0.9, 0.08).translate(sd * 0.85, 1.8, -0.5), 0x2b2e33); C(new THREE.BoxGeometry(1.78, 0.08, 0.08).translate(0, 2.25, -0.5), 0x2b2e33);
+  for (const sd of [-1, 1]) for (const z of [1.25, -1.25]) { const w = new THREE.CylinderGeometry(0.42, 0.42, 0.32, 12); w.rotateZ(Math.PI / 2); C(w.translate(sd * 0.95, 0.42, z), 0x141414); }
+  return mergeAll(G);
+}
+function buildMilitary(addB) {
+  const P = [], OL = 0x4b5320, F = FENCE, T = (g, x, y, z) => { g.translate(x, y, z); return g; }, place = (geo, x, z, yaw = 0) => { const g = geo.clone(); g.rotateY(yaw); return T(g, x, 0, z); };
+  const asphalt = new THREE.MeshStandardMaterial({ color: 0x3b3c42, roughness: 0.9 }), concrete = new THREE.MeshStandardMaterial({ color: 0x8d8b86, roughness: 0.92 });
+  // ground: causeway road, base roads, runway, apron, heliport, depot, parade ground
+  { const t = roadTex.clone(); t.repeat.set(1, 272 / BLOCK); t.needsUpdate = true; flat(14, 272, new THREE.MeshStandardMaterial({ map: t, roughness: 0.75 }), GATE.x, ROAD_Y + 0.01, (-768 - 496) / 2); }
+  flat(14, 380, asphalt, GATE.x, 0.03, -958); flat(900, 12, asphalt, 120, 0.03, -1110);
+  flat(860, 40, new THREE.MeshStandardMaterial({ map: runwayTex, roughness: 0.8 }), 110, 0.05, -1195);
+  flat(420, 87, concrete, -85, 0.04, -1258.5); flat(190, 70, concrete, 290, 0.04, -1270); flat(380, 200, concrete, 370, 0.035, -960); flat(80, 60, concrete, 100, 0.035, -850);
+  const padTex = canvasTex(256, 256, (g) => { g.clearRect(0, 0, 256, 256); g.strokeStyle = '#ffc857'; g.lineWidth = 12; g.beginPath(); g.arc(128, 128, 110, 0, 7); g.stroke(); g.fillStyle = '#f4f4f0'; g.font = "800 150px Impact, 'Arial Black', sans-serif"; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText('H', 128, 136); });
+  const padMat = new THREE.MeshBasicMaterial({ map: padTex, transparent: true, color: new THREE.Color(0.8, 0.8, 0.8) });
+  for (const x of [230, 290, 350]) flat(20, 20, padMat, x, 0.06, -1270);
+  mapPaint.push({ x0: F.x0 - 4, x1: F.x1 + 4, z0: F.z1 - 4, z1: F.z1 + 4, c: '#c0392b' }, { x0: F.x0 - 4, x1: F.x1 + 4, z0: F.z0 - 4, z1: F.z0 + 4, c: '#c0392b' }, { x0: F.x0 - 4, x1: F.x0 + 4, z0: F.z0, z1: F.z1, c: '#c0392b' }, { x0: F.x1 - 4, x1: F.x1 + 4, z0: F.z0, z1: F.z1, c: '#c0392b' },
+    { x0: -320, x1: 540, z0: -1215, z1: -1175, c: '#3b3c44' }, { x0: -295, x1: 125, z0: -1302, z1: -1215, c: '#8d8a94' }, { x0: 13, x1: 27, z0: -768, z1: -496, c: '#8b879c' });
+  // perimeter fence: chain-link, barbed wire, posts, solid colliders all the way round (the gate stays shut)
+  const chain = canvasTex(64, 64, (g) => { g.clearRect(0, 0, 64, 64); g.strokeStyle = '#c9ced4'; g.lineWidth = 3; g.beginPath(); g.moveTo(0, 32); g.lineTo(32, 0); g.lineTo(64, 32); g.lineTo(32, 64); g.closePath(); g.stroke(); });
+  const FH2 = 4.2, posts = [], sides = [[F.x0, F.z1, F.x1, F.z1, 0], [F.x1, F.z1, F.x1, F.z0, Math.PI / 2], [F.x1, F.z0, F.x0, F.z0, Math.PI], [F.x0, F.z0, F.x0, F.z1, -Math.PI / 2]];
+  const warnTex = canvasTex(512, 256, (g) => { g.fillStyle = '#f4f4f0'; g.fillRect(0, 0, 512, 256); g.fillStyle = '#c0392b'; g.fillRect(0, 0, 512, 80); g.fillStyle = '#ffffff'; g.textAlign = 'center'; g.textBaseline = 'middle'; fitText(g, 'WARNING', 256, 42, 480, 64); g.fillStyle = '#15161a'; fitText(g, 'RESTRICTED MILITARY AREA', 256, 128, 480, 46); fitText(g, 'NO ENTRY · AUTHORIZED PERSONNEL ONLY', 256, 196, 480, 32); g.strokeStyle = '#15161a'; g.lineWidth = 8; g.strokeRect(4, 4, 504, 248); });
+  const signs = [];
+  for (const [ax, az, bx, bz, out] of sides) {
+    const len = Math.hypot(bx - ax, bz - az), alongX = az === bz, t = chain.clone(); t.repeat.set(len / 1.2, FH2 / 1.2); t.needsUpdate = true;
+    const m = new THREE.Mesh(new THREE.PlaneGeometry(len, FH2), new THREE.MeshStandardMaterial({ map: t, alphaTest: 0.4, side: THREE.DoubleSide, roughness: 0.55, metalness: 0.5 }));
+    m.position.set((ax + bx) / 2, FH2 / 2, (az + bz) / 2); m.rotation.y = alongX ? 0 : Math.PI / 2; scene.add(m);
+    for (const y of [4.35, 4.6, 4.85]) P.push(alongX ? boxAt(len, 0.035, 0.035, (ax + bx) / 2, y, az, 0x2b2b2b) : boxAt(0.035, 0.035, len, ax, y, (az + bz) / 2, 0x2b2b2b));
+    for (let k = 0; k <= len; k += 6) posts.push({ x: ax + (bx - ax) * k / len, z: az + (bz - az) * k / len });
+    addBox(Math.min(ax, bx) - 0.4, Math.max(ax, bx) + 0.4, Math.min(az, bz) - 0.4, Math.max(az, bz) + 0.4, 7);
+    for (let k = 60; k < len - 30; k += 120) { const g = new THREE.PlaneGeometry(2.4, 1.2); g.rotateY(out); const ox = Math.sin(out) * 0.12, oz = Math.cos(out) * 0.12; signs.push(T(g, ax + (bx - ax) * k / len + ox, 2.2, az + (bz - az) * k / len + oz)); }
+  }
+  instanced(new THREE.BoxGeometry(0.14, 4.9, 0.14).translate(0, 2.45, 0), new THREE.MeshStandardMaterial({ color: 0x8a8f96, roughness: 0.5, metalness: 0.6 }), posts, (it, p, q, s2) => { p.set(it.x, 0, it.z); q.identity(); s2.set(1, 1, 1); });
+  // the main gate: closed gate, guard booth, boom barriers, signs
+  for (const gx of [GATE.x - 7, GATE.x + 7]) P.push(boxAt(0.6, 6, 0.6, gx, 3, F.z1, 0x2b2e33));
+  P.push(boxAt(14.6, 0.5, 0.5, GATE.x, 6.2, F.z1, 0x2b2e33), boxAt(14, 0.12, 0.12, GATE.x, 2.1, F.z1 + 0.05, 0x9aa0a8), boxAt(0.12, 4, 0.12, GATE.x, 2.1, F.z1 + 0.05, 0x9aa0a8));
+  P.push(boxAt(4, 2.8, 3.2, 31.5, 1.4, -760, 0xe8e6df), boxAt(4.05, 0.9, 3.25, 31.5, 1.9, -760, 0x1d2733), boxAt(5, 0.25, 4.2, 31.5, 2.95, -760, 0x3a3d42)); addBox(29.4, 33.6, -761.7, -758.3, 3.2);
+  for (const [px, dir] of [[GATE.x - 7.5, 1], [GATE.x + 7.5, -1]]) { P.push(boxAt(0.5, 1.1, 0.5, px, 0.55, GATE.z, 0xffc857)); for (let k = 0; k < 7; k++) P.push(boxAt(1, 0.18, 0.18, px + dir * (k + 0.5), 1.0, GATE.z, k % 2 ? 0xf4f4f0 : 0xc0392b)); }
+  addBox(CAUSE.x0, CAUSE.x1, GATE.z - 1, GATE.z + 1, 3);
+  const redTex = canvasTex(512, 256, (g) => { g.fillStyle = '#c0392b'; g.fillRect(0, 0, 512, 256); g.fillStyle = '#ffffff'; g.textAlign = 'center'; g.textBaseline = 'middle'; fitText(g, 'RESTRICTED AREA', 256, 92, 470, 70); fitText(g, 'STOP · NO ENTRY', 256, 180, 470, 48); });
+  const gateTex = canvasTex(1024, 160, (g) => { g.fillStyle = '#3e4524'; g.fillRect(0, 0, 1024, 160); g.strokeStyle = '#ffc857'; g.lineWidth = 8; g.strokeRect(6, 6, 1012, 148); g.fillStyle = '#ffc857'; g.textAlign = 'center'; g.textBaseline = 'middle'; fitText(g, 'FORT HALCÓN · MAIN GATE', 512, 84, 960, 92); });
+  const entTex = canvasTex(1024, 448, (g) => { g.fillStyle = '#3e4524'; g.fillRect(0, 0, 1024, 448); g.strokeStyle = '#ffc857'; g.lineWidth = 12; g.strokeRect(10, 10, 1004, 428); g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillStyle = '#ffc857'; fitText(g, 'FORT HALCÓN', 512, 130, 940, 150); g.fillStyle = '#f4f4f0'; fitText(g, 'MILITARY RESERVATION', 512, 262, 940, 70); g.fillStyle = '#ff8a7a'; fitText(g, 'AUTHORIZED PERSONNEL ONLY', 512, 360, 940, 60); });
+  const board = (tex, w, h, x, y, z, yaw = 0) => { const m = new THREE.Mesh(new THREE.PlaneGeometry(w, h), new THREE.MeshBasicMaterial({ map: tex, color: new THREE.Color(0.95, 0.95, 0.95) })); m.position.set(x, y, z); m.rotation.y = yaw; scene.add(m); return m; };
+  board(gateTex, 14, 2.2, GATE.x, 7.6, F.z1 + 0.3); board(redTex, 3.4, 1.7, GATE.x - 4, 3.2, F.z1 + 0.15); board(redTex, 3.4, 1.7, GATE.x + 4, 3.2, F.z1 + 0.15); board(redTex, 1.8, 0.9, 31.5, 2.2, -758.35);
+  board(entTex, 6, 2.6, 32, 3.6, -512); P.push(boxAt(0.2, 5, 0.2, 29.3, 2.5, -512.1, 0x2b2e33), boxAt(0.2, 5, 0.2, 34.7, 2.5, -512.1, 0x2b2e33));
+  { const sm = new THREE.Mesh(mergeAll(signs), new THREE.MeshBasicMaterial({ map: warnTex, side: THREE.DoubleSide, color: new THREE.Color(0.95, 0.95, 0.95) })); scene.add(sm); }
+  // watchtowers with sweeping searchlights (night)
+  const beamTex2 = canvasTex(4, 128, (g) => { const gr = g.createLinearGradient(0, 0, 0, 128); gr.addColorStop(0, 'rgba(255,255,255,1)'); gr.addColorStop(1, 'rgba(255,255,255,0)'); g.fillStyle = gr; g.fillRect(0, 0, 4, 128); });
+  mil.beamMat = new THREE.MeshBasicMaterial({ color: 0xfff2d0, map: beamTex2, transparent: true, opacity: 0, depthWrite: false, blending: THREE.AdditiveBlending, side: THREE.DoubleSide });
+  mil.redMat = new THREE.MeshBasicMaterial({ color: 0xff2010 });
+  const beamGeo = new THREE.ConeGeometry(5, 40, 18, 1, true).translate(0, -20, 0), reds = [];
+  for (const [x, z, out] of [[F.x0 + 5, F.z1 - 5, -Math.PI / 4], [F.x1 - 5, F.z1 - 5, Math.PI / 4], [F.x0 + 5, F.z0 + 5, -Math.PI * 0.75], [F.x1 - 5, F.z0 + 5, Math.PI * 0.75], [GATE.x - 16, F.z1 - 6, -0.3], [GATE.x + 16, F.z1 - 6, 0.3], [F.x0 + 5, -1060, -Math.PI / 2], [F.x1 - 5, -1060, Math.PI / 2]]) {
+    for (const [dx, dz] of [[-1.6, -1.6], [1.6, -1.6], [-1.6, 1.6], [1.6, 1.6]]) P.push(boxAt(0.3, 10, 0.3, x + dx, 5, z + dz, 0x6b6f63));
+    P.push(boxAt(4.6, 0.3, 4.6, x, 10.1, z, 0x4b4f45), boxAt(4.4, 1.1, 4.4, x, 10.8, z, OL), boxAt(4.45, 0.9, 4.45, x, 11.8, z, 0x15171a), boxAt(5.2, 0.3, 5.2, x, 12.45, z, 0x3a3d42), boxAt(0.6, 0.5, 0.6, x + Math.sin(out) * 1.6, 12.9, z + Math.cos(out) * 1.6, 0x9aa0a8));
+    reds.push(boxAt(0.3, 0.3, 0.3, x, 12.8, z)); addBox(x - 2, x + 2, z - 2, z + 2, 12.6);
+    const g = new THREE.Group(); g.position.set(x + Math.sin(out) * 1.6, 12.9, z + Math.cos(out) * 1.6); g.rotation.order = 'YXZ'; const cone = new THREE.Mesh(beamGeo, mil.beamMat); cone.rotation.x = -1.0; g.add(cone); g.visible = false; scene.add(g);
+    mil.beams.push({ g, base: out, ph: Math.random() * 6 });
+  }
+  // hangars along the north fence
+  for (let i = 0; i < 5; i++) {
+    const hx = -250 + i * 65, hz = -1322, r = 13, L = 36;
+    const arch = new THREE.CylinderGeometry(r, r, L, 18, 1, true, Math.PI / 2, Math.PI); arch.rotateX(Math.PI / 2); P.push(T(colorize(arch, 0x6e7468), hx, 0, hz));
+    const front = new THREE.CircleGeometry(r, 18, 0, Math.PI); P.push(T(colorize(front, 0x575d52), hx, 0, hz + L / 2)); const back = new THREE.CircleGeometry(r, 18, 0, Math.PI); back.rotateY(Math.PI); P.push(T(colorize(back, 0x575d52), hx, 0, hz - L / 2));
+    P.push(boxAt(18, 9.5, 0.2, hx, 4.75, hz + L / 2 + 0.1, 0x3f443c)); for (let k = -2; k <= 2; k++) P.push(boxAt(0.08, 9.5, 0.25, hx + k * 3.6, 4.75, hz + L / 2 + 0.12, 0x2b2e33));
+    reds.push(boxAt(16, 0.15, 0.15, hx, 10.2, hz + L / 2 + 0.3)); addBox(hx - r, hx + r, hz - L / 2, hz + L / 2, r);
+  }
+  // jets on the apron, helicopters on their pads, control tower, radar
+  const jet = jetGeo(); for (let i = 0; i < 6; i++) P.push(place(jet, -240 + i * 60, -1262));
+  const heli = heliGeo(); P.push(place(heli, 230, -1270, 0.4), place(heli, 350, -1270, -0.3));
+  P.push(boxAt(7, 22, 7, 470, 11, -1285, 0xd8d4c8), boxAt(11, 0.6, 11, 470, 22.3, -1285, 0x3a3d42), boxAt(10, 3.6, 10, 470, 24.4, -1285, 0x1a232b), boxAt(11, 0.5, 11, 470, 26.45, -1285, 0x3a3d42), boxAt(0.2, 5, 0.2, 470, 29.2, -1285, 0x9aa0a8)); reds.push(boxAt(0.4, 0.4, 0.4, 470, 31.8, -1285));
+  for (const [dx, dz] of [[-1.6, -1.6], [1.6, -1.6], [-1.6, 1.6], [1.6, 1.6]]) P.push(boxAt(0.25, 14, 0.25, 545 + dx, 7, -1320 + dz, 0xb5b9bf)); P.push(boxAt(6, 2.5, 6, 545, 1.25, -1320, 0xd8d4c8));
+  { const g = new THREE.Group(); g.position.set(545, 15.2, -1320); const dish = new THREE.SphereGeometry(5, 18, 8, 0, Math.PI * 2, 0, 0.62); dish.rotateX(Math.PI / 2); dish.translate(0, 0, -3.6); const parts = [colorize(dish, 0xe8e8e8), boxAt(0.4, 0.4, 3.2, 0, 0, -1.6, 0x9aa0a8), boxAt(1.2, 1.2, 1.2, 0, 0, 0, 0x3a3d42)]; const dm = new THREE.Mesh(mergeAll(parts), new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.4, metalness: 0.3, side: THREE.DoubleSide })); dm.castShadow = true; g.add(dm); scene.add(g); mil.radar = g; }
+  // barracks, HQ and mess hall
+  for (const bz of [-850, -890, -930]) { addB(-250, bz, 90, 16, 7.6, 1, 0xcfc6a8, 0); addBox(-295, -205, bz - 8, bz + 8, 7.6); }
+  addB(-110, -840, 50, 26, 11, 1, 0xb9b28f, 0); addBox(-135, -85, -853, -827, 11); addB(-110, -905, 40, 22, 6.5, 1, 0xa7a38a, 0); addBox(-130, -90, -916, -894, 6.5);
+  // vehicle depot and fuel farm
+  const tank = tankGeo(), truck = truckGeo(), jeep = jeepGeo();
+  for (let i = 0; i < 4; i++) P.push(place(tank, 220 + i * 42, -1030));
+  for (let i = 0; i < 6; i++) P.push(place(truck, 220 + i * 38, -960));
+  for (let i = 0; i < 4; i++) P.push(place(jeep, 240 + i * 30, -900));
+  for (const fz of [-1035, -985, -935]) { const c = new THREE.CylinderGeometry(7, 7, 9, 24); P.push(T(colorize(c, 0xe9e7e0), 522, 4.5, fz), T(colorize(new THREE.CylinderGeometry(7.1, 7.1, 0.4, 24), 0xc0392b), 522, 6.2, fz)); }
+  // flag over the parade ground (an original flag: teal and white bands with a gold sun)
+  P.push(boxAt(0.22, 14, 0.22, 100, 7, -828, 0xd9dde2));
+  { const ft = canvasTex(256, 160, (g) => { g.fillStyle = '#18b3a6'; g.fillRect(0, 0, 256, 160); g.fillStyle = '#f4f4f0'; g.fillRect(0, 54, 256, 52); g.fillStyle = '#ffc857'; g.beginPath(); g.arc(128, 80, 30, 0, 7); g.fill(); });
+    const fl = new THREE.Mesh(new THREE.PlaneGeometry(4, 2.5).translate(2, 0, 0), new THREE.MeshStandardMaterial({ map: ft, side: THREE.DoubleSide, roughness: 0.8 })); fl.position.set(100.12, 12.6, -828); scene.add(fl); mil.flag = fl; }
+  // runway edge lights
+  const rl = []; for (let x = -315; x <= 535; x += 30) rl.push({ x, z: -1216 }, { x, z: -1174 });
+  instanced(boxAt(0.4, 0.25, 0.4, 0, 0.12, 0), lampMat, rl, (it, p, q, s2) => { p.set(it.x, 0, it.z); q.identity(); s2.set(1, 1, 1); }, { cast: false, receive: false });
+  const m = new THREE.Mesh(mergeAll(P), vcolMat); m.castShadow = m.receiveShadow = true; scene.add(m);
+  scene.add(new THREE.Mesh(mergeAll(reds), mil.redMat));
+  // soldiers: two gate guards, patrols, a squad on the parade ground
+  const look = () => ({ skin: mpick(SKINS), shirt: 0x4b5320, pants: 0x55603a, shoes: 0x1a1a1a, hair: 0x3d4a2a, shades: Math.random() < 0.5, shorts: false });
+  const add = (x, z, yaw, kind, path) => { const h = makeHuman(look(), false); h.root.position.set(x, 0, z); h.root.rotation.y = yaw; scene.add(h.root); mil.soldiers.push({ h, x, z, yaw, yaw0: yaw, kind, path, i: 0, wait: 0 }); };
+  add(GATE.x - 10.5, GATE.z + 3, 0, 'guard'); add(GATE.x + 10.5, GATE.z + 3, 0, 'guard');
+  add(-300, -785, Math.PI / 2, 'walk', [[-300, -785], [-30, -785]]); add(-280, -1236, Math.PI / 2, 'walk', [[-280, -1236], [110, -1236]]); add(210, -880, Math.PI / 2, 'walk', [[210, -880], [500, -880], [500, -1080], [210, -1080]]);
+  add(560, -800, Math.PI, 'walk', [[570, -790], [570, -1330]]); add(-330, -1330, 0, 'walk', [[-330, -1330], [-330, -800]]);
+  for (let r = 0; r < 2; r++) for (let c = 0; c < 4; c++) add(85 + c * 4, -845 - r * 4, 0, 'stand');
+  mil.built = true;
+}
+function updateMilitary(dt) {
+  if (!mil.built) return;
+  const cp = camera.position, cd = Math.hypot(cp.x - 120, cp.z + 1060), nt = sunState.night, t = game.time;
+  mil.beamMat.opacity = nt * 0.3; mil.redMat.color.setRGB(1, 0.12, 0.06).multiplyScalar(0.7 + nt * 3 * (Math.sin(t * 3) > 0 ? 1 : 0.2));
+  if (cd < 1500) { for (const b of mil.beams) { b.g.visible = nt > 0.05; b.g.rotation.y = b.base + Math.sin(t * 0.35 + b.ph) * 0.85; } mil.radar.rotation.y += dt * 0.9; mil.flag.rotation.y = Math.sin(t * 1.3) * 0.2; }
+  if (cd < 700) for (const s of mil.soldiers) {
+    let sp = 0;
+    if (s.kind === 'walk') { const [tx, tz] = s.path[s.i], dx = tx - s.x, dz = tz - s.z, l = Math.hypot(dx, dz); if (l < 0.4) { s.i = (s.i + 1) % s.path.length; s.wait = 2; } else if (s.wait > 0) s.wait -= dt; else { s.x += dx / l * 1.3 * dt; s.z += dz / l * 1.3 * dt; sp = 1.3; s.yaw += angDiff(s.yaw, Math.atan2(dx, dz)) * (1 - Math.exp(-6 * dt)); } }
+    else if (s.kind === 'guard') { const f = player.car ? player.car.pos : player.pos, dd = Math.hypot(f.x - s.x, f.z - s.z); s.yaw += angDiff(s.yaw, dd < 30 && !game.inside ? Math.atan2(f.x - s.x, f.z - s.z) : s.yaw0) * (1 - Math.exp(-3 * dt)); s.stop = dd < 18 && !game.inside; }
+    s.h.root.position.set(s.x, 0, s.z); s.h.root.rotation.y = s.yaw; poseHuman(s.h, dt, sp, false, t);
+    if (s.stop) { s.h.armR.rotation.x = -1.5; s.h.armR.rotation.z = -0.15; s.h.elbowR.rotation.x = -0.1; }
+  }
+  // keep everybody out
+  if (game.state !== 'play') return;
+  mil.warnCD -= dt;
+  if (game.inside || game.ride || game.wheel) { mil.inT = 0; mil.near = false; return; }
+  const f = player.car ? player.car.pos : player.pos, inside = f.x > FENCE.x0 && f.x < FENCE.x1 && f.z > FENCE.z0 && f.z < FENCE.z1;
+  mil.near = !inside && rectD(FENCE, f.x, f.z) < 40;
+  if (inside) {
+    if (mil.inT === 0) { sfxAlarm(); crime(Math.max(1, STAR_AT[2] - game.heat), 'Trespassing on a military base'); toast('ALARM! Intruder on Fort Halcón · get out now!', 3500); }
+    mil.inT += dt;
+    if (mil.inT > 6) { mil.inT = 0; fadeFlash('Military police escort you off the base…', 1.4); if (player.car) player.car.place(GATE.x, GATE.z + 40, 0); else { player.pos.set(GATE.x, 0.1, GATE.z + 40); player.vel.set(0, 0, 0); } toast('Escorted off Fort Halcón · stay out!', 3500); }
+  } else {
+    mil.inT = 0;
+    if (Math.hypot(f.x - GATE.x, f.z - GATE.z) < 18 && mil.warnCD <= 0) { mil.warnCD = 14; toast(mpick(['Guard: "Halt! This is a restricted military area."', 'Guard: "No entry without clearance. Turn around, please."', 'Guard: "Authorized personnel only. Move along."']), 3400); }
+  }
+}
 function islandZone(addB) {
   const I = ISLA, icx = (I.x0 + I.x1) / 2, icz = (I.z0 + I.z1) / 2;
   const tg = new THREE.PlaneGeometry(I.x1 - I.x0 + 260, I.z1 - I.z0 + 260, 96, 76); tg.rotateX(-Math.PI / 2); tg.translate(icx, 0, icz);
@@ -1076,7 +1257,7 @@ function extraZones(addB, roofBoxes, blink) {
   instanced(boxAt(0.5, 0.3, 0.5, 0, 0.15, 0), lampMat, rl, (it, p, q, s) => { p.set(it.x, 0, it.z); q.identity(); s.set(1, 1, 1); }, { cast: false, receive: false });
   const sign = new THREE.Mesh(new THREE.PlaneGeometry(150, 13), signMat.clone()); sign.material.map = textTex('SOLANO INTERNATIONAL', 2048, 176, '#ffffff'); sign.material.color.setRGB(0.9, 1.6, 1.5); sign.position.set(-135, 25, 799); sign.rotation.y = Math.PI; scene.add(sign); signs.push(sign);
   flight.m = makeAirliner();
-  portZone(addB, roofBoxes, blink); islandZone(addB); for (const d of DESTS) if (d.town) townZone(addB, d);
+  portZone(addB, roofBoxes, blink); islandZone(addB); buildMilitary(addB); for (const d of DESTS) if (d.town) townZone(addB, d);
   lots.push({ x0: -270, x1: -30, z0: 690, z1: 770, y: 0 }, { x0: 560, x1: 680, z0: 150, z1: 290, y: 0 });
   blocks.push({ cx: -494, cz: 0, kind: 'walk', rect: { x0: -497, x1: -491, z0: -380, z1: 380 } }, { cx: -120, cz: 795, kind: 'walk', rect: { x0: -280, x1: 40, z0: 793, z1: 798.5 } }, { cx: 690, cz: 65, kind: 'walk', rect: { x0: 596, x1: 784, z0: 31, z1: 99 } });
 }
@@ -3018,7 +3199,7 @@ function setWaypoint(x, z) {
 }
 const bm = { cx: 0, cz: 300, zoom: 0.4, ptrs: new Map(), moved: 0, pinch: 0 };
 const bmCanvas = $('bmCanvas'), bmx = bmCanvas.getContext('2d');
-const MAP_LABELS = [['Downtown Solano', 120, 40, 1], ['Ocean Row', -440, -60, 0], ['Marisol Beach', -548, 140, 0], ['Coral Gardens', 0, -390, 0], ['Palm Heights', 40, 395, 0], ['Little Rio', -200, 200, 0], ['Harbor East', 400, -120, 0], ['Midtown', -160, -160, 0], ['Port of Solano', 690, -210, 1], ['Solano International', 250, 990, 1], ['Solano Freeway', 0, -546, 0], ['Isla Verde', -2300, -600, 1], ['San Marco', 2550, -20, 1], ['Port Coral', -250, -2450, 1], ['Santa Luz', 1650, -2050, 1], ['Bayside', 1850, 2450, 1]];
+const MAP_LABELS = [['Downtown Solano', 120, 40, 1], ['Ocean Row', -440, -60, 0], ['Marisol Beach', -548, 140, 0], ['Coral Gardens', 0, -390, 0], ['Palm Heights', 40, 395, 0], ['Little Rio', -200, 200, 0], ['Harbor East', 400, -120, 0], ['Midtown', -160, -160, 0], ['Port of Solano', 690, -210, 1], ['Solano International', 250, 990, 1], ['Solano Freeway', 0, -546, 0], ['Fort Halcón · Restricted', 120, -1060, 1], ['Isla Verde', -2300, -600, 1], ['San Marco', 2550, -20, 1], ['Port Coral', -250, -2450, 1], ['Santa Luz', 1650, -2050, 1], ['Bayside', 1850, 2450, 1]];
 function openMap() { if (game.state !== 'play') return; game.state = 'map'; $('bigmap').hidden = false; const f = focusPos(); bm.cx = f.x; bm.cz = f.z; bm.zoom = Math.min(innerWidth, innerHeight) / 650; if (document.pointerLockElement) document.exitPointerLock(); drawBigmap(); }
 function closeMap() { if (game.state !== 'map') return; $('bigmap').hidden = true; game.state = 'play'; bm.ptrs.clear(); }
 function zoomBy(k) { bm.zoom = clamp(bm.zoom * k, 0.18, 4); }
@@ -3096,6 +3277,7 @@ function initAudio() {
 function setSound(on) { game.sound = on; store.set('sound', on); if (audio.master) audio.master.gain.setTargetAtTime(on ? 0.85 : 0, audio.ctx.currentTime, 0.05); $('soundBtn').textContent = 'Sound: ' + (on ? 'on' : 'off'); }
 function env(node, t, a, peak, dec) { node.gain.setValueAtTime(0.0001, t); node.gain.exponentialRampToValueAtTime(peak, t + a); node.gain.exponentialRampToValueAtTime(0.0001, t + a + dec); }
 function sfxImpact(k) { const ctx = audio.ctx; if (!ctx) return; const s = ctx.createBufferSource(); s.buffer = audio.noise; const f = ctx.createBiquadFilter(); f.type = 'lowpass'; f.frequency.value = 500 + k * 900; const g = ctx.createGain(); s.connect(f); f.connect(g); g.connect(audio.master); const t = ctx.currentTime; env(g, t, 0.005, 0.25 + k * 0.5, 0.3); s.start(t); s.stop(t + 0.4); }
+function sfxAlarm() { const ctx = audio.ctx; if (!ctx) return; const t = ctx.currentTime; for (let i = 0; i < 8; i++) { const o = ctx.createOscillator(), g = ctx.createGain(); o.type = 'square'; o.frequency.value = i % 2 ? 620 : 880; o.connect(g); g.connect(audio.master); env(g, t + i * 0.32, 0.02, 0.1, 0.26); o.start(t + i * 0.32); o.stop(t + i * 0.32 + 0.32); } }
 function sfxChime() { const ctx = audio.ctx; if (!ctx) return; const t = ctx.currentTime; [880, 1174.7, 1568].forEach((fq, i) => { const o = ctx.createOscillator(); o.type = 'sine'; o.frequency.value = fq; const g = ctx.createGain(); o.connect(g); g.connect(audio.master); env(g, t + i * 0.07, 0.01, 0.18, 0.35); o.start(t + i * 0.07); o.stop(t + i * 0.07 + 0.5); }); }
 function sfxHorn(vol, at) {
   const ctx = audio.ctx; if (!ctx) return; let v = vol; if (at) { const d = at.distanceTo(camera.position); v *= clamp(12 / Math.max(d, 1), 0, 1); if (v < 0.02) return; }
@@ -3309,7 +3491,7 @@ function buildMapImage(B, parks) {
   const S = MAP.px, SH = Math.round(MAP.px * MAP.h / MAP.w), c = document.createElement('canvas'); c.width = S; c.height = SH; const g = c.getContext('2d'), img = g.createImageData(S, SH);
   for (let py = 0; py < SH; py++) for (let px = 0; px < S; px++) {
     const x = MAP.x0 + (px + 0.5) * MAP.w / S, z = MAP.z0 + (py + 0.5) * MAP.w / S, h = terrainH(x, z), i = (py * S + px) * 4;
-    let r, gg, b; if (h < WATER_Y) { const k = smooth(0, 6, WATER_Y - h); r = lerp(40, 18, k); gg = lerp(150, 70, k); b = lerp(160, 110, k); } else if (h < 0) { r = 214; gg = 196; b = 150; } else { const zn = zoneAt(x, z); if (zn === 'airport' || zn === 'isla') { r = 62; gg = 88; b = 52; } else if (zn === 'port') { r = 74; gg = 72; b = 82; } else { r = 56; gg = 52; b = 66; } }
+    let r, gg, b; if (h < WATER_Y) { const k = smooth(0, 6, WATER_Y - h); r = lerp(40, 18, k); gg = lerp(150, 70, k); b = lerp(160, 110, k); } else if (h < 0) { r = 214; gg = 196; b = 150; } else { const zn = zoneAt(x, z); if (zn === 'mil') { r = 86; gg = 94; b = 64; } else if (zn === 'airport' || zn === 'isla') { r = 62; gg = 88; b = 52; } else if (zn === 'port') { r = 74; gg = 72; b = 82; } else { r = 56; gg = 52; b = 66; } }
     img.data[i] = r; img.data[i + 1] = gg; img.data[i + 2] = b; img.data[i + 3] = 255;
   }
   g.putImageData(img, 0, 0);
@@ -3388,6 +3570,7 @@ function updateHUD(dt) {
   if (game.ride) hint = TOUCH ? 'Scenic flight · tap LAND to skip ahead' : 'Scenic flight · press F to skip ahead';
   if (fw) hint = TOUCH ? 'Ferris wheel · $10 · tap RIDE' : 'Press F to ride the Ferris wheel · $10';
   if (game.wheel) hint = `Ferris wheel · ${Math.round(game.wheel.pos.y)} m up · ${TOUCH ? 'drag to look · GET OFF to stop' : 'mouse to look · F to get off'}`;
+  if (!hint && mil.near) hint = 'Fort Halcón · restricted military area · keep out';
   if (hint !== lastHint) { lastHint = hint; ui.hint.textContent = hint; ui.hint.hidden = !hint; }
   const j = game.job;
   if (j) { const m = `Deliver ${j.cargo} to ${j.where}`; if (m !== lastMission) { lastMission = m; ui.mTitle.textContent = m; } ui.mission.hidden = false; const s = Math.max(0, Math.ceil(j.t)); ui.mTimer.textContent = `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`; ui.mTimer.classList.toggle('low', s <= 10); }
@@ -3593,7 +3776,7 @@ function step(dt) {
   let tc = 0; for (const v of vehicles) if (v.driver === 'ai' && !v.leaving && v.ai.kind !== 'hwy') tc++;
   if (tc < TRAFFIC_N && Math.random() < 0.05) { const type = mpick(TRAFFIC_TYPES), car = new Vehicle(type, type === 'taxi' ? 0xf4c20d : mpick(PAINTS)); if (!recycleCar(car)) car.dispose(); }
   collideVehicles();
-  updateFlight(dt); updatePort(dt, sunState.night); updateDests(dt);
+  updateFlight(dt); updatePort(dt, sunState.night); updateDests(dt); updateMilitary(dt);
   // pedestrians
   for (const p of peds) {
     const d = p.pos.distanceTo(camera.position);
@@ -3677,7 +3860,7 @@ function start(data) {
     applyQuality(data.quality || store.get('quality', 'ultra'));
     updateDaylight(0); refreshEnv(true);
     renderer.compile(scene, camera);
-    game.state = 'title'; window.__solanoRunning = true; window.__solanoDebug = { Vehicle, PAINTS, ROOMS, ferris, famList: fam.list, renderer, game, camera, cam, player, officers, police, shopsData, vehicles, flight, RING_H, peek: () => ({ shopCD, t: +game.time.toFixed(2) }), crime: (n) => crime(n, 'Test heat') };
+    game.state = 'title'; window.__solanoRunning = true; window.__solanoDebug = { mil, Vehicle, PAINTS, ROOMS, ferris, famList: fam.list, renderer, game, camera, cam, player, officers, police, shopsData, vehicles, flight, RING_H, peek: () => ({ shopCD, t: +game.time.toFixed(2) }), crime: (n) => crime(n, 'Test heat') };
     $('loading').hidden = true; $('title').hidden = false;
     renderer.setAnimationLoop(frame);
   } catch (e) { console.error(e); fail('The city failed to build: ' + e.message); }
