@@ -43,6 +43,8 @@ Open `index.html` in Safari (or any modern browser). Landscape works best on a p
 - PBR materials with image-based lighting from a physically based sky, ACES tone mapping
 - Dynamic day/night cycle (16 min per day), moon, stars, night sky dome
 - 4096 px sun/moon shadows that follow the camera (texel-snapped)
+- Detailed original people: faces (eyes, brows, nose, mouth, ears), seven hair styles plus beards, caps and helmets, shaped torsos and builds, tees, long sleeves, tanks, open jackets and hoodies, belts, two-tone sneakers and backpacks, with a light low-detail version for distant crowds
+- Lit shop windows with store interiors, OPEN neon, sidewalk signs and planters; airport ground crew vehicles at every gate, a drop-off canopy with taxis and blue taxiway lights; sandbags, jersey barriers, camo nets, tents and supply crates at Fort Halcón
 - Detailed original car models: sculpted bodies with wheel arches, tinted glass with a painted roof, LED headlight strips and full-width tail-light bars, grille, mirrors, door lines, chrome trim, plates, diffuser and exhaust tips, 5-spoke rims on rounded tyres (sports cars get dark rims and a wing, SUVs roof rails), with a matching low-detail version for distant cars
 - HDR bloom, 4x MSAA, clear-coat car paint, procedural glass curtain walls
 - Ocean with analytic shoreline depth, multi-wave normals, foam
