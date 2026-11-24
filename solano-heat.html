@@ -1187,8 +1187,83 @@ function buildMilitary(addB) {
   add(560, -800, Math.PI, 'walk', [[570, -790], [570, -1330]]); add(-330, -1330, 0, 'walk', [[-330, -1330], [-330, -800]]);
   for (let r = 0; r < 2; r++) for (let c = 0; c < 4; c++) add(85 + c * 4, -845 - r * 4, 0, 'stand');
   for (const [tx, tz] of airportTaxis) { const v = new Vehicle('taxi', 0xffc21a); v.place(tx, tz, Math.PI / 2); v.keep = true; }
-  mil.trucks = [45, 52, 59].map((x) => { const v = new Vehicle('suv', 0x4b5320); v.place(x, -800, Math.PI); v.keep = true; return v; });
+  mil.trucks = [45, 52, 59].map((x) => { const v = new Vehicle('pickup', 0x4b5320); v.place(x, -800, Math.PI); v.keep = true; v.army = true; return v; });
+  buildDutyBoard();
   mil.built = true;
+}
+// ---- paid duties at Fort Halcón: pick one at the duty board, finish it in time, get paid; ranks raise the pay
+const MIL_RANKS = [{ name: 'Private', at: 0, mult: 1 }, { name: 'Corporal', at: 3, mult: 1.25 }, { name: 'Sergeant', at: 7, mult: 1.5 }, { name: 'Lieutenant', at: 12, mult: 1.8 }, { name: 'Captain', at: 20, mult: 2.2 }];
+const milRank = () => { let r = MIL_RANKS[0]; for (const k of MIL_RANKS) if (game.milDuties >= k.at) r = k; return r; };
+const DUTIES = [
+  { kind: 'supply', name: 'Supply run', pay: 320, time: 240, desc: 'Drive an army pickup to the Port of Solano cargo lot, load crates, bring them back to the base depot' },
+  { kind: 'patrol', name: 'Fence patrol', pay: 220, time: 210, desc: 'Check 7 posts around the inside of the fence · an army pickup makes it quicker' },
+  { kind: 'air', name: 'Air patrol', pay: 260, time: 300, desc: 'Fly the helicopter patrol over the city and land back on the pad' },
+  { kind: 'drill', name: 'Obstacle drill', pay: 140, time: 70, desc: 'Run through 8 cones on the parade ground, on foot' },
+];
+const DRILL_PTS = [[65, -870], [85, -862], [105, -872], [125, -862], [135, -840], [120, -822], [80, -822], [65, -838]];
+const PATROL_PTS = [[20, -790], [-320, -800], [-330, -1050], [-280, -1236], [300, -1236], [560, -1230], [565, -900]];
+const duty = { on: false, kind: null, name: '', step: 0, pts: [], t: 0, total: 0, basePay: 0, tgt: null, marker: null, warned: false };
+function buildDutyBoard() {
+  const tex = canvasTex(512, 300, (g) => { g.fillStyle = '#3e4524'; g.fillRect(0, 0, 512, 300); g.strokeStyle = '#ffc857'; g.lineWidth = 10; g.strokeRect(8, 8, 496, 284); g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillStyle = '#ffc857'; fitText(g, 'DUTY BOARD', 256, 70, 460, 64); g.fillStyle = '#f4f4f0'; fitText(g, 'PAID JOBS FOR ENLISTED', 256, 140, 460, 34); g.fillStyle = '#9be15d'; for (const [i, t] of ['SUPPLY RUN', 'FENCE PATROL', 'AIR PATROL', 'OBSTACLE DRILL'].entries()) fitText(g, '• ' + t, 256, 188 + i * 26, 440, 22); });
+  const bd = new THREE.Mesh(new THREE.PlaneGeometry(2.4, 1.4), new THREE.MeshBasicMaterial({ map: tex, color: new THREE.Color(0.95, 0.95, 0.95) })); bd.position.set(30.55, 1.9, -790); bd.rotation.y = -Math.PI / 2; scene.add(bd);
+  const P = [boxAt(0.12, 2.6, 2.6, 30.65, 1.9, -790, 0x2b2e33), boxAt(0.15, 2.6, 0.15, 30.7, 1.3, -791.25, 0x2b2e33), boxAt(0.15, 2.6, 0.15, 30.7, 1.3, -788.75, 0x2b2e33)];
+  for (const [x, z] of DRILL_PTS) P.push(colorize(new THREE.ConeGeometry(0.28, 0.75, 12).translate(x + 1.6, 0.38, z), 0xff6b2d), boxAt(0.5, 0.05, 0.5, x + 1.6, 0.025, z, 0xff6b2d));
+  const m = new THREE.Mesh(mergeAll(P), vcolMat); m.castShadow = true; scene.add(m); addBox(30.55, 30.8, -791.3, -788.7, 3);
+  const h = makeHuman({ skin: 0x8d5a3b, shirt: 0x4b5320, pants: 0x55603a, shoes: 0x1a1a1a, hair: 0x2b1d14, shades: false, shorts: false, top: 'long', cap: 0x3d4a2a, beard: false, bag: 0 }, false);
+  h.root.position.set(32.6, 0, -792.6); h.root.rotation.y = -Math.PI / 2; scene.add(h.root); mil.soldiers.push({ h, x: 32.6, z: -792.6, yaw: -Math.PI / 2, yaw0: -Math.PI / 2, kind: 'sarge' });
+}
+const nearDutyBoard = () => game.enlisted && onFootFree() && Math.hypot(player.pos.x - 29.2, player.pos.z + 790) < 2.6;
+function dutyItems() {
+  const rk = milRank(), nx = MIL_RANKS[MIL_RANKS.indexOf(rk) + 1];
+  const rankRow = { name: `Rank: ${rk.name}`, desc: nx ? `${game.milDuties} duties done · promoted to ${nx.name} after ${nx.at} · pay ${Math.round(rk.mult * 100)}%` : `${game.milDuties} duties done · top rank · pay ${Math.round(rk.mult * 100)}%`, price: 0, sw: 0xffc857, disabled: true, buy: () => null };
+  if (duty.on) return [{ name: `Quit: ${duty.name}`, desc: 'Give up this duty (no pay)', price: 0, buy: () => { closeShopPanel(); dutyEnd(false, 'You quit the duty'); return null; } }, rankRow];
+  return [...DUTIES.map((d) => ({ name: d.name, desc: `${d.desc} · ${Math.floor(d.time / 60)}:${String(d.time % 60).padStart(2, '0')} to do it`, price: 0, pay: Math.round(d.pay * rk.mult / 10) * 10, sw: 0x9be15d, buy: () => { closeShopPanel(); startDuty(d); return null; } })), rankRow];
+}
+function startDuty(d) {
+  if (game.job) { toast('Finish your delivery job first'); return; }
+  const P = (arr, label) => arr.map(([x, z], i) => ({ x, z, label: label(i) }));
+  duty.pts = d.kind === 'supply' ? [{ x: 620, z: 220, label: 'Port of Solano cargo lot', need: 'army' }, { x: 450, z: -930, label: 'Fort Halcón supply depot', need: 'cargo' }]
+    : d.kind === 'patrol' ? P(PATROL_PTS, (i) => `Post ${i + 1}`) : d.kind === 'drill' ? P(DRILL_PTS, (i) => `Cone ${i + 1}`) : [{ x: 290, z: -1256, label: 'Helipad · take off', heli: true }];
+  Object.assign(duty, { on: true, kind: d.kind, name: d.name, step: 0, t: d.time, total: d.time, basePay: d.pay * milRank().mult, warned: false, tgt: { x: duty.pts[0].x, z: duty.pts[0].z, path: [], pathT: 0 } });
+  if (!duty.marker) duty.marker = makeMarker(new THREE.Color(0.7, 3.6, 1.0), true);
+  if (d.kind === 'supply' && !mil.trucks.some((v) => v.driver !== 'player' && Math.hypot(v.pos.x - 52, v.pos.z + 800) < 40)) { const v = mil.trucks.find((x) => x.driver !== 'player'); if (v) { v.place(45, -800, Math.PI); v.vx = v.vz = 0; } }
+  const how = { supply: 'Take an army pickup from beside the gate and drive to the Port of Solano cargo lot', patrol: 'Check all 7 posts around the fence · follow the green beam', air: 'Head to the helipad and tap FLY', drill: 'On foot: run through all 8 cones on the parade ground' };
+  toast(`${d.name} · ${how[d.kind]}`, 4200); sfxChime();
+}
+function loadCrates(v) {
+  if (v.crates) return; const st = carStyle(v.type), y = (st.deck ? st.deck[1] : 1.2) + 0.35, z0 = st.cab.q[0] - 0.55, G = [];
+  for (const [x, z, c] of [[0.42, z0, 0x6b5a3c], [-0.42, z0, 0x5b6236], [0.42, z0 - 0.85, 0x5b6236], [-0.42, z0 - 0.85, 0x6b5a3c], [0, z0 - 0.4, 0x6b5a3c]]) G.push(boxAt(0.7, 0.68, 0.7, x, y + (c && x === 0 ? 0.7 : 0), z, c), boxAt(0.72, 0.06, 0.72, x, y + 0.36 + (x === 0 ? 0.7 : 0), z, 0x3d3226));
+  v.crates = new THREE.Mesh(mergeAll(G), vcolMat); v.crates.castShadow = true; v.body.add(v.crates);
+}
+function unloadCrates(v) { if (!v.crates) return; v.body.remove(v.crates); v.crates.geometry.dispose(); v.crates = null; }
+function dutyTitle() { const pt = duty.pts[duty.step]; return `${duty.name} · ${duty.pts.length > 2 ? `${duty.step + 1}/${duty.pts.length} · ` : ''}${game.heli && duty.kind === 'air' ? 'fly the patrol route' : pt.label}`; }
+function dutyEnd(ok, why) {
+  if (!duty.on) return; const rk0 = milRank(); duty.on = false; duty.tgt = null; if (duty.marker) duty.marker.visible = false; $('mission').hidden = true;
+  for (const v of mil.trucks) unloadCrates(v);
+  if (ok) {
+    const pay = Math.round(duty.basePay / 10) * 10 + Math.max(0, Math.round(duty.t)); addCash(pay); game.milDuties++; store.set('milDuties', game.milDuties); sfxChime();
+    showBanner('DUTY COMPLETE', `+$${pay.toLocaleString('en-US')} · ${duty.name} · ${Math.round(duty.t)} s to spare`, 'var(--money)', 2800);
+    const rk1 = milRank(); if (rk1 !== rk0) setTimeout(() => { showBanner('PROMOTED', `${rk1.name} · duties now pay ${Math.round(rk1.mult * 100)}%`, '#ffc857', 3400); sfxChime(); }, 3000);
+  } else showBanner('DUTY FAILED', why || 'Out of time', 'var(--coral)', 2600);
+}
+function updateDuty(dt) {
+  if (!duty.on) return;
+  if (game.state !== 'play') return;
+  duty.t -= dt; if (duty.t <= 0) { dutyEnd(false, 'Out of time'); return; }
+  const pt = duty.pts[duty.step], f = focusPos(), mk = duty.marker;
+  mk.visible = !game.heli; mk.position.set(pt.x, surfaceH(pt.x, pt.z), pt.z); mk.userData.gem.rotation.y = game.time * 1.6;
+  const tg = duty.tgt; tg.x = pt.x; tg.z = pt.z; tg.pathT -= dt; if (tg.pathT <= 0) { tg.pathT = 0.5; tg.path = pt.z < -740 && f.z < -700 ? [] : gridRoute(f, pt); }
+  if (pt.heli) return; // the helicopter landing finishes an air patrol
+  const d = Math.hypot(pt.x - f.x, pt.z - f.z), r = duty.kind === 'drill' ? 2.6 : 7, warn = (msg) => { if (!duty.warned) { duty.warned = true; toast(msg, 3000); } };
+  if (d > r + 4) duty.warned = false;
+  if (d > r) return;
+  if (duty.kind === 'drill' && player.car) { warn('Drills are on foot · get out of the car'); return; }
+  if (pt.need === 'army' && !(player.car && player.car.army)) { warn('You need an army pickup · they are parked just inside the gate at Fort Halcón'); return; }
+  if (pt.need === 'cargo' && !(player.car && player.car.crates)) { warn('Bring the crates here in the army pickup'); return; }
+  if (pt.need === 'army') { loadCrates(player.car); fadeFlash('Loading supply crates…', 1.0); toast('Crates loaded · drive them back to the supply depot at Fort Halcón', 3500); }
+  if (pt.need === 'cargo') unloadCrates(player.car);
+  sfxTick(true); duty.step++; duty.warned = false;
+  if (duty.step >= duty.pts.length) dutyEnd(true); else if (duty.kind !== 'supply') toast(`${pt.label} checked · next: ${duty.pts[duty.step].label}`, 1500);
 }
 const nearEnlist = () => mil.built && !game.enlisted && !player.car && !game.inside && !game.ride && !game.wheel && !game.heli && Math.hypot(player.pos.x - 31.5, player.pos.z + 751.5) < 2.6;
 const nearHeliPad = () => mil.built && game.enlisted && !player.car && !game.inside && !game.ride && !game.wheel && !game.heli && Math.hypot(player.pos.x - 290, player.pos.z + 1256) < 3;
@@ -1207,6 +1282,7 @@ function endHeli(skip) {
   const H = mil.heli; game.heli = null; H.g.position.copy(H.home); H.g.rotation.set(0, 0, 0); player.h.root.visible = true; radioOn(false);
   player.pos.set(290, 0.1, -1254); player.vel.set(0, 0, 0); player.yaw = Math.PI; cam.yaw = 0; cam.pitch = 0.2; cam.init = false;
   if (skip) fadeFlash('Landing…', 0.8); toast('Back on the helipad · what a view!', 3000);
+  if (duty.on && duty.kind === 'air') dutyEnd(!skip, 'You landed before the patrol was finished');
 }
 function updateHeli(dt) {
   const H = mil.heli, st = game.heli, k = smooth(0, 0.05, st.u) * smooth(1, 0.93, st.u), v = lerp(6, 42, k);
@@ -1230,6 +1306,7 @@ function updateMilitary(dt) {
   if (cd < 700) for (const s of mil.soldiers) {
     let sp = 0;
     if (s.kind === 'walk') { const [tx, tz] = s.path[s.i], dx = tx - s.x, dz = tz - s.z, l = Math.hypot(dx, dz); if (l < 0.4) { s.i = (s.i + 1) % s.path.length; s.wait = 2; } else if (s.wait > 0) s.wait -= dt; else { s.x += dx / l * 1.3 * dt; s.z += dz / l * 1.3 * dt; sp = 1.3; s.yaw += angDiff(s.yaw, Math.atan2(dx, dz)) * (1 - Math.exp(-6 * dt)); } }
+    else if (s.kind === 'sarge') { const dd = Math.hypot(player.pos.x - s.x, player.pos.z - s.z); s.yaw += angDiff(s.yaw, dd < 14 && !player.car ? Math.atan2(player.pos.x - s.x, player.pos.z - s.z) : s.yaw0) * (1 - Math.exp(-3 * dt)); }
     else if (s.kind === 'guard') { const f = player.car ? player.car.pos : player.pos, dd = Math.hypot(f.x - s.x, f.z - s.z); s.yaw += angDiff(s.yaw, dd < 30 && !game.inside ? Math.atan2(f.x - s.x, f.z - s.z) : s.yaw0) * (1 - Math.exp(-3 * dt)); s.stop = dd < 18 && !game.inside; }
     s.h.root.position.set(s.x, 0, s.z); s.h.root.rotation.y = s.yaw; poseHuman(s.h, dt, sp, false, t);
     if (s.stop && game.enlisted) { s.h.armR.rotation.x = -2.5; s.h.armR.rotation.z = -0.5; s.h.elbowR.rotation.x = -1.9; } else if (s.stop) { s.h.armR.rotation.x = -1.5; s.h.armR.rotation.z = -0.15; s.h.elbowR.rotation.x = -0.1; }
@@ -2925,7 +3002,7 @@ function removeOfficer(o) { scene.remove(o.h.root); const i = officers.indexOf(o
 
 // ---------------------------------------------------------------- player
 const player = { sit: null, autoTo: null, pos: new THREE.Vector3(-494.6, 0, 16.5), vel: new THREE.Vector3(), yaw: -Math.PI / 2, onGround: true, car: null, h: null, knock: 0, health: 100, hurtT: 0, alive: true, lie: 0 };
-const game = { pantry: {}, dishes: [], eat: null, fedT: 0, enlisted: false, heli: null, garage: [], luggage: null, bagChecked: false, family: [], famFollow: true, nearFam: null, famD: 9, hugT: 0, tvWatch: false, visited: [], lastDest: null, ticketGate: null, ticket: null, owned: ['coral'], counter: null, ride: null, inside: null, state: 'boot', cash: 500, shownCash: 500, wanted: 0, heat: 0, evadeT: 0, crimeT: 0, bustT: 0, tod: 17.62, job: null, quality: 'ultra', radio: true, sound: true, time: 0, downT: 0, seenDistrict: '', saveT: 0 };
+const game = { pantry: {}, dishes: [], eat: null, fedT: 0, enlisted: false, milDuties: 0, heli: null, garage: [], luggage: null, bagChecked: false, family: [], famFollow: true, nearFam: null, famD: 9, hugT: 0, tvWatch: false, visited: [], lastDest: null, ticketGate: null, ticket: null, owned: ['coral'], counter: null, ride: null, inside: null, state: 'boot', cash: 500, shownCash: 500, wanted: 0, heat: 0, evadeT: 0, crimeT: 0, bustT: 0, tod: 17.62, job: null, quality: 'ultra', radio: true, sound: true, time: 0, downT: 0, seenDistrict: '', saveT: 0 };
 const STAR_AT = [1, 4, 9, 16, 26];
 function focusPos() { return game.ride ? flight.m.position : player.car ? player.car.pos : game.inside ? game.inside.out : player.pos; }
 function focusY() { return game.heli || transit.ride ? 0.2 : game.wheel ? surfaceH(ferris.x, ferris.z + 6) : game.ride ? flight.y : player.car ? player.car.y : game.inside ? CURB : player.pos.y; }
@@ -3339,6 +3416,7 @@ const SHOP_ITEMS = {
   kitchen: () => RECIPES.map((r) => { const miss = r.needs.filter((k) => !(game.pantry[k] > 0)), full = game.dishes.length >= 4; return { name: r.name, desc: (full ? 'The table is full · eat something first' : miss.length ? 'Missing: ' + miss.map((k) => INGR[k].name).join(', ') : 'Ready to cook') + ` · +${r.heal} health`, price: 0, sw: r.look[1], disabled: miss.length > 0 || full, buy: () => cook(r) }; }),
   grocery: () => Object.keys(INGR).map((k) => ({ name: INGR[k].name, desc: `In your fridge: ${game.pantry[k] || 0}`, price: INGR[k].price, sw: INGR[k].color, buy: () => { game.pantry[k] = (game.pantry[k] || 0) + 1; store.set('pantry', game.pantry); return `${INGR[k].name} bagged · cook it at home`; } })),
   taxi: () => taxiItems(),
+  duty: () => dutyItems(),
   dealer: () => dealerItems(),
   luggage: () => [
     ...(game.family.length && !fam.trip ? [{ name: 'Pack for a family trip', desc: 'Everyone gets their own suitcase and comes with you · they head home when you fly back to Solano', price: 0, sw: 0x2be0cf, buy: () => planTrip() }] : []),
@@ -3375,7 +3453,7 @@ function renderShop() {
   const items = typeof SHOP_ITEMS[type] === 'function' ? SHOP_ITEMS[type]() : SHOP_ITEMS[type];
   for (const it of items) {
     const b = document.createElement('button'); b.className = 'item'; const owned = it.outfit && game.outfit === it.outfit.id;
-    b.innerHTML = `<span class="sw" style="background:${it.sw !== undefined ? '#' + it.sw.toString(16).padStart(6, '0') : 'transparent'};${it.sw === undefined ? 'border:0;width:0' : ''}"></span><span><b></b><small></small></span><span class="price">${owned ? 'Worn' : (it.price ? '$' + it.price : 'Free')}</span>`;
+    b.innerHTML = `<span class="sw" style="background:${it.sw !== undefined ? '#' + it.sw.toString(16).padStart(6, '0') : 'transparent'};${it.sw === undefined ? 'border:0;width:0' : ''}"></span><span><b></b><small></small></span><span class="price">${owned ? 'Worn' : it.pay ? '+$' + it.pay.toLocaleString('en-US') : (it.price ? '$' + it.price.toLocaleString('en-US') : 'Free')}</span>`;
     b.querySelector('b').textContent = it.name; b.querySelector('small').textContent = owned ? 'You are wearing this' : it.desc;
     b.disabled = owned || !!it.disabled || game.cash < it.price;
     b.addEventListener('click', () => { if (game.cash < it.price) return; addCash(-it.price); const msg = it.buy(); if (msg) toast(msg); sfxChime(); renderShop(); });
@@ -3602,7 +3680,7 @@ function updatePickups(dt) {
   cashMesh.instanceMatrix.needsUpdate = true;
   // job markers
   for (const mk of markers) {
-    mk.cd -= dt; mk.m.visible = !game.job && mk.cd <= 0; mk.m.userData.gem.rotation.y = game.time * 1.6; mk.m.userData.gem.position.y = 3.2 + Math.sin(game.time * 2) * 0.2;
+    mk.cd -= dt; mk.m.visible = !game.job && !duty.on && mk.cd <= 0; mk.m.userData.gem.rotation.y = game.time * 1.6; mk.m.userData.gem.position.y = 3.2 + Math.sin(game.time * 2) * 0.2;
     if (!mk.m.visible || game.state !== 'play') continue;
     const d = Math.hypot(mk.x - f.x, mk.z - f.z);
     if (d < 3.6) { if (inCar) startJob(mk); else if (!mk.warned) { mk.warned = true; toast('Get a car first. The client is in a hurry.'); } } else if (d > 8) mk.warned = false;
@@ -3644,7 +3722,7 @@ function drawBigmap() {
   const g = bmx, z = bm.zoom * dpr, X = (x) => W / 2 + (x - bm.cx) * z, Z = (v) => H / 2 + (v - bm.cz) * z;
   g.setTransform(1, 0, 0, 1, 0, 0); g.fillStyle = '#0f3a4b'; g.fillRect(0, 0, W, H);
   g.imageSmoothingEnabled = true; g.drawImage(mapImg, X(MAP.x0), Z(MAP.z0), MAP.w * z, MAP.h * z);
-  const f = focusPos(), tg = game.job || game.waypoint, path = game.job ? game.job.path : game.route;
+  const jt = game.job || duty.tgt, f = focusPos(), tg = jt || game.waypoint, path = jt ? jt.path : game.route;
   if (tg && path) { g.strokeStyle = game.job ? '#ffc857' : '#b18cff'; g.lineWidth = 4 * dpr; g.lineJoin = g.lineCap = 'round'; g.beginPath(); g.moveTo(X(f.x), Z(f.z)); for (const n of path) g.lineTo(X(nodeX(n)), Z(nodeZ(n))); g.lineTo(X(tg.x), Z(tg.z)); g.stroke(); }
   g.textAlign = 'center'; g.textBaseline = 'middle';
   for (const [t, x, zz, big] of MAP_LABELS) { g.font = `${big ? 800 : 700} ${Math.round((big ? 16 : 13) * dpr)}px 'Barlow Condensed', 'Arial Narrow', sans-serif`; g.lineWidth = 3.5 * dpr; g.strokeStyle = 'rgba(14,10,23,.8)'; g.strokeText(t.toUpperCase(), X(x), Z(zz)); g.fillStyle = big ? '#ffc857' : '#fff3e8'; g.fillText(t.toUpperCase(), X(x), Z(zz)); }
@@ -3653,6 +3731,7 @@ function drawBigmap() {
   for (const sp of shopsData) dot(sp.dx, sp.dz, 5, SHOP_COL[sp.type], true);
   if (!game.job) for (const m of markers) if (m.m.visible) dot(m.x, m.z, 6.5, '#ff3f8e');
   if (game.job) dot(game.job.x, game.job.z, 7.5, '#ffc857');
+  if (duty.tgt) dot(duty.tgt.x, duty.tgt.z, 7.5, '#7dff9a');
   if (game.waypoint) dot(game.waypoint.x, game.waypoint.z, 7.5, '#b18cff');
   for (const c of police) dot(c.pos.x, c.pos.z, 5, '#ff3050');
   if (flight.m && flight.y > 10) dot(flight.x, flight.z, 4, '#ffffff');
@@ -3838,7 +3917,7 @@ function axes() {
 function handleActions() {
   while (input.actions.length) {
     const a = input.actions.shift();
-    if (a === 'car') { if (game.wheel) { endWheel(false); continue; } if (game.heli) { endHeli(true); continue; } if (transit.ride) { rideAction(); continue; } if (game.ride) { const k = game.ride.kind; endRide(); if (k !== 'loop') flight.trip = null; continue; } if (game.inside) { const hm = hugTarget(); if (player.sit) standUp(); else if (hm) hugFamily(hm); else if (game.nearSeat) sitDown(game.nearSeat); continue; } if (player.car) exitCar(); else if (player.knock <= 0) { if (nearFerris()) { startWheel(); continue; } if (nearEnlist()) { enlist(); continue; } if (nearHeliPad()) { startHeli(); continue; } { const bs = busAtStop(); if (bs) { boardBus(bs); continue; } const rk = nearRank(); if (rk) { openShopPanel({ type: 'taxi', title: 'Taxi stand · where to?', outdoor: true, rank: rk }); continue; } const dc = nearDealerCar(); if (dc) { buyCar(dc); continue; } if (nearDealerDesk()) { openShopPanel({ type: 'dealer', title: 'Coastline Motors · all 100 cars', outdoor: true }); continue; } } const c = nearestEnterable(3.8), hm = hugTarget(); if (hm && (!c || game.famD < 1.0)) { hugFamily(hm); continue; } if (c) enterCar(c); } }
+    if (a === 'car') { if (game.wheel) { endWheel(false); continue; } if (game.heli) { endHeli(true); continue; } if (transit.ride) { rideAction(); continue; } if (game.ride) { const k = game.ride.kind; endRide(); if (k !== 'loop') flight.trip = null; continue; } if (game.inside) { const hm = hugTarget(); if (player.sit) standUp(); else if (hm) hugFamily(hm); else if (game.nearSeat) sitDown(game.nearSeat); continue; } if (player.car) exitCar(); else if (player.knock <= 0) { if (nearFerris()) { startWheel(); continue; } if (nearEnlist()) { enlist(); continue; } if (nearHeliPad()) { startHeli(); continue; } { if (nearDutyBoard()) { openShopPanel({ type: 'duty', title: `Fort Halcón duty board · ${milRank().name}`, outdoor: true }); continue; } const bs = busAtStop(); if (bs) { boardBus(bs); continue; } const rk = nearRank(); if (rk) { openShopPanel({ type: 'taxi', title: 'Taxi stand · where to?', outdoor: true, rank: rk }); continue; } const dc = nearDealerCar(); if (dc) { buyCar(dc); continue; } if (nearDealerDesk()) { openShopPanel({ type: 'dealer', title: 'Coastline Motors · all 100 cars', outdoor: true }); continue; } } const c = nearestEnterable(3.8), hm = hugTarget(); if (hm && (!c || game.famD < 1.0)) { hugFamily(hm); continue; } if (c) enterCar(c); } }
     else if (a === 'blinkL' || a === 'blinkR') { const c = player.car; if (!c) continue; const want = a === 'blinkL' ? 1 : 2; c.blink = c.blink === want ? 0 : want; game.blinkAcc = 0; game.blinkYaw = c.yaw; if (c.blink) sfxTick(true); }
     else if (a === 'horn') { if (player.car) { sfxHorn(1); for (const p of peds) if (p.pos.distanceTo(player.car.pos) < 14) p.scare(player.car.pos.x, player.car.pos.z, 3); } }
     else if (a === 'radio') { game.radio = !game.radio; store.set('radio', game.radio); radioOn(!!player.car); toast(game.radio ? 'Radio on · Solano 88.4' : 'Radio off'); }
@@ -3969,7 +4048,7 @@ function drawMinimap() {
   mm.setTransform(1, 0, 0, 1, 0, 0);
   const W = (x, z) => { const rx = x - f.x, rz = z - f.z; return [R + (rx * cy - rz * sy) * scale, R + (rx * sy + rz * cy) * scale]; };
   const clampEdge = (p, m) => { const dx = p[0] - R, dy = p[1] - R, l = Math.hypot(dx, dy); if (l > R - m) return [R + dx / l * (R - m), R + dy / l * (R - m)]; return p; };
-  const j = game.job, tg = j || game.waypoint, path = j ? j.path : game.route;
+  const j = game.job || duty.tgt, tg = j || game.waypoint, path = j ? j.path : game.route;
   if (tg && path && path.length) {
     mm.strokeStyle = j ? 'rgba(255,200,87,.95)' : 'rgba(177,140,255,.95)'; mm.lineWidth = S * 0.028; mm.lineJoin = mm.lineCap = 'round'; mm.beginPath();
     let p = W(f.x, f.z); mm.moveTo(p[0], p[1]); for (const n of path) { p = W(nodeX(n), nodeZ(n)); mm.lineTo(p[0], p[1]); } p = W(tg.x, tg.z); mm.lineTo(p[0], p[1]); mm.stroke();
@@ -4003,10 +4082,10 @@ function updateHUD(dt) {
   if (dn !== game.seenDistrict) { game.seenDistrict = dn; ui.district.textContent = dn; ui.district.classList.add('show'); clearTimeout(districtT); districtT = setTimeout(() => ui.district.classList.remove('show'), 3500); }
   const c = player.car;
   ui.speedo.hidden = !c; if (c) { const mph = Math.round(Math.abs(c.vf) * 2.237); if (mph !== lastSpd) { lastSpd = mph; ui.spd.textContent = mph; } }
-  const tb = !c && busAtStop(), tk = !c && nearRank(), dcar = !c && nearDealerCar(), ddesk = !c && nearDealerDesk(), stop = !c && !tb && nearStop();
-  const ne = !c && nearEnlist(), nh = !c && nearHeliPad(), fw = !c && nearFerris(), near = !c && !fw && !ne && !nh && !tb && !tk && !dcar && !ddesk && !transit.ride && !game.inside && !game.ride && !game.wheel && !game.heli && nearestEnterable(3.8);
+  const dboard = !c && nearDutyBoard(), tb = !c && busAtStop(), tk = !c && nearRank(), dcar = !c && nearDealerCar(), ddesk = !c && nearDealerDesk(), stop = !c && !tb && nearStop();
+  const ne = !c && nearEnlist(), nh = !c && nearHeliPad(), fw = !c && nearFerris(), near = !c && !fw && !ne && !nh && !dboard && !tb && !tk && !dcar && !ddesk && !transit.ride && !game.inside && !game.ride && !game.wheel && !game.heli && nearestEnterable(3.8);
   const seat = game.inside ? game.nearSeat : null, hug0 = hugTarget(), hugM = hug0 && (game.inside || !near || game.famD < 1.0) ? hug0 : null;
-  ui.bCar.textContent = transit.ride ? (transit.ride.kind === 'bus' ? 'GET OFF' : 'SKIP') : tb ? 'BOARD' : tk ? 'TAXI' : dcar ? 'BUY' : ddesk ? 'CARS' : game.wheel ? 'GET OFF' : game.heli ? 'LAND' : ne ? 'ENLIST' : nh ? 'FLY' : fw ? 'RIDE' : game.ride ? 'LAND' : c ? 'GET OUT' : hugM && !game.inside ? 'HUG' : player.sit ? (player.sit.bed ? 'GET UP' : 'STAND') : hugM ? 'HUG' : seat ? (seat.bed ? 'LIE DOWN' : seat.toilet ? 'USE' : 'SIT') : 'GET IN'; ui.bCar.classList.toggle('ready', !!near || fw || ne || nh || !!tb || !!tk || !!dcar || ddesk || !!hugM || (!!seat && !player.sit));
+  ui.bCar.textContent = transit.ride ? (transit.ride.kind === 'bus' ? 'GET OFF' : 'SKIP') : dboard ? 'DUTY' : tb ? 'BOARD' : tk ? 'TAXI' : dcar ? 'BUY' : ddesk ? 'CARS' : game.wheel ? 'GET OFF' : game.heli ? 'LAND' : ne ? 'ENLIST' : nh ? 'FLY' : fw ? 'RIDE' : game.ride ? 'LAND' : c ? 'GET OUT' : hugM && !game.inside ? 'HUG' : player.sit ? (player.sit.bed ? 'GET UP' : 'STAND') : hugM ? 'HUG' : seat ? (seat.bed ? 'LIE DOWN' : seat.toilet ? 'USE' : 'SIT') : 'GET IN'; ui.bCar.classList.toggle('ready', !!near || fw || ne || nh || dboard || !!tb || !!tk || !!dcar || ddesk || !!hugM || (!!seat && !player.sit));
   ui.bAction.textContent = c ? 'DRIFT' : player.sit && player.sit.bed ? 'SLEEP' : player.sit && player.sit.tv ? (game.tvWatch ? 'CHANNEL' : 'TV') : 'JUMP'; ui.bHorn.hidden = !c; ui.bRadio.hidden = !c; ui.bBlinkL.hidden = ui.bBlinkR.hidden = !c; { const bl = c ? c.blink : 0, lit = c ? blinkLit(c) : false; ui.bBlinkL.classList.toggle('sel', (bl & 1) > 0); ui.bBlinkR.classList.toggle('sel', (bl & 2) > 0); ui.bBlinkL.classList.toggle('flash', lit && (bl & 1) > 0); ui.bBlinkR.classList.toggle('flash', lit && (bl & 2) > 0); ui.blkL.classList.toggle('on', lit && (bl & 1) > 0); ui.blkR.classList.toggle('on', lit && (bl & 2) > 0); } ui.bAction.style.visibility = game.wheel || game.ride || game.heli || transit.ride ? 'hidden' : '';
   let hint = '';
   if (near && !TOUCH) hint = near.driver === 'ai' ? 'Press F to carjack' : near.isCop && near.driver ? 'Press F to steal the cruiser' : 'Press F to get in';
@@ -4030,6 +4109,7 @@ function updateHUD(dt) {
   if (fw) hint = TOUCH ? 'Ferris wheel · $10 · tap RIDE' : 'Press F to ride the Ferris wheel · $10';
   if (ne) hint = TOUCH ? 'Join the military · tap ENLIST' : 'Press F to enlist at Fort Halcón';
   if (nh) hint = TOUCH ? 'Helicopter tour · tap FLY' : 'Press F to fly the helicopter tour';
+  if (dboard) hint = `Duty board · paid army jobs · ${milRank().name} · ${TOUCH ? 'tap DUTY' : 'press F'}`;
   if (stop) hint = `Bus stop · ${stop.name} · next bus in about ${Math.max(5, Math.round(nextBusIn(stop)))} s`;
   if (tb) hint = `Bus to ${transit.stops[(transit.stops.indexOf(tb.at) + 1) % transit.stops.length].name} and beyond · $2 · ${TOUCH ? 'tap BOARD' : 'press F to board'}`;
   if (tk) hint = TOUCH ? 'Taxi stand · tap TAXI to pick where to go' : 'Taxi stand · press F to pick where to go';
@@ -4040,8 +4120,8 @@ function updateHUD(dt) {
   if (game.wheel) hint = `Ferris wheel · ${Math.round(game.wheel.pos.y)} m up · ${TOUCH ? 'drag to look · GET OFF to stop' : 'mouse to look · F to get off'}`;
   if (!hint && mil.near) hint = 'Fort Halcón · restricted military area · keep out';
   if (hint !== lastHint) { lastHint = hint; ui.hint.textContent = hint; ui.hint.hidden = !hint; }
-  const j = game.job;
-  if (j) { const m = `Deliver ${j.cargo} to ${j.where}`; if (m !== lastMission) { lastMission = m; ui.mTitle.textContent = m; } ui.mission.hidden = false; const s = Math.max(0, Math.ceil(j.t)); ui.mTimer.textContent = `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`; ui.mTimer.classList.toggle('low', s <= 10); }
+  const j0 = game.job, j = j0 ? { m: `Deliver ${j0.cargo} to ${j0.where}`, t: j0.t } : duty.on ? { m: dutyTitle(), t: duty.t } : null;
+  if (j) { const m = j.m; if (m !== lastMission) { lastMission = m; ui.mTitle.textContent = m; } ui.mission.hidden = false; const s = Math.max(0, Math.ceil(j.t)); ui.mTimer.textContent = `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`; ui.mTimer.classList.toggle('low', s <= 10); }
   drawMinimap();
 }
 
@@ -4156,13 +4236,13 @@ function respawnAt(spot) {
 }
 function busted() {
   if (game.state !== 'play') return; const fine = Math.min(game.cash, Math.round((150 + game.cash * 0.08) / 10) * 10);
-  addCash(-fine); if (game.job) endJob(false); clearHeat(); game.state = 'down'; game.downT = 3.4; game.downTo = RESPAWN.station;
+  addCash(-fine); if (game.job) endJob(false); if (duty.on) dutyEnd(false, 'You were taken off duty'); clearHeat(); game.state = 'down'; game.downT = 3.4; game.downTo = RESPAWN.station;
   showBanner('BUSTED', `Bail paid · -$${fine.toLocaleString()}`, 'var(--lagoon)', 3200); vibrate(80);
   if (player.car) { player.car.thr = 0; player.car.hb = true; }
 }
 function knockedOut() {
   if (game.state !== 'play') return; const bill = Math.min(game.cash, Math.round((100 + game.cash * 0.06) / 10) * 10);
-  addCash(-bill); if (game.job) endJob(false); clearHeat(); game.state = 'down'; game.downT = 3.4; game.downTo = RESPAWN.hospital; player.alive = false;
+  addCash(-bill); if (game.job) endJob(false); if (duty.on) dutyEnd(false, 'You were taken off duty'); clearHeat(); game.state = 'down'; game.downT = 3.4; game.downTo = RESPAWN.hospital; player.alive = false;
   showBanner('KNOCKED OUT', `Hospital bill · -$${bill.toLocaleString()}`, 'var(--coral)', 3200); vibrate(120);
 }
 function pause(on) {
@@ -4247,7 +4327,7 @@ function step(dt) {
   let tc = 0; for (const v of vehicles) if (v.driver === 'ai' && !v.leaving && v.ai.kind !== 'hwy') tc++;
   if (tc < TRAFFIC_N && Math.random() < 0.05) { const type = mpick(TRAFFIC_TYPES), car = new Vehicle(type, type === 'taxi' ? 0xf4c20d : mpick(PAINTS)); if (!recycleCar(car)) car.dispose(); }
   collideVehicles();
-  updateFlight(dt); updatePort(dt, sunState.night); updateDests(dt); updateMilitary(dt); updateTransit(dt);
+  updateFlight(dt); updatePort(dt, sunState.night); updateDests(dt); updateMilitary(dt); updateTransit(dt); updateDuty(dt);
   // pedestrians
   for (const p of peds) {
     const d = p.pos.distanceTo(camera.position);
@@ -4325,13 +4405,13 @@ function start(data) {
     game.sound = store.get('sound', true); game.radio = store.get('radio', true); setSound(game.sound);
     player.pos.set(-494.6, 0, 16.5); player.yaw = -Math.PI / 2;
     starterCar = new Vehicle('sports', 0xff3f8e); starterCar.place(-492.4, 18.8, 0);
-    game.owned = store.get('owned', ['coral']); game.visited = store.get('visited', []); game.pantry = store.get('pantry', {}); game.dishes = store.get('dishes', []); refreshDishes(); game.family = store.get('family', []); game.enlisted = store.get('enlisted', false); game.garage = store.get('garage', []); buildTransit(); spawnGarage(); 
+    game.owned = store.get('owned', ['coral']); game.visited = store.get('visited', []); game.pantry = store.get('pantry', {}); game.dishes = store.get('dishes', []); refreshDishes(); game.family = store.get('family', []); game.enlisted = store.get('enlisted', false); game.milDuties = store.get('milDuties', 0); game.garage = store.get('garage', []); buildTransit(); spawnGarage(); 
     setupMarkers(); setupCash(); spawnTraffic(); spawnPeds(); spawnLotCars();
     for (let i = 0; i < HWY_N; i++) { const c = new Vehicle(mpick(TRAFFIC_TYPES), mpick(PAINTS)); if (!placeHwy(c, false)) c.dispose(); }
     applyQuality(data.quality || store.get('quality', 'ultra'));
     updateDaylight(0); refreshEnv(true);
     renderer.compile(scene, camera);
-    game.state = 'title'; window.__solanoRunning = true; window.__solanoDebug = { transit, CATALOG, DEALER, makeHuman, randomLook, poseHuman, mil, Vehicle, PAINTS, ROOMS, ferris, famList: fam.list, renderer, game, camera, cam, player, officers, police, shopsData, vehicles, flight, RING_H, peek: () => ({ shopCD, t: +game.time.toFixed(2) }), crime: (n) => crime(n, 'Test heat') };
+    game.state = 'title'; window.__solanoRunning = true; window.__solanoDebug = { duty, DUTIES, startDuty, transit, CATALOG, DEALER, makeHuman, randomLook, poseHuman, mil, Vehicle, PAINTS, ROOMS, ferris, famList: fam.list, renderer, game, camera, cam, player, officers, police, shopsData, vehicles, flight, RING_H, peek: () => ({ shopCD, t: +game.time.toFixed(2) }), crime: (n) => crime(n, 'Test heat') };
     $('loading').hidden = true; $('title').hidden = false;
     renderer.setAnimationLoop(frame);
   } catch (e) { console.error(e); fail('The city failed to build: ' + e.message); }
