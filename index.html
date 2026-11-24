@@ -97,6 +97,15 @@ button:focus-visible{outline:3px solid var(--lagoon);outline-offset:3px}
 #bCar.ready{background:var(--flamingo);border-color:#fff;color:#fff}
 #bHorn{width:52px;height:52px;right:calc(env(safe-area-inset-right,0px) + 38px);bottom:calc(env(safe-area-inset-bottom,0px) + 124px)}
 #bRadio{width:52px;height:52px;right:calc(env(safe-area-inset-right,0px) + 108px);bottom:calc(env(safe-area-inset-bottom,0px) + 98px)}
+#bBlinkL,#bBlinkR{width:52px;height:52px;bottom:calc(env(safe-area-inset-bottom,0px) + 188px)}
+#bBlinkL{left:calc(env(safe-area-inset-left,0px) + 50px)}
+#bBlinkR{left:calc(env(safe-area-inset-left,0px) + 122px)}
+.blinkbtn svg{width:26px;height:26px;fill:currentColor}
+.blinkbtn.sel{border-color:#ffb020;color:#ffb020}
+.blinkbtn.flash{background:rgba(255,170,30,.9);border-color:#fff;color:#1b1204}
+#speedo .blk{align-self:center;display:grid;place-items:center;width:26px;height:26px;margin:0 6px;color:rgba(255,243,232,.16)}
+#speedo .blk svg{width:24px;height:24px;fill:currentColor}
+#speedo .blk.on{color:#ffb020;filter:drop-shadow(0 0 6px rgba(255,176,32,.95))}
 
 /* ---------- title + menus ---------- */
 .overlay{position:absolute;inset:0;overflow-x:hidden;overflow-y:auto;touch-action:pan-y;-webkit-overflow-scrolling:touch}
@@ -187,7 +196,7 @@ button:focus-visible{outline:3px solid var(--lagoon);outline-offset:3px}
     <div id="toast"></div>
     <div id="banner" hidden><div class="big" id="bBig"></div><div class="sub" id="bSub"></div></div>
     <div id="hint" hidden></div>
-    <div id="speedo" hidden><span id="spd">0</span><small>MPH</small></div>
+    <div id="speedo" hidden><span class="blk" id="blkL"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M10 4 2 12l8 8v-5h12V9H10z"/></svg></span><span id="spd">0</span><small>MPH</small><span class="blk" id="blkR"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14 4l8 8-8 8v-5H2V9h12z"/></svg></span></div>
   </div>
 
   <div id="touch" hidden>
@@ -196,6 +205,8 @@ button:focus-visible{outline:3px solid var(--lagoon);outline-offset:3px}
     <button class="tbtn" id="bCar">GET IN</button>
     <button class="tbtn" id="bHorn" hidden>HORN</button>
     <button class="tbtn" id="bRadio" hidden>RADIO</button>
+    <button class="tbtn blinkbtn" id="bBlinkL" hidden aria-label="Left blinker"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M10 4 2 12l8 8v-5h12V9H10z"/></svg></button>
+    <button class="tbtn blinkbtn" id="bBlinkR" hidden aria-label="Right blinker"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14 4l8 8-8 8v-5H2V9h12z"/></svg></button>
   </div>
 
   <div id="title" class="overlay" hidden>
@@ -2481,6 +2492,8 @@ const glassMat = new THREE.MeshPhysicalMaterial({ color: 0x1a232b, metalness: 0.
 const trimMat = new THREE.MeshStandardMaterial({ color: 0x18191c, roughness: 0.55, metalness: 0.3 });
 const wheelMat = new THREE.MeshStandardMaterial({ color: 0xffffff, vertexColors: true, roughness: 0.42, metalness: 0.45 });
 const headMat = new THREE.MeshBasicMaterial({ color: 0xffffff });
+const blinkOnMat = new THREE.MeshBasicMaterial({ color: new THREE.Color(3.4, 1.55, 0.12) });
+const blinkLit = (v) => !!v.blink && ((game.time + v.blinkPh) % 0.76) < 0.38;
 const copRedMat = new THREE.MeshBasicMaterial({ color: 0xff1030 }), copBlueMat = new THREE.MeshBasicMaterial({ color: 0x1050ff });
 const taxiSignMat = new THREE.MeshBasicMaterial({ color: 0xffe08a });
 const carGeoCache = {}, wheelCache = {};
@@ -2590,7 +2603,14 @@ function carGeo(type) {
     for (const dz of [L2 - 1.2, 0.3]) TR(T(new THREE.BoxGeometry(0.03, 2.3, 1.1), -(W2 + 0.012), 1.55, dz), 0x16202a);
     head.push(T(new THREE.BoxGeometry(1.7, 0.24, 0.03), 0, 2.8, st.cab.f[0] + 0.03));
   }
+  // turn signals: front corners under the headlights, side repeaters on the mirrors, rear corners under the tail lights (local +x is the car's left)
+  const blink = { L: [], R: [] }, lens = (w, h, d0, x, y, z) => { TR(T(new THREE.BoxGeometry(w, h, d0), x, y, z), 0x6e3c06); return T(new THREE.BoxGeometry(w + 0.012, h + 0.012, d0 + 0.012), x, y, z); };
+  for (const sd of [-1, 1]) {
+    const arr = sd > 0 ? blink.L : blink.R;
+    arr.push(lens(0.22, 0.04, 0.03, sd * (W2 - 0.22), st.nose - 0.15, L2 + 0.004), lens(0.03, 0.03, 0.12, sd * (W2 + 0.152), belt + 0.06, st.cab.f[0] - 0.14), lens(0.26, 0.04, 0.03, sd * (W2 - 0.28), st.tail - 0.25, -L2 - 0.006));
+  }
   const out = {
+    blinkL: mergeAll(blink.L), blinkR: mergeAll(blink.R),
     paint: mergeAll(paint), trim: mergeAll(trim), chrome: mergeAll(chrome),
     glass: sideExtrude(cabinShape(st), gw, 0.05, 8, [st.cab.f[1], roofY, st.tap]),
     head: mergeAll(head), tail: mergeAll(tail),
@@ -2630,6 +2650,7 @@ class Vehicle {
     if (G.livery) add(G.livery, paintMat(type === 'bus' ? 0x18b3a6 : 0xf2f2f2), false);
     if (G.barBase) { add(G.barBase, trimMat, false); add(G.barR, copRedMat, false); add(G.barB, copBlueMat, false); }
     if (G.sign) add(G.sign, taxiSignMat, false);
+    this.blkL = add(G.blinkL, blinkOnMat, false); this.blkR = add(G.blinkR, blinkOnMat, false); this.blkL.visible = this.blkR.visible = false; this.blink = 0; this.blinkPh = Math.random();
     this.wheels = [];
     const wg = wheelGeo(this.d.r, carStyle(type).rim);
     for (const [sx, sz] of [[1, 1], [-1, 1], [1, -1], [-1, -1]]) {
@@ -2738,6 +2759,7 @@ class Vehicle {
     const steer = this.str * this.spec.steer / (1 + Math.abs(this.vf) * 0.04);
     for (let i = 0; i < 4; i++) { const w = this.wheels[i]; w.rotation.x = this.spin; if (i < 2) w.parent.rotation.y = steer; }
     this.tailMat.color.setRGB(1, 0.1, 0.1).multiplyScalar(this.brake ? 5 : 1.1 + sunState.night * 2);
+    const lit = blinkLit(this); this.blkL.visible = lit && (this.blink & 1) > 0; this.blkR.visible = lit && (this.blink & 2) > 0;
   }
   dispose() { scene.remove(this.root); this.tailMat.dispose(); const i = vehicles.indexOf(this); if (i >= 0) vehicles.splice(i, 1); }
 }
@@ -2765,10 +2787,17 @@ function steerTo(car, tx, tz, want, dt) {
 function aiTraffic(car, dt) {
   const ai = car.ai; let s = segInfo(ai.a, ai.b);
   let lx = s.ax - s.dz * ai.lane, lz = s.az + s.dx * ai.lane, t = (car.pos.x - lx) * s.dx + (car.pos.z - lz) * s.dz;
-  if (t > s.len - 6) {
-    const opts = neighbors(ai.b).filter((n) => n !== ai.a); let nb = opts.length ? mpick(opts) : ai.a;
+  const pickNext = () => { const opts = neighbors(ai.b).filter((n) => n !== ai.a); let nb = opts.length ? mpick(opts) : ai.a;
     const sx = 2 * s.bx - s.ax, sz = 2 * s.bz - s.az, straight = opts.find((n) => Math.abs(nodeX(n) - sx) < 1 && Math.abs(nodeZ(n) - sz) < 1);
-    if (straight !== undefined && Math.random() < 0.55) nb = straight;
+    if (straight !== undefined && Math.random() < 0.55) nb = straight; return nb; };
+  if (ai.nx === undefined && t > s.len - 32) { // decide the turn early and signal it
+    const nb = pickNext(), ex = nodeX(nb) - s.bx, ez = nodeZ(nb) - s.bz, side = (ez * s.dx - ex * s.dz) / (Math.hypot(ex, ez) || 1);
+    ai.nx = nb; car.blink = side > 0.5 ? 2 : side < -0.5 ? 1 : 0;
+  }
+  if (ai.blinkT !== undefined && (ai.blinkT -= dt) <= 0) { ai.blinkT = undefined; car.blink = 0; }
+  if (ai.nx === undefined && ai.blinkT === undefined && car.blink) car.blink = 0;
+  if (t > s.len - 6) {
+    const nb = ai.nx ?? pickNext(); ai.nx = undefined; if (car.blink) ai.blinkT = 2.5;
     ai.a = ai.b; ai.b = nb; s = segInfo(ai.a, ai.b);
     lx = s.ax - s.dz * ai.lane; lz = s.az + s.dx * ai.lane; t = (car.pos.x - lx) * s.dx + (car.pos.z - lz) * s.dz;
   }
@@ -2926,7 +2955,7 @@ function enterCar(c) {
     else toast('Carjacked a ' + (c.type === 'suv' ? 'SUV' : c.type));
   }
   if (c.isCop) { const i = police.indexOf(c); if (i >= 0) police.splice(i, 1); }
-  c.driver = 'player'; c.ai = null; c.leaving = false; player.car = c; player.h.root.visible = false;
+  c.driver = 'player'; c.ai = null; c.leaving = false; c.blink = 0; player.car = c; player.h.root.visible = false;
   if (game.radio) radioOn(true);
 }
 function ejectDriver(c) {
@@ -2942,7 +2971,7 @@ function exitCar() {
   for (const t of tries) if (!insideBuilding(c.pos.x + t[0], 1, c.pos.z + t[1], 0.4)) { ok = t; break; }
   player.pos.set(c.pos.x + ok[0], c.y + 0.1, c.pos.z + ok[1]); player.vel.set(c.vx * 0.5, 0, c.vz * 0.5); player.yaw = c.yaw;
   const sp = c.speed();
-  c.driver = null; c.thr = 0; c.str = 0; c.hb = true; player.car = null; if (inLot(c.pos.x, c.pos.z)) c.keep = true; player.h.root.visible = true; player.onGround = false;
+  c.driver = null; c.thr = 0; c.str = 0; c.hb = true; c.blink = 0; c.sync(0); player.car = null; if (inLot(c.pos.x, c.pos.z)) c.keep = true; player.h.root.visible = true; player.onGround = false;
   if (sp > 9) { player.knock = 1.6; hurt(sp * 0.8); }
   radioOn(false);
 }
@@ -3696,6 +3725,7 @@ function setSound(on) { game.sound = on; store.set('sound', on); if (audio.maste
 function env(node, t, a, peak, dec) { node.gain.setValueAtTime(0.0001, t); node.gain.exponentialRampToValueAtTime(peak, t + a); node.gain.exponentialRampToValueAtTime(0.0001, t + a + dec); }
 function sfxImpact(k) { const ctx = audio.ctx; if (!ctx) return; const s = ctx.createBufferSource(); s.buffer = audio.noise; const f = ctx.createBiquadFilter(); f.type = 'lowpass'; f.frequency.value = 500 + k * 900; const g = ctx.createGain(); s.connect(f); f.connect(g); g.connect(audio.master); const t = ctx.currentTime; env(g, t, 0.005, 0.25 + k * 0.5, 0.3); s.start(t); s.stop(t + 0.4); }
 function sfxAlarm() { const ctx = audio.ctx; if (!ctx) return; const t = ctx.currentTime; for (let i = 0; i < 8; i++) { const o = ctx.createOscillator(), g = ctx.createGain(); o.type = 'square'; o.frequency.value = i % 2 ? 620 : 880; o.connect(g); g.connect(audio.master); env(g, t + i * 0.32, 0.02, 0.1, 0.26); o.start(t + i * 0.32); o.stop(t + i * 0.32 + 0.32); } }
+function sfxTick(on) { const ctx = audio.ctx; if (!ctx) return; const t = ctx.currentTime, o = ctx.createOscillator(), g = ctx.createGain(); o.type = 'square'; o.frequency.value = on ? 1700 : 1250; o.connect(g); g.connect(audio.master); env(g, t, 0.002, 0.03, 0.025); o.start(t); o.stop(t + 0.05); }
 function sfxChime() { const ctx = audio.ctx; if (!ctx) return; const t = ctx.currentTime; [880, 1174.7, 1568].forEach((fq, i) => { const o = ctx.createOscillator(); o.type = 'sine'; o.frequency.value = fq; const g = ctx.createGain(); o.connect(g); g.connect(audio.master); env(g, t + i * 0.07, 0.01, 0.18, 0.35); o.start(t + i * 0.07); o.stop(t + i * 0.07 + 0.5); }); }
 function sfxHorn(vol, at) {
   const ctx = audio.ctx; if (!ctx) return; let v = vol; if (at) { const d = at.distanceTo(camera.position); v *= clamp(12 / Math.max(d, 1), 0, 1); if (v < 0.02) return; }
@@ -3792,6 +3822,8 @@ holdBtn($('bAction'), () => { input.btnAction = true; input.jumpQ = true; }, () 
 holdBtn($('bCar'), () => queue('car'));
 holdBtn($('bHorn'), () => queue('horn'));
 holdBtn($('bRadio'), () => queue('radio'));
+holdBtn($('bBlinkL'), () => queue('blinkL'));
+holdBtn($('bBlinkR'), () => queue('blinkR'));
 addEventListener('keydown', (e) => {
   const c = e.code; input.keys.add(c);
   if (['KeyW', 'KeyA', 'KeyS', 'KeyD', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(c)) input.usingKeys = true;
@@ -3800,7 +3832,8 @@ addEventListener('keydown', (e) => {
   if (c === 'KeyM') { if (game.state === 'play') openMap(); else if (game.state === 'map') closeMap(); return; }
   if (c === 'Escape' || c === 'KeyP') { if (game.state === 'map') closeMap(); else if (game.state === 'shop') closeShopPanel(); else if (game.state === 'play') pause(true); else if (game.state === 'pause') pause(false); return; }
   if (game.state !== 'play') return;
-  if (c === 'KeyF' || c === 'KeyE' || c === 'Enter') queue('car');
+  if (c === 'KeyQ') queue('blinkL');
+  if (c === 'KeyE' && player.car) queue('blinkR'); else if (c === 'KeyF' || c === 'KeyE' || c === 'Enter') queue('car');
   if (c === 'Space') input.jumpQ = true;
   if (c === 'KeyH') queue('horn');
   if (c === 'KeyR') queue('radio');
@@ -3818,6 +3851,7 @@ function handleActions() {
   while (input.actions.length) {
     const a = input.actions.shift();
     if (a === 'car') { if (game.wheel) { endWheel(false); continue; } if (game.heli) { endHeli(true); continue; } if (transit.ride) { rideAction(); continue; } if (game.ride) { const k = game.ride.kind; endRide(); if (k !== 'loop') flight.trip = null; continue; } if (game.inside) { const hm = hugTarget(); if (player.sit) standUp(); else if (hm) hugFamily(hm); else if (game.nearSeat) sitDown(game.nearSeat); continue; } if (player.car) exitCar(); else if (player.knock <= 0) { if (nearFerris()) { startWheel(); continue; } if (nearEnlist()) { enlist(); continue; } if (nearHeliPad()) { startHeli(); continue; } { const bs = busAtStop(); if (bs) { boardBus(bs); continue; } const rk = nearRank(); if (rk) { openShopPanel({ type: 'taxi', title: 'Taxi stand · where to?', outdoor: true, rank: rk }); continue; } const dc = nearDealerCar(); if (dc) { buyCar(dc); continue; } if (nearDealerDesk()) { openShopPanel({ type: 'dealer', title: 'Coastline Motors · all 100 cars', outdoor: true }); continue; } } const c = nearestEnterable(3.8), hm = hugTarget(); if (hm && (!c || game.famD < 1.0)) { hugFamily(hm); continue; } if (c) enterCar(c); } }
+    else if (a === 'blinkL' || a === 'blinkR') { const c = player.car; if (!c) continue; const want = a === 'blinkL' ? 1 : 2; c.blink = c.blink === want ? 0 : want; game.blinkAcc = 0; game.blinkYaw = c.yaw; if (c.blink) sfxTick(true); }
     else if (a === 'horn') { if (player.car) { sfxHorn(1); for (const p of peds) if (p.pos.distanceTo(player.car.pos) < 14) p.scare(player.car.pos.x, player.car.pos.z, 3); } }
     else if (a === 'radio') { game.radio = !game.radio; store.set('radio', game.radio); radioOn(!!player.car); toast(game.radio ? 'Radio on · Solano 88.4' : 'Radio off'); }
     else if (a === 'cam') { cam.yaw = ((game.ride ? flight.yaw : player.car ? player.car.yaw : player.yaw)) + Math.PI; cam.pitch = 0.22; }
@@ -3914,7 +3948,7 @@ function updateCamera(dt) {
 }
 
 // ---------------------------------------------------------------- HUD + minimap
-const ui = { cash: $('cash'), clock: $('clock'), district: $('district'), spd: $('spd'), speedo: $('speedo'), mission: $('mission'), mTitle: $('mTitle'), mTimer: $('mTimer'), toast: $('toast'), banner: $('banner'), hint: $('hint'), bCar: $('bCar'), bAction: $('bAction'), bHorn: $('bHorn'), bRadio: $('bRadio') };
+const ui = { bBlinkL: $('bBlinkL'), bBlinkR: $('bBlinkR'), blkL: $('blkL'), blkR: $('blkR'), cash: $('cash'), clock: $('clock'), district: $('district'), spd: $('spd'), speedo: $('speedo'), mission: $('mission'), mTitle: $('mTitle'), mTimer: $('mTimer'), toast: $('toast'), banner: $('banner'), hint: $('hint'), bCar: $('bCar'), bAction: $('bAction'), bHorn: $('bHorn'), bRadio: $('bRadio') };
 const STAR_SVG = '<svg viewBox="0 0 24 24"><path d="M12 2.6l2.8 6 6.5.7-4.9 4.4 1.4 6.4L12 16.9 6.2 20.1l1.4-6.4L2.7 9.3l6.5-.7z"/></svg>';
 function renderStars() { const el = $('stars'); let html = ''; for (let i = 0; i < 5; i++) html += STAR_SVG.replace('<svg ', `<svg class="${i < game.wanted ? 'on' : ''}" `); el.innerHTML = html; }
 let toastT = null;
@@ -3985,7 +4019,7 @@ function updateHUD(dt) {
   const ne = !c && nearEnlist(), nh = !c && nearHeliPad(), fw = !c && nearFerris(), near = !c && !fw && !ne && !nh && !tb && !tk && !dcar && !ddesk && !transit.ride && !game.inside && !game.ride && !game.wheel && !game.heli && nearestEnterable(3.8);
   const seat = game.inside ? game.nearSeat : null, hug0 = hugTarget(), hugM = hug0 && (game.inside || !near || game.famD < 1.0) ? hug0 : null;
   ui.bCar.textContent = transit.ride ? (transit.ride.kind === 'bus' ? 'GET OFF' : 'SKIP') : tb ? 'BOARD' : tk ? 'TAXI' : dcar ? 'BUY' : ddesk ? 'CARS' : game.wheel ? 'GET OFF' : game.heli ? 'LAND' : ne ? 'ENLIST' : nh ? 'FLY' : fw ? 'RIDE' : game.ride ? 'LAND' : c ? 'GET OUT' : hugM && !game.inside ? 'HUG' : player.sit ? (player.sit.bed ? 'GET UP' : 'STAND') : hugM ? 'HUG' : seat ? (seat.bed ? 'LIE DOWN' : seat.toilet ? 'USE' : 'SIT') : 'GET IN'; ui.bCar.classList.toggle('ready', !!near || fw || ne || nh || !!tb || !!tk || !!dcar || ddesk || !!hugM || (!!seat && !player.sit));
-  ui.bAction.textContent = c ? 'DRIFT' : player.sit && player.sit.bed ? 'SLEEP' : player.sit && player.sit.tv ? (game.tvWatch ? 'CHANNEL' : 'TV') : 'JUMP'; ui.bHorn.hidden = !c; ui.bRadio.hidden = !c; ui.bAction.style.visibility = game.wheel || game.ride || game.heli || transit.ride ? 'hidden' : '';
+  ui.bAction.textContent = c ? 'DRIFT' : player.sit && player.sit.bed ? 'SLEEP' : player.sit && player.sit.tv ? (game.tvWatch ? 'CHANNEL' : 'TV') : 'JUMP'; ui.bHorn.hidden = !c; ui.bRadio.hidden = !c; ui.bBlinkL.hidden = ui.bBlinkR.hidden = !c; { const bl = c ? c.blink : 0, lit = c ? blinkLit(c) : false; ui.bBlinkL.classList.toggle('sel', (bl & 1) > 0); ui.bBlinkR.classList.toggle('sel', (bl & 2) > 0); ui.bBlinkL.classList.toggle('flash', lit && (bl & 1) > 0); ui.bBlinkR.classList.toggle('flash', lit && (bl & 2) > 0); ui.blkL.classList.toggle('on', lit && (bl & 1) > 0); ui.blkR.classList.toggle('on', lit && (bl & 2) > 0); } ui.bAction.style.visibility = game.wheel || game.ride || game.heli || transit.ride ? 'hidden' : '';
   let hint = '';
   if (near && !TOUCH) hint = near.driver === 'ai' ? 'Press F to carjack' : near.isCop && near.driver ? 'Press F to steal the cruiser' : 'Press F to get in';
   else if (near && TOUCH) hint = near.driver === 'ai' ? 'Tap GET IN to carjack' : 'Tap GET IN to drive';
@@ -4200,6 +4234,8 @@ function step(dt) {
     if (playing) { const ex = Math.abs(ax) < 0.1 ? 0 : Math.sign(ax) * Math.pow(Math.abs(ax), 1.35); c.thr = Math.abs(ay) < 0.12 ? 0 : ay; c.str = damp(c.str, -ex, 10, dt); c.hb = input.keys.has('Space') || input.btnAction; }
     else { c.thr = 0; c.hb = true; }
     player.pos.set(c.pos.x, c.y, c.pos.z);
+    if (c.blink === 1 || c.blink === 2) { const dy = angDiff(game.blinkYaw ?? c.yaw, c.yaw); game.blinkAcc = (game.blinkAcc || 0) + (c.blink === 1 ? dy : -dy); if (game.blinkAcc > 0.75 && Math.abs(c.str) < 0.15) c.blink = 0; }
+    game.blinkYaw = c.yaw; const lit = blinkLit(c); if (lit !== game.blinkLit) { game.blinkLit = lit; if (c.blink || !lit) { if (c.blink) sfxTick(lit); } }
   } else if (game.wheel) updateWheel(dt); else if (game.heli) updateHeli(dt); else if (transit.ride) updateRide(dt); else if (game.ride) { if (flight.st === 'parked') endRide(); } else if (game.inside) { updatePlayerInside(dt, ax, ay, sprint); if (game.inside && game.inside.room === ROOMS.home) famUpdate(dt); } else { updatePlayerFoot(dt, ax, ay, sprint); if (playing) checkShopDoors(dt); }
   input.jumpQ = false; if (player.bag) player.bag.visible = !game.bagChecked && !player.sit;
   if (fam.out) followUpdate(dt); else if (!game.inside || game.inside.room !== ROOMS.home) game.nearFam = null;

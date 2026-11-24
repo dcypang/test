@@ -16,6 +16,7 @@ Open `index.html` in Safari (or any modern browser). Landscape works best on a p
 | Jump / handbrake drift | JUMP / DRIFT | Space |
 | Sprint | Push stick to the edge | Shift |
 | Horn, radio | HORN, RADIO | H, R |
+| Left / right blinker (tap again to turn off; switches off by itself after the turn) | arrow buttons above the stick | Q / E (while driving) |
 | Full map (pan, zoom, tap to set a waypoint) | Tap the minimap | M |
 | Enter a shop or the airport terminal | Walk through a lit doorway | same |
 | Fly: buy a boarding pass at check-in, go through security, take the escalators up and walk to the gate printed on your pass | LAND skips ahead | F skips ahead |
@@ -48,6 +49,7 @@ Open `index.html` in Safari (or any modern browser). Landscape works best on a p
 - 4096 px sun/moon shadows that follow the camera (texel-snapped)
 - Detailed original people: faces (eyes, brows, nose, mouth, ears), seven hair styles plus beards, caps and helmets, shaped torsos and builds, tees, long sleeves, tanks, open jackets and hoodies, belts, two-tone sneakers and backpacks, with a light low-detail version for distant crowds
 - Lit shop windows with store interiors, OPEN neon, sidewalk signs and planters; airport ground crew vehicles at every gate, a drop-off canopy with taxis and blue taxiway lights; sandbags, jersey barriers, camo nets, tents and supply crates at Fort Halcón
+- Working turn signals on every car (front corners, mirror repeaters, rear corners) with a tick-tock sound and dashboard arrows; traffic signals before turning at intersections
 - Detailed original car models: sculpted bodies with wheel arches, tinted glass with a painted roof, LED headlight strips and full-width tail-light bars, grille, mirrors, door lines, chrome trim, plates, diffuser and exhaust tips, 5-spoke rims on rounded tyres (sports cars get dark rims and a wing, SUVs roof rails), with a matching low-detail version for distant cars
 - HDR bloom, 4x MSAA, clear-coat car paint, procedural glass curtain walls
 - Ocean with analytic shoreline depth, multi-wave normals, foam
