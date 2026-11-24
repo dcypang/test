@@ -44,6 +44,59 @@ button:focus-visible{outline:3px solid var(--lagoon);outline-offset:3px}
 #cash{font-size:32px;font-weight:800;color:var(--money);letter-spacing:.02em;font-variant-numeric:tabular-nums;text-shadow:0 2px 0 #0b3a1f,0 0 16px rgba(0,0,0,.5)}
 #pauseBtn{pointer-events:auto;width:38px;height:38px;border-radius:50%;border:1.5px solid var(--line);background:var(--glass);display:grid;place-items:center;padding:0}
 #pauseBtn svg{width:14px;height:14px;fill:var(--shell)}
+#phoneBtn{pointer-events:auto;width:38px;height:38px;border-radius:50%;border:1.5px solid var(--line);background:var(--glass);display:grid;place-items:center;padding:0}
+#phoneBtn svg{width:19px;height:19px;fill:var(--shell);stroke:var(--shell)}
+#phone{position:absolute;inset:0;z-index:60;display:grid;place-items:center;background:rgba(8,6,14,.5);-webkit-backdrop-filter:blur(3px);backdrop-filter:blur(3px);font-family:var(--font-body)}
+#phone[hidden]{display:none}
+.ph-frame{height:min(700px,94vh,94dvh);aspect-ratio:.6;max-width:94vw;border-radius:clamp(22px,5.5vh,42px);background:#0c0c11;padding:clamp(6px,1.4vh,11px);box-shadow:0 24px 70px rgba(0,0,0,.65),inset 0 0 0 2px #2c2c35}
+.ph-screen{position:relative;width:100%;height:100%;border-radius:clamp(17px,4.2vh,32px);overflow:hidden;display:flex;flex-direction:column;container-type:size;color:#fff;background:#111}
+.ph-island{position:absolute;left:50%;top:2.4cqw;width:27cqw;height:7cqw;border-radius:7cqw;background:#000;transform:translateX(-50%);z-index:4}
+.ph-status{display:flex;justify-content:space-between;align-items:center;padding:3cqw 6.5cqw 1.6cqw;font-size:max(10px,4.2cqw);font-weight:700;min-height:11cqw;box-sizing:border-box}
+.ph-sicons{display:flex;align-items:center;gap:1.6cqw}.ph-sicons svg{width:6.4cqw;height:3cqw}
+.ph-screen.light{color:#15161a}
+#phBody{flex:1;min-height:0;display:flex;flex-direction:column}
+.ph-homebar{height:7.5cqw;display:grid;place-items:center;flex:none}
+.ph-homebar button{width:44cqw;height:7cqw;border:0;padding:0;background:none;position:relative}
+.ph-homebar button::after{content:'';position:absolute;left:4cqw;right:4cqw;top:50%;height:1.5cqw;min-height:4px;margin-top:-.75cqw;border-radius:2cqw;background:currentColor;opacity:.85}
+.ph-pop{position:absolute;left:3cqw;right:3cqw;top:3cqw;z-index:6;background:rgba(28,28,34,.94);color:#fff;border-radius:4.5cqw;padding:3cqw 4cqw;font-size:max(10px,3.7cqw);font-weight:600;line-height:1.3;transform:translateY(-150%);transition:transform .25s ease;box-shadow:0 6px 20px rgba(0,0,0,.35)}
+.ph-pop.show{transform:none}
+.ph-top{display:flex;justify-content:space-between;align-items:center;padding:2cqw 5cqw 3cqw}
+.ph-date{font-size:max(11px,4.6cqw);font-weight:700;text-shadow:0 1px 4px rgba(0,0,0,.45);line-height:1.2}
+.ph-date small{display:block;font-size:max(9px,3.3cqw);font-weight:600;opacity:.85}
+.ph-pill{border:0;border-radius:99px;padding:1.6cqw 3.8cqw;background:rgba(255,255,255,.3);color:#fff;font-weight:800;font-size:max(10px,3.6cqw)}
+.ph-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:4.5cqw 1.5cqw;padding:1cqw 4cqw;align-content:start;overflow-y:auto;flex:1;min-height:0}
+.ph-app{position:relative;display:flex;flex-direction:column;align-items:center;gap:1.4cqw;background:none;border:0;padding:0;color:#fff;-webkit-touch-callout:none;user-select:none}
+.ph-ic{width:15.5cqw;height:15.5cqw;border-radius:3.9cqw;display:grid;place-items:center;box-shadow:0 2px 7px rgba(0,0,0,.28);flex:none}
+.ph-ic svg{width:66%;height:66%}
+.ph-lbl{font-size:max(9px,3.2cqw);font-weight:600;text-shadow:0 1px 3px rgba(0,0,0,.65);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:21cqw}
+.ph-x{position:absolute;left:-.5cqw;top:-1.6cqw;width:6.4cqw;height:6.4cqw;min-width:17px;min-height:17px;border-radius:50%;background:#ececf0;color:#15161a;font-weight:900;display:grid;place-items:center;font-size:max(12px,4.4cqw);line-height:1;box-shadow:0 1px 3px rgba(0,0,0,.35)}
+.ph-grid.wiggle .ph-ic{animation:phWig .26s ease-in-out infinite alternate}
+@keyframes phWig{from{transform:rotate(-2.6deg)}to{transform:rotate(2.6deg)}}
+.ph-tip{text-align:center;font-size:max(9px,3.2cqw);opacity:.85;padding:2cqw 6cqw;text-shadow:0 1px 3px rgba(0,0,0,.5)}
+.ph-view{flex:1;min-height:0;display:flex;flex-direction:column;color:#15161a}
+.ph-view.dark{color:#fff}.ph-view.dark .ph-head button{color:#7fd6ff}.ph-view.dark .ph-head span{color:#a9b0bb}
+.ph-head{display:flex;align-items:center;gap:1cqw;padding:1cqw 4cqw 2.4cqw 1.5cqw;font-size:max(13px,5.4cqw);font-weight:800}
+.ph-head button{border:0;background:none;color:#1f6fb2;font-size:max(15px,7cqw);font-weight:700;padding:0 2.4cqw;line-height:1}
+.ph-head span{margin-left:auto;font-size:max(9px,3.3cqw);font-weight:700;color:#6b6f78}
+.ph-scroll{flex:1;min-height:0;overflow-y:auto;padding:0 3.5cqw 3cqw;-webkit-overflow-scrolling:touch;touch-action:pan-y}
+.ph-sec{font-size:max(9px,3.3cqw);font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:#6b6f78;margin:3cqw 1cqw 1.6cqw}
+.ph-row{display:flex;align-items:center;gap:2.6cqw;background:#fff;border-radius:3.6cqw;padding:2.4cqw;margin-bottom:2cqw;box-shadow:0 1px 2px rgba(0,0,0,.07);border:0;width:100%;text-align:left;color:inherit;font:inherit;box-sizing:border-box}
+.ph-row .ph-ic{width:11.5cqw;height:11.5cqw;border-radius:2.9cqw;box-shadow:none}
+.ph-meta{flex:1;min-width:0;display:flex;flex-direction:column;gap:.4cqw}
+.ph-meta b{font-size:max(10px,3.9cqw);line-height:1.2}.ph-meta small{font-size:max(8.5px,3cqw);color:#6b6f78;line-height:1.25}
+.ph-acts{display:flex;flex-direction:column;align-items:center;flex:none}
+.ph-btn{border:0;border-radius:99px;padding:1.5cqw 3.2cqw;min-width:14cqw;background:#e6ecf5;color:#1f6fb2;font-weight:800;font-size:max(10px,3.5cqw);flex:none}
+.ph-btn.buy{background:#1f6fb2;color:#fff}.ph-btn:disabled{opacity:.45}
+.ph-link{border:0;background:none;color:#c8372d;font-size:max(9px,3cqw);font-weight:700;padding:1.2cqw 0 0}
+.ph-card{background:#fff;border-radius:4cqw;padding:3.6cqw;margin:2cqw 0;box-shadow:0 1px 2px rgba(0,0,0,.07)}
+.ph-big{font-size:max(22px,10cqw);font-weight:800;line-height:1.1}
+.ph-note{font-size:max(9px,3.1cqw);color:#6b6f78;margin:1cqw 1cqw 2cqw;line-height:1.3}
+.ph-amt{font-weight:800;font-size:max(10px,3.8cqw);flex:none}.ph-amt.up{color:#2d9b4f}.ph-amt.down{color:#c8372d}
+.ph-walls{display:grid;grid-template-columns:repeat(3,1fr);gap:2.6cqw}
+.ph-walls button{aspect-ratio:.6;border-radius:3cqw;border:2px solid transparent;padding:0}.ph-walls button.on{border-color:#1f6fb2;box-shadow:0 0 0 2px #fff inset}
+.ph-spin{display:inline-block;width:3.4cqw;height:3.4cqw;min-width:10px;min-height:10px;border:2px solid #1f6fb2;border-right-color:transparent;border-radius:50%;animation:phSpin .7s linear infinite;vertical-align:middle}
+@keyframes phSpin{to{transform:rotate(360deg)}}
+.ph-game{flex:1;min-height:0;position:relative;background:#000}.ph-game canvas{position:absolute;inset:0;width:100%;height:100%;touch-action:none}
 #stars{display:flex;gap:3px}
 #stars svg{width:21px;height:21px}
 #stars path{fill:rgba(255,255,255,.14);stroke:rgba(0,0,0,.55);stroke-width:1.2}
@@ -175,6 +228,7 @@ button:focus-visible{outline:3px solid var(--lagoon);outline-offset:3px}
     <div id="tl"><div id="clock">18:00</div><div id="district">Ocean Row</div></div>
     <div id="tr">
       <div id="cashRow"><div id="cash">$0</div>
+        <button id="phoneBtn" aria-label="Phone"><svg viewBox="0 0 24 24"><rect x="6.5" y="2" width="11" height="20" rx="2.6" fill="none" stroke-width="2"/><rect x="10" y="17.6" width="4" height="1.7" rx=".85"/></svg></button>
         <button id="pauseBtn" aria-label="Pause"><svg viewBox="0 0 14 14"><rect x="2" y="1" width="3.5" height="12" rx="1"/><rect x="8.5" y="1" width="3.5" height="12" rx="1"/></svg></button>
       </div>
       <div id="stars"></div>
@@ -231,6 +285,16 @@ button:focus-visible{outline:3px solid var(--lagoon);outline-offset:3px}
       <div class="prow"><button class="ghost" id="soundBtn">Sound: on</button></div>
       <button class="cta" id="resumeBtn">Resume</button>
     </div>
+  </div>
+
+  <div id="phone" hidden>
+    <div class="ph-frame"><div class="ph-screen" id="phScreen">
+      <div class="ph-island"></div>
+      <div class="ph-status"><span id="phTime"></span><span class="ph-sicons"><span id="phCash"></span><svg viewBox="0 0 26 12" aria-hidden="true"><rect x="0.8" y="0.8" width="21" height="10.4" rx="3" fill="none" stroke="currentColor" stroke-width="1.4"/><rect x="2.6" y="2.6" width="15" height="6.8" rx="1.6" fill="currentColor"/><rect x="23" y="4" width="2" height="4" rx="1" fill="currentColor"/></svg></span></div>
+      <div id="phBody"></div>
+      <div class="ph-homebar"><button id="phHome" aria-label="Home"></button></div>
+      <div class="ph-pop" id="phPop"></div>
+    </div></div>
   </div>
 
   <div id="bigmap" hidden>
@@ -1241,7 +1305,7 @@ function dutyEnd(ok, why) {
   if (!duty.on) return; const rk0 = milRank(); duty.on = false; duty.tgt = null; if (duty.marker) duty.marker.visible = false; $('mission').hidden = true;
   for (const v of mil.trucks) unloadCrates(v);
   if (ok) {
-    const pay = Math.round(duty.basePay / 10) * 10 + Math.max(0, Math.round(duty.t)); addCash(pay); game.milDuties++; store.set('milDuties', game.milDuties); sfxChime();
+    const pay = Math.round(duty.basePay / 10) * 10 + Math.max(0, Math.round(duty.t)); addCash(pay, 'Army duty · ' + duty.name); game.milDuties++; store.set('milDuties', game.milDuties); sfxChime();
     showBanner('DUTY COMPLETE', `+$${pay.toLocaleString('en-US')} · ${duty.name} · ${Math.round(duty.t)} s to spare`, 'var(--money)', 2800);
     const rk1 = milRank(); if (rk1 !== rk0) setTimeout(() => { showBanner('PROMOTED', `${rk1.name} · duties now pay ${Math.round(rk1.mult * 100)}%`, '#ffc857', 3400); sfxChime(); }, 3000);
   } else showBanner('DUTY FAILED', why || 'Out of time', 'var(--coral)', 2600);
@@ -1414,9 +1478,11 @@ function busAtStop() { if (!transit.built || !onFootFree()) return null; for (co
 function nearStop() { if (!transit.built || !onFootFree()) return null; for (const st of transit.stops) if (Math.hypot(player.pos.x - st.sx, player.pos.z - st.sz) < 4.5) return st; return null; }
 function nearRank() { if (!transit.built || !onFootFree()) return null; for (const r of transit.ranks) if (Math.hypot(player.pos.x - r.sx, player.pos.z - r.sz) < 3.5) return r; return null; }
 function boardBus(b) {
-  if (game.cash < 2) { toast('The bus fare is $2'); return; }
-  addCash(-2); transit.ride = { kind: 'bus', bus: b, off: false }; player.h.root.visible = false; player.vel.set(0, 0, 0); cam.yaw = b.v.yaw + Math.PI; cam.pitch = 0.3; cam.manual = 0;
-  toast('On the bus · $2 · tap GET OFF to step out at the next stop', 3500);
+  const pass = game.time < (game.busPassUntil || 0), tix = game.busTickets > 0;
+  if (!pass && !tix && game.cash < 2) { toast('The bus fare is $2 · or buy tickets in the BusGo app'); return; }
+  if (pass) toast('Day pass scanned · enjoy the ride', 2500); else if (tix) { game.busTickets--; store.set('busTickets', game.busTickets); toast(`Ticket used · ${game.busTickets} left`, 2500); } else addCash(-2, 'Bus fare');
+  transit.ride = { kind: 'bus', bus: b, off: false }; player.h.root.visible = false; player.vel.set(0, 0, 0); cam.yaw = b.v.yaw + Math.PI; cam.pitch = 0.3; cam.manual = 0;
+  if (!pass && !tix) toast('On the bus · $2 · tap GET OFF to step out at the next stop', 3500);
 }
 function leaveRide(x, z, msg) {
   const r = transit.ride; transit.ride = null; player.h.root.visible = true; player.pos.set(x, surfaceH(x, z, 0.5) + 0.05, z); player.vel.set(0, 0, 0); player.onGround = false;
@@ -1440,7 +1506,7 @@ function taxiPlan(rk, dest) {
   const path = makePath(laneRoute(cl), false); return { path, fare: 5 + Math.round(path.len * 0.02) };
 }
 function taxiDests() {
-  const nearShop = (type) => { let best = null, bd = 1e9; for (const sp of shopsData) if (sp.type === type && Math.abs(sp.dx) < 520 && Math.abs(sp.dz) < 520) { const dd = Math.hypot(sp.dx - player.pos.x, sp.dz - player.pos.z); if (dd < bd) { bd = dd; best = sp; } } return best && { x: best.dx + best.nx * 3, z: best.dz + best.nz * 3 }; };
+  const pp = game.inside ? game.inside.out : player.pos, nearShop = (type) => { let best = null, bd = 1e9; for (const sp of shopsData) if (sp.type === type && Math.abs(sp.dx) < 520 && Math.abs(sp.dz) < 520) { const dd = Math.hypot(sp.dx - pp.x, sp.dz - pp.z); if (dd < bd) { bd = dd; best = sp; } } return best && { x: best.dx + best.nx * 3, z: best.dz + best.nz * 3 }; };
   const home = shopsData.find((sp) => sp.type === 'home');
   return [{ name: 'Home', p: { x: home.dx + home.nx * 3, z: home.dz + home.nz * 3 } }, { name: 'Coastline Motors (cars)', p: { x: DEALER.x, z: DEALER.z + 36 } }, { name: 'Solano International (airport)', p: { x: -20, z: 786 } }, { name: 'Port of Solano', p: { x: 505, z: -60 } },
     { name: 'Marisol Beach', p: { x: -520, z: 140 } }, { name: 'Downtown', p: { x: 12, z: 12 } }, { name: 'Fort Halcón gate', p: { x: 20, z: -722 } }, { name: 'Nearest Mercado Fresco', p: nearShop('grocery') }, { name: 'Nearest 24/7 Mart', p: nearShop('mart') }, { name: 'Nearest Threads', p: nearShop('threads') }].filter((d) => d.p);
@@ -1464,6 +1530,254 @@ function updateRide(dt) {
   placeScripted(r.v, r.path, r.s, dt, r.spd); player.pos.set(r.v.pos.x, r.v.y + 1, r.v.pos.z);
   if (rem < 0.4) taxiArrive();
 }
+// ---------------------------------------------------------------- the phone: home screen, App Shop, travel apps, games
+const PH_WALLS = ['linear-gradient(165deg,#ff9a7a,#ff3f8e 48%,#4b2e83)', 'linear-gradient(170deg,#2be0cf,#1f6fb2 60%,#141a2a)', 'linear-gradient(160deg,#ffd166,#f4a261 50%,#e76f51)', 'linear-gradient(165deg,#1d2733,#3a4a5c)', 'linear-gradient(160deg,#9be15d,#2a9d8f 60%,#264653)', 'linear-gradient(160deg,#cdb9f4,#9ad8f2)'];
+const W2 = '#fff';
+const APPS = {
+  shop: { name: 'App Shop', bg: 'linear-gradient(160deg,#3fa9f5,#1f6fb2)', builtin: true, svg: `<path d="M5.5 8h13l-1.2 12.5H6.7z" fill="${W2}"/><path d="M9 8V6.4a3 3 0 0 1 6 0V8" stroke="${W2}" stroke-width="2" fill="none"/>` },
+  settings: { name: 'Settings', bg: 'linear-gradient(160deg,#8d949b,#4f555c)', builtin: true, svg: `<circle cx="12" cy="12" r="3.3" fill="none" stroke="${W2}" stroke-width="2.2"/><path d="M12 2.5v4M12 17.5v4M2.5 12h4M17.5 12h4M5.3 5.3l2.8 2.8M15.9 15.9l2.8 2.8M5.3 18.7l2.8-2.8M15.9 8.1l2.8-2.8" stroke="${W2}" stroke-width="2.4" stroke-linecap="round"/>` },
+  maps: { name: 'Maps', cat: 'Utilities', price: 0, bg: 'linear-gradient(160deg,#7fd6cc,#2a9d8f)', desc: 'The full map, a route home, clear your route', svg: `<path d="M12 2.5a6.8 6.8 0 0 0-6.8 6.8c0 4.9 6.8 12.2 6.8 12.2s6.8-7.3 6.8-12.2A6.8 6.8 0 0 0 12 2.5z" fill="${W2}"/><circle cx="12" cy="9.3" r="2.6" fill="#2a9d8f"/>` },
+  bank: { name: 'Bank', cat: 'Utilities', price: 0, bg: 'linear-gradient(160deg,#6fd08c,#2d8f4e)', desc: 'Your balance and every payment in and out', svg: `<rect x="3" y="6" width="18" height="12.5" rx="2.2" fill="${W2}"/><rect x="3" y="9" width="18" height="2.6" fill="#2d8f4e"/><rect x="5.5" y="14" width="5" height="1.8" rx=".9" fill="#2d8f4e"/>` },
+  weather: { name: 'Weather', cat: 'Utilities', price: 0, bg: 'linear-gradient(160deg,#6fd3ff,#1f8fd6)', desc: 'Sun or clouds across Solano and the islands', svg: `<circle cx="9" cy="9" r="4.2" fill="#ffd166"/><path d="M8 19.5h10a3.6 3.6 0 0 0 0-7.2 5 5 0 0 0-9.7 1.5A2.9 2.9 0 0 0 8 19.5z" fill="${W2}"/>` },
+  fly: { name: 'FlyNow', cat: 'Travel', price: 0, bg: 'linear-gradient(160deg,#2be0cf,#18879a)', desc: 'Book a flight to any island from wherever you are', svg: `<path d="M21 15.5v-2l-8-5V3.6a1.5 1.5 0 0 0-3 0v4.9l-8 5v2l8-2.5v5l-2 1.5V21l3.5-1 3.5 1v-1.5l-2-1.5v-5z" fill="${W2}"/>` },
+  bus: { name: 'BusGo', cat: 'Travel', price: 0, bg: 'linear-gradient(160deg,#5aa9f0,#1f5fa8)', desc: 'Live bus times, the nearest stop, tickets and day passes', svg: `<rect x="4.5" y="3" width="15" height="14.5" rx="3" fill="${W2}"/><rect x="6.5" y="5.5" width="11" height="5" rx="1" fill="#1f5fa8"/><circle cx="8.3" cy="14.3" r="1.3" fill="#1f5fa8"/><circle cx="15.7" cy="14.3" r="1.3" fill="#1f5fa8"/><rect x="6.5" y="17.5" width="3" height="3" rx="1" fill="${W2}"/><rect x="14.5" y="17.5" width="3" height="3" rx="1" fill="${W2}"/>` },
+  taxi: { name: 'Cabby', cat: 'Travel', price: 0, bg: 'linear-gradient(160deg,#ffd75a,#f4b400)', desc: 'Call a taxi to where you are standing and ride anywhere in the city', svg: `<path d="M5.5 11.5l2-5h9l2 5" fill="none" stroke="#15161a" stroke-width="2"/><rect x="3" y="11" width="18" height="6.5" rx="2" fill="#15161a"/><circle cx="7.5" cy="18" r="2" fill="#15161a"/><circle cx="16.5" cy="18" r="2" fill="#15161a"/><rect x="10" y="3" width="4" height="2.2" rx=".6" fill="#15161a"/>` },
+  hopper: { name: 'Sky Hopper', cat: 'Games', price: 0, bg: 'linear-gradient(160deg,#ffb3c8,#ff5f8f)', desc: 'Tap to flap a seagull between the palm trees', svg: `<ellipse cx="12" cy="13" rx="7" ry="5" fill="${W2}"/><path d="M10 12.5L4.5 8l7.5 1.5z" fill="#ffe3ea"/><path d="M18.6 12l3.2 1-3.2 1z" fill="#ff9f1c"/><circle cx="15.6" cy="11.6" r="1.1" fill="#15161a"/>` },
+  snake: { name: 'Neon Snake', cat: 'Games', price: 3, bg: 'linear-gradient(160deg,#4b2e83,#1c1238)', desc: 'Steer the snake to the mangoes without hitting the walls', svg: `<path d="M4 17.5h8a3 3 0 0 0 0-6H9a3 3 0 0 1 0-6h9" fill="none" stroke="#7dff9a" stroke-width="3.2" stroke-linecap="round"/><circle cx="19" cy="17.5" r="2.3" fill="#ffb703"/>` },
+  stack: { name: 'Stack Up', cat: 'Games', price: 5, bg: 'linear-gradient(160deg,#ffc46b,#ff7a2d)', desc: 'Drop each sliding block onto the tower · how high can you go?', svg: `<rect x="5" y="15.5" width="14" height="4" rx="1" fill="${W2}"/><rect x="6" y="11" width="12" height="4" rx="1" fill="${W2}" opacity=".85"/><rect x="8" y="6.5" width="9" height="4" rx="1" fill="${W2}" opacity=".7"/>` },
+};
+const phone = { open: false, app: null, edit: false, dl: {}, games: null, cab: null, lp: 0, lpFired: false, popT: 0 };
+const ph = (id) => APPS[id], icon = (id) => `<span class="ph-ic" style="background:${ph(id).bg}"><svg viewBox="0 0 24 24">${ph(id).svg}</svg></span>`;
+const esc = (t) => String(t).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+const money = (n) => '$' + Math.round(n).toLocaleString('en-US');
+function phoneMsg(t) { const el = $('phPop'); el.textContent = t; el.classList.add('show'); clearTimeout(phone.popT); phone.popT = setTimeout(() => el.classList.remove('show'), 2300); }
+function openPhone() {
+  if (game.state !== 'play') return;
+  if (game.ride || game.wheel || game.heli || transit.ride) { toast('Use your phone when you get there'); return; }
+  game.state = 'phone'; phone.open = true; phone.app = null; phone.edit = false; $('phone').hidden = false; if (document.pointerLockElement) document.exitPointerLock(); phoneRender();
+}
+function closePhone() { if (!phone.open) return; phoneStopGame(); phone.open = false; phone.app = null; $('phone').hidden = true; if (game.state === 'phone') game.state = 'play'; }
+function phoneSave() { store.set('phoneApps', game.phoneApps); store.set('phoneOwned', game.phoneOwned); }
+const phonePos = () => game.inside ? game.inside.out : player.car ? player.car.pos : player.pos;
+function phoneRender() {
+  phoneStopGame();
+  const scr = $('phScreen'), body = $('phBody'), a = phone.app, game_ = a && ph(a).cat === 'Games';
+  $('phTime').textContent = fmtTime(game.tod).replace(' AM', '').replace(' PM', ''); $('phCash').textContent = money(game.cash);
+  scr.style.background = !a ? PH_WALLS[game.phoneWall % PH_WALLS.length] : game_ ? '#000' : '#f2f2f6'; scr.classList.toggle('light', !!a && !game_);
+  if (!a) {
+    const w = weatherRows()[0];
+    body.innerHTML = `<div class="ph-top"><div class="ph-date">Solano<small>${w.sunny ? 'Sunny' : 'Partly cloudy'} · ${w.tmp}°F</small></div><button class="ph-pill" data-act="edit">${phone.edit ? 'Done' : 'Edit'}</button></div>
+      <div class="ph-grid${phone.edit ? ' wiggle' : ''}">${game.phoneApps.map((id) => `<button class="ph-app" data-open="${id}">${icon(id)}${phone.edit && !ph(id).builtin ? `<span class="ph-x" data-del="${id}" aria-label="Delete ${esc(ph(id).name)}">×</span>` : ''}<span class="ph-lbl">${esc(ph(id).name)}</span></button>`).join('')}</div>
+      <div class="ph-tip">${phone.edit ? 'Tap × to delete an app · tap Done when finished' : game.phoneApps.length < 7 ? 'Get more apps and games in the App Shop' : 'Hold an app to delete it'}</div>`;
+    return;
+  }
+  const head = (extra = '') => `<div class="ph-head"><button data-act="home" aria-label="Back">‹</button>${esc(ph(a).name)}${extra}</div>`;
+  let html = '';
+  if (a === 'shop') {
+    const row = (id) => { const ap = ph(id), inst = game.phoneApps.includes(id), owned = !ap.price || game.phoneOwned.includes(id);
+      const act = phone.dl[id] ? '<button class="ph-btn" disabled><span class="ph-spin"></span></button>' : inst ? `<button class="ph-btn" data-open="${id}">OPEN</button><button class="ph-link" data-del="${id}">Delete</button>` : owned ? `<button class="ph-btn" data-get="${id}">GET</button>` : `<button class="ph-btn buy" data-get="${id}">$${ap.price}</button>`;
+      return `<div class="ph-row">${icon(id)}<div class="ph-meta"><b>${esc(ap.name)}</b><small>${esc(ap.desc)}${ap.price ? ` · ${owned ? 'purchased' : '$' + ap.price}` : ' · free'}</small></div><div class="ph-acts">${act}</div></div>`; };
+    html = head() + `<div class="ph-scroll"><div class="ph-note">Travel apps are free to download · every trip costs money</div>` + ['Travel', 'Games', 'Utilities'].map((c) => `<div class="ph-sec">${c}</div>` + Object.keys(APPS).filter((id) => ph(id).cat === c).map(row).join('')).join('') + '</div>';
+  } else if (a === 'fly') {
+    const { here, opts } = flyOptions(), wanted = game.wanted > 0;
+    html = head() + `<div class="ph-scroll"><div class="ph-card"><b>From ${esc(here ? here.name : 'Solano International')}</b><div class="ph-note">${here ? 'A shuttle takes you to the airstrip' : 'A car takes you to the airport'} · you fly straight away</div></div>${wanted ? '<div class="ph-note" style="color:#c8372d">Lose the cops first · airports turn away wanted travellers</div>' : ''}<div class="ph-sec">Flights</div>`
+      + opts.map((o, i) => `<div class="ph-row">${icon('fly')}<div class="ph-meta"><b>${esc(o.name)}</b><small>${esc(o.desc)}</small></div><button class="ph-btn buy" data-fly="${i}" ${wanted || game.cash < o.price ? 'disabled' : ''}>${money(o.price)}</button></div>`).join('') + '</div>';
+  } else if (a === 'taxi') {
+    const rk = cabbyRank();
+    if (!rk) html = head() + '<div class="ph-scroll"><div class="ph-card"><b>No Cabby drivers out here</b><div class="ph-note">Cabby works in Solano city · take the bus, a taxi stand or FlyNow</div></div></div>';
+    else { phone.cab = { rk, list: taxiDests().map((d) => ({ d, pl: taxiPlan(rk, d) })) }; const wanted = game.wanted > 0;
+      html = head() + `<div class="ph-scroll"><div class="ph-card"><b>Pickup: ${esc(districtAt(rk.cx, rk.cz))}</b><div class="ph-note">A driver arrives right away · fare includes a $3 booking fee</div></div>${wanted ? '<div class="ph-note" style="color:#c8372d">No driver will pick you up while the cops are after you</div>' : ''}<div class="ph-sec">Where to?</div>`
+        + phone.cab.list.map((o, i) => `<div class="ph-row">${icon('taxi')}<div class="ph-meta"><b>${esc(o.d.name)}</b><small>About ${Math.max(10, Math.round(o.pl.path.len / 16))} s ride</small></div><button class="ph-btn buy" data-cab="${i}" ${wanted || game.cash < o.pl.fare + 3 ? 'disabled' : ''}>${money(o.pl.fare + 3)}</button></div>`).join('') + '</div>'; }
+  } else if (a === 'bus') {
+    const pass = game.time < (game.busPassUntil || 0), pp = phonePos();
+    const stops = transit.stops.map((st, i) => ({ st, i, d: Math.hypot(st.sx - pp.x, st.sz - pp.z) })).sort((x, y) => x.d - y.d);
+    html = head() + `<div class="ph-scroll"><div class="ph-card"><b>${pass ? `Day pass active · ${Math.ceil((game.busPassUntil - game.time) / 60)} min left` : `Tickets: ${game.busTickets || 0}`}</b><div class="ph-note">${pass ? 'Ride as much as you like' : 'Tickets are used when you board · without one the fare is $2 cash'}</div></div><div class="ph-sec">Buy</div>`
+      + [['1', 'Single ticket', 'One bus ride', 2], ['5', '5 tickets', 'Save $2', 8], ['day', 'Day pass', 'Unlimited rides for one full day', 12]].map(([k, n, dsc, pr]) => `<div class="ph-row">${icon('bus')}<div class="ph-meta"><b>${n}</b><small>${dsc}</small></div><button class="ph-btn buy" data-bus="${k}" ${game.cash < pr ? 'disabled' : ''}>${money(pr)}</button></div>`).join('')
+      + `<div class="ph-sec">Stops near you</div>` + stops.map((o) => `<button class="ph-row" data-stop="${o.i}">${icon('bus')}<div class="ph-meta"><b>${esc(o.st.name)}</b><small>${o.d < 1000 ? Math.round(o.d) + ' m' : (o.d / 1000).toFixed(1) + ' km'} away · next bus in ~${Math.max(5, Math.round(nextBusIn(o.st)))} s · tap for a route</small></div></button>`).join('') + '</div>';
+  } else if (a === 'bank') {
+    const tx = game.txns || [];
+    html = head() + `<div class="ph-scroll"><div class="ph-card"><div class="ph-note" style="margin:0">Balance</div><div class="ph-big">${money(game.cash)}</div><div class="ph-note" style="margin:1cqw 0 0">${game.garage.length} car${game.garage.length === 1 ? '' : 's'} owned${game.enlisted ? ` · ${milRank().name}, ${game.milDuties} army duties` : ''}</div></div><div class="ph-sec">Recent</div>`
+      + (tx.length ? tx.map((t) => `<div class="ph-row"><div class="ph-meta"><b>${esc(t.note)}</b><small>${t.t}</small></div><span class="ph-amt ${t.n > 0 ? 'up' : 'down'}">${t.n > 0 ? '+' : '−'}${money(Math.abs(t.n))}</span></div>`).join('') : '<div class="ph-note">No payments yet this session</div>') + '</div>';
+  } else if (a === 'weather') {
+    html = head() + `<div class="ph-scroll"><div class="ph-note">${fmtTime(game.tod)}</div>` + weatherRows().map((w) => `<div class="ph-row"><span class="ph-ic" style="background:${w.sunny ? 'linear-gradient(160deg,#ffd166,#ff9f1c)' : 'linear-gradient(160deg,#b8c4d0,#6b7a8a)'}"><svg viewBox="0 0 24 24">${w.sunny ? '<circle cx="12" cy="12" r="5" fill="#fff"/>' : ph('weather').svg}</svg></span><div class="ph-meta"><b>${esc(w.name)}</b><small>${w.sunny ? 'Sunny' : 'Partly cloudy'}</small></div><span class="ph-big" style="font-size:max(16px,6.5cqw)">${w.tmp}°</span></div>`).join('') + '</div>';
+  } else if (a === 'maps') {
+    html = head() + `<div class="ph-scroll"><button class="ph-row" data-map="open">${icon('maps')}<div class="ph-meta"><b>Open the full map</b><small>Pan, zoom and tap to drop a waypoint</small></div></button><button class="ph-row" data-map="home">${icon('maps')}<div class="ph-meta"><b>Route home</b><small>Purple route to your house</small></div></button>${game.waypoint ? `<button class="ph-row" data-map="clear">${icon('maps')}<div class="ph-meta"><b>Clear route</b><small>Remove the waypoint</small></div></button>` : ''}</div>`;
+  } else if (a === 'settings') {
+    html = head() + `<div class="ph-scroll"><div class="ph-sec">Wallpaper</div><div class="ph-walls">${PH_WALLS.map((wp, i) => `<button data-wall="${i}" class="${i === game.phoneWall ? 'on' : ''}" style="background:${wp}" aria-label="Wallpaper ${i + 1}"></button>`).join('')}</div><div class="ph-sec">About</div><div class="ph-card"><b>Solano S1</b><div class="ph-note">${game.phoneApps.length} apps installed · lots of free space</div></div></div>`;
+  } else if (game_) {
+    html = head(`<span>${ph(a).name === 'Neon Snake' ? 'Swipe or tap to steer' : 'Tap to play'}</span>`) + '<div class="ph-game"><canvas></canvas></div>';
+  }
+  body.innerHTML = `<div class="ph-view${game_ ? ' dark' : ''}">${html}</div>`;
+  if (game_) requestAnimationFrame(() => phoneStartGame(a));
+}
+function weatherRows() { return [['Solano', 0], ...DESTS.map((d, i) => [d.name, i + 1])].map(([name, i]) => { const seed = (name.length * 37 + i * 11) % 7; return { name, sunny: (seed + Math.floor(game.tod / 3)) % 3 !== 0, tmp: Math.round(76 + seed + 7 * Math.sin((game.tod - 9) / 24 * Math.PI * 2)) }; }); }
+function flyOptions() {
+  const pp = phonePos(), here = destAt(pp.x, pp.z), from = here ? here.id : 'solano';
+  const opts = from === 'solano' ? [{ kind: 'loop', name: 'Scenic loop over Solano', price: 150, desc: 'Take off, circle the whole city and land back here' }] : [{ kind: 'solano', name: 'Solano International', price: 250, desc: 'Home to the mainland' }];
+  for (const d of DESTS) if (d.id !== from) opts.push({ kind: d.id, name: d.name, price: d.price, desc: (game.visited.includes(d.id) ? 'Been there · ' : 'New · ') + d.blurb });
+  return { here, from, opts };
+}
+function phoneFly(o, from) {
+  if (game.wanted > 0 || game.cash < o.price) return;
+  addCash(-o.price, 'FlyNow · ' + o.name); closePhone();
+  if (game.inside) exitShop(); if (player.car) exitCar(); if (player.sit) standUp();
+  const term = shopsData.find((sp) => sp.type === 'terminal'), strip = (id) => shopsData.find((sp) => sp.type === 'airstrip' && sp.dest === id);
+  const back = o.kind === 'loop' ? term : o.kind === 'solano' ? term : strip(o.kind), dest = o.kind === 'loop' ? null : RUNWAYS[o.kind];
+  fadeFlash(from === 'solano' ? 'Heading to Solano International…' : 'Heading to the airstrip…', 1.3);
+  game.ride = { back, kind: o.kind }; player.h.root.visible = false; player.vel.set(0, 0, 0);
+  placeFlight(RUNWAYS[from], 1.5); flight.trip = dest; cam.yaw = flight.yaw + Math.PI; cam.pitch = 0.25; cam.manual = 0; radioOn(true);
+  toast(dest ? `FlyNow · flight to ${dest.name} · enjoy the view` : 'FlyNow · scenic loop over Solano', 3500);
+}
+function cabbyRank() {
+  const p = phonePos(); if (Math.abs(p.x) > HALF + 24 || Math.abs(p.z) > HALF + 24) return null;
+  const a = nearestNode(p.x, p.z); let best = null, bd = 1e9;
+  for (const b of neighbors(a)) { const sg = segInfo(a, b), t = clamp((p.x - sg.ax) * sg.dx + (p.z - sg.az) * sg.dz, 10, sg.len - 22), x = sg.ax + sg.dx * t, z = sg.az + sg.dz * t, d = Math.hypot(p.x - x, p.z - z); if (d < bd) { bd = d; best = { b, d: [sg.dx, sg.dz], cx: x, cz: z }; } }
+  return best;
+}
+function phoneCab(i) {
+  const c = phone.cab && phone.cab.list[i]; if (!c || game.wanted > 0) return; const fare = c.pl.fare + 3; if (game.cash < fare) return;
+  addCash(-fare, 'Cabby · ' + c.d.name); closePhone(); if (game.inside) exitShop(); if (player.car) exitCar(); if (player.sit) standUp();
+  fadeFlash('Your Cabby driver pulls up…', 0.9); startTaxi(phone.cab.rk, c.d, c.pl);
+}
+function phoneGet(id) {
+  const ap = ph(id); if (phone.dl[id] || game.phoneApps.includes(id)) return;
+  if (ap.price && !game.phoneOwned.includes(id)) { if (game.cash < ap.price) { phoneMsg(`${ap.name} costs $${ap.price} · not enough cash`); return; } addCash(-ap.price, 'App Shop · ' + ap.name); game.phoneOwned.push(id); }
+  phone.dl[id] = true; phoneRender();
+  setTimeout(() => { delete phone.dl[id]; if (!game.phoneApps.includes(id)) game.phoneApps.push(id); phoneSave(); if (phone.open) { if (phone.app === 'shop') phoneRender(); phoneMsg(`${ap.name} is on your home screen`); } }, 900);
+}
+function phoneDelete(id) {
+  if (ph(id).builtin) return; game.phoneApps = game.phoneApps.filter((x) => x !== id); phoneSave(); phoneRender();
+  phoneMsg(`${ph(id).name} deleted${ph(id).price ? ' · you can download it again for free' : ''}`);
+}
+$('phone').addEventListener('click', (e) => {
+  if (e.target === $('phone')) { closePhone(); return; }
+  if (e.target.closest('#phHome')) { if (phone.app) { phone.app = null; phoneRender(); } else if (phone.edit) { phone.edit = false; phoneRender(); } else closePhone(); return; }
+  const el = e.target.closest('[data-del],[data-act],[data-open],[data-get],[data-fly],[data-cab],[data-bus],[data-stop],[data-wall],[data-map]'); if (!el) return;
+  const d = el.dataset; sfxTick(true);
+  if (d.del) { phoneDelete(d.del); return; }
+  if (d.act === 'home') { phone.app = null; phoneRender(); return; }
+  if (d.act === 'edit') { phone.edit = !phone.edit; phoneRender(); return; }
+  if (d.open) { if (phone.lpFired) { phone.lpFired = false; return; } if (phone.edit && !phone.app) return; phone.app = d.open; phoneRender(); return; }
+  if (d.get) { phoneGet(d.get); return; }
+  if (d.fly !== undefined) { const f = flyOptions(); phoneFly(f.opts[+d.fly], f.from); return; }
+  if (d.cab !== undefined) { phoneCab(+d.cab); return; }
+  if (d.bus) { const pr = { 1: 2, 5: 8, day: 12 }[d.bus]; if (game.cash < pr) return; addCash(-pr, 'BusGo · ' + (d.bus === 'day' ? 'day pass' : d.bus + ' ticket' + (d.bus === '1' ? '' : 's')));
+    if (d.bus === 'day') game.busPassUntil = game.time + DAY_LEN; else { game.busTickets = (game.busTickets || 0) + +d.bus; store.set('busTickets', game.busTickets); } phoneRender(); phoneMsg(d.bus === 'day' ? 'Day pass ready · just get on the bus' : 'Tickets added to your phone'); return; }
+  if (d.stop !== undefined) { const st = transit.stops[+d.stop]; closePhone(); setWaypoint(st.sx, st.sz); toast(`Route set · ${st.name}`); return; }
+  if (d.wall !== undefined) { game.phoneWall = +d.wall; store.set('phoneWall', game.phoneWall); phoneRender(); phoneMsg('Wallpaper set'); return; }
+  if (d.map === 'open') { closePhone(); openMap(); return; }
+  if (d.map === 'home') { const hm = shopsData.find((sp) => sp.type === 'home'); closePhone(); setWaypoint(hm.dx + hm.nx * 3, hm.dz + hm.nz * 3); toast('Route set · home'); return; }
+  if (d.map === 'clear') { setWaypoint(null); phoneRender(); return; }
+});
+$('phBody').addEventListener('pointerdown', (e) => { const el = e.target.closest('.ph-app'); if (!el || phone.app || phone.edit) return; clearTimeout(phone.lp); phone.lpFired = false; phone.lp = setTimeout(() => { phone.edit = true; phone.lpFired = true; phoneRender(); }, 550); });
+for (const ev of ['pointerup', 'pointercancel', 'pointerleave']) $('phBody').addEventListener(ev, () => clearTimeout(phone.lp));
+// ---- phone games (original): Sky Hopper, Neon Snake, Stack Up
+function phoneStopGame() { if (phone.games) { cancelAnimationFrame(phone.games.raf); phone.games = null; } }
+function phoneStartGame(id) {
+  const cv = $('phBody').querySelector('.ph-game canvas'); if (!cv || phone.app !== id) return;
+  const r = cv.getBoundingClientRect(), dpr = Math.min(2, devicePixelRatio || 1); cv.width = Math.round(r.width * dpr); cv.height = Math.round(r.height * dpr);
+  const g = cv.getContext('2d'); g.setTransform(dpr, 0, 0, dpr, 0, 0);
+  const G = PHONE_GAMES[id](r.width, r.height), pg = { id, G, g, w: r.width, h: r.height, last: performance.now(), raf: 0, sx: 0, sy: 0 }; phone.games = pg;
+  const loop = (now) => { if (phone.games !== pg) return; const dt = Math.min(0.05, (now - pg.last) / 1000); pg.last = now; G.step(dt); G.draw(g, pg.w, pg.h); pg.raf = requestAnimationFrame(loop); };
+  pg.raf = requestAnimationFrame(loop);
+  const pos = (e) => { const b = cv.getBoundingClientRect(); return [e.clientX - b.left, e.clientY - b.top]; };
+  cv.addEventListener('pointerdown', (e) => { e.preventDefault(); const [x, y] = pos(e); pg.sx = x; pg.sy = y; if (G.down) G.tap(x, y); });
+  cv.addEventListener('pointerup', (e) => { if (G.down) return; const [x, y] = pos(e), dx = x - pg.sx, dy = y - pg.sy; if (Math.hypot(dx, dy) > 18 && G.swipe) G.swipe(dx, dy); else G.tap(x, y); });
+}
+function phText(g, t, x, y, px, col = '#fff', align = 'center') { g.font = `800 ${px}px system-ui, sans-serif`; g.textAlign = align; g.textBaseline = 'middle'; g.lineWidth = Math.max(2, px / 7); g.strokeStyle = 'rgba(0,0,0,.45)'; g.strokeText(t, x, y); g.fillStyle = col; g.fillText(t, x, y); }
+function phOver(g, w, h, S, title) { g.fillStyle = 'rgba(10,10,20,.62)'; g.fillRect(w * 0.1, h * 0.3, w * 0.8, h * 0.36); phText(g, title, w / 2, h * 0.37, w * 0.09); phText(g, `Score ${S.score}`, w / 2, h * 0.46, w * 0.075); phText(g, S.nb ? `New best: ${S.best}!` : `Best ${S.best}`, w / 2, h * 0.53, w * 0.06, S.nb ? '#ffd166' : '#fff'); if (S.over > 0.5) phText(g, 'Tap to play again', w / 2, h * 0.61, w * 0.055, '#9be15d'); }
+const PHONE_GAMES = {
+  hopper(w, h) {
+    const k = h / 480, bx = w * 0.3, pw = 44 * k, S = { best: store.get('hs_hopper', 0) };
+    const reset = () => Object.assign(S, { score: 0, mode: 'ready', y: h * 0.45, vy: 0, pipes: [], t: 0.3, over: 0, nb: false, flap: 0 }); reset();
+    const die = () => { if (S.mode !== 'play') return; S.mode = 'over'; S.over = 0; if (S.score > S.best) { S.best = S.score; S.nb = true; store.set('hs_hopper', S.best); } };
+    return { S, down: true,
+      tap() { if (S.mode === 'over') { if (S.over > 0.5) reset(); return; } S.mode = 'play'; S.vy = -265 * k; S.flap = 0.18; },
+      key(c) { if (c === 'Space' || c === 'ArrowUp' || c === 'KeyW') this.tap(); },
+      step(dt) {
+        S.flap = Math.max(0, S.flap - dt);
+        if (S.mode === 'over') { S.over += dt; if (S.y < h - 30 * k) { S.vy += 900 * k * dt; S.y = Math.min(h - 30 * k, S.y + S.vy * dt); } return; }
+        if (S.mode === 'ready') { S.y = h * 0.45 + Math.sin(performance.now() / 260) * 6 * k; return; }
+        S.vy += 900 * k * dt; S.y += S.vy * dt; S.t -= dt;
+        if (S.t <= 0) { S.t = 1.45; const gap = h * 0.3; S.pipes.push({ x: w + 10, top: h * 0.1 + Math.random() * (h * 0.6 - gap), gap, done: false }); }
+        for (const p of S.pipes) { p.x -= 118 * k * dt; if (!p.done && p.x + pw < bx - 10 * k) { p.done = true; S.score++; } if (bx + 10 * k > p.x && bx - 10 * k < p.x + pw && (S.y - 8 * k < p.top || S.y + 8 * k > p.top + p.gap)) die(); }
+        S.pipes = S.pipes.filter((p) => p.x > -pw - 10); if (S.y > h - 30 * k || S.y < -30 * k) die();
+      },
+      draw(g) {
+        const sky = g.createLinearGradient(0, 0, 0, h); sky.addColorStop(0, '#ff8a7a'); sky.addColorStop(0.55, '#ffd59e'); sky.addColorStop(1, '#9ad8f2'); g.fillStyle = sky; g.fillRect(0, 0, w, h);
+        g.fillStyle = 'rgba(255,244,210,.9)'; g.beginPath(); g.arc(w * 0.74, h * 0.28, 26 * k, 0, 7); g.fill();
+        for (const p of S.pipes) { const gb = p.top + p.gap; g.fillStyle = '#8a5a3c'; g.fillRect(p.x, 0, pw, p.top); g.fillRect(p.x, gb, pw, h - 30 * k - gb); g.fillStyle = '#6e4a2d'; for (let y = 6 * k; y < h; y += 14 * k) if (y < p.top || (y > gb && y < h - 30 * k)) g.fillRect(p.x, y, pw, 3 * k);
+          g.fillStyle = '#2e7d32'; for (const [yy, dir] of [[p.top, -1], [gb, 1]]) { g.beginPath(); g.ellipse(p.x + pw / 2, yy + dir * 5 * k, pw * 0.85, 9 * k, 0, 0, 7); g.fill(); } }
+        g.fillStyle = '#2a9d8f'; g.fillRect(0, h - 30 * k, w, 30 * k); g.fillStyle = '#9fe6dc'; g.fillRect(0, h - 30 * k, w, 3 * k);
+        g.save(); g.translate(bx, S.y); g.rotate(clamp(S.vy / (650 * k), -0.5, 0.9)); g.fillStyle = '#fff'; g.beginPath(); g.ellipse(0, 0, 13 * k, 9 * k, 0, 0, 7); g.fill();
+        g.fillStyle = '#d9e2e8'; g.beginPath(); g.moveTo(-3 * k, 0); g.lineTo(-14 * k, S.flap > 0 ? -12 * k : 8 * k); g.lineTo(5 * k, 2 * k); g.fill(); g.fillStyle = '#ff9f1c'; g.beginPath(); g.moveTo(11 * k, -1 * k); g.lineTo(19 * k, 1.5 * k); g.lineTo(11 * k, 4 * k); g.fill(); g.fillStyle = '#15161a'; g.beginPath(); g.arc(6 * k, -3 * k, 1.8 * k, 0, 7); g.fill(); g.restore();
+        phText(g, String(S.score), w / 2, h * 0.1, 34 * k);
+        if (S.mode === 'ready') { phText(g, 'Tap to fly', w / 2, h * 0.62, w * 0.08); phText(g, `Best ${S.best}`, w / 2, h * 0.69, w * 0.055); }
+        if (S.mode === 'over') phOver(g, w, h, S, 'Splash!');
+      } };
+  },
+  snake(w, h) {
+    const cols = 14, cs = Math.floor(w / cols), top = 30, rows = Math.max(10, Math.floor((h - top - 6) / cs)), ox = (w - cols * cs) / 2, oy = top + (h - top - rows * cs) / 2, S = { best: store.get('hs_snake', 0) };
+    const place = () => { let f; do { f = [Math.floor(Math.random() * cols), Math.floor(Math.random() * rows)]; } while (S.body.some((b) => b[0] === f[0] && b[1] === f[1])); S.food = f; };
+    const reset = () => { const r = rows >> 1; Object.assign(S, { body: [[5, r], [4, r], [3, r]], dir: [1, 0], next: [1, 0], t: 0, spd: 0.17, score: 0, mode: 'ready', over: 0, nb: false }); place(); }; reset();
+    const turn = (dx, dy) => { if (dx === -S.dir[0] && dy === -S.dir[1]) return; S.next = [dx, dy]; if (S.mode === 'ready') S.mode = 'play'; };
+    return { S, down: false,
+      tap(x, y) { if (S.mode === 'over') { if (S.over > 0.5) reset(); return; } const hd = S.body[0], hx = ox + (hd[0] + 0.5) * cs, hy = oy + (hd[1] + 0.5) * cs; if (S.mode === 'ready' && Math.abs(x - hx) > Math.abs(y - hy)) turn(x < hx ? -1 : 1, 0); else if (S.dir[0] !== 0) turn(0, y < hy ? -1 : 1); else turn(x < hx ? -1 : 1, 0); },
+      swipe(dx, dy) { if (S.mode === 'over') { if (S.over > 0.5) reset(); return; } if (Math.abs(dx) > Math.abs(dy)) turn(Math.sign(dx), 0); else turn(0, Math.sign(dy)); },
+      key(c) { const m = { ArrowLeft: [-1, 0], KeyA: [-1, 0], ArrowRight: [1, 0], KeyD: [1, 0], ArrowUp: [0, -1], KeyW: [0, -1], ArrowDown: [0, 1], KeyS: [0, 1] }[c]; if (S.mode === 'over') { if (S.over > 0.5 && (m || c === 'Space')) reset(); } else if (m) turn(m[0], m[1]); },
+      step(dt) {
+        if (S.mode === 'over') { S.over += dt; return; } if (S.mode !== 'play') return; S.t += dt;
+        while (S.t >= S.spd) { S.t -= S.spd; S.dir = S.next; const hd = S.body[0], nh = [hd[0] + S.dir[0], hd[1] + S.dir[1]];
+          if (nh[0] < 0 || nh[1] < 0 || nh[0] >= cols || nh[1] >= rows || S.body.some((b, i) => i < S.body.length - 1 && b[0] === nh[0] && b[1] === nh[1])) { S.mode = 'over'; S.over = 0; if (S.score > S.best) { S.best = S.score; S.nb = true; store.set('hs_snake', S.best); } return; }
+          S.body.unshift(nh); if (nh[0] === S.food[0] && nh[1] === S.food[1]) { S.score++; S.spd = Math.max(0.085, S.spd - 0.005); place(); } else S.body.pop(); }
+      },
+      draw(g) {
+        g.fillStyle = '#0d1120'; g.fillRect(0, 0, w, h); g.fillStyle = '#141b30'; g.fillRect(ox, oy, cols * cs, rows * cs);
+        g.fillStyle = 'rgba(125,255,154,.07)'; for (let x = 0; x < cols; x++) for (let y = 0; y < rows; y++) if ((x + y) % 2) g.fillRect(ox + x * cs, oy + y * cs, cs, cs);
+        g.strokeStyle = '#9b5de5'; g.lineWidth = 2; g.strokeRect(ox - 1, oy - 1, cols * cs + 2, rows * cs + 2);
+        const fx = ox + (S.food[0] + 0.5) * cs, fy = oy + (S.food[1] + 0.5) * cs; g.fillStyle = '#ffb703'; g.beginPath(); g.ellipse(fx, fy + cs * 0.05, cs * 0.36, cs * 0.42, 0.4, 0, 7); g.fill(); g.fillStyle = '#2e7d32'; g.beginPath(); g.ellipse(fx + cs * 0.15, fy - cs * 0.38, cs * 0.16, cs * 0.08, -0.5, 0, 7); g.fill();
+        S.body.forEach((b, i) => { const t = i / Math.max(1, S.body.length - 1); g.fillStyle = `rgb(${Math.round(125 - 82 * t)},${Math.round(255 - 31 * t)},${Math.round(154 + 53 * t)})`; const x = ox + b[0] * cs + 1, y = oy + b[1] * cs + 1, s2 = cs - 2; g.beginPath(); g.roundRect ? g.roundRect(x, y, s2, s2, cs * 0.28) : g.rect(x, y, s2, s2); g.fill(); });
+        const hd = S.body[0]; g.fillStyle = '#0d1120'; for (const sd of [-1, 1]) { const ex = ox + (hd[0] + 0.5 + S.dir[0] * 0.18 - S.dir[1] * 0.2 * sd) * cs, ey = oy + (hd[1] + 0.5 + S.dir[1] * 0.18 + S.dir[0] * 0.2 * sd) * cs; g.beginPath(); g.arc(ex, ey, cs * 0.09, 0, 7); g.fill(); }
+        phText(g, `Score ${S.score}`, ox, top / 2, 15, '#7dff9a', 'left'); phText(g, `Best ${S.best}`, w - ox, top / 2, 13, '#cdb9f4', 'right');
+        if (S.mode === 'ready') { phText(g, 'Swipe or tap to start', w / 2, h * 0.62, w * 0.065); phText(g, 'Eat the mangoes!', w / 2, h * 0.69, w * 0.055, '#ffb703'); }
+        if (S.mode === 'over') phOver(g, w, h, S, 'Game over');
+      } };
+  },
+  stack(w, h) {
+    const bh = Math.max(14, h / 24), S = { best: store.get('hs_stack', 0) };
+    const spawn = () => { const t = S.blocks[S.blocks.length - 1]; S.dir = S.blocks.length % 2 ? 1 : -1; S.cur = { x: S.dir > 0 ? -t.w * 0.8 : w - t.w * 0.2, w: t.w }; };
+    const reset = () => { const bw = w * 0.6; Object.assign(S, { blocks: [{ x: (w - bw) / 2, w: bw }], spd: w * 0.5, score: 0, mode: 'ready', over: 0, nb: false, cam: 0, chips: [], perfect: 0 }); spawn(); }; reset();
+    const col = (i, l = 60) => `hsl(${(i * 13 + 200) % 360} 72% ${l}%)`;
+    return { S, down: true,
+      tap() {
+        if (S.mode === 'over') { if (S.over > 0.5) reset(); return; }
+        if (S.mode === 'ready') { S.mode = 'play'; return; }
+        const t = S.blocks[S.blocks.length - 1], c = S.cur, a = Math.max(c.x, t.x), b = Math.min(c.x + c.w, t.x + t.w), lvl = S.blocks.length;
+        if (b - a <= 2) { S.chips.push({ x: c.x, w: c.w, lvl, dy: 0, vy: 0 }); S.mode = 'over'; S.over = 0; if (S.score > S.best) { S.best = S.score; S.nb = true; store.set('hs_stack', S.best); } return; }
+        if (Math.abs(c.x - t.x) < Math.max(3, w * 0.012)) { c.x = t.x; S.perfect = 0.6; }
+        else { if (c.x < a) S.chips.push({ x: c.x, w: a - c.x, lvl, dy: 0, vy: 0 }); if (c.x + c.w > b) S.chips.push({ x: b, w: c.x + c.w - b, lvl, dy: 0, vy: 0 }); c.x = a; c.w = b - a; }
+        S.blocks.push({ x: c.x, w: c.w }); S.score++; S.spd *= 1.035; spawn();
+      },
+      key(c) { if (c === 'Space' || c === 'ArrowDown' || c === 'Enter') this.tap(); },
+      step(dt) {
+        S.perfect = Math.max(0, S.perfect - dt); for (const ch of S.chips) { ch.vy += 900 * dt; ch.dy += ch.vy * dt; } S.chips = S.chips.filter((ch) => ch.dy < h);
+        const tgt = Math.max(0, (S.blocks.length + 2) * bh - h * 0.55); S.cam += (tgt - S.cam) * Math.min(1, dt * 5);
+        if (S.mode === 'over') { S.over += dt; return; } if (S.mode !== 'play') return;
+        const c = S.cur; c.x += S.dir * S.spd * dt; if (c.x + c.w > w + 6) S.dir = -1; if (c.x < -6) S.dir = 1;
+      },
+      draw(g) {
+        const bg = g.createLinearGradient(0, 0, 0, h); bg.addColorStop(0, col(S.score + 8, 30)); bg.addColorStop(1, col(S.score, 16)); g.fillStyle = bg; g.fillRect(0, 0, w, h);
+        const Y = (lvl) => h - (lvl + 1) * bh + S.cam;
+        S.blocks.forEach((b, i) => { const y = Y(i); if (y > h || y < -bh) return; g.fillStyle = col(i); g.fillRect(b.x, y, b.w, bh - 1); g.fillStyle = 'rgba(255,255,255,.22)'; g.fillRect(b.x, y, b.w, bh * 0.22); });
+        if (S.mode !== 'over') { const y = Y(S.blocks.length); g.fillStyle = col(S.blocks.length); g.fillRect(S.cur.x, y, S.cur.w, bh - 1); g.fillStyle = 'rgba(255,255,255,.3)'; g.fillRect(S.cur.x, y, S.cur.w, bh * 0.22); }
+        for (const ch of S.chips) { g.fillStyle = col(ch.lvl, 52); g.fillRect(ch.x, Y(ch.lvl) + ch.dy, ch.w, bh - 1); }
+        phText(g, String(S.score), w / 2, h * 0.1, w * 0.14);
+        if (S.perfect > 0) phText(g, 'Perfect!', w / 2, h * 0.18, w * 0.07, '#ffd166');
+        if (S.mode === 'ready') { phText(g, 'Tap to drop the block', w / 2, h * 0.3, w * 0.065); phText(g, `Best ${S.best}`, w / 2, h * 0.37, w * 0.055); }
+        if (S.mode === 'over') phOver(g, w, h, S, 'Tower down!');
+      } };
+  },
+};
 // ---------------------------------------------------------------- Coastline Motors: 100 cars for sale
 const DEALER = { x: 0, z: 0, group: null, slots: [] }, CAR_TYPE_NAMES = { sedan: 'Sedan', sports: 'Sports car', suv: 'SUV', hatch: 'Hatchback', pickup: 'Pickup' };
 const CATALOG = (() => {
@@ -1518,7 +1832,7 @@ function deliverCar(c) {
 function buyCar(c) {
   if (game.garage.includes(c.id)) { toast(`The ${c.name} is already yours · it's parked at your house`); return; }
   if (game.cash < c.price) { toast(`The ${c.name} costs $${c.price.toLocaleString('en-US')} · you have $${game.cash.toLocaleString('en-US')}`); return; }
-  addCash(-c.price); toast(deliverCar(c), 4500);
+  addCash(-c.price, 'Coastline Motors · ' + c.name); toast(deliverCar(c), 4500);
 }
 function dealerItems() { return [...CATALOG].sort((a, b) => a.price - b.price).map((c) => { const own = game.garage.includes(c.id); return { name: c.name, desc: own ? 'Already yours · parked at your house' : `${CAR_TYPE_NAMES[c.type]}${c.used ? ' · used' : ''} · top speed ${Math.round(SPECS[c.type].top * c.tune * 2.237)} mph`, price: c.price, sw: c.color, disabled: own, buy: () => { closeShopPanel(); return deliverCar(c); } }; }); }
 function spawnGarage() {
@@ -3456,7 +3770,7 @@ function renderShop() {
     b.innerHTML = `<span class="sw" style="background:${it.sw !== undefined ? '#' + it.sw.toString(16).padStart(6, '0') : 'transparent'};${it.sw === undefined ? 'border:0;width:0' : ''}"></span><span><b></b><small></small></span><span class="price">${owned ? 'Worn' : it.pay ? '+$' + it.pay.toLocaleString('en-US') : (it.price ? '$' + it.price.toLocaleString('en-US') : 'Free')}</span>`;
     b.querySelector('b').textContent = it.name; b.querySelector('small').textContent = owned ? 'You are wearing this' : it.desc;
     b.disabled = owned || !!it.disabled || game.cash < it.price;
-    b.addEventListener('click', () => { if (game.cash < it.price) return; addCash(-it.price); const msg = it.buy(); if (msg) toast(msg); sfxChime(); renderShop(); });
+    b.addEventListener('click', () => { if (game.cash < it.price) return; addCash(-it.price, game.counter && game.counter.title); const msg = it.buy(); if (msg) toast(msg); sfxChime(); renderShop(); });
     list.appendChild(b);
   }
 }
@@ -3650,7 +3964,7 @@ function startJob(spot) {
 }
 function endJob(success) {
   const j = game.job; if (!j) return; game.job = null; destMarker.visible = false; $('mission').hidden = true;
-  if (success) { const pay = j.reward + Math.round(j.t) * 10; addCash(pay); showBanner('JOB DONE', `+$${pay.toLocaleString()} · ${Math.round(j.t)} s to spare`, 'var(--money)', 2600); sfxChime(); }
+  if (success) { const pay = j.reward + Math.round(j.t) * 10; addCash(pay, 'Delivery job'); showBanner('JOB DONE', `+$${pay.toLocaleString()} · ${Math.round(j.t)} s to spare`, 'var(--money)', 2600); sfxChime(); }
   else showBanner('TOO LATE', 'The client found another courier', 'var(--coral)', 2400);
 }
 let cashMesh = null; const cashSpots = [];
@@ -3673,7 +3987,7 @@ function updatePickups(dt) {
     if (c.cd > 0) { c.cd -= dt; if (c.cd <= 0) placeCash(c); _s.setScalar(0.0001); }
     else {
       _s.setScalar(1);
-      if (Math.hypot(c.x - f.x, c.z - f.z) < (inCar ? 3.2 : 1.6) && game.state === 'play') { addCash(c.v); toast(`+$${c.v}`); sfxChime(); c.cd = 45; }
+      if (Math.hypot(c.x - f.x, c.z - f.z) < (inCar ? 3.2 : 1.6) && game.state === 'play') { addCash(c.v, 'Found cash'); toast(`+$${c.v}`); sfxChime(); c.cd = 45; }
     }
     _q.setFromAxisAngle(Y_UP, game.time * 2 + i); _p.set(c.x, c.y + Math.sin(game.time * 2.5 + i) * 0.12, c.z); _m4.compose(_p, _q, _s); cashMesh.setMatrixAt(i, _m4);
   });
@@ -3752,7 +4066,9 @@ bmCanvas.addEventListener('wheel', (e) => { e.preventDefault(); zoomBy(Math.exp(
 $('bmIn').addEventListener('click', () => { zoomBy(1.4); drawBigmap(); }); $('bmOut').addEventListener('click', () => { zoomBy(1 / 1.4); drawBigmap(); });
 $('bmClose').addEventListener('click', closeMap); $('bmHome').addEventListener('click', () => { const h = shopsData.find((sp) => sp.type === 'home'); if (h) setWaypoint(h.dx - 4, h.dz); }); $('bmClear').addEventListener('click', () => setWaypoint(null));
 $('mapWrap').addEventListener('click', () => { initAudio(); openMap(); });
-function addCash(n) { game.cash = Math.max(0, game.cash + n); store.set('cash', game.cash); }
+let bankLast = null, txnNote = '';
+function logTxn(n, note) { if (!n) return; (game.txns = game.txns || []).unshift({ n, note: note || (n > 0 ? 'Money in' : 'Payment'), t: fmtTime(game.tod) }); if (game.txns.length > 16) game.txns.pop(); }
+function addCash(n, note) { const c0 = game.cash; game.cash = Math.max(0, game.cash + n); store.set('cash', game.cash); logTxn(game.cash - c0, note || txnNote); txnNote = ''; bankLast = game.cash; }
 function districtAt(x, z) {
   const de = destAt(x, z); if (de) return de.name;
   if (terrainH(x, z) < 0) return x < -LAND + 20 ? 'Marisol Beach' : 'the Shoreline';
@@ -3896,6 +4212,8 @@ addEventListener('keydown', (e) => {
   if (['KeyW', 'KeyA', 'KeyS', 'KeyD', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(c)) input.usingKeys = true;
   if (['Space', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(c) && game.state === 'play') e.preventDefault();
   if (e.repeat) return;
+  if (game.state === 'phone') { if (c === 'Escape' || c === 'KeyT') closePhone(); else if (phone.games) { phone.games.G.key(c); if (['Space', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(c)) e.preventDefault(); } return; }
+  if (c === 'KeyT' && game.state === 'play') { openPhone(); return; }
   if (c === 'KeyM') { if (game.state === 'play') openMap(); else if (game.state === 'map') closeMap(); return; }
   if (c === 'Escape' || c === 'KeyP') { if (game.state === 'map') closeMap(); else if (game.state === 'shop') closeShopPanel(); else if (game.state === 'play') pause(true); else if (game.state === 'pause') pause(false); return; }
   if (game.state !== 'play') return;
@@ -4074,6 +4392,7 @@ function drawMinimap() {
 }
 let lastClock = '', lastCash = -1, lastSpd = -1, lastHint = null, lastMission = '';
 function updateHUD(dt) {
+  if (bankLast === null) bankLast = game.cash; else if (game.cash !== bankLast) { logTxn(game.cash - bankLast, ''); bankLast = game.cash; }
   game.shownCash = Math.abs(game.shownCash - game.cash) < 1 ? game.cash : damp(game.shownCash, game.cash, 6, dt);
   const cs = Math.round(game.shownCash); if (cs !== lastCash) { lastCash = cs; ui.cash.textContent = '$' + cs.toLocaleString('en-US'); }
   const hh = Math.floor(game.tod), mn = Math.floor((game.tod - hh) * 60), ck = `${hh % 12 === 0 ? 12 : hh % 12}:${String(mn).padStart(2, '0')} ${hh < 12 ? 'AM' : 'PM'}`;
@@ -4236,13 +4555,13 @@ function respawnAt(spot) {
 }
 function busted() {
   if (game.state !== 'play') return; const fine = Math.min(game.cash, Math.round((150 + game.cash * 0.08) / 10) * 10);
-  addCash(-fine); if (game.job) endJob(false); if (duty.on) dutyEnd(false, 'You were taken off duty'); clearHeat(); game.state = 'down'; game.downT = 3.4; game.downTo = RESPAWN.station;
+  addCash(-fine, 'Police fine'); if (game.job) endJob(false); if (duty.on) dutyEnd(false, 'You were taken off duty'); clearHeat(); game.state = 'down'; game.downT = 3.4; game.downTo = RESPAWN.station;
   showBanner('BUSTED', `Bail paid · -$${fine.toLocaleString()}`, 'var(--lagoon)', 3200); vibrate(80);
   if (player.car) { player.car.thr = 0; player.car.hb = true; }
 }
 function knockedOut() {
   if (game.state !== 'play') return; const bill = Math.min(game.cash, Math.round((100 + game.cash * 0.06) / 10) * 10);
-  addCash(-bill); if (game.job) endJob(false); if (duty.on) dutyEnd(false, 'You were taken off duty'); clearHeat(); game.state = 'down'; game.downT = 3.4; game.downTo = RESPAWN.hospital; player.alive = false;
+  addCash(-bill, 'Hospital bill'); if (game.job) endJob(false); if (duty.on) dutyEnd(false, 'You were taken off duty'); clearHeat(); game.state = 'down'; game.downT = 3.4; game.downTo = RESPAWN.hospital; player.alive = false;
   showBanner('KNOCKED OUT', `Hospital bill · -$${bill.toLocaleString()}`, 'var(--coral)', 3200); vibrate(120);
 }
 function pause(on) {
@@ -4252,6 +4571,7 @@ function pause(on) {
   } else if (!on && game.state === 'pause') { game.state = 'play'; $('pause').hidden = true; if (audio.ctx) audio.ctx.resume(); }
 }
 $('pauseBtn').addEventListener('click', () => pause(true));
+$('phoneBtn').addEventListener('click', () => { initAudio(); if (game.state === 'phone') closePhone(); else openPhone(); });
 $('resumeBtn').addEventListener('click', () => pause(false));
 $('soundBtn').addEventListener('click', () => setSound(!game.sound));
 function refreshTripButtons() {
@@ -4287,6 +4607,7 @@ function frame(now) {
   if (game.state === 'play' || game.state === 'down' || game.state === 'title') step(dt);
   perfTick(rawDt);
   updateTV(rawDt);
+  if (game.state === 'phone' && phone.drawn > 1) return; phone.drawn = game.state === 'phone' ? (phone.drawn || 0) + 1 : 0;
   composer.render();
 }
 function step(dt) {
@@ -4405,13 +4726,13 @@ function start(data) {
     game.sound = store.get('sound', true); game.radio = store.get('radio', true); setSound(game.sound);
     player.pos.set(-494.6, 0, 16.5); player.yaw = -Math.PI / 2;
     starterCar = new Vehicle('sports', 0xff3f8e); starterCar.place(-492.4, 18.8, 0);
-    game.owned = store.get('owned', ['coral']); game.visited = store.get('visited', []); game.pantry = store.get('pantry', {}); game.dishes = store.get('dishes', []); refreshDishes(); game.family = store.get('family', []); game.enlisted = store.get('enlisted', false); game.milDuties = store.get('milDuties', 0); game.garage = store.get('garage', []); buildTransit(); spawnGarage(); 
+    game.owned = store.get('owned', ['coral']); game.visited = store.get('visited', []); game.pantry = store.get('pantry', {}); game.dishes = store.get('dishes', []); refreshDishes(); game.family = store.get('family', []); game.enlisted = store.get('enlisted', false); game.phoneApps = store.get('phoneApps', ['shop', 'maps', 'bank', 'weather', 'settings']).filter((id) => APPS[id]); game.phoneOwned = store.get('phoneOwned', []); game.phoneWall = store.get('phoneWall', 0); game.busTickets = store.get('busTickets', 0); game.milDuties = store.get('milDuties', 0); game.garage = store.get('garage', []); buildTransit(); spawnGarage(); 
     setupMarkers(); setupCash(); spawnTraffic(); spawnPeds(); spawnLotCars();
     for (let i = 0; i < HWY_N; i++) { const c = new Vehicle(mpick(TRAFFIC_TYPES), mpick(PAINTS)); if (!placeHwy(c, false)) c.dispose(); }
     applyQuality(data.quality || store.get('quality', 'ultra'));
     updateDaylight(0); refreshEnv(true);
     renderer.compile(scene, camera);
-    game.state = 'title'; window.__solanoRunning = true; window.__solanoDebug = { duty, DUTIES, startDuty, transit, CATALOG, DEALER, makeHuman, randomLook, poseHuman, mil, Vehicle, PAINTS, ROOMS, ferris, famList: fam.list, renderer, game, camera, cam, player, officers, police, shopsData, vehicles, flight, RING_H, peek: () => ({ shopCD, t: +game.time.toFixed(2) }), crime: (n) => crime(n, 'Test heat') };
+    game.state = 'title'; window.__solanoRunning = true; window.__solanoDebug = { phone, APPS, openPhone, closePhone, duty, DUTIES, startDuty, transit, CATALOG, DEALER, makeHuman, randomLook, poseHuman, mil, Vehicle, PAINTS, ROOMS, ferris, famList: fam.list, renderer, game, camera, cam, player, officers, police, shopsData, vehicles, flight, RING_H, peek: () => ({ shopCD, t: +game.time.toFixed(2) }), crime: (n) => crime(n, 'Test heat') };
     $('loading').hidden = true; $('title').hidden = false;
     renderer.setAnimationLoop(frame);
   } catch (e) { console.error(e); fail('The city failed to build: ' + e.message); }
