@@ -459,10 +459,10 @@ function terrainH(x, z) {
 // bridges from the mainland's edge roads to every island (12 m up, on pillars, ramps at both ends)
 const BRIDGES = [
   { name: 'Isla Verde Bridge', to: 'isla', pts: [[-482, -420], [-1968, -472]] },
-  { name: 'San Marco Bridge', to: 'marco', pts: [[482, 300], [1000, 300], [2216, -10]] },
-  { name: 'Port Coral Bridge', to: 'coral', pts: [[-420, -482], [-372, -2214]] },
-  { name: 'Santa Luz Bridge', to: 'luz', pts: [[455, -482], [1700, -1814]] },
-  { name: 'Bayside Bridge', to: 'bay', pts: [[845, 1235], [1515, 2490]] },
+  { name: 'San Marco Bridge', to: 'marco', pts: [[482, 300], [1000, 300], [2216, -10]], link: [50, 2239, -10, true] },
+  { name: 'Port Coral Bridge', to: 'coral', pts: [[-420, -482], [-372, -2214]], link: [30, -371, -2227, false] },
+  { name: 'Santa Luz Bridge', to: 'luz', pts: [[455, -482], [1700, -1814]], link: [30, 1700, -1827, false] },
+  { name: 'Bayside Bridge', to: 'bay', pts: [[845, 1235], [1515, 2490]], link: [52, 1538, 2490, true] },
 ];
 function nearBridge(x, z, pad = 4) { for (const br of BRIDGES) for (let i = 0; i < br.pts.length - 1; i++) { const [ax, az] = br.pts[i], [bx, bz] = br.pts[i + 1], dx = bx - ax, dz = bz - az, t = clamp(((x - ax) * dx + (z - az) * dz) / (dx * dx + dz * dz), 0, 1); if (Math.hypot(ax + dx * t - x, az + dz * t - z) < 8 + pad) return true; } return false; }
 function buildBridges() {
@@ -471,6 +471,7 @@ function buildBridges() {
     const P = br.pts, segs = []; let total = 0;
     for (let i = 0; i < P.length - 1; i++) { const l = Math.hypot(P[i + 1][0] - P[i][0], P[i + 1][1] - P[i][1]); segs.push({ a: P[i], b: P[i + 1], l, s0: total, dx: (P[i + 1][0] - P[i][0]) / l, dz: (P[i + 1][1] - P[i][1]) / l }); total += l; }
     br.len = total;
+    if (br.link) { const [len, x, z, ax] = br.link; roadStrip(len, x, z, ax); mapPaint.push(ax ? { x0: x - len / 2, x1: x + len / 2, z0: z - 8, z1: z + 8, c: '#8b879c' } : { x0: x - 8, x1: x + 8, z0: z - len / 2, z1: z + len / 2, c: '#8b879c' }); }
     const hAt = (v) => (v < RAMP ? 0.15 + (H - 0.15) * v / RAMP : v > total - RAMP ? 0.15 + (H - 0.15) * (total - v) / RAMP : H);
     const corners = segs.slice(1).map((sg) => sg.s0), cuts = [...new Set([0, RAMP, total - RAMP, total, ...corners].map((v) => Math.round(v * 100) / 100))].sort((a, b) => a - b);
     for (let i = 0; i < cuts.length - 1; i++) {
@@ -973,7 +974,7 @@ function buildWorld() {
   for (let z = -LAND + 14; z <= LAND - 14; z += 22) addPalm(PROM, z + rr(-2, 2));
   for (let x = -LAND + 30; x <= LAND - 14; x += 22) { addPalm(x + rr(-2, 2), -PROM); addPalm(x + rr(-2, 2), PROM); }
   for (let i = 0; i < NB; i++) for (let k = 0; k < 3; k++) { const x = roadC(i) + 18 + k * 22; addPalm(x, -8.9); addPalm(x, 8.9); }
-  for (const pk of parks) for (let k = 0; k < 14; k++) { let x = pk.cx + rr(-27, 27), z = pk.cz + rr(-27, 27); if (Math.abs(x - pk.cx) < 4) x += 6; if (Math.abs(z - pk.cz) < 4) z += 6; addPalm(x, z); }
+  for (const pk of parks) for (let k = 0; k < 14; k++) { let x = pk.cx + rr(-27, 27), z = pk.cz + rr(-27, 27); if (Math.abs(x - pk.cx) < 4) x += 6; if (Math.abs(z - pk.cz) < 4) z += 6; if (Math.hypot(x - pk.cx, z - pk.cz - 14) < 7.5) z = 2 * pk.cz - z; addPalm(x, z); }
   const plaza = blocks.find((b) => b.kind === 'plaza');
   for (let k = 0; k < 10; k++) { const a = k / 10 * Math.PI * 2; addPalm(plaza.cx + Math.cos(a) * 26, plaza.cz + Math.sin(a) * 26); }
   for (let k = 0; k < 16; k++) addPalm(rr(-LAND - 34, -LAND - 8), rr(-LAND + 40, LAND - 40));
@@ -1886,7 +1887,8 @@ function srDist(m) { return m < 1000 ? Math.round(m / 10) * 10 + ' m' : (m / 100
 const metroFor = (pl) => pl.station || nearestMetro(pl.x, pl.z, pl.kind === 'island' ? 1e9 : 700);
 function renderMetroSearch() {
   const from = game.inside.shop, q = $('srInput').value.trim().toLowerCase(), words = q ? q.split(/\s+/) : [];
-  let rows = q ? search.places.filter((pl) => words.every((w) => pl.keys.includes(w))).filter((pl) => metroFor(pl)) : shopsData.filter((st) => st.type === 'metro' && st !== from).sort((a, b) => a.name.localeCompare(b.name)).map((st) => ({ name: `Metro · ${st.name}`, x: st.dx, z: st.dz, kind: 'metro', station: st }));
+  const seen = new Set(), md = (pl) => Math.hypot(pl.x - from.dx, pl.z - from.dz), nm = (pl) => (pl.name.toLowerCase().startsWith(q) || pl.name.toLowerCase().includes('· ' + q) ? 0 : pl.name.toLowerCase().includes(q) ? 1 : 2);
+  let rows = q ? search.places.filter((pl) => words.every((w) => pl.keys.includes(w))).filter((pl) => metroFor(pl)).sort((a, b) => (metroFor(a) === from) - (metroFor(b) === from) || nm(a) - nm(b) || md(a) - md(b)).filter((pl) => { const k = pl.name + '|' + metroFor(pl).name; if (seen.has(k)) return false; seen.add(k); return true; }) : shopsData.filter((st) => st.type === 'metro' && st !== from).sort((a, b) => a.name.localeCompare(b.name)).map((st) => ({ name: `Metro · ${st.name}`, x: st.dx, z: st.dz, kind: 'metro', station: st }));
   rows = rows.slice(0, 16); search.list = rows;
   $('srCtx').textContent = `Metro · you're at ${from.name} · type where you want to go, then tap Ride`;
   $('srList').innerHTML = rows.length ? rows.map((pl, i) => { const st = metroFor(pl), [col, glyph] = SR_KIND[pl.kind] || SR_KIND.place, fare = metroFare(from, st), here = st === from;
@@ -1938,7 +1940,7 @@ $('search').addEventListener('click', (e) => { if (e.target === $('search')) { c
   else if (b.dataset.act === 'metro') {
     const st = metroFor(pl); closeSearch(); if (!st) return;
     if (game.inside && game.inside.shop.type === 'metro') startMetroRide(st);
-    else { const pp = phonePos(), from = nearestMetro(pp.x, pp.z); game.metroPlan = st; setWaypoint(from.dx + from.nx * 3, from.dz + from.nz * 3); toast(`Walk to ${from.name} station · your train to ${st.name} leaves when you get there`, 4500); }
+    else { const pp = phonePos(), from = nearestMetro(pp.x, pp.z); game.metroPlan = st; const near = Math.hypot(pp.x - from.dx, pp.z - from.dz) < 25; if (!near) setWaypoint(from.dx + from.nx * 3, from.dz + from.nz * 3); toast(`${near ? 'Walk into' : 'Walk to'} ${from.name} station · your train to ${st.name} leaves when you get there`, 4500); }
   }
   else if (b.dataset.act === 'drive') { const br = BRIDGES.find((x) => x.to === pl.dest); closeSearch(); if (br) { setWaypoint(br.pts[0][0], br.pts[0][1]); toast(`Drive to the ${br.name} · then straight across to ${pl.name}`, 4500); } }
   else if (b.dataset.act === 'busoff') { const st = pl.stop || nearestStopTo(pl.x, pl.z); transit.ride.offAt = st; closeSearch(); toast(`You'll get off at ${st.name}`, 3500); }
@@ -2077,8 +2079,8 @@ function islandZone(addB) {
   const land = new THREE.Mesh(tg, terrainMat); land.receiveShadow = true; scene.add(land);
   flat(560, 40, new THREE.MeshStandardMaterial({ map: runwayTex, roughness: 0.8 }), -2320, 0.05, -790);
   flat(170, 46, new THREE.MeshStandardMaterial({ color: 0x8d8a94, roughness: 0.85 }), -2420, 0.04, -743);
-  roadStrip(196, -2300, -582, false); roadStrip(384, -2290, -472, true);
-  mapPaint.push({ x0: -2600, x1: -2040, z0: -810, z1: -770, c: '#3b3c44' }, { x0: -2505, x1: -2335, z0: -766, z1: -720, c: '#8d8a94' }, { x0: -2308, x1: -2292, z0: -680, z1: -484, c: '#8b879c' }, { x0: -2482, x1: -2098, z0: -480, z1: -464, c: '#8b879c' });
+  roadStrip(196, -2300, -582, false); roadStrip(384, -2290, -472, true); roadStrip(132, -2033, -472, true);
+  mapPaint.push({ x0: -2600, x1: -2040, z0: -810, z1: -770, c: '#3b3c44' }, { x0: -2505, x1: -2335, z0: -766, z1: -720, c: '#8d8a94' }, { x0: -2308, x1: -2292, z0: -680, z1: -484, c: '#8b879c' }, { x0: -2482, x1: -1966, z0: -480, z1: -464, c: '#8b879c' });
   addB(-2420, -700, 60, 24, 9.2, 0, 0x2f5563, 0); addBox(-2450, -2390, -712, -688, 9.2);
   shopsData.push({ dx: -2420, dz: -688, nx: 0, nz: 1, type: 'airstrip', dest: 'isla' });
   const sign = new THREE.Mesh(new THREE.PlaneGeometry(40, 5), signMat.clone()); sign.material.map = textTex('ISLA VERDE', 1024, 128, '#ffffff'); sign.position.set(-2420, 11.5, -687.6); scene.add(sign); signs.push(sign);
