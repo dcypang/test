@@ -74,7 +74,7 @@ button:focus-visible{outline:3px solid var(--lagoon);outline-offset:3px}
 .sr-meta{flex:1;min-width:0;display:flex;flex-direction:column}.sr-meta b{font-size:15px;line-height:1.2}.sr-meta small{font-size:12px;color:#6b6f78}
 .sr-acts{display:flex;gap:5px;flex-wrap:wrap;justify-content:flex-end;flex:none;max-width:56%}
 .sr-acts button{border:0;border-radius:99px;padding:6px 10px;font:800 12px system-ui,sans-serif;background:#e6ecf5;color:#1f6fb2;white-space:nowrap}
-.sr-acts button.go{background:#1f6fb2;color:#fff}.sr-acts button.tx{background:#ffc21a;color:#15161a}.sr-acts button.bs{background:#3fa9f5;color:#fff}
+.sr-acts button.go{background:#1f6fb2;color:#fff}.sr-acts button.mt{background:#e63946;color:#fff}.sr-acts button.tx{background:#ffc21a;color:#15161a}.sr-acts button.bs{background:#3fa9f5;color:#fff}
 .sr-acts button:disabled{opacity:.45}
 .sr-empty{padding:18px;text-align:center;color:#6b6f78;font-size:14px}
 #phone{position:absolute;inset:0;z-index:60;display:grid;place-items:center;background:rgba(8,6,14,.5);-webkit-backdrop-filter:blur(3px);backdrop-filter:blur(3px);font-family:var(--font-body)}
@@ -349,7 +349,7 @@ button:focus-visible{outline:3px solid var(--lagoon);outline-offset:3px}
       <div><div class="bm-title">Solano</div><div class="bm-hint">Drag to pan · pinch to zoom · tap to drop a waypoint</div></div>
       <div class="bm-actions"><button class="ghost" id="bmSearch">Search</button><button class="ghost" id="bmHome">Home</button><button class="ghost" id="bmClear" hidden>Clear waypoint</button><button class="bm-btn" id="bmIn" aria-label="Zoom in">+</button><button class="bm-btn" id="bmOut" aria-label="Zoom out">−</button><button class="bm-btn" id="bmClose" aria-label="Close map">✕</button></div>
     </div>
-    <div class="bm-legend"><span><i style="background:#fff3e8"></i>You</span><span><i style="background:#ff3f8e"></i>Jobs</span><span><i class="sq" style="background:#2be0cf"></i>24/7 Mart</span><span><i class="sq" style="background:#ff7aa8"></i>Threads</span><span><i class="sq" style="background:#9be15d"></i>Groceries</span><span><i class="sq" style="background:#9ad8f2"></i>Airport terminal</span><span><i class="sq" style="background:#ffd36e"></i>Home</span><span><i style="background:#86ffb0"></i>Cash</span><span><i style="background:#3fa9f5"></i>Bus stop · B</span><span><i style="background:#ffc21a"></i>Taxi stand · T</span><span><i class="sq" style="background:#3fa9f5;height:3px;width:14px"></i>Bus route</span><span><i style="background:#b18cff"></i>Waypoint</span><span><i style="background:#ff3050"></i>Police</span></div>
+    <div class="bm-legend"><span><i style="background:#fff3e8"></i>You</span><span><i style="background:#ff3f8e"></i>Jobs</span><span><i class="sq" style="background:#2be0cf"></i>24/7 Mart</span><span><i class="sq" style="background:#ff7aa8"></i>Threads</span><span><i class="sq" style="background:#9be15d"></i>Groceries</span><span><i class="sq" style="background:#9ad8f2"></i>Airport terminal</span><span><i class="sq" style="background:#ffd36e"></i>Home</span><span><i style="background:#86ffb0"></i>Cash</span><span><i style="background:#3fa9f5"></i>Bus stop · B</span><span><i style="background:#ffc21a"></i>Taxi stand · T</span><span><i style="background:#e63946"></i>Metro · M</span><span><i class="sq" style="background:#3fa9f5;height:3px;width:14px"></i>Bus route</span><span><i style="background:#b18cff"></i>Waypoint</span><span><i style="background:#ff3050"></i>Police</span></div>
   </div>
 
   <div id="shop" class="overlay" hidden>
@@ -467,6 +467,38 @@ function terrainH(x, z) {
   let m = Math.max(-14, -dc * beachSlope(x) - dc * dc * 0.00012, -dp * 0.6, -da * 0.05 - da * da * 0.00012, -dm * 0.5);
   for (let i = 0; i < ISLANDS.length; i++) { const di = rectD(ISLANDS[i], x, z); if (di === 0) return 0; const h = -di * 0.03 - di * di * 0.0002; if (h > m) m = h; }
   return m;
+}
+// bridges from the mainland's edge roads to every island (12 m up, on pillars, ramps at both ends)
+const BRIDGES = [
+  { name: 'Isla Verde Bridge', to: 'isla', pts: [[-482, -420], [-1968, -472]] },
+  { name: 'San Marco Bridge', to: 'marco', pts: [[482, 300], [1000, 300], [2216, -10]] },
+  { name: 'Port Coral Bridge', to: 'coral', pts: [[-420, -482], [-372, -2214]] },
+  { name: 'Santa Luz Bridge', to: 'luz', pts: [[455, -482], [1700, -1814]] },
+  { name: 'Bayside Bridge', to: 'bay', pts: [[845, 1235], [1515, 2490]] },
+];
+function nearBridge(x, z, pad = 4) { for (const br of BRIDGES) for (let i = 0; i < br.pts.length - 1; i++) { const [ax, az] = br.pts[i], [bx, bz] = br.pts[i + 1], dx = bx - ax, dz = bz - az, t = clamp(((x - ax) * dx + (z - az) * dz) / (dx * dx + dz * dz), 0, 1); if (Math.hypot(ax + dx * t - x, az + dz * t - z) < 8 + pad) return true; } return false; }
+function buildBridges() {
+  const H = 12, W = 16, RAMP = 150;
+  for (const br of BRIDGES) {
+    const P = br.pts, segs = []; let total = 0;
+    for (let i = 0; i < P.length - 1; i++) { const l = Math.hypot(P[i + 1][0] - P[i][0], P[i + 1][1] - P[i][1]); segs.push({ a: P[i], b: P[i + 1], l, s0: total, dx: (P[i + 1][0] - P[i][0]) / l, dz: (P[i + 1][1] - P[i][1]) / l }); total += l; }
+    br.len = total;
+    const hAt = (v) => (v < RAMP ? 0.15 + (H - 0.15) * v / RAMP : v > total - RAMP ? 0.15 + (H - 0.15) * (total - v) / RAMP : H);
+    const corners = segs.slice(1).map((sg) => sg.s0), cuts = [...new Set([0, RAMP, total - RAMP, total, ...corners].map((v) => Math.round(v * 100) / 100))].sort((a, b) => a - b);
+    for (let i = 0; i < cuts.length - 1; i++) {
+      const v0 = cuts[i], v1 = cuts[i + 1], sg = segs.find((q) => v0 >= q.s0 - 1e-6 && v1 <= q.s0 + q.l + 1e-6) || segs[0];
+      const e0 = corners.some((c) => Math.abs(c - v0) < 0.01) ? W / 2 : 0, e1 = corners.some((c) => Math.abs(c - v1) < 0.01) ? W / 2 : 0;
+      const ax = sg.a[0] + sg.dx * (v0 - sg.s0 - e0), az = sg.a[1] + sg.dz * (v0 - sg.s0 - e0), bx = sg.a[0] + sg.dx * (v1 - sg.s0 + e1), bz = sg.a[1] + sg.dz * (v1 - sg.s0 + e1);
+      addDeck(ax, az, bx, bz, W, hAt(v0), hAt(v1)).bridge = br.name;
+    }
+    // a green sign over the road at the mainland end
+    const sg = segs[0], t = 26, h = hAt(t), cx = sg.a[0] + sg.dx * t, cz = sg.a[1] + sg.dz * t, nx = -sg.dz, nz = sg.dx;
+    const isl = DESTS.find((d) => d.id === br.to), tex = canvasTex(1024, 192, (g) => { g.fillStyle = '#0f6b3a'; g.fillRect(0, 0, 1024, 192); g.strokeStyle = '#f4f4f0'; g.lineWidth = 8; g.strokeRect(10, 10, 1004, 172); g.fillStyle = '#f4f4f0'; g.textAlign = 'center'; g.textBaseline = 'middle'; fitText(g, `TO ${isl.name.toUpperCase()}`, 512, 74, 940, 84); fitText(g, br.name.toUpperCase(), 512, 146, 900, 44); });
+    const board = new THREE.Mesh(new THREE.PlaneGeometry(12, 2.25), new THREE.MeshBasicMaterial({ map: tex, color: new THREE.Color(1.1, 1.1, 1.1) })); board.position.set(cx, h + 6.2, cz); board.rotation.y = Math.atan2(-sg.dx, -sg.dz); scene.add(board);
+    const sp = []; for (const sd of [-1, 1]) { sp.push(boxAt(0.35, h + 7.6, 0.35, cx + nx * sd * 8.9, (h + 7.6) / 2 - 0.4, cz + nz * sd * 8.9, 0x6b6f63)); addPost(cx + nx * sd * 8.9, cz + nz * sd * 8.9, 0.3, h + 8); }
+    sp.push(boxAt(0.3, 0.3, 18, cx, h + 7.4, cz, 0x6b6f63).rotateY(0)); const gm = new THREE.Mesh(mergeAll(sp.slice(0, 2)), vcolMat); scene.add(gm);
+    const beam = new THREE.Mesh(boxAt(0.3, 0.3, 18.2, 0, 0, 0, 0x6b6f63), vcolMat); beam.position.set(cx, h + 7.4, cz); beam.rotation.y = Math.atan2(nx, nz); scene.add(beam);
+  }
 }
 const zoneAt = (x, z) => (rectD(MIL, x, z) === 0 ? 'mil' : ISLANDS.some((r) => rectD(r, x, z) === 0) ? 'isla' : rectD(AIRPORT, x, z) === 0 && z > LAND ? 'airport' : rectD(PORT, x, z) === 0 && x > LAND ? 'port' : 'city');
 function axisBlock(v) { const t = v + HALF; if (t <= 0 || t >= NB * PITCH) return -1; const i = Math.floor(t / PITCH), l = t - i * PITCH; return (l < ROAD / 2 || l > PITCH - ROAD / 2) ? -1 : i; }
@@ -910,6 +942,7 @@ function buildWorld() {
     }
   }
   extraZones(addB, roofBoxes, blink);
+  addMetroStations(parks);
   buildShops();
   // building instanced mesh (custom per-instance style + seed attributes)
   const bGeo = new THREE.BoxGeometry(1, 1, 1); bGeo.translate(0, 0.5, 0);
@@ -929,7 +962,7 @@ function buildWorld() {
 
   // ---- street lights along every segment
   const poles = [], lamps = [], pools = [];
-  const addLamp = (x, z, yaw) => { if (z > HALF && Math.abs(x - 60) < 12) return;
+  const addLamp = (x, z, yaw) => { if ((z > HALF && Math.abs(x - 60) < 12) || nearBridge(x, z, 2)) return;
     poles.push({ x, z, yaw }); addPost(x, z, 0.22);
     const c = Math.cos(yaw), s = Math.sin(yaw);
     lamps.push({ x: x + c * 2.1, z: z - s * 2.1, yaw }); pools.push({ x: x + c * 2.8, z: z - s * 2.8 });
@@ -946,7 +979,7 @@ function buildWorld() {
 
   // ---- palms
   const palms = [];
-  const addPalm = (x, z, collide = true) => { if (z > HALF && Math.abs(x - 60) < 12) return; palms.push({ x, z, h: rr(7, 12.5), yaw: rr(0, Math.PI * 2), fy: rr(0, Math.PI * 2), fs: rr(0.85, 1.15) }); if (collide) addPost(x, z, 0.36); };
+  const addPalm = (x, z, collide = true) => { if ((z > HALF && Math.abs(x - 60) < 12) || nearBridge(x, z, 3)) return; palms.push({ x, z, h: rr(7, 12.5), yaw: rr(0, Math.PI * 2), fy: rr(0, Math.PI * 2), fs: rr(0.85, 1.15) }); if (collide) addPost(x, z, 0.36); };
   const PROM = LAND - 4;
   for (let z = -LAND + 13; z <= LAND - 8; z += 15) addPalm(-PROM + rr(-0.6, 0.6), z + rr(-2, 2));
   for (let z = -LAND + 14; z <= LAND - 14; z += 22) addPalm(PROM, z + rr(-2, 2));
@@ -980,7 +1013,7 @@ function buildWorld() {
 
   // ---- beach: umbrellas, towels, lifeguard towers
   const umb = [], towels = [];
-  for (let k = 0; k < 40; k++) { const x = rr(-LAND - 36, -LAND - 10), z = rr(-LAND + 30, LAND - 30); umb.push({ x, z, c: pick([0xff5d73, 0x2ec4b6, 0xffd166, 0xf7f7f7, 0x9b5de5, 0xff9f1c]) }); towels.push({ x: x + rr(-2, 2), z: z + rr(-2, 2), yaw: rr(0, 3.14), c: pick([0xffffff, 0x00b4d8, 0xff006e, 0xfb8500, 0x8ac926]) }); }
+  for (let k = 0; k < 40; k++) { const x = rr(-LAND - 36, -LAND - 10), z = rr(-LAND + 30, LAND - 30); if (nearBridge(x, z, 4)) continue; umb.push({ x, z, c: pick([0xff5d73, 0x2ec4b6, 0xffd166, 0xf7f7f7, 0x9b5de5, 0xff9f1c]) }); towels.push({ x: x + rr(-2, 2), z: z + rr(-2, 2), yaw: rr(0, 3.14), c: pick([0xffffff, 0x00b4d8, 0xff006e, 0xfb8500, 0x8ac926]) }); }
   for (const [x, z] of extraUmb) { umb.push({ x, z, c: pick([0xff5d73, 0x2ec4b6, 0xffd166, 0xf7f7f7, 0x9b5de5]) }); towels.push({ x: x + 1.5, z: z + 1, yaw: rr(0, 3.14), c: pick([0xffffff, 0x00b4d8, 0xff006e, 0xfb8500]) }); }
   instanced(new THREE.ConeGeometry(1.6, 0.6, 14, 1, true), umbrellaMat, umb, (it, p, q, s) => { p.set(it.x, terrainH(it.x, it.z) + 2.3, it.z); q.identity(); s.set(1, 1, 1); });
   instanced(boxAt(0.05, 2.3, 0.05, 0, 1.15, 0), poleMat, umb.map((u) => ({ x: u.x, z: u.z })), (it, p, q, s) => { p.set(it.x, terrainH(it.x, it.z), it.z); q.identity(); s.set(1, 1, 1); });
@@ -1009,6 +1042,7 @@ function buildWorld() {
   addRamp(roadC(NB) + 12, -150, Math.PI / 2, 12, 6, 2.4);
 
   buildLots();
+  buildBridges();
   buildHighways();
   mapImg = buildMapImage(B, parks);
 }
@@ -1832,7 +1866,7 @@ const PHONE_GAMES = {
 // ---------------------------------------------------------------- search: type a place, then route, taxi, bus or fly there
 const search = { places: [], list: [] };
 const inCity = (x, z) => Math.abs(x) <= HALF + 24 && Math.abs(z) <= HALF + 24;
-const SR_KIND = { home: ['#ffc857', 'H', 'home'], cars: ['#2be0cf', 'C', 'car dealer'], airport: ['#7fb8d6', '✈', 'airport'], place: ['#b18cff', '•', 'place'], area: ['#9b8fd6', '◦', 'neighborhood'], mart: ['#2be0cf', 'M', '24/7 Mart'], grocery: ['#7cc84a', 'G', 'grocery store'], threads: ['#ff7aa8', 'T', 'clothes shop'], bus: ['#3fa9f5', 'B', 'bus stop'], taxi: ['#e0a800', 'T', 'taxi stand'], island: ['#18b3a6', '≈', 'island · fly'] };
+const SR_KIND = { home: ['#ffc857', 'H', 'home'], cars: ['#2be0cf', 'C', 'car dealer'], airport: ['#7fb8d6', '✈', 'airport'], place: ['#b18cff', '•', 'place'], area: ['#9b8fd6', '◦', 'neighborhood'], mart: ['#2be0cf', 'M', '24/7 Mart'], grocery: ['#7cc84a', 'G', 'grocery store'], threads: ['#ff7aa8', 'T', 'clothes shop'], bus: ['#3fa9f5', 'B', 'bus stop'], taxi: ['#e0a800', 'T', 'taxi stand'], island: ['#18b3a6', '≈', 'island'], metro: ['#e63946', 'M', 'metro station'] };
 function buildPlaces() {
   const P = [], add = (name, x, z, kind, keys = '', extra = {}) => P.push({ name, x, z, kind, keys: (name + ' ' + keys).toLowerCase(), ...extra });
   const home = shopsData.find((sp) => sp.type === 'home');
@@ -1847,19 +1881,32 @@ function buildPlaces() {
   const SK = { mart: 'store shop snacks convenience food drinks 24/7 mart', grocery: 'grocery groceries supermarket food market fresh ingredients cook mercado', threads: 'clothes clothing outfit fashion shop threads' };
   for (const sp of shopsData) if (SK[sp.type] && !destAt(sp.dx, sp.dz)) add(`${ROOMS[sp.type].name} · ${districtAt(sp.dx, sp.dz)}`, sp.dx + sp.nx * 3, sp.dz + sp.nz * 3, sp.type, SK[sp.type]);
   if (transit.built) { for (const st of transit.stops) add(`Bus ${st.name}`, st.px, st.pz, 'bus', 'bus stop station', { stop: st }); for (const rk of transit.ranks) add(`Taxi stand · ${districtAt(rk.cx, rk.cz)}`, rk.sx, rk.sz, 'taxi', 'taxi cab stand rank'); }
+  for (const st of shopsData) if (st.type === 'metro') add(`Metro · ${st.name}`, st.dx + st.nx * 3, st.dz + st.nz * 3, 'metro', 'metro subway underground train station', { station: st });
+  for (const br of BRIDGES) add(br.name, br.pts[0][0], br.pts[0][1], 'place', 'bridge drive road island ' + DESTS.find((d) => d.id === br.to).name, { bridge: br });
   for (const d of DESTS) add(d.name, (d.rect.x0 + d.rect.x1) / 2, (d.rect.z0 + d.rect.z1) / 2, 'island', 'island fly flight ' + d.blurb + (d.id === 'bay' ? ' ferris wheel' : ''), { dest: d.id, pop: 20 });
   return P;
 }
-function openSearch() {
+function openSearch(mode = 'normal') {
   if (game.state === 'map') closeMap();
   if (game.state !== 'play') return;
   if (game.ride || game.wheel || game.heli || (transit.ride && transit.ride.kind !== 'bus') || shift.on) { toast('You can search when you get there'); return; }
   game.state = 'search'; $('search').hidden = false; if (document.pointerLockElement) document.exitPointerLock();
-  search.places = buildPlaces(); $('srInput').value = ''; renderSearch(); $('srInput').focus();
+  search.mode = mode; search.places = buildPlaces(); $('srInput').value = ''; $('srInput').placeholder = mode === 'metro' ? 'Where to? Type a station or any place…' : 'Where to? Try airport, home, groceries, bus, metro…'; renderSearch(); $('srInput').focus();
 }
-function closeSearch() { $('search').hidden = true; $('srInput').blur(); if (game.state === 'search') game.state = 'play'; }
+function closeSearch() { $('search').hidden = true; $('srInput').blur(); if (game.state === 'search') game.state = 'play'; if (search.mode === 'metro' && game.inside && !metro.ride) { player.pos.x += 1.6; shopCD = 1.5; } search.mode = 'normal'; }
 function srDist(m) { return m < 1000 ? Math.round(m / 10) * 10 + ' m' : (m / 1000).toFixed(1) + ' km'; }
+const metroFor = (pl) => pl.station || nearestMetro(pl.x, pl.z, pl.kind === 'island' ? 1e9 : 700);
+function renderMetroSearch() {
+  const from = game.inside.shop, q = $('srInput').value.trim().toLowerCase(), words = q ? q.split(/\s+/) : [];
+  let rows = q ? search.places.filter((pl) => words.every((w) => pl.keys.includes(w))).filter((pl) => metroFor(pl)) : shopsData.filter((st) => st.type === 'metro' && st !== from).sort((a, b) => a.name.localeCompare(b.name)).map((st) => ({ name: `Metro · ${st.name}`, x: st.dx, z: st.dz, kind: 'metro', station: st }));
+  rows = rows.slice(0, 16); search.list = rows;
+  $('srCtx').textContent = `Metro · you're at ${from.name} · type where you want to go, then tap Ride`;
+  $('srList').innerHTML = rows.length ? rows.map((pl, i) => { const st = metroFor(pl), [col, glyph] = SR_KIND[pl.kind] || SR_KIND.place, fare = metroFare(from, st), here = st === from;
+    return `<div class="sr-row"><span class="sr-ic" style="background:${col}">${glyph}</span><div class="sr-meta"><b>${esc(pl.name)}</b><small>${here ? 'This station' : `Metro to ${esc(st.name)} · ${srDist(Math.hypot(st.dx - from.dx, st.dz - from.dz))}`}</small></div><div class="sr-acts">${here ? '<button disabled>You are here</button>' : `<button class="mt" data-act="metro" data-i="${i}" ${game.cash < fare ? 'disabled' : ''}>Ride $${fare}</button>`}</div></div>`; }).join('')
+    : `<div class="sr-empty">No stations or places match “${esc(q)}”</div>`;
+}
 function renderSearch() {
+  if (search.mode === 'metro' && game.inside && game.inside.shop.type === 'metro') { renderMetroSearch(); return; }
   const q = $('srInput').value.trim().toLowerCase(), pp = phonePos(), here = destAt(pp.x, pp.z), onBus = transit.ride && transit.ride.kind === 'bus', rk = !here ? cabbyRank() : null, fly = flyOptions();
   const dist = (pl) => Math.hypot(pl.x - pp.x, pl.z - pp.z);
   let list;
@@ -1871,14 +1918,16 @@ function renderSearch() {
   const cash = game.cash, wanted = game.wanted > 0;
   $('srList').innerHTML = list.length ? list.map((pl, i) => {
     const [col, glyph, label] = SR_KIND[pl.kind] || SR_KIND.place, acts = [];
-    if (pl.kind === 'island') { if (here && here.id === pl.dest) acts.push('<button disabled>You are here</button>'); else { const o = fly.opts.find((x) => x.kind === pl.dest); if (o) acts.push(`<button class="go" data-act="fly" data-i="${i}" ${wanted || cash < o.price ? 'disabled' : ''}>Fly $${o.price}</button>`); } }
-    else if (here) { const o = fly.opts.find((x) => x.kind === 'solano'); if (o) acts.push(`<button class="go" data-act="fly" data-i="${i}" data-k="solano" ${wanted || cash < o.price ? 'disabled' : ''}>Fly home $${o.price}</button>`); }
+    const mFrom = game.inside && game.inside.shop.type === 'metro' ? game.inside.shop : nearestMetro(pp.x, pp.z), mTo = metroFor(pl), mBtn = mTo && mFrom && mTo !== mFrom && !onBus ? `<button class="mt" data-act="metro" data-i="${i}" ${cash < metroFare(mFrom, mTo) ? 'disabled' : ''}>Metro $${metroFare(mFrom, mTo)}</button>` : '';
+    if (pl.kind === 'island') { if (here && here.id === pl.dest) acts.push('<button disabled>You are here</button>'); else { if (!here && BRIDGES.some((b) => b.to === pl.dest)) acts.push(`<button class="go" data-act="drive" data-i="${i}">Drive</button>`); if (mBtn) acts.push(mBtn); const o = fly.opts.find((x) => x.kind === pl.dest); if (o) acts.push(`<button data-act="fly" data-i="${i}" ${wanted || cash < o.price ? 'disabled' : ''}>Fly $${o.price}</button>`); } }
+    else if (here) { acts.push(`<button class="go" data-act="route" data-i="${i}">Route</button>`); if (mBtn) acts.push(mBtn); const o = fly.opts.find((x) => x.kind === 'solano'); if (o) acts.push(`<button data-act="fly" data-i="${i}" data-k="solano" ${wanted || cash < o.price ? 'disabled' : ''}>Fly $${o.price}</button>`); }
     else {
       acts.push(`<button class="go" data-act="route" data-i="${i}">Route</button>`);
       if (onBus) { const st = pl.stop || stopNear(pl); if (st && inCity(pl.x, pl.z)) acts.push(`<button class="bs" data-act="busoff" data-i="${i}">Get off near</button>`); }
       else {
         if (rk && !(pl.kind === 'taxi' && dist(pl) < 30)) { const fare = taxiPlan(rk, { name: pl.name, p: { x: pl.x, z: pl.z } }).fare + 3; acts.push(`<button class="tx" data-act="taxi" data-i="${i}" ${wanted || cash < fare ? 'disabled' : ''}>Taxi $${fare}</button>`); }
         const st = pl.stop || stopNear(pl); if (st && inCity(pl.x, pl.z) && inCity(pp.x, pp.z) && dist(pl) > 120) acts.push(`<button class="bs" data-act="bus" data-i="${i}">Bus $2</button>`);
+        if (mBtn) acts.push(mBtn);
       }
     }
     return `<div class="sr-row"><span class="sr-ic" style="background:${col}">${glyph}</span><div class="sr-meta"><b>${esc(pl.name)}</b><small>${pl.kind === 'island' ? label : `${srDist(dist(pl))} · ${label}`}</small></div><div class="sr-acts">${acts.join('')}</div></div>`;
@@ -1898,6 +1947,12 @@ $('search').addEventListener('click', (e) => { if (e.target === $('search')) { c
     if (game.cash < fare) { toast(`The taxi is $${fare}`); return; } addCash(-fare, 'Taxi · ' + pl.name); fadeFlash('A taxi pulls up…', 0.9); startTaxi(rk, d, pln);
   }
   else if (b.dataset.act === 'bus') { const to = pl.stop || nearestStopTo(pl.x, pl.z), pp = phonePos(), from = nearestStopTo(pp.x, pp.z); game.busPlan = to; closeSearch(); setWaypoint(from.sx, from.sz); toast(from === to ? `You're already near ${to.name}` : `Walk to ${from.name} · board the bus and it will drop you at ${to.name}`, 4500); }
+  else if (b.dataset.act === 'metro') {
+    const st = metroFor(pl); closeSearch(); if (!st) return;
+    if (game.inside && game.inside.shop.type === 'metro') startMetroRide(st);
+    else { const pp = phonePos(), from = nearestMetro(pp.x, pp.z); game.metroPlan = st; setWaypoint(from.dx + from.nx * 3, from.dz + from.nz * 3); toast(`Walk to ${from.name} station · your train to ${st.name} leaves when you get there`, 4500); }
+  }
+  else if (b.dataset.act === 'drive') { const br = BRIDGES.find((x) => x.to === pl.dest); closeSearch(); if (br) { setWaypoint(br.pts[0][0], br.pts[0][1]); toast(`Drive to the ${br.name} · then straight across to ${pl.name}`, 4500); } }
   else if (b.dataset.act === 'busoff') { const st = pl.stop || nearestStopTo(pl.x, pl.z); transit.ride.offAt = st; closeSearch(); toast(`You'll get off at ${st.name}`, 3500); }
   else if (b.dataset.act === 'fly') { const f = flyOptions(), o = f.opts.find((x) => x.kind === (b.dataset.k || pl.dest)); closeSearch(); if (!o) return; if (game.wanted > 0) { toast('Lose the cops first'); return; } if (game.cash < o.price) { toast(`That flight is $${o.price}`); return; } phoneFly(o, f.from); }
 });
@@ -2199,8 +2254,8 @@ const signs = [];
 // ---------------------------------------------------------------- shops: storefronts + walk-in interiors (built far below the map)
 const shopsData = [], IY = -400;
 const SHOP_LOOK = { mart: { name: '24/7 MART', hex: 0x2a9d8f }, threads: { name: 'THREADS', hex: 0xff3f8e }, terminal: { name: 'DEPARTURES', hex: 0x18b3a6 }, airstrip: { name: 'ISLAND AIR', hex: 0x2a9d8f }, home: { name: 'HOME', hex: 0xffc857 }, grocery: { name: 'MERCADO FRESCO', hex: 0x3fae5c } };
-const SHOP_COL = { mart: '#2be0cf', threads: '#ff7aa8', terminal: '#9ad8f2', airstrip: '#9ad8f2', home: '#ffd36e', grocery: '#9be15d' };
-const ROOMS = { mart: { name: '24/7 Mart', cx: 0, cz: 0, w: 18, d: 14, H: 5.2 }, threads: { name: 'Threads', cx: 80, cz: 0, w: 16, d: 14, H: 5.2 }, terminal: { name: 'Solano International', cx: 200, cz: 0, w: 56, d: 40, H: 10 }, airstrip: { name: 'Island Airstrip', cx: 300, cz: 0, w: 22, d: 16, H: 6 }, grocery: { name: 'Mercado Fresco', cx: 540, cz: 0, w: 24, d: 18, H: 5.2, hello: 'Mercado Fresco · buy ingredients, then cook them in your kitchen at home' }, home: { name: 'Home', cx: 440, cz: 0, w: 22, d: 16, H: 7.2, hello: 'Home sweet home · kitchen, dining & living room down here, bedroom upstairs' } };
+const SHOP_COL = { mart: '#2be0cf', threads: '#ff7aa8', terminal: '#9ad8f2', airstrip: '#9ad8f2', home: '#ffd36e', grocery: '#9be15d', metro: '#e63946' };
+const ROOMS = { mart: { name: '24/7 Mart', cx: 0, cz: 0, w: 18, d: 14, H: 5.2 }, threads: { name: 'Threads', cx: 80, cz: 0, w: 16, d: 14, H: 5.2 }, terminal: { name: 'Solano International', cx: 200, cz: 0, w: 56, d: 40, H: 10 }, airstrip: { name: 'Island Airstrip', cx: 300, cz: 0, w: 22, d: 16, H: 6 }, grocery: { name: 'Mercado Fresco', cx: 540, cz: 0, w: 24, d: 18, H: 5.2, hello: 'Mercado Fresco · buy ingredients, then cook them in your kitchen at home' }, metro: { name: 'Solano Metro', cx: 900, cz: 0, w: 18, d: 70, H: 7, hello: 'Solano Metro · walk up to a ticket machine and type where you want to go' }, home: { name: 'Home', cx: 440, cz: 0, w: 22, d: 16, H: 7.2, hello: 'Home sweet home · kitchen, dining & living room down here, bedroom upstairs' } };
 const interiorLight = new THREE.PointLight(0xfff0dc, 0, 34, 1.3); scene.add(interiorLight);
 const roomLightMat = new THREE.MeshBasicMaterial({ color: new THREE.Color(2.2, 2.15, 2.0) });
 const fridgeMat = new THREE.MeshBasicMaterial({ color: new THREE.Color(0.9, 1.3, 1.5) });
@@ -2230,9 +2285,134 @@ function shopWindowTex(type) {
   }));
 }
 const openTex = canvasTex(256, 96, (g) => { g.clearRect(0, 0, 256, 96); g.strokeStyle = '#ff3f6e'; g.lineWidth = 7; g.strokeRect(10, 10, 236, 76); g.fillStyle = '#ff7a9a'; g.font = "800 58px Impact, 'Arial Black', sans-serif"; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText('OPEN', 128, 52); });
+function addMetroStations(parks) {
+  const list = [], park = (b, label) => list.push({ dx: b.cx, dz: b.cz + 12.5, nx: 0, nz: -1, area: districtAt(b.cx, b.cz), label });
+  for (const b of parks) park(b); const plaza = blocks.find((b) => b.kind === 'plaza'); if (plaza) park(plaza, 'Plaza');
+  list.push({ dx: 38.5, dz: 760, nx: 1, nz: 0, name: 'Solano International' }, { dx: 520.5, dz: 200, nx: -1, nz: 0, name: 'Port of Solano' }, { dx: 29.5, dz: -560, nx: -1, nz: 0, name: 'Fort Halcón Gate' });
+  for (const d of DESTS) list.push(d.id === 'isla' ? { dx: -2200, dz: -494.5, nx: 0, nz: 1, name: d.name } : { dx: d.rect.x0 + 330, dz: d.rect.z0 + 184.5, nx: 0, nz: -1, name: d.name });
+  const used = new Set();
+  for (const st of list) { let n = st.name || st.area + (st.label ? ' ' + st.label : ''); if (used.has(n)) n += ' Park'; while (used.has(n)) n += ' 2'; used.add(n); shopsData.push({ dx: st.dx, dz: st.dz, nx: st.nx, nz: st.nz, type: 'metro', name: n }); }
+}
+const metroLogoMat = new THREE.MeshBasicMaterial({ map: canvasTex(128, 128, (g) => { g.clearRect(0, 0, 128, 128); g.fillStyle = '#e63946'; g.beginPath(); g.arc(64, 64, 60, 0, 7); g.fill(); g.fillStyle = '#fff'; g.font = "900 84px Impact, 'Arial Black', sans-serif"; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText('M', 64, 70); }), transparent: true, color: new THREE.Color(1.3, 1.3, 1.3), side: THREE.DoubleSide });
+const metroRingMat = new THREE.MeshBasicMaterial({ color: new THREE.Color(2.6, 0.5, 0.6), map: beamTex, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, side: THREE.DoubleSide });
+function metroKiosk(sp) {
+  const yaw = Math.atan2(sp.nx, sp.nz), c = Math.cos(yaw), sn = Math.sin(yaw), gy = surfaceH(sp.dx, sp.dz), bx = sp.dx - sp.nx * 2.5, bz = sp.dz - sp.nz * 2.5;
+  const Wd = (lx, lz) => [bx + lx * c + lz * sn, bz - lx * sn + lz * c], P = [];
+  P.push(boxAt(3.4, 0.04, 4.4, 0, 0.03, 0.1, 0x0b0f16)); for (let k = 0; k < 6; k++) P.push(boxAt(3.3, 0.04, 0.08, 0, 0.055, -1.9 + k * 0.72, 0x5b6168));
+  for (const sd of [-1, 1]) P.push(boxAt(0.14, 1.05, 4.8, sd * 1.95, 0.52, 0, 0x2b2e33), boxAt(0.08, 1.5, 4.8, sd * 1.95, 1.8, 0, 0x22303a), boxAt(0.12, 2.8, 0.12, sd * 2.15, 1.4, 2.45, 0x2b2e33), boxAt(0.12, 2.8, 0.12, sd * 2.15, 1.4, -2.45, 0x2b2e33));
+  P.push(boxAt(4.4, 2.8, 0.2, 0, 1.4, -2.5, 0x18797a), boxAt(4.9, 0.2, 5.7, 0, 2.9, 0, 0x1d2733), boxAt(4.92, 0.12, 5.72, 0, 2.78, 0, 0xe63946), boxAt(0.14, 3.9, 0.14, 2.75, 1.95, 2.55, 0x2b2e33));
+  const geo = mergeAll(P); geo.rotateY(yaw); geo.translate(bx, gy, bz); const m = new THREE.Mesh(geo, vcolMat); m.castShadow = m.receiveShadow = true; scene.add(m);
+  const lg = mergeAll([new THREE.PlaneGeometry(1.1, 1.1).translate(0, 0, 0.08), new THREE.PlaneGeometry(1.1, 1.1).rotateY(Math.PI).translate(0, 0, -0.08)]); lg.translate(2.75, 3.95, 2.55); lg.rotateY(yaw); lg.translate(bx, gy, bz); scene.add(new THREE.Mesh(lg, metroLogoMat));
+  const nm = new THREE.Mesh(new THREE.PlaneGeometry(4.6, 0.42), new THREE.MeshBasicMaterial({ map: textTex(`METRO · ${sp.name.toUpperCase()}`, 1024, 96, '#ffffff'), transparent: true, color: new THREE.Color(1.4, 1.4, 1.4) }));
+  const [fx, fz] = Wd(0, 2.88); nm.position.set(fx, gy + 2.9, fz); nm.rotation.y = yaw; scene.add(nm);
+  const ring = new THREE.Mesh(new THREE.CylinderGeometry(0.85, 0.85, 0.7, 24, 1, true), metroRingMat), [rx, rz] = Wd(0, 3.8); ring.position.set(rx, gy + 0.35, rz); scene.add(ring);
+  const box = (x0, x1, z0, z1) => { const a = Wd(x0, z0), b = Wd(x1, z1); addBox(Math.min(a[0], b[0]), Math.max(a[0], b[0]), Math.min(a[1], b[1]), Math.max(a[1], b[1]), gy + 3); };
+  box(-2.05, -1.85, -2.5, 2.4); box(1.85, 2.05, -2.5, 2.4); box(-2.2, 2.2, -2.62, -2.38); { const [px, pz] = Wd(2.75, 2.55); addPost(px, pz, 0.15, gy + 4); }
+}
+const metro = { ride: null, sign: null, signCv: null };
+function metroSetStation(st) {
+  const g = metro.signCv.getContext('2d'); g.fillStyle = '#18797a'; g.fillRect(0, 0, 1024, 128); g.fillStyle = '#e63946'; g.beginPath(); g.arc(64, 64, 46, 0, 7); g.fill(); g.fillStyle = '#fff'; g.textAlign = 'center'; g.textBaseline = 'middle'; g.font = "900 60px Impact, 'Arial Black', sans-serif"; g.fillText('M', 64, 68);
+  fitText(g, st.name.toUpperCase(), 580, 68, 860, 70); metro.sign.needsUpdate = true; ROOMS.metro.station = st;
+}
+function trainGeo() {
+  const P = [], L = 16;
+  for (const cz of [-16.4, 0, 16.4]) {
+    P.push(colorize(new RoundedBoxGeometry(2.9, 3.2, L, 2, 0.25).translate(0, 1.6, cz), 0xd9dde2), boxAt(2.94, 0.34, L - 0.4, 0, 0.95, cz, 0x18b3a6), boxAt(2.95, 0.12, L - 0.4, 0, 1.25, cz, 0xe63946), boxAt(2.7, 0.25, L - 1, 0, 3.25, cz, 0xb5b9bf));
+    for (const sd of [-1, 1]) for (const dz of [-5.2, 0, 5.2]) P.push(boxAt(0.04, 2.3, 1.5, sd * 1.46, 1.35, cz + dz, 0x3a3f46));
+  }
+  const fz = -16.4 - L / 2, bz = 16.4 + L / 2;
+  P.push(boxAt(2.2, 0.9, 0.05, 0, 2.0, fz - 0.01, 0x1a232b), boxAt(1.6, 0.3, 0.06, 0, 2.75, fz - 0.02, 0xff9f1c), boxAt(2.2, 0.9, 0.05, 0, 2.0, bz + 0.01, 0x1a232b));
+  for (const sd of [-1, 1]) P.push(boxAt(0.4, 0.2, 0.05, sd * 0.9, 0.7, fz - 0.02, 0xffffff), boxAt(0.35, 0.2, 0.05, sd * 0.9, 0.7, bz + 0.02, 0xff2020));
+  return mergeAll(P);
+}
+function buildMetro(R) {
+  const { cx, cz, w, d, H } = R, X0 = cx - w / 2, PE = cx + 2.6, TX = cx + 5.6, XE = cx + 9.2, Z0 = cz - d / 2, Z1 = cz + d / 2, TN = cz - 470, TS = cz + 330, P = [];
+  R.group = new THREE.Group(); R.group.visible = false; scene.add(R.group);
+  Object.assign(R, { obst: [], clerks: [], counters: [], visitors: [], spots: [], seats: [], walls: [], followLight: true, lightI: 34, lightD: 44, lightH: 4.2, door: { x: cx - 4, z: Z1 - 3.2 }, spawn: { x: cx - 4, z: Z1 - 6 } });
+  const ft = tileTex.clone(); ft.repeat.set((PE - X0) / 2, d / 2); ft.needsUpdate = true;
+  const floor = new THREE.Mesh(new THREE.PlaneGeometry(PE - X0, d).rotateX(-Math.PI / 2), new THREE.MeshStandardMaterial({ map: ft, roughness: 0.35 })); floor.position.set((X0 + PE) / 2, IY + 0.01, cz); floor.receiveShadow = true; R.group.add(floor);
+  P.push(boxAt(0.4, 0.03, d, PE - 0.2, IY + 0.025, cz, 0xffc857), boxAt(0.2, 1.25, d, PE + 0.1, IY - 0.62, cz, 0x8d8b86));
+  P.push(boxAt(XE - PE, 0.2, TS - TN, (PE + XE) / 2, IY - 1.35, (TN + TS) / 2, 0x3a3631));
+  for (const sd of [-1, 1]) P.push(boxAt(0.12, 0.14, TS - TN, TX + sd * 0.75, IY - 1.18, (TN + TS) / 2, 0x9aa0a8));
+  // station hall: back wall with a teal band, far wall, ceiling, end walls, tunnel mouths
+  P.push(boxAt(0.3, H, d, X0 - 0.15, IY + H / 2, cz, 0xe9e4d8), boxAt(0.32, 0.5, d, X0 - 0.1, IY + 2.6, cz, 0x18797a), boxAt(0.32, 0.14, d, X0 - 0.08, IY + 2.25, cz, 0xe63946));
+  P.push(boxAt(0.3, H + 1.25, d, XE + 0.15, IY + (H - 1.25) / 2, cz, 0xe9e4d8), boxAt(0.32, 0.5, d, XE + 0.1, IY + 2.6, cz, 0x18797a));
+  P.push(boxAt(XE - X0 + 0.6, 0.3, d, (X0 + XE) / 2, IY + H + 0.15, cz, 0xf1efe9));
+  for (const zz of [Z0, Z1]) P.push(boxAt(PE - X0, H, 0.3, (X0 + PE) / 2, IY + H / 2, zz, 0xe9e4d8), boxAt(XE - PE, H - 4.2, 0.3, (PE + XE) / 2, IY + 4.2 + (H - 4.2) / 2, zz, 0xe9e4d8));
+  // tunnels north and south: walls, roof, warm lights every 15 m
+  const lights = [];
+  for (const [za, zb] of [[TN, Z0], [Z1, TS]]) { const L2 = zb - za, zc = (za + zb) / 2; P.push(boxAt(0.3, 5.6, L2, PE - 0.15, IY + 1.55, zc, 0x30343b), boxAt(0.3, 5.6, L2, XE + 0.15, IY + 1.55, zc, 0x30343b), boxAt(XE - PE + 0.6, 0.3, L2, (PE + XE) / 2, IY + 4.35, zc, 0x262a30)); for (let z = za + 5; z < zb; z += 15) for (const xx of [PE + 0.05, XE - 0.05]) lights.push(boxAt(0.12, 0.25, 1.2, xx, IY + 2.6, z)); }
+  R.group.add(new THREE.Mesh(mergeAll(lights), new THREE.MeshBasicMaterial({ color: new THREE.Color(2.4, 1.9, 1.2) })));
+  const cl = []; for (let z = Z0 + 5; z < Z1 - 2; z += 8) cl.push(boxAt(1.2, 0.06, 4, cx - 2, IY + H - 0.04, z), boxAt(1.0, 0.06, 4, TX, IY + H - 0.04, z)); R.group.add(new THREE.Mesh(mergeAll(cl), roomLightMat));
+  // exit stairs at the south end of the platform, glowing EXIT sign
+  for (let k = 0; k < 10; k++) P.push(boxAt(4, 0.26 * (k + 1), 0.28, cx - 4, IY + 0.13 * (k + 1), Z1 - 2.8 + k * 0.28, 0xb9b4a8));
+  R.obst.push({ minX: cx - 6.1, maxX: cx - 1.9, minZ: Z1 - 2.9, maxZ: Z1 }); roomText(R, 'EXIT · STREET', '#7dff9a', cx - 4, IY + 3.4, Z1 - 0.2, 3, 0.5, Math.PI);
+  // benches with seats, ticket machines
+  for (const bz2 of [cz - 14, cz + 4]) { P.push(boxAt(0.6, 0.45, 4, X0 + 0.5, IY + 0.45, bz2, 0x1f6fb2), boxAt(0.12, 0.6, 4, X0 + 0.2, IY + 0.95, bz2, 0x1f6fb2)); R.obst.push({ minX: X0, maxX: X0 + 0.85, minZ: bz2 - 2, maxZ: bz2 + 2 }); for (const k of [-1.3, 0, 1.3]) addSeat(R, X0 + 0.55, bz2 + k, 0, 0.675, Math.PI / 2); }
+  for (const tz of [cz + 17, cz + 22]) { P.push(boxAt(0.8, 1.7, 1.0, X0 + 0.45, IY + 0.85, tz, 0x2b2e33), boxAt(0.05, 0.5, 0.6, X0 + 0.87, IY + 1.3, tz, 0x18b3a6), boxAt(0.06, 0.35, 0.8, X0 + 0.87, IY + 1.8, tz, 0xe63946)); R.obst.push({ minX: X0, maxX: X0 + 0.9, minZ: tz - 0.55, maxZ: tz + 0.55 }); R.counters.push({ x: X0 + 1.6, z: tz, type: 'metro', title: 'Metro tickets', r: 0.9 }); }
+  roomText(R, 'TICKETS · TYPE WHERE YOU WANT TO GO', '#ffffff', X0 + 0.02, IY + 3.3, cz + 19.5, 5.2, 0.42, Math.PI / 2);
+  R.obst.push({ minX: PE, maxX: XE + 1, minZ: Z0, maxZ: Z1 });
+  // station name signs (one canvas, redrawn for each station) and a route map
+  metro.signCv = document.createElement('canvas'); metro.signCv.width = 1024; metro.signCv.height = 128; metro.sign = new THREE.CanvasTexture(metro.signCv); metro.sign.colorSpace = THREE.SRGBColorSpace;
+  const sm = new THREE.MeshBasicMaterial({ map: metro.sign, color: new THREE.Color(1.2, 1.2, 1.2) });
+  for (const zz of [cz - 24, cz - 2, cz + 12]) { const m = new THREE.Mesh(new THREE.PlaneGeometry(5, 0.62), sm); m.position.set(X0 + 0.02, IY + 3.0, zz); m.rotation.y = Math.PI / 2; R.group.add(m); }
+  for (const zz of [cz - 14, cz + 14]) { const m = new THREE.Mesh(new THREE.PlaneGeometry(6, 0.75), sm); m.position.set(XE - 0.02, IY + 3.3, zz); m.rotation.y = -Math.PI / 2; R.group.add(m); }
+  const stations = shopsData.filter((x) => x.type === 'metro'), mapTex = canvasTex(768, 512, (g) => { g.fillStyle = '#f4f4f0'; g.fillRect(0, 0, 768, 512); g.fillStyle = '#18797a'; g.fillRect(0, 0, 768, 70); g.fillStyle = '#fff'; g.font = "800 40px system-ui, sans-serif"; g.textBaseline = 'middle'; g.fillText('SOLANO METRO · ALL STATIONS', 24, 37);
+    g.font = "700 26px system-ui, sans-serif"; stations.forEach((st, i) => { const col = i < 7 ? 0 : 1, row = i % 7, x = 30 + col * 370, y = 108 + row * 56; g.fillStyle = '#e63946'; g.beginPath(); g.arc(x + 10, y, 9, 0, 7); g.fill(); g.fillStyle = '#15161a'; g.fillText(st.name, x + 30, y + 1); }); });
+  { const m = new THREE.Mesh(new THREE.PlaneGeometry(3.6, 2.4), new THREE.MeshBasicMaterial({ map: mapTex })); m.position.set(X0 + 0.02, IY + 1.9, cz - 6); m.rotation.y = Math.PI / 2; R.group.add(m); }
+  // the train: three cars with lit windows
+  const tg = new THREE.Group(), tm = new THREE.Mesh(trainGeo(), vcolMat); tm.castShadow = true; tg.add(tm);
+  const wins = []; for (const czz of [-16.4, 0, 16.4]) for (const sd of [-1, 1]) for (const dz of [-2.6, 2.6, -7.2, 7.2]) wins.push(boxAt(0.03, 0.85, 2.6, sd * 1.47, 2.0, czz + dz));
+  tg.add(new THREE.Mesh(mergeAll(wins), new THREE.MeshBasicMaterial({ color: new THREE.Color(1.5, 1.42, 1.15) }))); tg.visible = false; tg.position.set(TX, IY - 0.95, cz); R.group.add(tg); R.train = tg;
+  const pm = new THREE.Mesh(mergeAll(P), vcolMat); pm.receiveShadow = true; R.group.add(pm);
+  R.spots = [[cx - 6, cz - 22], [cx - 2, cz - 8], [cx - 6, cz + 6], [cx - 1.5, cz + 14], [cx - 3, cz - 30]];
+  addVisitor(R, cx - 6, cz - 22, 'walk', true); addVisitor(R, cx - 1.5, cz + 14, 'walk'); addVisitor(R, X0 + 0.55, cz - 14, 'sit', false, Math.PI / 2); addVisitor(R, X0 + 0.55, cz + 5.3, 'sit', true, Math.PI / 2);
+}
+function metroFare(a, b) { const isl = !!(destAt(a.dx, a.dz) || destAt(b.dx, b.dz)); return 3 + Math.round(Math.hypot(a.dx - b.dx, a.dz - b.dz) / 400) + (isl ? 8 : 0); }
+function nearestMetro(x, z, maxD = 1e9) { let best = null, bd = maxD; for (const st of shopsData) if (st.type === 'metro') { const dd = Math.hypot(st.dx - x, st.dz - z); if (dd < bd) { bd = dd; best = st; } } return best; }
+function startMetroRide(dest) {
+  const Rm = ROOMS.metro, from = game.inside && game.inside.shop;
+  if (!from || from.type !== 'metro' || !dest) return; if (metro.ride && metro.ride.phase !== 'depart') return;
+  if (dest === from) { toast(`You are already at ${dest.name}`); return; }
+  const fare = metroFare(from, dest); if (game.cash < fare) { toast(`The ride to ${dest.name} is $${fare}`); return; }
+  addCash(-fare, 'Metro · ' + dest.name); game.metroPlan = null; if (player.sit) standUp(); if (game.waypoint) setWaypoint(null);
+  const dist = Math.hypot(from.dx - dest.dx, from.dz - dest.dz);
+  metro.ride = { from, dest, phase: 'arrive', t: 0, z: 260, v: 0, rideT: clamp(5 + dist / 450, 5, 12), boardZ: player.pos.z, hide: false };
+  Rm.train.visible = true; toast(`Ticket to ${dest.name} · $${fare} · your train is coming`, 3000);
+}
+function updateMetro(dt) {
+  const Rm = ROOMS.metro, M = metro.ride, p = player, TX = Rm.cx + 5.6;
+  M.t += dt; const ease = (t) => 1 - Math.pow(1 - clamp(t, 0, 1), 2);
+  if (M.phase === 'arrive' || M.phase === 'arrive2') {
+    M.z = 260 + (Rm.cz - 260) * ease(M.t / 3.4);
+    if (M.phase === 'arrive') { p.pos.set(Rm.cx + 1.5, IY, clamp(M.boardZ, Rm.cz - 18, Rm.cz + 18)); p.yaw = Math.PI / 2; p.h.root.position.copy(p.pos); p.h.root.rotation.set(0, p.yaw, 0, 'YXZ'); poseHuman(p.h, dt, 0, false, game.time); }
+    if (M.t >= 3.4) {
+      if (M.phase === 'arrive') { M.phase = 'board'; M.t = 0; fadeFlash('All aboard…', 0.7); }
+      else { M.phase = 'depart'; M.t = 0; M.v = 0; M.hide = false; p.h.root.visible = true; p.pos.set(Rm.cx + 1.4, IY, Rm.cz + 3); p.yaw = -Math.PI / 2; cam.yaw = p.yaw + Math.PI; cam.init = false; shopCD = 1; toast(`${M.dest.name} · take the stairs at the end of the platform up to the street`, 4000); }
+    }
+  } else if (M.phase === 'board') { if (M.t > 0.45) { p.h.root.visible = false; M.hide = true; } if (M.t >= 1.0) { M.phase = 'ride'; M.t = 0; M.v = 0; } }
+  else if (M.phase === 'ride') {
+    M.v = Math.min(24, M.v + 6 * dt); M.z -= M.v * dt;
+    if (M.t >= M.rideT) { fadeFlash(`Arriving at ${M.dest.name}…`, 1.0); const dd = M.dest; game.inside.shop = dd; game.inside.out.set(dd.dx + dd.nx * 2.2, CURB, dd.dz + dd.nz * 2.2); metroSetStation(dd); M.phase = 'arrive2'; M.t = 0; M.z = 260; }
+  }
+  Rm.train.position.set(TX, IY - 0.95, M.z);
+  interiorLight.position.set(M.phase === 'ride' ? TX : p.pos.x, IY + 3.6, M.phase === 'ride' ? M.z + 22 : p.pos.z);
+  updateVisitors(Rm, dt);
+}
+function metroTrainTick(dt) { const M = metro.ride, Rm = ROOMS.metro; if (!M || M.phase !== 'depart') return; M.t += dt; if (M.t > 1.5) { M.v = Math.min(24, M.v + 5 * dt); M.z -= M.v * dt; } Rm.train.position.set(Rm.cx + 5.6, IY - 0.95, M.z); if (M.z < -330) { Rm.train.visible = false; metro.ride = null; } }
+// ---- shop jobs: a green WORK spot by the door of every shop with a register
+const workRingMat = new THREE.MeshBasicMaterial({ color: new THREE.Color(0.7, 2.6, 0.7), map: beamTex, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, side: THREE.DoubleSide });
+function addWorkSpot(R) {
+  const sp = { x: R.door.x + 2.2, z: R.door.z - 1.1 }; R.workSpot = sp;
+  const ring = new THREE.Mesh(new THREE.CylinderGeometry(0.75, 0.75, 0.6, 24, 1, true), workRingMat); ring.position.set(sp.x, IY + 0.3, sp.z); R.group.add(ring);
+  R.group.add(new THREE.Mesh(mergeAll([boxAt(0.08, 2.0, 0.08, sp.x + 1.0, IY + 1.0, sp.z, 0x2b2e33), boxAt(1.2, 0.5, 0.06, sp.x + 1.0, IY + 2.15, sp.z, 0x2d8f4e)]), vcolMat));
+  for (const sd of [1, -1]) { const t = new THREE.Mesh(new THREE.PlaneGeometry(1.1, 0.4), new THREE.MeshBasicMaterial({ map: textTex('WORK HERE', 512, 96, '#ffffff'), transparent: true, color: new THREE.Color(1.4, 1.4, 1.4) })); t.position.set(sp.x + 1.0, IY + 2.15, sp.z + sd * 0.035); t.rotation.y = sd > 0 ? 0 : Math.PI; R.group.add(t); }
+}
+const nearWorkSpot = () => !!(game.inside && !shift.on && !player.sit && game.inside.room.workSpot && SHIFT_TYPES.includes(game.inside.shop.type) && Math.hypot(player.pos.x - game.inside.room.workSpot.x, player.pos.z - game.inside.room.workSpot.z) < 1.3);
 function buildShops() {
   const openMat = new THREE.MeshBasicMaterial({ map: openTex, transparent: true, color: new THREE.Color(2.2, 2.2, 2.2), depthWrite: false });
   for (const sp of shopsData) {
+    if (sp.type === 'metro') { metroKiosk(sp); continue; }
     if (sp.type === 'mart' || sp.type === 'grocery' || sp.type === 'threads') {
       const L0 = SHOP_LOOK[sp.type], ang = Math.atan2(sp.nx, sp.nz), place = (gg, x, y, z) => { gg.rotateY(ang); gg.translate(sp.dx + Math.cos(ang) * x + Math.sin(ang) * z, y, sp.dz - Math.sin(ang) * x + Math.cos(ang) * z); return gg; };
       const W = [], F = [];
@@ -2255,7 +2435,8 @@ function buildShops() {
     const ring = new THREE.Mesh(new THREE.CylinderGeometry(0.85, 0.85, 0.7, 24, 1, true), new THREE.MeshBasicMaterial({ color: new THREE.Color(0.6, 2.4, 2.2), map: beamTex, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, side: THREE.DoubleSide }));
     ring.position.set(0, CURB + 0.35, 1.3); g.add(ring); scene.add(g);
   }
-  buildMart(ROOMS.mart); buildThreads(ROOMS.threads); buildTerminal(ROOMS.terminal); buildAirstrip(ROOMS.airstrip); buildHome(ROOMS.home); buildGrocery(ROOMS.grocery);
+  buildMart(ROOMS.mart); buildThreads(ROOMS.threads); buildTerminal(ROOMS.terminal); buildAirstrip(ROOMS.airstrip); buildHome(ROOMS.home); buildGrocery(ROOMS.grocery); buildMetro(ROOMS.metro);
+  for (const k of SHIFT_TYPES) { ROOMS[k].hello = (ROOMS[k].hello || `${ROOMS[k].name} · walk up to the counter to buy`) + ' · stand on the green WORK spot by the door to earn money'; addWorkSpot(ROOMS[k]); }
   for (const k in ROOMS) markSeats(ROOMS[k]);
 }
 function buildRoom(R, floorTex, wallHex, glassNorth) {
@@ -3600,6 +3781,11 @@ function enterShop(s) {
     Rm.group.visible = true; player.pos.set(Rm.spawn.x, IY, Rm.spawn.z); player.vel.set(0, 0, 0); player.yaw = Math.PI;
     cam.yaw = 0; cam.pitch = 0.16; interiorLight.position.set(Rm.cx, IY + Rm.H - 0.8, Rm.cz); interiorLight.intensity = Rm.w > 30 ? 90 : Rm.w > 20 ? 40 : 16; interiorLight.distance = Rm.w > 30 ? 80 : 34; if (Rm.followLight) { interiorLight.intensity = Rm.lightI || 40; interiorLight.distance = Rm.lightD || 30; }
     fam.snap = true; toast((s.type === 'home' && famEnter()) || Rm.hello || `${Rm.name} · walk up to the counter to buy`); shopCD = 1.2;
+    if (s.type === 'metro') {
+      metroSetStation(s); if (metro.ride && metro.ride.phase === 'depart') { metro.ride = null; Rm.train.visible = false; }
+      toast(`${s.name} station · walk up to a ticket machine and type where you want to go`, 4000);
+      if (game.metroPlan && game.metroPlan !== s) { const plan = game.metroPlan; setTimeout(() => startMetroRide(plan), 900); } else if (game.metroPlan === s) game.metroPlan = null;
+    }
   }
 }
 function exitShop() {
@@ -3884,7 +4070,7 @@ function followUpdate(dt) {
     fam.list.forEach((m, i) => { const sd = i % 2 ? -1 : 1, bx = i < 2 ? -0.55 : 0.55; m.h.root.visible = true; m.h.root.position.set(c.x + bx, c.y - 0.6 - m.sc * 0.45, c.z + sd * 1.3); m.h.root.rotation.set(0, sd > 0 ? Math.PI : 0, 0, 'YXZ'); poseSit(m.h, 0.5, false); });
     return;
   }
-  if (player.car || game.ride || game.heli || transit.ride || !player.alive) { for (const m of fam.list) { m.h.root.visible = false; if (m.seat) famFree(m); } fam.snap = true; return; }
+  if (player.car || game.ride || game.heli || transit.ride || (metro.ride && metro.ride.hide) || !player.alive) { for (const m of fam.list) { m.h.root.visible = false; if (m.seat) famFree(m); } fam.snap = true; return; }
   if (fam.snap) { trailReset(); fam.snap = false; }
   const Rm = game.inside && game.inside.room;
   if (!player.sit && (Rm || player.onGround)) trailPush();
@@ -4011,7 +4197,8 @@ function renderShop() {
     list.appendChild(b);
   }
 }
-function openShopPanel(ct) { game.counter = ct; game.state = 'shop'; player.autoTo = null; renderShop(); $('shop').hidden = false; if (document.pointerLockElement) document.exitPointerLock(); }
+function openShopPanel(ct) {
+  if (ct.type === 'metro') { openSearch('metro'); return; } game.counter = ct; game.state = 'shop'; player.autoTo = null; renderShop(); $('shop').hidden = false; if (document.pointerLockElement) document.exitPointerLock(); }
 function closeShopPanel() {
   $('shop').hidden = true; game.state = 'play'; if (!game.inside) return; const ct = game.counter, Rm = game.inside.room, dx = Rm.cx - ct.x, dz = Rm.cz - ct.z, l = Math.hypot(dx, dz) || 1;
   if (ct.back) { player.pos.x = ct.x + ct.back[0]; player.pos.z = ct.z + ct.back[1]; } else { player.pos.x = ct.x + dx / l * 1.7; player.pos.z = ct.z + dz / l * 1.7; } shopCD = 0.6; if (ct.desk && ct.desk.busy === 'player') ct.desk.busy = null;
@@ -4286,6 +4473,7 @@ function drawBigmap() {
     const off = transit.ride && transit.ride.offAt, plan = game.busPlan;
     for (const st of transit.stops) badge(st.sx, st.sz, '#3fa9f5', 'B', '#fff', st === off || st === plan);
     for (const rk of transit.ranks) badge(rk.sx, rk.sz, '#ffc21a', 'T', '#15161a');
+    for (const st of shopsData) if (st.type === 'metro') badge(st.dx, st.dz, '#e63946', 'M', '#fff', st === game.metroPlan);
     for (const b of transit.buses) dot(b.v.pos.x, b.v.pos.z, 4.5, '#3fa9f5', true);
   }
   if (!game.job) for (const m of markers) if (m.m.visible) dot(m.x, m.z, 6.5, '#ff3f8e');
@@ -4482,7 +4670,7 @@ function axes() {
 function handleActions() {
   while (input.actions.length) {
     const a = input.actions.shift();
-    if (a === 'car') { if (shift.on) { shiftScan(); continue; } if (game.wheel) { endWheel(false); continue; } if (game.heli) { endHeli(true); continue; } if (transit.ride) { rideAction(); continue; } if (game.ride) { const k = game.ride.kind; endRide(); if (k !== 'loop') flight.trip = null; continue; } if (game.inside) { const hm = hugTarget(); if (player.sit) standUp(); else if (hm) hugFamily(hm); else if (game.nearSeat) sitDown(game.nearSeat); continue; } if (player.car) exitCar(); else if (player.knock <= 0) { if (nearFerris()) { startWheel(); continue; } if (nearEnlist()) { enlist(); continue; } if (nearHeliPad()) { startHeli(); continue; } { if (nearDutyBoard()) { openShopPanel({ type: 'duty', title: `Fort Halcón duty board · ${milRank().name}`, outdoor: true }); continue; } const bs = busAtStop(); if (bs) { boardBus(bs); continue; } const rk = nearRank(); if (rk) { openShopPanel({ type: 'taxi', title: 'Taxi stand · where to?', outdoor: true, rank: rk }); continue; } const dc = nearDealerCar(); if (dc) { buyCar(dc); continue; } if (nearDealerDesk()) { openShopPanel({ type: 'dealer', title: 'Coastline Motors · all 100 cars', outdoor: true }); continue; } } const c = nearestEnterable(3.8), hm = hugTarget(); if (hm && (!c || game.famD < 1.0)) { hugFamily(hm); continue; } if (c) enterCar(c); } }
+    if (a === 'car') { if (shift.on) { shiftScan(); continue; } if (metro.ride && metro.ride.phase !== 'depart') continue; if (nearWorkSpot()) { startShift(); continue; } if (game.wheel) { endWheel(false); continue; } if (game.heli) { endHeli(true); continue; } if (transit.ride) { rideAction(); continue; } if (game.ride) { const k = game.ride.kind; endRide(); if (k !== 'loop') flight.trip = null; continue; } if (game.inside) { const hm = hugTarget(); if (player.sit) standUp(); else if (hm) hugFamily(hm); else if (game.nearSeat) sitDown(game.nearSeat); continue; } if (player.car) exitCar(); else if (player.knock <= 0) { if (nearFerris()) { startWheel(); continue; } if (nearEnlist()) { enlist(); continue; } if (nearHeliPad()) { startHeli(); continue; } { if (nearDutyBoard()) { openShopPanel({ type: 'duty', title: `Fort Halcón duty board · ${milRank().name}`, outdoor: true }); continue; } const bs = busAtStop(); if (bs) { boardBus(bs); continue; } const rk = nearRank(); if (rk) { openShopPanel({ type: 'taxi', title: 'Taxi stand · where to?', outdoor: true, rank: rk }); continue; } const dc = nearDealerCar(); if (dc) { buyCar(dc); continue; } if (nearDealerDesk()) { openShopPanel({ type: 'dealer', title: 'Coastline Motors · all 100 cars', outdoor: true }); continue; } } const c = nearestEnterable(3.8), hm = hugTarget(); if (hm && (!c || game.famD < 1.0)) { hugFamily(hm); continue; } if (c) enterCar(c); } }
     else if (a === 'blinkL' || a === 'blinkR') { const c = player.car; if (!c) continue; const want = a === 'blinkL' ? 1 : 2; c.blink = c.blink === want ? 0 : want; game.blinkAcc = 0; game.blinkYaw = c.yaw; if (c.blink) sfxTick(true); }
     else if (a === 'horn') { if (player.car) { sfxHorn(1); for (const p of peds) if (p.pos.distanceTo(player.car.pos) < 14) p.scare(player.car.pos.x, player.car.pos.z, 3); } }
     else if (a === 'radio') { game.radio = !game.radio; store.set('radio', game.radio); radioOn(!!player.car); toast(game.radio ? 'Radio on · Solano 88.4' : 'Radio off'); }
@@ -4505,6 +4693,13 @@ function updateCamera(dt) {
     const g = game.wheel.pos, cp = Math.cos(cam.pitch); cam.manual -= dt;
     camera.position.set(g.x, g.y + 0.25, g.z); camera.lookAt(g.x - Math.sin(cam.yaw) * cp * 10, g.y + 0.25 - Math.sin(cam.pitch) * 10, g.z - Math.cos(cam.yaw) * cp * 10); cam.init = false;
     if (Math.abs(camera.fov - (baseFov + 8)) > 0.05) { camera.fov = baseFov + 8; camera.updateProjectionMatrix(); }
+    return;
+  }
+  if (game.inside && metro.ride && ['board', 'ride', 'arrive2'].includes(metro.ride.phase)) {
+    const Rm = ROOMS.metro, TX = Rm.cx + 5.6, z = metro.ride.z;
+    if (metro.ride.phase === 'ride') { camera.position.set(TX - 0.6, IY + 2.7, z + 33); camera.lookAt(TX, IY + 1.5, z - 20); }
+    else { camera.position.set(Rm.cx - 4, IY + 2.6, Rm.cz + 27); camera.lookAt(TX - 1, IY + 1.2, Rm.cz - 8); }
+    cam.init = false; if (Math.abs(camera.fov - baseFov) > 0.05) { camera.fov = baseFov; camera.updateProjectionMatrix(); }
     return;
   }
   if (game.inside && game.tvWatch && ROOMS.home.tv) {
@@ -4652,7 +4847,7 @@ function updateHUD(dt) {
   const dboard = !c && nearDutyBoard(), tb = !c && busAtStop(), tk = !c && nearRank(), dcar = !c && nearDealerCar(), ddesk = !c && nearDealerDesk(), stop = !c && !tb && nearStop();
   const ne = !c && nearEnlist(), nh = !c && nearHeliPad(), fw = !c && nearFerris(), near = !c && !fw && !ne && !nh && !dboard && !tb && !tk && !dcar && !ddesk && !transit.ride && !game.inside && !game.ride && !game.wheel && !game.heli && nearestEnterable(3.8);
   const seat = game.inside ? game.nearSeat : null, hug0 = hugTarget(), hugM = hug0 && (game.inside || !near || game.famD < 1.0) ? hug0 : null;
-  ui.bCar.textContent = shift.on ? (shift.cust && shift.cust.state === 'wait' ? 'SCAN' : 'WAIT') : transit.ride ? (transit.ride.kind === 'bus' ? 'GET OFF' : 'SKIP') : dboard ? 'DUTY' : tb ? 'BOARD' : tk ? 'TAXI' : dcar ? 'BUY' : ddesk ? 'CARS' : game.wheel ? 'GET OFF' : game.heli ? 'LAND' : ne ? 'ENLIST' : nh ? 'FLY' : fw ? 'RIDE' : game.ride ? 'LAND' : c ? 'GET OUT' : hugM && !game.inside ? 'HUG' : player.sit ? (player.sit.bed ? 'GET UP' : 'STAND') : hugM ? 'HUG' : seat ? (seat.bed ? 'LIE DOWN' : seat.toilet ? 'USE' : 'SIT') : 'GET IN'; ui.bCar.classList.toggle('ready', (shift.on && !!shift.cust && shift.cust.state === 'wait') || !!near || fw || ne || nh || dboard || !!tb || !!tk || !!dcar || ddesk || !!hugM || (!!seat && !player.sit));
+  ui.bCar.textContent = shift.on ? (shift.cust && shift.cust.state === 'wait' ? 'SCAN' : 'WAIT') : metro.ride && metro.ride.phase !== 'depart' ? 'RIDING' : nearWorkSpot() ? 'WORK' : transit.ride ? (transit.ride.kind === 'bus' ? 'GET OFF' : 'SKIP') : dboard ? 'DUTY' : tb ? 'BOARD' : tk ? 'TAXI' : dcar ? 'BUY' : ddesk ? 'CARS' : game.wheel ? 'GET OFF' : game.heli ? 'LAND' : ne ? 'ENLIST' : nh ? 'FLY' : fw ? 'RIDE' : game.ride ? 'LAND' : c ? 'GET OUT' : hugM && !game.inside ? 'HUG' : player.sit ? (player.sit.bed ? 'GET UP' : 'STAND') : hugM ? 'HUG' : seat ? (seat.bed ? 'LIE DOWN' : seat.toilet ? 'USE' : 'SIT') : 'GET IN'; ui.bCar.classList.toggle('ready', nearWorkSpot() || (shift.on && !!shift.cust && shift.cust.state === 'wait') || !!near || fw || ne || nh || dboard || !!tb || !!tk || !!dcar || ddesk || !!hugM || (!!seat && !player.sit));
   ui.bAction.textContent = shift.on ? 'END' : c ? 'DRIFT' : player.sit && player.sit.bed ? 'SLEEP' : player.sit && player.sit.tv ? (game.tvWatch ? 'CHANNEL' : 'TV') : 'JUMP'; ui.bHorn.hidden = !c; ui.bRadio.hidden = !c; ui.bBlinkL.hidden = ui.bBlinkR.hidden = !c; { const bl = c ? c.blink : 0, lit = c ? blinkLit(c) : false; ui.bBlinkL.classList.toggle('sel', (bl & 1) > 0); ui.bBlinkR.classList.toggle('sel', (bl & 2) > 0); ui.bBlinkL.classList.toggle('flash', lit && (bl & 1) > 0); ui.bBlinkR.classList.toggle('flash', lit && (bl & 2) > 0); ui.blkL.classList.toggle('on', lit && (bl & 1) > 0); ui.blkR.classList.toggle('on', lit && (bl & 2) > 0); } ui.bAction.style.visibility = game.wheel || game.ride || game.heli || transit.ride ? 'hidden' : '';
   let hint = '';
   if (near && !TOUCH) hint = near.driver === 'ai' ? 'Press F to carjack' : near.isCop && near.driver ? 'Press F to steal the cruiser' : 'Press F to get in';
@@ -4686,6 +4881,9 @@ function updateHUD(dt) {
   if (game.heli) hint = TOUCH ? 'Helicopter tour · drag to look · tap LAND to skip' : 'Helicopter tour · mouse to look · F to land';
   if (game.wheel) hint = `Ferris wheel · ${Math.round(game.wheel.pos.y)} m up · ${TOUCH ? 'drag to look · GET OFF to stop' : 'mouse to look · F to get off'}`;
   if (shift.on) hint = shiftHint();
+  if (nearWorkSpot()) hint = TOUCH ? 'Work a shift at the register · tap WORK' : 'Press F to work a shift at the register';
+  if (metro.ride && metro.ride.phase !== 'depart') hint = `Metro to ${metro.ride.dest.name} · ${metro.ride.phase === 'arrive' ? 'train arriving' : metro.ride.phase === 'ride' ? 'next stop ' + metro.ride.dest.name : 'arriving'}`;
+  if (!hint && !game.inside && !player.car) { const ms = nearestMetro(player.pos.x, player.pos.z, 7); if (ms) hint = `Metro · ${ms.name} · walk in to ride anywhere`; }
   if (!hint && mil.near) hint = 'Fort Halcón · restricted military area · keep out';
   if (hint !== lastHint) { lastHint = hint; ui.hint.textContent = hint; ui.hint.hidden = !hint; }
   const j0 = game.job, j = j0 ? { m: `Deliver ${j0.cargo} to ${j0.where}`, t: j0.t } : duty.on ? { m: dutyTitle(), t: duty.t } : shift.on ? { m: shiftTitle(), t: shift.t } : null;
@@ -4875,7 +5073,7 @@ function step(dt) {
     player.pos.set(c.pos.x, c.y, c.pos.z);
     if (c.blink === 1 || c.blink === 2) { const dy = angDiff(game.blinkYaw ?? c.yaw, c.yaw); game.blinkAcc = (game.blinkAcc || 0) + (c.blink === 1 ? dy : -dy); if (game.blinkAcc > 0.75 && Math.abs(c.str) < 0.15) c.blink = 0; }
     game.blinkYaw = c.yaw; const lit = blinkLit(c); if (lit !== game.blinkLit) { game.blinkLit = lit; if (c.blink || !lit) { if (c.blink) sfxTick(lit); } }
-  } else if (game.wheel) updateWheel(dt); else if (game.heli) updateHeli(dt); else if (transit.ride) updateRide(dt); else if (game.ride) { if (flight.st === 'parked') endRide(); } else if (game.inside) { if (shift.on) updateShift(dt); else updatePlayerInside(dt, ax, ay, sprint); if (game.inside && game.inside.room === ROOMS.home) famUpdate(dt); } else { updatePlayerFoot(dt, ax, ay, sprint); if (playing) checkShopDoors(dt); }
+  } else if (game.wheel) updateWheel(dt); else if (game.heli) updateHeli(dt); else if (transit.ride) updateRide(dt); else if (game.ride) { if (flight.st === 'parked') endRide(); } else if (game.inside) { if (shift.on) updateShift(dt); else if (metro.ride && metro.ride.phase !== 'depart') updateMetro(dt); else updatePlayerInside(dt, ax, ay, sprint); if (game.inside && game.inside.room === ROOMS.metro) metroTrainTick(dt); if (game.inside && game.inside.room === ROOMS.home) famUpdate(dt); } else { updatePlayerFoot(dt, ax, ay, sprint); if (playing) checkShopDoors(dt); }
   input.jumpQ = false; if (player.bag) player.bag.visible = !game.bagChecked && !player.sit;
   if (fam.out) followUpdate(dt); else if (!game.inside || game.inside.room !== ROOMS.home) game.nearFam = null;
   if (player.hurtT > 0) player.hurtT -= dt; else player.health = Math.min(100, player.health + dt * (game.fedT > 0 ? 12 : 4)); if (game.fedT > 0) game.fedT -= dt;
@@ -5001,6 +5199,7 @@ function snapshotWorld() {
   else if (transit.ride) { const r = transit.ride; if (r.kind === 'taxi') w.at = foot(r.dest.p.x, r.dest.p.z, 0); else { const st = r.bus.at || nextStopAfter(r.bus.s)[0]; w.at = foot(st.px, st.pz, 0); } }
   else if (game.wheel) w.at = foot(ferris.x + 1.6, ferris.z + 7, Math.PI);
   else if (game.heli) w.at = foot(290, -1254, Math.PI);
+  else if (game.inside && metro.ride) w.at = { kind: 'shop', i: shopsData.indexOf(metro.ride.dest) };
   else if (game.inside) w.at = { kind: 'shop', i: shopsData.indexOf(game.inside.shop) };
   else if (player.car) { const c = player.car; w.at = { kind: 'car', x: r2(c.pos.x), y: r2(c.y), z: r2(c.pos.z), yaw: r2(c.yaw), type: c.type, color: c.color ?? null, owned: c.owned || null, army: !!c.army }; }
   else w.at = { kind: 'foot', x: r2(player.pos.x), y: r2(player.pos.y), z: r2(player.pos.z), yaw: r2(player.yaw) };
@@ -5011,7 +5210,7 @@ function saveGame(force) {
   store.set('cash', game.cash); const w = snapshotWorld(); if (w) { store.set('world', w); store.set('garageCars', snapshotGarage()); } store.set('savedAt', Date.now());
   cloudSave(force);
 }
-function saveWhere(w) { const a = w && w.at; if (!a) return ''; if (a.kind === 'shop') { const sp = shopsData[a.i]; return sp ? (sp.type === 'home' ? 'At home' : ROOMS[sp.type].name) : ''; } return (a.kind === 'car' ? 'Driving · ' : '') + districtAt(a.x, a.z); }
+function saveWhere(w) { const a = w && w.at; if (!a) return ''; if (a.kind === 'shop') { const sp = shopsData[a.i]; return sp ? (sp.type === 'home' ? 'At home' : sp.type === 'metro' ? 'Metro · ' + sp.name : ROOMS[sp.type].name) : ''; } return (a.kind === 'car' ? 'Driving · ' : '') + districtAt(a.x, a.z); }
 function restoreWorld() {
   const w = store.get('world', null); if (!w || !w.at) return false;
   if (Number.isFinite(w.tod)) { game.tod = w.tod; updateDaylight(0); refreshEnv(true); }
@@ -5063,7 +5262,7 @@ async function start(data) {
     applyQuality(data.quality || store.get('quality', 'ultra'));
     updateDaylight(0); refreshEnv(true);
     renderer.compile(scene, camera);
-    game.state = 'title'; window.__solanoRunning = true; window.__solanoDebug = { GARAGE, garage, openSearch, closeSearch, search, shift, startShift, transitRef: () => transit, saveGame, cloud, store, phone, APPS, openPhone, closePhone, duty, DUTIES, startDuty, transit, CATALOG, DEALER, makeHuman, randomLook, poseHuman, mil, Vehicle, PAINTS, ROOMS, ferris, famList: fam.list, renderer, game, camera, cam, player, officers, police, shopsData, vehicles, flight, RING_H, peek: () => ({ shopCD, t: +game.time.toFixed(2) }), crime: (n) => crime(n, 'Test heat') };
+    game.state = 'title'; window.__solanoRunning = true; window.__solanoDebug = { metro, BRIDGES, startMetroRide, nearestMetro, GARAGE, garage, openSearch, closeSearch, search, shift, startShift, transitRef: () => transit, saveGame, cloud, store, phone, APPS, openPhone, closePhone, duty, DUTIES, startDuty, transit, CATALOG, DEALER, makeHuman, randomLook, poseHuman, mil, Vehicle, PAINTS, ROOMS, ferris, famList: fam.list, renderer, game, camera, cam, player, officers, police, shopsData, vehicles, flight, RING_H, peek: () => ({ shopCD, t: +game.time.toFixed(2) }), crime: (n) => crime(n, 'Test heat') };
     { const sw = store.get('world', null); if (sw && sw.at) { $('playBtn').textContent = 'Continue'; const si = $('saveInfo'); si.textContent = `Saved game · ${saveWhere(sw)} · ${money(game.cash)}${cloud.restored ? ' · loaded from your account' : ''}`; si.hidden = false; $('newGameT').hidden = false; } }
     $('loading').hidden = true; $('title').hidden = false;
     renderer.setAnimationLoop(frame);
