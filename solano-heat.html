@@ -2632,6 +2632,7 @@ function buildShops() {
   const openMat = new THREE.MeshBasicMaterial({ map: openTex, transparent: true, color: new THREE.Color(2.2, 2.2, 2.2), depthWrite: false });
   for (const sp of shopsData) {
     if (sp.type === 'metro') { metroKiosk(sp); continue; }
+    if (sp.type === 'restaurant') continue;
     if (sp.type === 'mart' || sp.type === 'grocery' || sp.type === 'threads') {
       const L0 = SHOP_LOOK[sp.type], ang = Math.atan2(sp.nx, sp.nz), place = (gg, x, y, z) => { gg.rotateY(ang); gg.translate(sp.dx + Math.cos(ang) * x + Math.sin(ang) * z, y, sp.dz - Math.sin(ang) * x + Math.cos(ang) * z); return gg; };
       const W = [], F = [];
