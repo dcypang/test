@@ -192,6 +192,9 @@ button:focus-visible{outline:3px solid var(--lagoon);outline-offset:3px}
 .pcard h2{font-family:var(--font-display);font-weight:400;font-size:30px;margin:0;color:var(--marigold)}
 .prow{display:flex;gap:8px;flex-wrap:wrap}
 #pause [hidden]{display:none !important}
+.savei{margin:10px 0 0;font-size:14px;font-weight:600;color:var(--lagoon)}
+#saveInfo[hidden],#newGameT[hidden]{display:none}
+#newGameT{margin-top:10px}
 @media (max-height:520px){#pause .pcard{width:min(760px,100%);gap:6px;padding:12px 18px}#pause .pcard h2{font-size:24px}#pause .ghost,#pause .qrow button{padding:6px 12px;font-size:13px}#pause .cta{padding-top:9px;padding-bottom:9px}}
 .ghost{font-family:var(--font-hud);font-weight:700;font-size:15px;letter-spacing:.08em;text-transform:uppercase;padding:8px 14px;border-radius:10px;border:1.5px solid var(--line);background:transparent}
 .stat{font-family:var(--font-hud);font-size:15px;letter-spacing:.06em;color:rgba(255,243,232,.75);font-variant-numeric:tabular-nums}
@@ -273,6 +276,8 @@ button:focus-visible{outline:3px solid var(--lagoon);outline-offset:3px}
         <button data-q="ultra">Ultra</button><button data-q="high">High</button><button data-q="balanced">Balanced</button>
       </div>
       <button class="cta" id="playBtn">Play</button>
+      <p class="savei" id="saveInfo" hidden></p>
+      <button class="ghost" id="newGameT" hidden>New game</button>
       <p class="keys" id="keysTouch"><b>Left thumb</b> moves or drives. <b>Drag right side</b> to look. <b>Get in</b> takes the nearest car. In a car, hold <b>Drift</b> for the handbrake. <b>Tap the minimap</b> for the full map. Walk through a lit doorway to go inside a shop.</p>
       <p class="keys" id="keysDesk"><b>WASD</b> move / drive · <b>Mouse</b> look · <b>F</b> get in or out · <b>Space</b> jump / handbrake · <b>Shift</b> sprint · <b>H</b> horn · <b>R</b> radio · <b>M</b> map · <b>Esc</b> pause · walk through a lit doorway to enter a shop</p>
       <div id="rotateHint">Turn your phone sideways for the best view</div>
@@ -294,7 +299,8 @@ button:focus-visible{outline:3px solid var(--lagoon);outline-offset:3px}
       </div>
       <div class="qlabel" id="pTripLabel">Family &amp; suitcase</div>
       <div class="prow" id="pTripRow"><button class="ghost" id="famBtn">Call the family</button><button class="ghost" id="bagBtn">Put suitcase away</button></div>
-      <div class="prow"><button class="ghost" id="soundBtn">Sound: on</button></div>
+      <div class="prow"><button class="ghost" id="soundBtn">Sound: on</button><button class="ghost" id="newGameBtn">New game</button></div>
+      <div class="stat" id="pSave"></div>
       <button class="cta" id="resumeBtn">Resume</button>
     </div>
   </div>
@@ -382,8 +388,13 @@ const damp = (a, b, l, dt) => a + (b - a) * (1 - Math.exp(-l * dt));
 const smooth = (e0, e1, x) => { const t = clamp((x - e0) / (e1 - e0), 0, 1); return t * t * (3 - 2 * t); };
 function angDiff(a, b) { let d = (b - a) % (Math.PI * 2); if (d > Math.PI) d -= Math.PI * 2; if (d < -Math.PI) d += Math.PI * 2; return d; }
 const store = {
-  get(k, d) { try { const v = localStorage.getItem('solano.' + k); return v === null ? d : JSON.parse(v); } catch (e) { return d; } },
-  set(k, v) { try { localStorage.setItem('solano.' + k, JSON.stringify(v)); } catch (e) { /* storage blocked */ } },
+  mem: {},
+  raw(k) { try { const v = localStorage.getItem('solano.' + k); if (v !== null) return v; } catch (e) { /* storage blocked */ } return this.mem[k] ?? null; },
+  setRaw(k, v) { this.mem[k] = v; try { localStorage.setItem('solano.' + k, v); } catch (e) { /* storage blocked: kept in memory and in the account save */ } },
+  get(k, d) { const v = this.raw(k); if (v === null) return d; try { return JSON.parse(v); } catch (e) { return d; } },
+  set(k, v) { this.setRaw(k, JSON.stringify(v)); },
+  all() { const out = { ...this.mem }; try { for (let i = 0; i < localStorage.length; i++) { const k = localStorage.key(i); if (k && k.startsWith('solano.')) out[k.slice(7)] = localStorage.getItem(k); } } catch (e) { /* storage blocked */ } return out; },
+  clear() { this.mem = {}; try { for (const k of Object.keys(localStorage)) if (k.startsWith('solano.')) localStorage.removeItem(k); } catch (e) { /* storage blocked */ } },
 };
 const V3 = (x, y, z) => new THREE.Vector3(x, y, z);
 const tmpV = new THREE.Vector3(), tmpV2 = new THREE.Vector3(), tmpV3 = new THREE.Vector3();
@@ -3030,7 +3041,7 @@ function carLodGeo(type, color) {
 const vehicles = [];
 class Vehicle {
   constructor(type, color) {
-    this.type = type; this.d = DIMS[type]; this.spec = SPECS[type]; this.isCop = type === 'police';
+    this.type = type; this.color = color; this.d = DIMS[type]; this.spec = SPECS[type]; this.isCop = type === 'police';
     const G = carGeo(type);
     this.root = new THREE.Group(); this.root.rotation.order = 'YXZ';
     this.body = new THREE.Group(); this.root.add(this.body);
@@ -3372,10 +3383,15 @@ function checkShopDoors(dt) {
   for (const s of shopsData) {
     if (Math.hypot(player.pos.x - (s.dx + s.nx * 1.3), player.pos.z - (s.dz + s.nz * 1.3)) > 1.1 || Math.abs(player.pos.y - CURB) > 1) continue;
     if (game.wanted > 0) { toast('The owner locks the door. Lose the cops first.'); shopCD = 3; return; }
+    enterShop(s); return;
+  }
+}
+function enterShop(s) {
+  {
     const Rm = ROOMS[s.type]; game.inside = { shop: s, room: Rm, out: new THREE.Vector3(s.dx + s.nx * 2.2, CURB, s.dz + s.nz * 2.2) };
     Rm.group.visible = true; player.pos.set(Rm.spawn.x, IY, Rm.spawn.z); player.vel.set(0, 0, 0); player.yaw = Math.PI;
     cam.yaw = 0; cam.pitch = 0.16; interiorLight.position.set(Rm.cx, IY + Rm.H - 0.8, Rm.cz); interiorLight.intensity = Rm.w > 30 ? 90 : Rm.w > 20 ? 40 : 16; interiorLight.distance = Rm.w > 30 ? 80 : 34; if (Rm.followLight) { interiorLight.intensity = Rm.lightI || 40; interiorLight.distance = Rm.lightD || 30; }
-    fam.snap = true; toast((s.type === 'home' && famEnter()) || Rm.hello || `${Rm.name} · walk up to the counter to buy`); shopCD = 1.2; return;
+    fam.snap = true; toast((s.type === 'home' && famEnter()) || Rm.hello || `${Rm.name} · walk up to the counter to buy`); shopCD = 1.2;
   }
 }
 function exitShop() {
@@ -4578,7 +4594,7 @@ function knockedOut() {
 }
 function pause(on) {
   if (on && game.state === 'play') {
-    game.state = 'pause'; $('pause').hidden = false; refreshTripButtons(); $('pStats').textContent = `Cash $${game.cash.toLocaleString('en-US')} · Heat ${game.wanted}/5 · ${districtAt(focusPos().x, focusPos().z)}`;
+    game.state = 'pause'; $('pause').hidden = false; refreshTripButtons(); saveGame(true); $('pSave').textContent = `Game saved on this device${cloud.ok ? ' and in your claude.ai account' : ''} · it loads every time you open the game`; $('pStats').textContent = `Cash $${game.cash.toLocaleString('en-US')} · Heat ${game.wanted}/5 · ${districtAt(focusPos().x, focusPos().z)}`;
     if (document.pointerLockElement) document.exitPointerLock(); if (audio.ctx) audio.ctx.suspend();
   } else if (!on && game.state === 'pause') { game.state = 'play'; $('pause').hidden = true; if (audio.ctx) audio.ctx.resume(); }
 }
@@ -4606,7 +4622,8 @@ document.addEventListener('visibilitychange', () => { if (!document.hidden && ga
 $('playBtn').addEventListener('click', () => {
   initAudio(); keepAwake(); $('title').hidden = true; $('hud').hidden = false; $('touch').hidden = !TOUCH; game.state = 'play'; cam.init = false; cam.yaw = Math.PI / 2; cam.pitch = 0.2;
   renderStars(); game.seenDistrict = '';
-  setTimeout(() => toast('Your home is the white villa just down the promenade. Pink markers are delivery jobs.', 4800), 600);
+  const back = !game.restored && restoreWorld(); game.restored = true;
+  setTimeout(() => toast(back ? 'Welcome back · everything is right where you left it' : 'Your home is the white villa just down the promenade. Pink markers are delivery jobs.', 4800), 600);
   const sm = Math.min(window.devicePixelRatio || 1, 3); mmCanvas.width = mmCanvas.height = Math.round(116 * sm);
 });
 $('keysTouch').hidden = !TOUCH; $('keysDesk').hidden = TOUCH;
@@ -4678,7 +4695,7 @@ function step(dt) {
   smokeMat.uniforms.uScale.value = innerHeight * curPR / (2 * Math.tan(THREE.MathUtils.degToRad(camera.fov / 2)));
   updateAudio(dt);
   if (game.state === 'play' || game.state === 'down') updateHUD(dt);
-  game.saveT -= dt; if (game.saveT <= 0) { game.saveT = 5; store.set('cash', game.cash); }
+  game.saveT -= dt; if (game.saveT <= 0) { game.saveT = 5; saveGame(false); }
 }
 function collideVehicles() {
   for (let i = 0; i < vehicles.length; i++) for (let j = i + 1; j < vehicles.length; j++) {
@@ -4725,11 +4742,92 @@ function pedHits(dt) {
   }
 }
 
+// ---------------------------------------------------------------- saving: every few seconds on this device, and to your claude.ai account
+const cloud = { ref: null, ok: false, busy: false, pending: false, last: '', lastAt: 0, blocked: false, late: false, restored: false, resetting: false };
+async function cloudHydrate() {
+  const work = (async () => {
+    const C = window.claude; if (!C || typeof C.use !== 'function') return;
+    const [db, user] = await Promise.all([C.use('db'), C.use('user')]); if (!db || !user) return;
+    const uid = await user.id(); if (!uid) return;
+    const ref = db.doc('data/users/' + uid + '/save'), snap = await ref.get(), d = snap.exists ? snap.data() : null;
+    const cloudAt = d && typeof d.savedAt === 'number' ? d.savedAt : 0;
+    if (cloudAt > store.get('savedAt', 0) && d.keys && typeof d.keys === 'object') {
+      if (cloud.late) { cloud.blocked = true; toast('A newer save is in your account · reopen the game to load it', 6000); return; }
+      for (const [k, v] of Object.entries(d.keys)) if (typeof v === 'string' && k !== 'quality') store.setRaw(k, v);
+      store.set('savedAt', cloudAt); cloud.restored = true;
+    }
+    cloud.ref = ref; cloud.ok = true; cloud.last = d && d.keys ? saveCompare(d.keys) : '';
+  })().catch(() => {});
+  await Promise.race([work, new Promise((r) => setTimeout(r, 4500))]); cloud.late = true;
+}
+function saveCompare(keys) { const k = { ...keys }; delete k.savedAt; delete k.quality; if (k.world) try { k.world = JSON.stringify({ ...JSON.parse(k.world), tod: 0 }); } catch (e) { /* keep */ } return JSON.stringify(k); }
+async function cloudSave(force) {
+  if (!cloud.ok || cloud.blocked || cloud.resetting) return;
+  if (cloud.busy) { cloud.pending = true; return; }
+  const now = Date.now(); if (!force && now - cloud.lastAt < 30000) return;
+  const keys = store.all(); delete keys.quality; delete keys.savedAt;
+  const cmp = saveCompare(keys); if (cmp === cloud.last) return;
+  cloud.busy = true; cloud.lastAt = now;
+  try { await cloud.ref.set({ v: 1, savedAt: store.get('savedAt', now), keys }); cloud.last = cmp; }
+  catch (e) { if (e && ['invalid_argument', 'revoked', 'not_granted', 'quota_exceeded', 'capability_disabled', 'capability_removed'].includes(e.code)) cloud.ok = false; }
+  cloud.busy = false; if (cloud.pending) { cloud.pending = false; cloudSave(false); }
+}
+function snapshotWorld() {
+  if (!['play', 'pause', 'phone', 'shop', 'map'].includes(game.state) || !player.alive) return null;
+  const r2 = (n) => Math.round(n * 100) / 100, foot = (x, z, yaw) => ({ kind: 'foot', x: r2(x), y: 0, z: r2(z), yaw: r2(yaw) });
+  const w = { tod: r2(game.tod), health: Math.round(player.health), fedT: Math.round(game.fedT || 0), lastDest: game.lastDest || null, busPassLeft: Math.max(0, Math.round((game.busPassUntil || 0) - game.time)), famTrip: !!fam.trip, txns: (game.txns || []).slice(0, 16), waypoint: game.waypoint ? { x: r2(game.waypoint.x), z: r2(game.waypoint.z) } : null };
+  if (game.ride && game.ride.back) { const sp = game.ride.back; w.at = foot(sp.dx + sp.nx * 2.6, sp.dz + sp.nz * 2.6, Math.atan2(sp.nx, sp.nz)); }
+  else if (transit.ride) { const r = transit.ride; if (r.kind === 'taxi') w.at = foot(r.dest.p.x, r.dest.p.z, 0); else { const st = r.bus.at || nextStopAfter(r.bus.s)[0]; w.at = foot(st.px, st.pz, 0); } }
+  else if (game.wheel) w.at = foot(ferris.x + 1.6, ferris.z + 7, Math.PI);
+  else if (game.heli) w.at = foot(290, -1254, Math.PI);
+  else if (game.inside) w.at = { kind: 'shop', i: shopsData.indexOf(game.inside.shop) };
+  else if (player.car) { const c = player.car; w.at = { kind: 'car', x: r2(c.pos.x), y: r2(c.y), z: r2(c.pos.z), yaw: r2(c.yaw), type: c.type, color: c.color ?? null, owned: c.owned || null, army: !!c.army }; }
+  else w.at = { kind: 'foot', x: r2(player.pos.x), y: r2(player.pos.y), z: r2(player.pos.z), yaw: r2(player.yaw) };
+  return w;
+}
+function saveGame(force) {
+  if (cloud.resetting || game.state === 'boot' || game.state === 'title') return;
+  store.set('cash', game.cash); const w = snapshotWorld(); if (w) store.set('world', w); store.set('savedAt', Date.now());
+  cloudSave(force);
+}
+function saveWhere(w) { const a = w && w.at; if (!a) return ''; if (a.kind === 'shop') { const sp = shopsData[a.i]; return sp ? (sp.type === 'home' ? 'At home' : ROOMS[sp.type].name) : ''; } return (a.kind === 'car' ? 'Driving · ' : '') + districtAt(a.x, a.z); }
+function restoreWorld() {
+  const w = store.get('world', null); if (!w || !w.at) return false;
+  if (Number.isFinite(w.tod)) { game.tod = w.tod; updateDaylight(0); refreshEnv(true); }
+  player.health = clamp(Number(w.health) || 100, 30, 100); game.fedT = w.fedT || 0; game.lastDest = w.lastDest || null; game.txns = Array.isArray(w.txns) ? w.txns : [];
+  if (w.busPassLeft > 0) game.busPassUntil = game.time + w.busPassLeft;
+  if (w.famTrip && game.family.length) { fam.trip = true; famGoOut(); }
+  const a = w.at;
+  if (a.kind === 'shop' && shopsData[a.i]) { const sp = shopsData[a.i]; player.pos.set(sp.dx + sp.nx * 2.6, CURB, sp.dz + sp.nz * 2.6); enterShop(sp); }
+  else if (a.kind === 'car' && Number.isFinite(a.x)) {
+    let v = null;
+    if (a.owned) { v = vehicles.find((x) => x.owned === a.owned && !x.driver) || null; if (!v) { const c = CATALOG.find((x) => x.id === a.owned); if (c) v = spawnOwned(c, a.x, a.z, a.yaw); } }
+    else if (a.army && mil.trucks) v = mil.trucks.find((x) => x.driver !== 'player') || null;
+    if (!v) { const t = a.type === 'police' || !DIMS[a.type] || a.type === 'bus' ? 'sedan' : a.type; v = new Vehicle(t, a.type === 'police' ? 0x111317 : t === 'taxi' ? 0xf4c20d : a.color ?? mpick(PAINTS)); v.keep = true; }
+    v.place(a.x, a.z, a.yaw || 0, a.y || 0); player.pos.set(a.x, a.y || 0, a.z); enterCar(v);
+  } else if (Number.isFinite(a.x)) { player.pos.set(a.x, surfaceH(a.x, a.z, (a.y || 0) + 0.5) + 0.05, a.z); player.vel.set(0, 0, 0); player.yaw = a.yaw || 0; player.onGround = false; }
+  if (w.waypoint) setWaypoint(w.waypoint.x, w.waypoint.z);
+  cam.yaw = (player.car ? player.car.yaw : player.yaw) + Math.PI; cam.init = false; fam.snap = true;
+  return true;
+}
+async function newGame(btn) {
+  if (btn.dataset.armed !== '1') { btn.dataset.armed = '1'; const t0 = btn.textContent; btn.textContent = 'Tap again to erase your save'; setTimeout(() => { btn.dataset.armed = ''; btn.textContent = t0; }, 4000); return; }
+  cloud.resetting = true; btn.textContent = 'Starting over…'; const q = store.raw('quality'); store.clear(); if (q) store.setRaw('quality', q);
+  try { if (cloud.ref) await cloud.ref.delete(); } catch (e) { /* offline: the cleared device save starts fresh */ }
+  location.reload();
+}
+$('newGameT').addEventListener('click', (e) => newGame(e.currentTarget));
+$('newGameBtn').addEventListener('click', (e) => newGame(e.currentTarget));
+document.addEventListener('visibilitychange', () => { if (document.hidden) saveGame(true); });
+addEventListener('pagehide', () => saveGame(true));
+
 // ---------------------------------------------------------------- boot
 let starterCar = null;
-function start(data) {
+async function start(data) {
   try {
+    const hydrate = cloudHydrate(); // ask for the account save while the city builds
     buildWorld();
+    loadMsg.textContent = 'Loading your saved game…'; await hydrate;
     player.h = makeHuman(PLAYER_LOOK, false); scene.add(player.h.root);
     const of = OUTFITS.find((o) => o.id === store.get('outfit', '')); if (of) setOutfit(of);
     game.luggage = store.get('luggage', null); attachLuggage();
@@ -4744,7 +4842,8 @@ function start(data) {
     applyQuality(data.quality || store.get('quality', 'ultra'));
     updateDaylight(0); refreshEnv(true);
     renderer.compile(scene, camera);
-    game.state = 'title'; window.__solanoRunning = true; window.__solanoDebug = { phone, APPS, openPhone, closePhone, duty, DUTIES, startDuty, transit, CATALOG, DEALER, makeHuman, randomLook, poseHuman, mil, Vehicle, PAINTS, ROOMS, ferris, famList: fam.list, renderer, game, camera, cam, player, officers, police, shopsData, vehicles, flight, RING_H, peek: () => ({ shopCD, t: +game.time.toFixed(2) }), crime: (n) => crime(n, 'Test heat') };
+    game.state = 'title'; window.__solanoRunning = true; window.__solanoDebug = { saveGame, cloud, store, phone, APPS, openPhone, closePhone, duty, DUTIES, startDuty, transit, CATALOG, DEALER, makeHuman, randomLook, poseHuman, mil, Vehicle, PAINTS, ROOMS, ferris, famList: fam.list, renderer, game, camera, cam, player, officers, police, shopsData, vehicles, flight, RING_H, peek: () => ({ shopCD, t: +game.time.toFixed(2) }), crime: (n) => crime(n, 'Test heat') };
+    { const sw = store.get('world', null); if (sw && sw.at) { $('playBtn').textContent = 'Continue'; const si = $('saveInfo'); si.textContent = `Saved game · ${saveWhere(sw)} · ${money(game.cash)}${cloud.restored ? ' · loaded from your account' : ''}`; si.hidden = false; $('newGameT').hidden = false; } }
     $('loading').hidden = true; $('title').hidden = false;
     renderer.setAnimationLoop(frame);
   } catch (e) { console.error(e); fail('The city failed to build: ' + e.message); }

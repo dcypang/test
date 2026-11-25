@@ -43,7 +43,12 @@ Open `index.html` in Safari (or any modern browser). Landscape works best on a p
 | Ride the Ferris wheel at Bayside ($10, one full turn, look around while you ride) | RIDE, GET OFF | F |
 | Phone: home screen, App Shop (download / buy / delete apps), FlyNow flights, BusGo tickets, Cabby taxis, Bank, Weather, Maps, Settings, games (Sky Hopper, Neon Snake, Stack Up) | phone button by your cash | T |
 | Delete apps: Edit on the home screen (or hold an icon), tap ×; or Delete in the App Shop | Edit / × | same |
-| Pause (quality, time of day, sound) | II button | Esc |
+| Pause (quality, time of day, sound, New game) | II button | Esc |
+| Continue where you left off: the game saves itself every few seconds and when you leave | Continue | Continue |
+
+## Saving
+
+The game saves every few seconds, when you pause and when you switch away: where you are (on foot, in which car, or inside a shop or your house), the time of day, health, cash, route, bus passes, family trip, bank history, plus everything else (outfits, cars, family, phone apps, groceries, army rank, high scores). A copy is kept on the device and, on claude.ai, in your account's private save for this artifact (the newer one wins), so the game comes back even on another device. Rides in progress resume at their destination; police heat and timed jobs start fresh. New game (title screen or pause menu, tap twice) erases the save.
 
 ## Graphics
 
