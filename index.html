@@ -1881,7 +1881,7 @@ function buildPlaces() {
   const SK = { mart: 'store shop snacks convenience food drinks 24/7 mart', grocery: 'grocery groceries supermarket food market fresh ingredients cook mercado', threads: 'clothes clothing outfit fashion shop threads' };
   for (const sp of shopsData) if (SK[sp.type] && !destAt(sp.dx, sp.dz)) add(`${ROOMS[sp.type].name} · ${districtAt(sp.dx, sp.dz)}`, sp.dx + sp.nx * 3, sp.dz + sp.nz * 3, sp.type, SK[sp.type]);
   if (transit.built) { for (const st of transit.stops) add(`Bus ${st.name}`, st.px, st.pz, 'bus', 'bus stop station', { stop: st }); for (const rk of transit.ranks) add(`Taxi stand · ${districtAt(rk.cx, rk.cz)}`, rk.sx, rk.sz, 'taxi', 'taxi cab stand rank'); }
-  for (const st of shopsData) if (st.type === 'metro') add(`Metro · ${st.name}`, st.dx + st.nx * 3, st.dz + st.nz * 3, 'metro', 'metro subway underground train station', { station: st });
+  for (const st of shopsData) if (st.type === 'metro') add(`Metro · ${st.name}`, st.dx + st.nx * 3, st.dz + st.nz * 3, 'metro', 'metro subway underground train station ' + st.area.toLowerCase(), { station: st });
   for (const br of BRIDGES) add(br.name, br.pts[0][0], br.pts[0][1], 'place', 'bridge drive road island ' + DESTS.find((d) => d.id === br.to).name, { bridge: br });
   for (const d of DESTS) add(d.name, (d.rect.x0 + d.rect.x1) / 2, (d.rect.z0 + d.rect.z1) / 2, 'island', 'island fly flight ' + d.blurb + (d.id === 'bay' ? ' ferris wheel' : ''), { dest: d.id, pop: 20 });
   return P;
@@ -2286,12 +2286,12 @@ function shopWindowTex(type) {
 }
 const openTex = canvasTex(256, 96, (g) => { g.clearRect(0, 0, 256, 96); g.strokeStyle = '#ff3f6e'; g.lineWidth = 7; g.strokeRect(10, 10, 236, 76); g.fillStyle = '#ff7a9a'; g.font = "800 58px Impact, 'Arial Black', sans-serif"; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText('OPEN', 128, 52); });
 function addMetroStations(parks) {
-  const list = [], park = (b, label) => list.push({ dx: b.cx, dz: b.cz + 12.5, nx: 0, nz: -1, area: districtAt(b.cx, b.cz), label });
-  for (const b of parks) park(b); const plaza = blocks.find((b) => b.kind === 'plaza'); if (plaza) park(plaza, 'Plaza');
+  const PARK_NAMES = ['Mirador Park', 'Jacaranda Park', 'Old Mission Park', 'Sunset Park', 'Ocotillo Park', 'Las Palmas Park', 'Bayview Park'];
+  const list = [], park = (b, name) => list.push({ dx: b.cx, dz: b.cz + 12.5, nx: 0, nz: -1, area: districtAt(b.cx, b.cz), name });
+  parks.forEach((b, i) => park(b, PARK_NAMES[i % 7])); const plaza = blocks.find((b) => b.kind === 'plaza'); if (plaza) park(plaza, 'Plaza Central');
   list.push({ dx: 38.5, dz: 760, nx: 1, nz: 0, name: 'Solano International' }, { dx: 520.5, dz: 200, nx: -1, nz: 0, name: 'Port of Solano' }, { dx: 29.5, dz: -560, nx: -1, nz: 0, name: 'Fort Halcón Gate' });
   for (const d of DESTS) list.push(d.id === 'isla' ? { dx: -2200, dz: -494.5, nx: 0, nz: 1, name: d.name } : { dx: d.rect.x0 + 330, dz: d.rect.z0 + 184.5, nx: 0, nz: -1, name: d.name });
-  const used = new Set();
-  for (const st of list) { let n = st.name || st.area + (st.label ? ' ' + st.label : ''); if (used.has(n)) n += ' Park'; while (used.has(n)) n += ' 2'; used.add(n); shopsData.push({ dx: st.dx, dz: st.dz, nx: st.nx, nz: st.nz, type: 'metro', name: n }); }
+  for (const st of list) shopsData.push({ dx: st.dx, dz: st.dz, nx: st.nx, nz: st.nz, type: 'metro', name: st.name, area: st.area || '' });
 }
 const metroLogoMat = new THREE.MeshBasicMaterial({ map: canvasTex(128, 128, (g) => { g.clearRect(0, 0, 128, 128); g.fillStyle = '#e63946'; g.beginPath(); g.arc(64, 64, 60, 0, 7); g.fill(); g.fillStyle = '#fff'; g.font = "900 84px Impact, 'Arial Black', sans-serif"; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText('M', 64, 70); }), transparent: true, color: new THREE.Color(1.3, 1.3, 1.3), side: THREE.DoubleSide });
 const metroRingMat = new THREE.MeshBasicMaterial({ color: new THREE.Color(2.6, 0.5, 0.6), map: beamTex, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, side: THREE.DoubleSide });
@@ -2358,7 +2358,7 @@ function buildMetro(R) {
   for (const zz of [cz - 24, cz - 2, cz + 12]) { const m = new THREE.Mesh(new THREE.PlaneGeometry(5, 0.62), sm); m.position.set(X0 + 0.02, IY + 3.0, zz); m.rotation.y = Math.PI / 2; R.group.add(m); }
   for (const zz of [cz - 14, cz + 14]) { const m = new THREE.Mesh(new THREE.PlaneGeometry(6, 0.75), sm); m.position.set(XE - 0.02, IY + 3.3, zz); m.rotation.y = -Math.PI / 2; R.group.add(m); }
   const stations = shopsData.filter((x) => x.type === 'metro'), mapTex = canvasTex(768, 512, (g) => { g.fillStyle = '#f4f4f0'; g.fillRect(0, 0, 768, 512); g.fillStyle = '#18797a'; g.fillRect(0, 0, 768, 70); g.fillStyle = '#fff'; g.font = "800 40px system-ui, sans-serif"; g.textBaseline = 'middle'; g.fillText('SOLANO METRO · ALL STATIONS', 24, 37);
-    g.font = "700 26px system-ui, sans-serif"; stations.forEach((st, i) => { const col = i < 7 ? 0 : 1, row = i % 7, x = 30 + col * 370, y = 108 + row * 56; g.fillStyle = '#e63946'; g.beginPath(); g.arc(x + 10, y, 9, 0, 7); g.fill(); g.fillStyle = '#15161a'; g.fillText(st.name, x + 30, y + 1); }); });
+    g.font = "700 26px system-ui, sans-serif"; stations.forEach((st, i) => { const col = i < 8 ? 0 : 1, row = i % 8, x = 30 + col * 370, y = 104 + row * 51; g.fillStyle = '#e63946'; g.beginPath(); g.arc(x + 10, y, 9, 0, 7); g.fill(); g.fillStyle = '#15161a'; g.fillText(st.name, x + 30, y + 1); }); });
   { const m = new THREE.Mesh(new THREE.PlaneGeometry(3.6, 2.4), new THREE.MeshBasicMaterial({ map: mapTex })); m.position.set(X0 + 0.02, IY + 1.9, cz - 6); m.rotation.y = Math.PI / 2; R.group.add(m); }
   // the train: three cars with lit windows
   const tg = new THREE.Group(), tm = new THREE.Mesh(trainGeo(), vcolMat); tm.castShadow = true; tg.add(tm);
