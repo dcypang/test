@@ -58,6 +58,25 @@ button:focus-visible{outline:3px solid var(--lagoon);outline-offset:3px}
 #pauseBtn svg{width:14px;height:14px;fill:var(--shell)}
 #phoneBtn{pointer-events:auto;width:38px;height:38px;border-radius:50%;border:1.5px solid var(--line);background:var(--glass);display:grid;place-items:center;padding:0}
 #phoneBtn svg{width:19px;height:19px;fill:var(--shell);stroke:var(--shell)}
+#searchBtn{pointer-events:auto;width:38px;height:38px;border-radius:50%;border:1.5px solid var(--line);background:var(--glass);display:grid;place-items:center;padding:0}
+#searchBtn svg{width:19px;height:19px;stroke:var(--shell);fill:none}
+#search{position:absolute;inset:0;z-index:58;display:flex;justify-content:center;align-items:flex-start;padding:calc(env(safe-area-inset-top,0px) + 10px) 16px 10px;box-sizing:border-box;background:rgba(8,6,14,.62);-webkit-backdrop-filter:blur(4px);backdrop-filter:blur(4px);font-family:var(--font-body)}
+#search[hidden]{display:none}
+.sr-card{width:min(560px,100%);max-height:100%;display:flex;flex-direction:column;background:#f2f2f6;color:#15161a;border-radius:18px;overflow:hidden;box-shadow:0 20px 60px rgba(0,0,0,.5)}
+.sr-bar{display:flex;align-items:center;gap:8px;padding:10px 10px 10px 14px;background:#fff;border-bottom:1px solid #e3e3ea}
+.sr-bar svg{width:20px;height:20px;color:#6b6f78;flex:none}
+.sr-bar input{flex:1;min-width:0;border:0;outline:0;font:600 17px/1.3 var(--font-body);color:#15161a;background:transparent;padding:6px 0}
+.sr-bar .ghost{color:#1f6fb2;border-color:#cfd6e2;padding:6px 12px;font-size:14px}
+.sr-ctx{padding:8px 14px 0;font-size:13px;font-weight:600;color:#1f6fb2}.sr-ctx:empty{display:none}
+.sr-list{overflow-y:auto;padding:8px 10px 12px;-webkit-overflow-scrolling:touch}
+.sr-row{display:flex;align-items:center;gap:10px;background:#fff;border-radius:12px;padding:9px 10px;margin-bottom:7px;box-shadow:0 1px 2px rgba(0,0,0,.06)}
+.sr-ic{width:30px;height:30px;border-radius:50%;flex:none;display:grid;place-items:center;font:800 13px system-ui,sans-serif;color:#fff}
+.sr-meta{flex:1;min-width:0;display:flex;flex-direction:column}.sr-meta b{font-size:15px;line-height:1.2}.sr-meta small{font-size:12px;color:#6b6f78}
+.sr-acts{display:flex;gap:5px;flex-wrap:wrap;justify-content:flex-end;flex:none;max-width:56%}
+.sr-acts button{border:0;border-radius:99px;padding:6px 10px;font:800 12px system-ui,sans-serif;background:#e6ecf5;color:#1f6fb2;white-space:nowrap}
+.sr-acts button.go{background:#1f6fb2;color:#fff}.sr-acts button.tx{background:#ffc21a;color:#15161a}.sr-acts button.bs{background:#3fa9f5;color:#fff}
+.sr-acts button:disabled{opacity:.45}
+.sr-empty{padding:18px;text-align:center;color:#6b6f78;font-size:14px}
 #phone{position:absolute;inset:0;z-index:60;display:grid;place-items:center;background:rgba(8,6,14,.5);-webkit-backdrop-filter:blur(3px);backdrop-filter:blur(3px);font-family:var(--font-body)}
 #phone[hidden]{display:none}
 .ph-frame{height:min(700px,94vh,94dvh);aspect-ratio:.6;max-width:94vw;border-radius:clamp(22px,5.5vh,42px);background:#0c0c11;padding:clamp(6px,1.4vh,11px);box-shadow:0 24px 70px rgba(0,0,0,.65),inset 0 0 0 2px #2c2c35}
@@ -243,6 +262,7 @@ button:focus-visible{outline:3px solid var(--lagoon);outline-offset:3px}
     <div id="tl"><div id="clock">18:00</div><div id="district">Ocean Row</div></div>
     <div id="tr">
       <div id="cashRow"><div id="cash">$0</div>
+        <button id="searchBtn" aria-label="Search places"><svg viewBox="0 0 24 24"><circle cx="10.5" cy="10.5" r="6" fill="none" stroke-width="2.4"/><path d="M15 15l5.5 5.5" stroke-width="2.6" stroke-linecap="round"/></svg></button>
         <button id="phoneBtn" aria-label="Phone"><svg viewBox="0 0 24 24"><rect x="6.5" y="2" width="11" height="20" rx="2.6" fill="none" stroke-width="2"/><rect x="10" y="17.6" width="4" height="1.7" rx=".85"/></svg></button>
         <button id="pauseBtn" aria-label="Pause"><svg viewBox="0 0 14 14"><rect x="2" y="1" width="3.5" height="12" rx="1"/><rect x="8.5" y="1" width="3.5" height="12" rx="1"/></svg></button>
       </div>
@@ -305,6 +325,14 @@ button:focus-visible{outline:3px solid var(--lagoon);outline-offset:3px}
     </div>
   </div>
 
+  <div id="search" hidden>
+    <div class="sr-card">
+      <div class="sr-bar"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6" fill="none" stroke="currentColor" stroke-width="2.4"/><path d="M15 15l5.5 5.5" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"/></svg><input id="srInput" type="search" placeholder="Where to? Try airport, home, groceries, bus…" autocomplete="off" autocapitalize="off" spellcheck="false" enterkeyhint="search" aria-label="Search places"><button class="ghost" id="srClose">Done</button></div>
+      <div class="sr-ctx" id="srCtx"></div>
+      <div class="sr-list" id="srList"></div>
+    </div>
+  </div>
+
   <div id="phone" hidden>
     <div class="ph-frame"><div class="ph-screen" id="phScreen">
       <div class="ph-island"></div>
@@ -319,9 +347,9 @@ button:focus-visible{outline:3px solid var(--lagoon);outline-offset:3px}
     <canvas id="bmCanvas"></canvas>
     <div class="bm-bar">
       <div><div class="bm-title">Solano</div><div class="bm-hint">Drag to pan · pinch to zoom · tap to drop a waypoint</div></div>
-      <div class="bm-actions"><button class="ghost" id="bmHome">Home</button><button class="ghost" id="bmClear" hidden>Clear waypoint</button><button class="bm-btn" id="bmIn" aria-label="Zoom in">+</button><button class="bm-btn" id="bmOut" aria-label="Zoom out">−</button><button class="bm-btn" id="bmClose" aria-label="Close map">✕</button></div>
+      <div class="bm-actions"><button class="ghost" id="bmSearch">Search</button><button class="ghost" id="bmHome">Home</button><button class="ghost" id="bmClear" hidden>Clear waypoint</button><button class="bm-btn" id="bmIn" aria-label="Zoom in">+</button><button class="bm-btn" id="bmOut" aria-label="Zoom out">−</button><button class="bm-btn" id="bmClose" aria-label="Close map">✕</button></div>
     </div>
-    <div class="bm-legend"><span><i style="background:#fff3e8"></i>You</span><span><i style="background:#ff3f8e"></i>Jobs</span><span><i class="sq" style="background:#2be0cf"></i>24/7 Mart</span><span><i class="sq" style="background:#ff7aa8"></i>Threads</span><span><i class="sq" style="background:#9be15d"></i>Groceries</span><span><i class="sq" style="background:#9ad8f2"></i>Airport terminal</span><span><i class="sq" style="background:#ffd36e"></i>Home</span><span><i style="background:#86ffb0"></i>Cash</span><span><i style="background:#b18cff"></i>Waypoint</span><span><i style="background:#ff3050"></i>Police</span></div>
+    <div class="bm-legend"><span><i style="background:#fff3e8"></i>You</span><span><i style="background:#ff3f8e"></i>Jobs</span><span><i class="sq" style="background:#2be0cf"></i>24/7 Mart</span><span><i class="sq" style="background:#ff7aa8"></i>Threads</span><span><i class="sq" style="background:#9be15d"></i>Groceries</span><span><i class="sq" style="background:#9ad8f2"></i>Airport terminal</span><span><i class="sq" style="background:#ffd36e"></i>Home</span><span><i style="background:#86ffb0"></i>Cash</span><span><i style="background:#3fa9f5"></i>Bus stop · B</span><span><i style="background:#ffc21a"></i>Taxi stand · T</span><span><i class="sq" style="background:#3fa9f5;height:3px;width:14px"></i>Bus route</span><span><i style="background:#b18cff"></i>Waypoint</span><span><i style="background:#ff3050"></i>Police</span></div>
   </div>
 
   <div id="shop" class="overlay" hidden>
@@ -1504,7 +1532,7 @@ function boardBus(b) {
   const pass = game.time < (game.busPassUntil || 0), tix = game.busTickets > 0;
   if (!pass && !tix && game.cash < 2) { toast('The bus fare is $2 · or buy tickets in the BusGo app'); return; }
   if (pass) toast('Day pass scanned · enjoy the ride', 2500); else if (tix) { game.busTickets--; store.set('busTickets', game.busTickets); toast(`Ticket used · ${game.busTickets} left`, 2500); } else addCash(-2, 'Bus fare');
-  transit.ride = { kind: 'bus', bus: b, off: false }; player.h.root.visible = false; player.vel.set(0, 0, 0); cam.yaw = b.v.yaw + Math.PI; cam.pitch = 0.3; cam.manual = 0;
+  transit.ride = { kind: 'bus', bus: b, off: false, offAt: game.busPlan || null }; if (game.busPlan) { toast(`Bus · you'll get off at ${game.busPlan.name}`, 3000); game.busPlan = null; } player.h.root.visible = false; player.vel.set(0, 0, 0); cam.yaw = b.v.yaw + Math.PI; cam.pitch = 0.3; cam.manual = 0;
   if (!pass && !tix) toast('On the bus · $2 · tap GET OFF to step out at the next stop', 3500);
 }
 function leaveRide(x, z, msg) {
@@ -1518,7 +1546,7 @@ function rideAction() {
   else { fadeFlash('Arriving…', 0.7); taxiArrive(); }
 }
 function rideHint() {
-  const r = transit.ride; if (r.kind === 'bus') { const here = r.bus.wait > 0 && r.bus.at, [ns] = nextStopAfter(r.bus.s + 0.5); return here ? `Bus · stopped at ${r.bus.at.name} · next: ${ns.name} · ${TOUCH ? 'GET OFF to step out here' : 'F to step out here'}` : r.off ? `Getting off at ${ns.name}` : `Bus · next stop: ${ns.name} · ${TOUCH ? 'tap GET OFF' : 'press F to get off'}`; }
+  const r = transit.ride; if (r.kind === 'bus') { const here = r.bus.wait > 0 && r.bus.at, [ns] = nextStopAfter(r.bus.s + 0.5); return r.offAt && !(here && r.bus.at === r.offAt) ? `Bus · you'll get off at ${r.offAt.name} · ${TOUCH ? 'GET OFF to leave sooner' : 'F to leave sooner'}` : here ? `Bus · stopped at ${r.bus.at.name} · next: ${ns.name} · ${TOUCH ? 'GET OFF to step out here' : 'F to step out here'}` : r.off ? `Getting off at ${ns.name}` : `Bus · next stop: ${ns.name} · ${TOUCH ? 'tap GET OFF' : 'press F to get off'}`; }
   return `Taxi to ${r.dest.name} · ${Math.max(0, Math.round((r.path.len - r.s) / 16))} s · ${TOUCH ? 'tap SKIP to arrive now' : 'press F to skip'}`;
 }
 function taxiPlan(rk, dest) {
@@ -1547,7 +1575,7 @@ function taxiArrive() {
 }
 function updateRide(dt) {
   const r = transit.ride;
-  if (r.kind === 'bus') { const b = r.bus; player.pos.set(b.v.pos.x, b.v.y + 1, b.v.pos.z); if (r.off && b.wait > 0 && b.at) leaveRide(b.at.px, b.at.pz, `${b.at.name} · thanks for riding`); return; }
+  if (r.kind === 'bus') { const b = r.bus; player.pos.set(b.v.pos.x, b.v.y + 1, b.v.pos.z); if ((r.off || (r.offAt && b.at === r.offAt)) && b.wait > 0 && b.at) leaveRide(b.at.px, b.at.pz, `${b.at.name} · thanks for riding`); return; }
   const rem = r.path.len - r.s, [x0, z0] = pathAt(r.path, r.s), [x1, z1] = pathAt(r.path, r.s + 6), [x2, z2] = pathAt(r.path, r.s + 14), turn = Math.abs(angDiff(Math.atan2(x1 - x0, z1 - z0), Math.atan2(x2 - x1, z2 - z1)));
   let want = turn > 0.15 ? 8 : 17; want = Math.min(want, Math.max(1.5, rem * 0.5)); r.spd = damp(r.spd, want, 1.8, dt); r.s = Math.min(r.path.len, r.s + r.spd * dt);
   placeScripted(r.v, r.path, r.s, dt, r.spd); player.pos.set(r.v.pos.x, r.v.y + 1, r.v.pos.z);
@@ -1801,6 +1829,137 @@ const PHONE_GAMES = {
       } };
   },
 };
+// ---------------------------------------------------------------- search: type a place, then route, taxi, bus or fly there
+const search = { places: [], list: [] };
+const inCity = (x, z) => Math.abs(x) <= HALF + 24 && Math.abs(z) <= HALF + 24;
+const SR_KIND = { home: ['#ffc857', 'H', 'home'], cars: ['#2be0cf', 'C', 'car dealer'], airport: ['#7fb8d6', '✈', 'airport'], place: ['#b18cff', '•', 'place'], area: ['#9b8fd6', '◦', 'neighborhood'], mart: ['#2be0cf', 'M', '24/7 Mart'], grocery: ['#7cc84a', 'G', 'grocery store'], threads: ['#ff7aa8', 'T', 'clothes shop'], bus: ['#3fa9f5', 'B', 'bus stop'], taxi: ['#e0a800', 'T', 'taxi stand'], island: ['#18b3a6', '≈', 'island · fly'] };
+function buildPlaces() {
+  const P = [], add = (name, x, z, kind, keys = '', extra = {}) => P.push({ name, x, z, kind, keys: (name + ' ' + keys).toLowerCase(), ...extra });
+  const home = shopsData.find((sp) => sp.type === 'home');
+  add('Home', home.dx + home.nx * 3, home.dz + home.nz * 3, 'home', 'house casa villa my place family bed', { pop: 1 });
+  add('My garage', GARAGE.x0 - 6, GARAGE.door.z, 'home', 'garage parking park my cars', { pop: 2 });
+  add('Solano International Airport', -20, 786, 'airport', 'airport plane flights fly terminal tickets', { pop: 3 });
+  add('Coastline Motors', DEALER.x, DEALER.z + 36, 'cars', 'car dealer buy cars dealership motors', { pop: 4 });
+  add('Marisol Beach', -520, 140, 'place', 'beach sand sea ocean swim', { pop: 8 });
+  add('Port of Solano', 505, -60, 'place', 'port harbor ships docks cargo', { pop: 9 });
+  add('Fort Halcón', 20, -722, 'place', 'army military base fort halcon soldiers duty', { pop: 10 });
+  for (const [t, x, z] of MAP_LABELS) if (!DESTS.some((d) => d.name === t) && !P.some((q) => q.name.startsWith(t.split(' ')[0])) && !/Fort|Solano Freeway|Coastline/.test(t)) add(t, x, z, 'area', 'district neighborhood area', t === 'Downtown Solano' ? { pop: 11 } : {});
+  const SK = { mart: 'store shop snacks convenience food drinks 24/7 mart', grocery: 'grocery groceries supermarket food market fresh ingredients cook mercado', threads: 'clothes clothing outfit fashion shop threads' };
+  for (const sp of shopsData) if (SK[sp.type] && !destAt(sp.dx, sp.dz)) add(`${ROOMS[sp.type].name} · ${districtAt(sp.dx, sp.dz)}`, sp.dx + sp.nx * 3, sp.dz + sp.nz * 3, sp.type, SK[sp.type]);
+  if (transit.built) { for (const st of transit.stops) add(`Bus ${st.name}`, st.px, st.pz, 'bus', 'bus stop station', { stop: st }); for (const rk of transit.ranks) add(`Taxi stand · ${districtAt(rk.cx, rk.cz)}`, rk.sx, rk.sz, 'taxi', 'taxi cab stand rank'); }
+  for (const d of DESTS) add(d.name, (d.rect.x0 + d.rect.x1) / 2, (d.rect.z0 + d.rect.z1) / 2, 'island', 'island fly flight ' + d.blurb + (d.id === 'bay' ? ' ferris wheel' : ''), { dest: d.id, pop: 20 });
+  return P;
+}
+function openSearch() {
+  if (game.state === 'map') closeMap();
+  if (game.state !== 'play') return;
+  if (game.ride || game.wheel || game.heli || (transit.ride && transit.ride.kind !== 'bus') || shift.on) { toast('You can search when you get there'); return; }
+  game.state = 'search'; $('search').hidden = false; if (document.pointerLockElement) document.exitPointerLock();
+  search.places = buildPlaces(); $('srInput').value = ''; renderSearch(); $('srInput').focus();
+}
+function closeSearch() { $('search').hidden = true; $('srInput').blur(); if (game.state === 'search') game.state = 'play'; }
+function srDist(m) { return m < 1000 ? Math.round(m / 10) * 10 + ' m' : (m / 1000).toFixed(1) + ' km'; }
+function renderSearch() {
+  const q = $('srInput').value.trim().toLowerCase(), pp = phonePos(), here = destAt(pp.x, pp.z), onBus = transit.ride && transit.ride.kind === 'bus', rk = !here ? cabbyRank() : null, fly = flyOptions();
+  const dist = (pl) => Math.hypot(pl.x - pp.x, pl.z - pp.z);
+  let list;
+  if (!q) { const best = {}; for (const pl of search.places) if (['grocery', 'mart', 'bus', 'taxi'].includes(pl.kind) && (!best[pl.kind] || dist(pl) < dist(best[pl.kind]))) best[pl.kind] = pl; list = [...search.places.filter((pl) => pl.pop).sort((a, b) => a.pop - b.pop), ...Object.values(best)].sort((a, b) => (a.pop || 5) - (b.pop || 5)); }
+  else { const words = q.split(/\s+/); list = search.places.filter((pl) => words.every((w) => pl.keys.includes(w))).map((pl) => ({ pl, sc: (pl.name.toLowerCase().startsWith(q) ? 0 : pl.name.toLowerCase().includes(q) ? 1 : 2) * 1e6 + dist(pl) })).sort((a, b) => a.sc - b.sc).map((o) => o.pl); }
+  list = list.slice(0, 16); search.list = list;
+  $('srCtx').textContent = onBus ? `On the bus${transit.ride.offAt ? ` · getting off at ${transit.ride.offAt.name}` : ''} · pick a place and you'll get off at the closest stop` : here ? `You're on ${here.name} · fly anywhere from the airstrip` : '';
+  const stopNear = (pl) => { let b = null, bd = 320; for (const st of transit.stops) { const d = Math.hypot(st.px - pl.x, st.pz - pl.z); if (d < bd) { bd = d; b = st; } } return b; };
+  const cash = game.cash, wanted = game.wanted > 0;
+  $('srList').innerHTML = list.length ? list.map((pl, i) => {
+    const [col, glyph, label] = SR_KIND[pl.kind] || SR_KIND.place, acts = [];
+    if (pl.kind === 'island') { if (here && here.id === pl.dest) acts.push('<button disabled>You are here</button>'); else { const o = fly.opts.find((x) => x.kind === pl.dest); if (o) acts.push(`<button class="go" data-act="fly" data-i="${i}" ${wanted || cash < o.price ? 'disabled' : ''}>Fly $${o.price}</button>`); } }
+    else if (here) { const o = fly.opts.find((x) => x.kind === 'solano'); if (o) acts.push(`<button class="go" data-act="fly" data-i="${i}" data-k="solano" ${wanted || cash < o.price ? 'disabled' : ''}>Fly home $${o.price}</button>`); }
+    else {
+      acts.push(`<button class="go" data-act="route" data-i="${i}">Route</button>`);
+      if (onBus) { const st = pl.stop || stopNear(pl); if (st && inCity(pl.x, pl.z)) acts.push(`<button class="bs" data-act="busoff" data-i="${i}">Get off near</button>`); }
+      else {
+        if (rk && !(pl.kind === 'taxi' && dist(pl) < 30)) { const fare = taxiPlan(rk, { name: pl.name, p: { x: pl.x, z: pl.z } }).fare + 3; acts.push(`<button class="tx" data-act="taxi" data-i="${i}" ${wanted || cash < fare ? 'disabled' : ''}>Taxi $${fare}</button>`); }
+        const st = pl.stop || stopNear(pl); if (st && inCity(pl.x, pl.z) && inCity(pp.x, pp.z) && dist(pl) > 120) acts.push(`<button class="bs" data-act="bus" data-i="${i}">Bus $2</button>`);
+      }
+    }
+    return `<div class="sr-row"><span class="sr-ic" style="background:${col}">${glyph}</span><div class="sr-meta"><b>${esc(pl.name)}</b><small>${pl.kind === 'island' ? label : `${srDist(dist(pl))} · ${label}`}</small></div><div class="sr-acts">${acts.join('')}</div></div>`;
+  }).join('') : `<div class="sr-empty">No places match “${esc(q)}” · try airport, home, beach, groceries, bus, taxi or an island</div>`;
+}
+$('srInput').addEventListener('input', renderSearch);
+$('srInput').addEventListener('keydown', (e) => { e.stopPropagation(); if (e.key === 'Escape') closeSearch(); if (e.key === 'Enter') { const b = $('srList').querySelector('button[data-act]:not(:disabled)'); if (b) b.click(); } });
+$('srClose').addEventListener('click', closeSearch);
+$('search').addEventListener('click', (e) => { if (e.target === $('search')) { closeSearch(); return; }
+  const b = e.target.closest('button[data-act]'); if (!b) return; const pl = search.list[+b.dataset.i]; if (!pl) return; sfxTick(true);
+  const nearestStopTo = (x, z) => { let best = null, bd = 1e9; for (const st of transit.stops) { const d = Math.hypot(st.px - x, st.pz - z); if (d < bd) { bd = d; best = st; } } return best; };
+  if (b.dataset.act === 'route') { closeSearch(); setWaypoint(pl.x, pl.z); toast(`Route set · ${pl.name} · follow the purple line`); }
+  else if (b.dataset.act === 'taxi') {
+    closeSearch(); if (game.wanted > 0) { toast('No driver will pick you up while the cops are after you'); return; }
+    if (game.inside) exitShop(); if (player.car) exitCar(); if (player.sit) standUp();
+    const rk = cabbyRank(); if (!rk) { toast('No taxis out here'); return; } const d = { name: pl.name, p: { x: pl.x, z: pl.z } }, pln = taxiPlan(rk, d), fare = pln.fare + 3;
+    if (game.cash < fare) { toast(`The taxi is $${fare}`); return; } addCash(-fare, 'Taxi · ' + pl.name); fadeFlash('A taxi pulls up…', 0.9); startTaxi(rk, d, pln);
+  }
+  else if (b.dataset.act === 'bus') { const to = pl.stop || nearestStopTo(pl.x, pl.z), pp = phonePos(), from = nearestStopTo(pp.x, pp.z); game.busPlan = to; closeSearch(); setWaypoint(from.sx, from.sz); toast(from === to ? `You're already near ${to.name}` : `Walk to ${from.name} · board the bus and it will drop you at ${to.name}`, 4500); }
+  else if (b.dataset.act === 'busoff') { const st = pl.stop || nearestStopTo(pl.x, pl.z); transit.ride.offAt = st; closeSearch(); toast(`You'll get off at ${st.name}`, 3500); }
+  else if (b.dataset.act === 'fly') { const f = flyOptions(), o = f.opts.find((x) => x.kind === (b.dataset.k || pl.dest)); closeSearch(); if (!o) return; if (game.wanted > 0) { toast('Lose the cops first'); return; } if (game.cash < o.price) { toast(`That flight is $${o.price}`); return; } phoneFly(o, f.from); }
+});
+$('searchBtn').addEventListener('click', () => { initAudio(); if (game.state === 'search') closeSearch(); else openSearch(); });
+$('bmSearch').addEventListener('click', () => { closeMap(); openSearch(); });
+// ---------------------------------------------------------------- shop shifts: run the register at a 24/7 Mart, Mercado Fresco or Threads
+const shift = { on: false, cust: null };
+const SHIFT_TYPES = ['mart', 'grocery', 'threads'];
+function shiftItem() { return { name: 'Work a shift here', desc: 'Run the register: serve 6 customers · about $15–25 each with tips, plus a $30 bonus', price: 0, label: 'JOB', sw: 0x9be15d, buy: () => { closeShopPanel(); startShift(); return null; } }; }
+function startShift() {
+  if (!game.inside || shift.on) return; const R = game.inside.room, type = game.inside.shop.type;
+  const ct = type === 'grocery' ? R.counters.find((c) => /checkout 1/.test(c.title)) : R.counters.find((c) => c.type === type); if (!ct) return;
+  let clerk = null, bd = 1e9; for (const c of R.clerks) { if (c.mannequin) continue; const d = Math.hypot(c.root.position.x - ct.x, c.root.position.z - ct.z); if (d < bd) { bd = d; clerk = c; } } if (!clerk) return;
+  if (player.sit) standUp();
+  Object.assign(shift, { on: true, R, type, ct, clerk, px: clerk.root.position.x, pz: clerk.root.position.z, yaw: clerk.root.rotation.y, cust: null, served: 0, goal: 6, earned: 0, t: 150, gap: 1.2, items: [], scanT: 0, missed: 0 });
+  clerk.root.visible = false; player.pos.set(shift.px, IY, shift.pz); player.vel.set(0, 0, 0); player.yaw = shift.yaw; cam.yaw = shift.yaw + Math.PI; cam.pitch = 0.34; cam.manual = 0;
+  toast(`Shift started at ${R.name} · serve 6 customers · tap SCAN for each item`, 4200); sfxChime();
+}
+function shiftSpawnCustomer() {
+  const S = shift, R = S.R, h = makeHuman(randomLook(), false); R.group.add(h.root);
+  const c = { h, x: R.spawn.x, z: R.spawn.z, yaw: Math.PI, state: 'in', items: 2 + Math.floor(Math.random() * 4), scanned: 0, waitT: 0, stuck: 0 }; S.cust = c;
+  const PAL = S.type === 'threads' ? [0xff6b4a, 0x2be0cf, 0xffc857, 0x9b5de5, 0x1f6fb2] : S.type === 'grocery' ? [0xd62828, 0xffb703, 0x8ac926, 0xf4efe4, 0xf2b8a0] : [0xff6b6b, 0x06d6a0, 0x118ab2, 0xffd166, 0xef476f];
+  const mx = (S.ct.x + S.px) / 2, mz = (S.ct.z + S.pz) / 2, dx = S.px - S.ct.x, dz = S.pz - S.ct.z, l = Math.hypot(dx, dz) || 1, sx = -dz / l, sz = dx / l;
+  S.items = []; for (let i = 0; i < c.items; i++) { const off = (i - (c.items - 1) / 2) * 0.24, m = new THREE.Mesh(S.type === 'threads' ? boxAt(0.22, 0.06, 0.18, 0, 0.03, 0, PAL[i % PAL.length]) : boxAt(0.14, 0.18 + (i % 2) * 0.06, 0.12, 0, 0.1, 0, PAL[(i * 3) % PAL.length]), vcolMat); m.position.set(mx + sx * off, IY + 1.1, mz + sz * off); m.visible = false; R.group.add(m); S.items.push(m); }
+}
+function shiftScan() {
+  const S = shift, c = S.cust; if (!c || c.state !== 'wait' || c.scanned >= c.items) return;
+  const m = S.items[c.scanned]; if (m) { S.R.group.remove(m); m.geometry.dispose(); } c.scanned++; S.scanT = 0.25; sfxTick(true);
+  if (c.scanned >= c.items) {
+    const tip = Math.max(0, Math.round(8 - c.waitT * 0.6)), pay = 4 + c.items * 3 + tip; S.earned += pay; S.served++; addCash(pay, `Shift · ${S.R.name}`);
+    toast(`+$${pay}${tip ? ` · tip $${tip}` : ''} · ${S.served}/${S.goal} customers`, 1800); sfxChime(); c.state = 'out';
+  }
+}
+function shiftClearCustomer() { const S = shift, c = S.cust; if (!c) return; S.R.group.remove(c.h.root); for (const m of S.items) { S.R.group.remove(m); m.geometry.dispose(); } S.items = []; S.cust = null; S.gap = 1.4 + Math.random(); }
+function endShift(done) {
+  const S = shift; if (!S.on) return; shiftClearCustomer(); S.on = false; S.clerk.root.visible = true; $('mission').hidden = true;
+  const bonus = S.served >= S.goal ? 30 : 0; if (bonus) addCash(bonus, `Shift bonus · ${S.R.name}`);
+  player.pos.set(S.ct.x, IY, S.ct.z); player.yaw = S.yaw + Math.PI; cam.yaw = S.yaw; shopCD = 1.5;
+  showBanner(done ? 'SHIFT DONE' : 'SHIFT OVER', `+$${S.earned + bonus} · ${S.served} customer${S.served === 1 ? '' : 's'}${bonus ? ' · $30 bonus' : ''}`, 'var(--money)', 3000);
+}
+function shiftTitle() { const S = shift; return `Shift · ${S.R.name} · ${S.served}/${S.goal} customers · $${S.earned}`; }
+function shiftHint() { const c = shift.cust; return !c ? 'Next customer coming…' : c.state === 'in' ? 'A customer is walking up…' : c.state === 'wait' ? `${c.items - c.scanned} item${c.items - c.scanned === 1 ? '' : 's'} to scan · ${TOUCH ? 'tap SCAN' : 'press F'} · END stops the shift` : 'Thanks! Next customer…'; }
+function updateShift(dt) {
+  const S = shift, R = S.R, p = player;
+  p.pos.set(S.px, IY, S.pz); p.vel.set(0, 0, 0); p.yaw = S.yaw; p.h.root.position.copy(p.pos); p.h.root.rotation.set(0, p.yaw, 0, 'YXZ'); poseHuman(p.h, dt, 0, false, game.time);
+  if (S.scanT > 0) { S.scanT -= dt; p.h.armR.rotation.x = -1.2; p.h.elbowR.rotation.x = -0.5; p.h.armL.rotation.x = -0.9; }
+  for (const c of R.clerks) if (!c.mannequin && c !== S.clerk) poseHuman(c, dt, 0, false, game.time);
+  updateVisitors(R, dt); if (R.followLight) interiorLight.position.set(p.pos.x, p.pos.y + (R.lightH || 3.8), p.pos.z);
+  S.t -= dt; const c = S.cust;
+  if (!c) { S.gap -= dt; if (S.gap <= 0 && S.served < S.goal) shiftSpawnCustomer(); }
+  else {
+    const tx = c.state === 'out' ? R.spawn.x : S.ct.x, tz = c.state === 'out' ? R.spawn.z : S.ct.z, dx = tx - c.x, dz = tz - c.z, l = Math.hypot(dx, dz); let sp = 0;
+    if (c.state === 'in' || c.state === 'out') {
+      if (l < 0.25) { if (c.state === 'in') { c.state = 'wait'; for (const m of S.items) m.visible = true; } else shiftClearCustomer(); }
+      else { const ox = c.x, oz = c.z, st = Math.min(l, 1.35 * dt); c.x += dx / l * st; c.z += dz / l * st; const pt = { x: c.x, z: c.z }; for (const o of R.obst) if (hitsY(o, 0)) pushBox(pt, 0.3, o); c.x = pt.x; c.z = pt.z; sp = 1.35; c.yaw += angDiff(c.yaw, Math.atan2(dx, dz)) * (1 - Math.exp(-8 * dt)); if (Math.hypot(c.x - ox, c.z - oz) < st * 0.3) { c.stuck += dt; if (c.stuck > 1.5) { c.x += dx / l * 0.6; c.z += dz / l * 0.6; c.stuck = 0; } } }
+    } else if (c.state === 'wait') { c.waitT += dt; c.yaw += angDiff(c.yaw, Math.atan2(S.px - c.x, S.pz - c.z)) * (1 - Math.exp(-6 * dt)); if (c.waitT > 22) { toast('The customer got tired of waiting and left', 2200); S.missed++; for (const m of S.items) { S.R.group.remove(m); m.geometry.dispose(); } S.items = []; c.state = 'out'; } }
+    if (c.h) { c.h.root.position.set(c.x, IY, c.z); c.h.root.rotation.y = c.yaw; poseHuman(c.h, dt, sp, false, game.time); }
+  }
+  if (input.jumpQ) { endShift(false); return; }
+  if (S.served >= S.goal && !S.cust) { endShift(true); return; }
+  if (S.t <= 0) endShift(S.served >= S.goal);
+}
 // ---------------------------------------------------------------- Coastline Motors: 100 cars for sale
 const DEALER = { x: 0, z: 0, group: null, slots: [] }, CAR_TYPE_NAMES = { sedan: 'Sedan', sports: 'Sports car', suv: 'SUV', hatch: 'Hatchback', pickup: 'Pickup' };
 const CATALOG = (() => {
@@ -1850,7 +2009,7 @@ function spawnOwned(c, x, z, yaw) { const v = new Vehicle(c.type, c.color); v.pl
 function deliverCar(c) {
   game.garage.push(c.id); store.set('garage', game.garage);
   const n = game.garage.length % 6, x = DEALER.x - 15 + n * 6.5, z = roadC(8) - 5.8; spawnOwned(c, x, z, -Math.PI / 2);
-  sfxChime(); return `You bought the ${c.name}! It's waiting on the street out front · it'll be parked at your house too`;
+  sfxChime(); return `You bought the ${c.name}! It's waiting on the street out front · it'll be parked in your garage too`;
 }
 function buyCar(c) {
   if (game.garage.includes(c.id)) { toast(`The ${c.name} is already yours · it's parked at your house`); return; }
@@ -1859,7 +2018,7 @@ function buyCar(c) {
 }
 function dealerItems() { return [...CATALOG].sort((a, b) => a.price - b.price).map((c) => { const own = game.garage.includes(c.id); return { name: c.name, desc: own ? 'Already yours · parked at your house' : `${CAR_TYPE_NAMES[c.type]}${c.used ? ' · used' : ''} · top speed ${Math.round(SPECS[c.type].top * c.tune * 2.237)} mph`, price: c.price, sw: c.color, disabled: own, buy: () => { closeShopPanel(); return deliverCar(c); } }; }); }
 function spawnGarage() {
-  const ids = game.garage.slice(-10); ids.forEach((id, k) => { const c = CATALOG.find((x) => x.id === id); if (!c) return; const row = k < 5 ? 106.75 : 126.75, col = (k % 5) * 2 + 1; spawnOwned(c, -470 + (col + 0.5) * (20 / 7), row, 0); });
+  const ids = game.garage.slice(-GARAGE_BAYS.length); ids.forEach((id, k) => { const c = CATALOG.find((x) => x.id === id); if (!c) return; const [x, z, yaw] = GARAGE_BAYS[k]; spawnOwned(c, x, z, yaw); });
 }
 function islandZone(addB) {
   const I = ISLA, icx = (I.x0 + I.x1) / 2, icz = (I.z0 + I.z1) / 2;
@@ -1968,6 +2127,55 @@ function buildHomeLot(addB, neon) {
   const pm = new THREE.Mesh(mergeAll([boxAt(21, 0.3, 0.6, -422, CURB + 0.15, 134.7, 0xf4f1ea), boxAt(21, 0.3, 0.6, -422, CURB + 0.15, 145.3, 0xf4f1ea), boxAt(0.6, 0.3, 11.2, -432.7, CURB + 0.15, 140, 0xf4f1ea), boxAt(0.6, 0.3, 11.2, -411.3, CURB + 0.15, 140, 0xf4f1ea),
     boxAt(0.9, 0.35, 2.2, -436, CURB + 0.18, 140, 0xffffff), boxAt(0.9, 0.35, 2.2, -438, CURB + 0.18, 140, 0xffffff)]), vcolMat); pm.castShadow = pm.receiveShadow = true; scene.add(pm);
   extraPalms.push([-446, 146], [-405, 142], [-446, 96], [-405, 99], [-438, 132]);
+  buildGarage();
+}
+// your garage: a covered car park over the home lot, a roll-up door to the beach road, a side door to the house
+const GARAGE = { x0: -471.5, x1: -438.5, z0: 102, z1: 125, door: { x: -471.5, z: 114.25 } };
+const inGarage = (x, z) => x > GARAGE.x0 && x < GARAGE.x1 && z > GARAGE.z0 && z < GARAGE.z1;
+const garage = { door: null, roof: null, wallMat: null, t: 0, col: null, inside: false, told: false };
+const GARAGE_BAYS = (() => { const out = []; for (let i = 0; i < 10; i++) out.push([-470 + (i + 0.5) * 20 / 7, 106.75, 0]); for (let i = 0; i < 10; i++) if (i !== 5) out.push([-470 + (i + 0.5) * 20 / 7, 121.25, Math.PI]); return out; })();
+function buildGarage() {
+  const G = GARAGE, H = 4.5, y = CURB, W = [], cx = (G.x0 + G.x1) / 2, cz = (G.z0 + G.z1) / 2, len = G.x1 - G.x0, dep = G.z1 - G.z0, col = 0xd9d5cc, trim = 0x5b6168;
+  const wall = (x0, x1, z0, z1) => { W.push(boxAt(Math.max(0.3, x1 - x0), H, Math.max(0.3, z1 - z0), (x0 + x1) / 2, y + H / 2, (z0 + z1) / 2, col)); addBox(Math.min(x0, x1) - 0.15, Math.max(x0, x1) + 0.15, Math.min(z0, z1) - 0.15, Math.max(z0, z1) + 0.15, H); };
+  wall(G.x0, G.x1, G.z0, G.z0); wall(G.x0, G.x1, G.z1, G.z1);
+  wall(G.x1, G.x1, G.z0, 113.2); wall(G.x1, G.x1, 114.8, G.z1);
+  wall(G.x0, G.x0, G.z0, 110); wall(G.x0, G.x0, 118.5, G.z1);
+  W.push(boxAt(0.4, 0.5, 8.9, G.x0, y + H - 0.25, G.door.z, trim), boxAt(0.4, 0.4, len + 0.4, cx, y + 0.2, G.z0, trim), boxAt(0.4, 0.4, len + 0.4, cx, y + 0.2, G.z1, trim));
+  garage.wallMat = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.85, transparent: true, opacity: 1 });
+  const wm = new THREE.Mesh(mergeAll(W), garage.wallMat); wm.castShadow = wm.receiveShadow = true; scene.add(wm);
+  // roof with light strips underneath (hidden while you are inside so the camera can see)
+  const roof = new THREE.Group(); roof.add(new THREE.Mesh(mergeAll([boxAt(len + 1.2, 0.3, dep + 1.2, cx, y + H + 0.15, cz, 0x8d949b), boxAt(len + 1.4, 0.6, 0.3, cx, y + H + 0.3, G.z0 - 0.6, trim), boxAt(len + 1.4, 0.6, 0.3, cx, y + H + 0.3, G.z1 + 0.6, trim)]), vcolMat));
+  const lp = []; for (let x = G.x0 + 4; x < G.x1 - 2; x += 7) for (const z of [108, 118.5]) lp.push(boxAt(3, 0.06, 0.4, x, y + H - 0.04, z)); roof.add(new THREE.Mesh(mergeAll(lp), roomLightMat));
+  roof.children[0].castShadow = true; scene.add(roof); garage.roof = roof;
+  // roll-up door
+  const slats = [boxAt(0.12, 4.3, 8.5, 0, -2.15, 0, 0xc9ced4)]; for (let k = 1; k < 9; k++) slats.push(boxAt(0.14, 0.05, 8.5, 0, -k * 0.48, 0, 0x9aa0a8));
+  const door = new THREE.Group(); door.add(new THREE.Mesh(mergeAll(slats), vcolMat)); door.position.set(G.x0 - 0.05, y + H - 0.2, G.door.z); scene.add(door); garage.door = door;
+  garage.col = { box: true, minX: G.x0 - 0.3, maxX: G.x0 + 0.3, minZ: 110, maxZ: 118.5, h: H }; addCollider(garage.col);
+  const tex = canvasTex(1024, 160, (g) => { g.fillStyle = '#1d2733'; g.fillRect(0, 0, 1024, 160); g.fillStyle = '#ffc857'; g.textAlign = 'center'; g.textBaseline = 'middle'; fitText(g, 'CASA SOLANO · GARAGE', 512, 84, 960, 96); });
+  const sign = new THREE.Mesh(new THREE.PlaneGeometry(7, 1.1), new THREE.MeshBasicMaterial({ map: tex, color: new THREE.Color(1.3, 1.3, 1.3) })); sign.position.set(G.x0 - 0.45, y + H + 0.75, G.door.z); sign.rotation.y = -Math.PI / 2; scene.add(sign);
+  scene.add(new THREE.Mesh(boxAt(0.2, 1.3, 7.4, G.x0 - 0.3, y + H + 0.75, G.door.z, 0x1d2733), vcolMat));
+  mapPaint.push({ x0: G.x0, x1: G.x1, z0: G.z0, z1: G.z1, c: '#5c5966' });
+}
+function updateGarage(dt) {
+  if (!garage.door) return;
+  const f = player.car ? player.car.pos : player.pos, out = !game.inside && !game.ride && !transit.ride, inside = out && inGarage(f.x, f.z);
+  const near = out && (inside || Math.hypot(f.x - GARAGE.door.x, f.z - GARAGE.door.z) < 17);
+  garage.t = clamp(garage.t + (near ? dt : -dt) * 0.9, 0, 1); garage.door.scale.y = 1 - garage.t * 0.93; garage.col.h = garage.t > 0.8 ? -1 : 4.5;
+  garage.roof.visible = !inside; const op = inside ? 0.3 : 1; if (garage.wallMat.opacity !== op) { garage.wallMat.opacity = op; garage.wallMat.depthWrite = !inside; }
+  if (inside && !garage.inside && !garage.told) { garage.told = true; toast(player.car ? 'Your garage · leave a car here and it stays parked, even after a restart' : 'Your garage · the side door leads to the house', 3600); }
+  garage.inside = inside;
+}
+function snapshotGarage() { const r2 = (n) => Math.round(n * 100) / 100; return vehicles.filter((v) => !v.scripted && v !== player.car && v.driver !== 'ai' && v.driver !== 'police' && inGarage(v.pos.x, v.pos.z)).map((v) => ({ type: v.type, color: v.color ?? null, owned: v.owned || null, army: !!v.army, x: r2(v.pos.x), z: r2(v.pos.z), yaw: r2(v.yaw) })); }
+function restoreGarage() {
+  const list = store.get('garageCars', null); if (!Array.isArray(list)) return;
+  for (const v of [...vehicles]) if (!v.scripted && v.driver === null && inGarage(v.pos.x, v.pos.z)) v.dispose();
+  for (const c of list) {
+    const cat = c.owned && CATALOG.find((x) => x.id === c.owned);
+    if (cat) spawnOwned(cat, c.x, c.z, c.yaw);
+    else { const t = DIMS[c.type] && c.type !== 'bus' && c.type !== 'police' ? c.type : 'sedan', v = new Vehicle(t, t === 'taxi' ? 0xf4c20d : c.color ?? 0xffc857); v.place(c.x, c.z, c.yaw); v.keep = true; if (c.army) v.army = true; }
+  }
+  const have = new Set(list.map((c) => c.owned).filter(Boolean)), free = GARAGE_BAYS.filter(([x, z]) => !list.some((c) => Math.hypot(c.x - x, c.z - z) < 2.2));
+  for (const id of game.garage) if (!have.has(id)) { const cat = CATALOG.find((x) => x.id === id), b = free.shift(); if (cat && b) spawnOwned(cat, b[0], b[1], b[2]); }
 }
 const lotTex = canvasTex(256, 256, (g, w, h) => { asphaltBase(g, w, h); g.fillStyle = '#ece8dc'; const rd = 70; for (let k = 0; k <= 7; k++) { const x = Math.round(k * w / 7); g.fillRect(x - 1, 0, 3, rd); g.fillRect(x - 1, h - rd, 3, rd); } g.fillRect(0, rd - 1, w, 2); g.fillRect(0, h - rd - 1, w, 2); });
 function buildLots() {
@@ -3395,7 +3603,7 @@ function enterShop(s) {
   }
 }
 function exitShop() {
-  if (player.sit) standUp(); leaveQueue(game.inside.room); game.nearSeat = null; game.nearFam = null; if (game.bagChecked) { game.bagChecked = false; toast('You pick your suitcase back up'); }
+  if (shift.on) endShift(false); if (player.sit) standUp(); leaveQueue(game.inside.room); game.nearSeat = null; game.nearFam = null; if (game.bagChecked) { game.bagChecked = false; toast('You pick your suitcase back up'); }
   const s = game.inside.shop; game.inside.room.group.visible = false; game.inside = null; interiorLight.intensity = 0; fam.snap = true;
   if (s.type === 'home' && fam.trip && game.family.length) { famGoOut(); toast('Family trip! Everyone has a suitcase · head to the airport together'); }
   player.pos.set(s.dx + s.nx * 2.6, CURB, s.dz + s.nz * 2.6); player.vel.set(0, 0, 0); player.yaw = Math.atan2(s.nx, s.nz); cam.yaw = player.yaw + Math.PI; cam.init = false; shopCD = 2;
@@ -3792,10 +4000,11 @@ function renderShop() {
   if (!game.inside && !(game.counter && game.counter.outdoor)) return;
   const ct = game.counter, type = ct.type, list = $('shopItems'); $('shopName').textContent = ct.title; $('shopCash').textContent = `Cash $${game.cash.toLocaleString('en-US')} · Health ${Math.round(player.health)}`;
   list.innerHTML = '';
-  const items = typeof SHOP_ITEMS[type] === 'function' ? SHOP_ITEMS[type]() : SHOP_ITEMS[type];
+  let items = typeof SHOP_ITEMS[type] === 'function' ? SHOP_ITEMS[type]() : SHOP_ITEMS[type];
+  if (game.inside && SHIFT_TYPES.includes(type) && game.inside.shop.type === type) items = [shiftItem(), ...items];
   for (const it of items) {
     const b = document.createElement('button'); b.className = 'item'; const owned = it.outfit && game.outfit === it.outfit.id;
-    b.innerHTML = `<span class="sw" style="background:${it.sw !== undefined ? '#' + it.sw.toString(16).padStart(6, '0') : 'transparent'};${it.sw === undefined ? 'border:0;width:0' : ''}"></span><span><b></b><small></small></span><span class="price">${owned ? 'Worn' : it.pay ? '+$' + it.pay.toLocaleString('en-US') : (it.price ? '$' + it.price.toLocaleString('en-US') : 'Free')}</span>`;
+    b.innerHTML = `<span class="sw" style="background:${it.sw !== undefined ? '#' + it.sw.toString(16).padStart(6, '0') : 'transparent'};${it.sw === undefined ? 'border:0;width:0' : ''}"></span><span><b></b><small></small></span><span class="price">${it.label ? it.label : owned ? 'Worn' : it.pay ? '+$' + it.pay.toLocaleString('en-US') : (it.price ? '$' + it.price.toLocaleString('en-US') : 'Free')}</span>`;
     b.querySelector('b').textContent = it.name; b.querySelector('small').textContent = owned ? 'You are wearing this' : it.desc;
     b.disabled = owned || !!it.disabled || game.cash < it.price;
     b.addEventListener('click', () => { if (game.cash < it.price) return; addCash(-it.price, game.counter && game.counter.title); const msg = it.buy(); if (msg) toast(msg); sfxChime(); renderShop(); });
@@ -4071,6 +4280,14 @@ function drawBigmap() {
   const dot = (x, zz, r, col, sq) => { g.fillStyle = col; g.strokeStyle = 'rgba(14,10,23,.9)'; g.lineWidth = 2 * dpr; g.beginPath(); if (sq) g.rect(X(x) - r * dpr, Z(zz) - r * dpr, 2 * r * dpr, 2 * r * dpr); else g.arc(X(x), Z(zz), r * dpr, 0, Math.PI * 2); g.fill(); g.stroke(); };
   for (const c of cashSpots) if (c.cd <= 0) dot(c.x, c.z, 3.5, '#86ffb0');
   for (const sp of shopsData) dot(sp.dx, sp.dz, 5, SHOP_COL[sp.type], true);
+  if (transit.built) {
+    g.save(); g.strokeStyle = 'rgba(63,169,245,.8)'; g.lineWidth = 3 * dpr; g.setLineDash([9 * dpr, 6 * dpr]); g.beginPath(); transit.loop.pts.forEach(([x, zz], i) => (i ? g.lineTo(X(x), Z(zz)) : g.moveTo(X(x), Z(zz)))); g.closePath(); g.stroke(); g.restore();
+    const badge = (x, zz, col, t, tc, hi) => { const r = (hi ? 10 : 7.5) * dpr; g.fillStyle = col; g.strokeStyle = hi ? '#fff' : 'rgba(14,10,23,.9)'; g.lineWidth = (hi ? 3 : 2) * dpr; g.beginPath(); g.arc(X(x), Z(zz), r, 0, Math.PI * 2); g.fill(); g.stroke(); g.fillStyle = tc; g.font = `800 ${Math.round((hi ? 12 : 10) * dpr)}px system-ui, sans-serif`; g.fillText(t, X(x), Z(zz) + 0.5 * dpr); };
+    const off = transit.ride && transit.ride.offAt, plan = game.busPlan;
+    for (const st of transit.stops) badge(st.sx, st.sz, '#3fa9f5', 'B', '#fff', st === off || st === plan);
+    for (const rk of transit.ranks) badge(rk.sx, rk.sz, '#ffc21a', 'T', '#15161a');
+    for (const b of transit.buses) dot(b.v.pos.x, b.v.pos.z, 4.5, '#3fa9f5', true);
+  }
   if (!game.job) for (const m of markers) if (m.m.visible) dot(m.x, m.z, 6.5, '#ff3f8e');
   if (game.job) dot(game.job.x, game.job.z, 7.5, '#ffc857');
   if (duty.tgt) dot(duty.tgt.x, duty.tgt.z, 7.5, '#7dff9a');
@@ -4240,6 +4457,8 @@ addEventListener('keydown', (e) => {
   if (['KeyW', 'KeyA', 'KeyS', 'KeyD', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(c)) input.usingKeys = true;
   if (['Space', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(c) && game.state === 'play') e.preventDefault();
   if (e.repeat) return;
+  if (game.state === 'search') { if (c === 'Escape') closeSearch(); return; }
+  if ((c === 'Slash' || c === 'KeyK') && game.state === 'play') { e.preventDefault(); openSearch(); return; }
   if (game.state === 'phone') { if (c === 'Escape' || c === 'KeyT') closePhone(); else if (phone.games) { phone.games.G.key(c); if (['Space', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(c)) e.preventDefault(); } return; }
   if (c === 'KeyT' && game.state === 'play') { openPhone(); return; }
   if (c === 'KeyM') { if (game.state === 'play') openMap(); else if (game.state === 'map') closeMap(); return; }
@@ -4263,7 +4482,7 @@ function axes() {
 function handleActions() {
   while (input.actions.length) {
     const a = input.actions.shift();
-    if (a === 'car') { if (game.wheel) { endWheel(false); continue; } if (game.heli) { endHeli(true); continue; } if (transit.ride) { rideAction(); continue; } if (game.ride) { const k = game.ride.kind; endRide(); if (k !== 'loop') flight.trip = null; continue; } if (game.inside) { const hm = hugTarget(); if (player.sit) standUp(); else if (hm) hugFamily(hm); else if (game.nearSeat) sitDown(game.nearSeat); continue; } if (player.car) exitCar(); else if (player.knock <= 0) { if (nearFerris()) { startWheel(); continue; } if (nearEnlist()) { enlist(); continue; } if (nearHeliPad()) { startHeli(); continue; } { if (nearDutyBoard()) { openShopPanel({ type: 'duty', title: `Fort Halcón duty board · ${milRank().name}`, outdoor: true }); continue; } const bs = busAtStop(); if (bs) { boardBus(bs); continue; } const rk = nearRank(); if (rk) { openShopPanel({ type: 'taxi', title: 'Taxi stand · where to?', outdoor: true, rank: rk }); continue; } const dc = nearDealerCar(); if (dc) { buyCar(dc); continue; } if (nearDealerDesk()) { openShopPanel({ type: 'dealer', title: 'Coastline Motors · all 100 cars', outdoor: true }); continue; } } const c = nearestEnterable(3.8), hm = hugTarget(); if (hm && (!c || game.famD < 1.0)) { hugFamily(hm); continue; } if (c) enterCar(c); } }
+    if (a === 'car') { if (shift.on) { shiftScan(); continue; } if (game.wheel) { endWheel(false); continue; } if (game.heli) { endHeli(true); continue; } if (transit.ride) { rideAction(); continue; } if (game.ride) { const k = game.ride.kind; endRide(); if (k !== 'loop') flight.trip = null; continue; } if (game.inside) { const hm = hugTarget(); if (player.sit) standUp(); else if (hm) hugFamily(hm); else if (game.nearSeat) sitDown(game.nearSeat); continue; } if (player.car) exitCar(); else if (player.knock <= 0) { if (nearFerris()) { startWheel(); continue; } if (nearEnlist()) { enlist(); continue; } if (nearHeliPad()) { startHeli(); continue; } { if (nearDutyBoard()) { openShopPanel({ type: 'duty', title: `Fort Halcón duty board · ${milRank().name}`, outdoor: true }); continue; } const bs = busAtStop(); if (bs) { boardBus(bs); continue; } const rk = nearRank(); if (rk) { openShopPanel({ type: 'taxi', title: 'Taxi stand · where to?', outdoor: true, rank: rk }); continue; } const dc = nearDealerCar(); if (dc) { buyCar(dc); continue; } if (nearDealerDesk()) { openShopPanel({ type: 'dealer', title: 'Coastline Motors · all 100 cars', outdoor: true }); continue; } } const c = nearestEnterable(3.8), hm = hugTarget(); if (hm && (!c || game.famD < 1.0)) { hugFamily(hm); continue; } if (c) enterCar(c); } }
     else if (a === 'blinkL' || a === 'blinkR') { const c = player.car; if (!c) continue; const want = a === 'blinkL' ? 1 : 2; c.blink = c.blink === want ? 0 : want; game.blinkAcc = 0; game.blinkYaw = c.yaw; if (c.blink) sfxTick(true); }
     else if (a === 'horn') { if (player.car) { sfxHorn(1); for (const p of peds) if (p.pos.distanceTo(player.car.pos) < 14) p.scare(player.car.pos.x, player.car.pos.z, 3); } }
     else if (a === 'radio') { game.radio = !game.radio; store.set('radio', game.radio); radioOn(!!player.car); toast(game.radio ? 'Radio on · Solano 88.4' : 'Radio off'); }
@@ -4401,6 +4620,7 @@ function drawMinimap() {
   }
   const dot = (p, r, col) => { mm.fillStyle = col; mm.beginPath(); mm.arc(p[0], p[1], r, 0, Math.PI * 2); mm.fill(); };
   for (const c of cashSpots) if (c.cd <= 0) { const p = W(c.x, c.z); if (Math.hypot(p[0] - R, p[1] - R) < R) dot(p, S * 0.018, '#86ffb0'); }
+  if (transit.built) { for (const st of transit.stops) { const p = W(st.sx, st.sz); if (Math.hypot(p[0] - R, p[1] - R) < R - 4) dot(p, S * 0.026, '#3fa9f5'); } for (const rk of transit.ranks) { const p = W(rk.sx, rk.sz); if (Math.hypot(p[0] - R, p[1] - R) < R - 4) dot(p, S * 0.026, '#ffc21a'); } }
   for (const sp of shopsData) { const p = W(sp.dx, sp.dz); if (Math.hypot(p[0] - R, p[1] - R) < R - 4) { mm.fillStyle = SHOP_COL[sp.type]; mm.fillRect(p[0] - S * 0.022, p[1] - S * 0.022, S * 0.044, S * 0.044); } }
   if (!j) for (const m of markers) if (m.m.visible) dot(clampEdge(W(m.x, m.z), S * 0.05), S * 0.032, '#ff3f8e');
   if (j) dot(clampEdge(W(j.x, j.z), S * 0.05), S * 0.04, '#ffc857');
@@ -4432,8 +4652,8 @@ function updateHUD(dt) {
   const dboard = !c && nearDutyBoard(), tb = !c && busAtStop(), tk = !c && nearRank(), dcar = !c && nearDealerCar(), ddesk = !c && nearDealerDesk(), stop = !c && !tb && nearStop();
   const ne = !c && nearEnlist(), nh = !c && nearHeliPad(), fw = !c && nearFerris(), near = !c && !fw && !ne && !nh && !dboard && !tb && !tk && !dcar && !ddesk && !transit.ride && !game.inside && !game.ride && !game.wheel && !game.heli && nearestEnterable(3.8);
   const seat = game.inside ? game.nearSeat : null, hug0 = hugTarget(), hugM = hug0 && (game.inside || !near || game.famD < 1.0) ? hug0 : null;
-  ui.bCar.textContent = transit.ride ? (transit.ride.kind === 'bus' ? 'GET OFF' : 'SKIP') : dboard ? 'DUTY' : tb ? 'BOARD' : tk ? 'TAXI' : dcar ? 'BUY' : ddesk ? 'CARS' : game.wheel ? 'GET OFF' : game.heli ? 'LAND' : ne ? 'ENLIST' : nh ? 'FLY' : fw ? 'RIDE' : game.ride ? 'LAND' : c ? 'GET OUT' : hugM && !game.inside ? 'HUG' : player.sit ? (player.sit.bed ? 'GET UP' : 'STAND') : hugM ? 'HUG' : seat ? (seat.bed ? 'LIE DOWN' : seat.toilet ? 'USE' : 'SIT') : 'GET IN'; ui.bCar.classList.toggle('ready', !!near || fw || ne || nh || dboard || !!tb || !!tk || !!dcar || ddesk || !!hugM || (!!seat && !player.sit));
-  ui.bAction.textContent = c ? 'DRIFT' : player.sit && player.sit.bed ? 'SLEEP' : player.sit && player.sit.tv ? (game.tvWatch ? 'CHANNEL' : 'TV') : 'JUMP'; ui.bHorn.hidden = !c; ui.bRadio.hidden = !c; ui.bBlinkL.hidden = ui.bBlinkR.hidden = !c; { const bl = c ? c.blink : 0, lit = c ? blinkLit(c) : false; ui.bBlinkL.classList.toggle('sel', (bl & 1) > 0); ui.bBlinkR.classList.toggle('sel', (bl & 2) > 0); ui.bBlinkL.classList.toggle('flash', lit && (bl & 1) > 0); ui.bBlinkR.classList.toggle('flash', lit && (bl & 2) > 0); ui.blkL.classList.toggle('on', lit && (bl & 1) > 0); ui.blkR.classList.toggle('on', lit && (bl & 2) > 0); } ui.bAction.style.visibility = game.wheel || game.ride || game.heli || transit.ride ? 'hidden' : '';
+  ui.bCar.textContent = shift.on ? (shift.cust && shift.cust.state === 'wait' ? 'SCAN' : 'WAIT') : transit.ride ? (transit.ride.kind === 'bus' ? 'GET OFF' : 'SKIP') : dboard ? 'DUTY' : tb ? 'BOARD' : tk ? 'TAXI' : dcar ? 'BUY' : ddesk ? 'CARS' : game.wheel ? 'GET OFF' : game.heli ? 'LAND' : ne ? 'ENLIST' : nh ? 'FLY' : fw ? 'RIDE' : game.ride ? 'LAND' : c ? 'GET OUT' : hugM && !game.inside ? 'HUG' : player.sit ? (player.sit.bed ? 'GET UP' : 'STAND') : hugM ? 'HUG' : seat ? (seat.bed ? 'LIE DOWN' : seat.toilet ? 'USE' : 'SIT') : 'GET IN'; ui.bCar.classList.toggle('ready', (shift.on && !!shift.cust && shift.cust.state === 'wait') || !!near || fw || ne || nh || dboard || !!tb || !!tk || !!dcar || ddesk || !!hugM || (!!seat && !player.sit));
+  ui.bAction.textContent = shift.on ? 'END' : c ? 'DRIFT' : player.sit && player.sit.bed ? 'SLEEP' : player.sit && player.sit.tv ? (game.tvWatch ? 'CHANNEL' : 'TV') : 'JUMP'; ui.bHorn.hidden = !c; ui.bRadio.hidden = !c; ui.bBlinkL.hidden = ui.bBlinkR.hidden = !c; { const bl = c ? c.blink : 0, lit = c ? blinkLit(c) : false; ui.bBlinkL.classList.toggle('sel', (bl & 1) > 0); ui.bBlinkR.classList.toggle('sel', (bl & 2) > 0); ui.bBlinkL.classList.toggle('flash', lit && (bl & 1) > 0); ui.bBlinkR.classList.toggle('flash', lit && (bl & 2) > 0); ui.blkL.classList.toggle('on', lit && (bl & 1) > 0); ui.blkR.classList.toggle('on', lit && (bl & 2) > 0); } ui.bAction.style.visibility = game.wheel || game.ride || game.heli || transit.ride ? 'hidden' : '';
   let hint = '';
   if (near && !TOUCH) hint = near.driver === 'ai' ? 'Press F to carjack' : near.isCop && near.driver ? 'Press F to steal the cruiser' : 'Press F to get in';
   else if (near && TOUCH) hint = near.driver === 'ai' ? 'Tap GET IN to carjack' : 'Tap GET IN to drive';
@@ -4465,9 +4685,10 @@ function updateHUD(dt) {
   if (transit.ride) hint = rideHint();
   if (game.heli) hint = TOUCH ? 'Helicopter tour · drag to look · tap LAND to skip' : 'Helicopter tour · mouse to look · F to land';
   if (game.wheel) hint = `Ferris wheel · ${Math.round(game.wheel.pos.y)} m up · ${TOUCH ? 'drag to look · GET OFF to stop' : 'mouse to look · F to get off'}`;
+  if (shift.on) hint = shiftHint();
   if (!hint && mil.near) hint = 'Fort Halcón · restricted military area · keep out';
   if (hint !== lastHint) { lastHint = hint; ui.hint.textContent = hint; ui.hint.hidden = !hint; }
-  const j0 = game.job, j = j0 ? { m: `Deliver ${j0.cargo} to ${j0.where}`, t: j0.t } : duty.on ? { m: dutyTitle(), t: duty.t } : null;
+  const j0 = game.job, j = j0 ? { m: `Deliver ${j0.cargo} to ${j0.where}`, t: j0.t } : duty.on ? { m: dutyTitle(), t: duty.t } : shift.on ? { m: shiftTitle(), t: shift.t } : null;
   if (j) { const m = j.m; if (m !== lastMission) { lastMission = m; ui.mTitle.textContent = m; } ui.mission.hidden = false; const s = Math.max(0, Math.ceil(j.t)); ui.mTimer.textContent = `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`; ui.mTimer.classList.toggle('low', s <= 10); }
   drawMinimap();
 }
@@ -4654,7 +4875,7 @@ function step(dt) {
     player.pos.set(c.pos.x, c.y, c.pos.z);
     if (c.blink === 1 || c.blink === 2) { const dy = angDiff(game.blinkYaw ?? c.yaw, c.yaw); game.blinkAcc = (game.blinkAcc || 0) + (c.blink === 1 ? dy : -dy); if (game.blinkAcc > 0.75 && Math.abs(c.str) < 0.15) c.blink = 0; }
     game.blinkYaw = c.yaw; const lit = blinkLit(c); if (lit !== game.blinkLit) { game.blinkLit = lit; if (c.blink || !lit) { if (c.blink) sfxTick(lit); } }
-  } else if (game.wheel) updateWheel(dt); else if (game.heli) updateHeli(dt); else if (transit.ride) updateRide(dt); else if (game.ride) { if (flight.st === 'parked') endRide(); } else if (game.inside) { updatePlayerInside(dt, ax, ay, sprint); if (game.inside && game.inside.room === ROOMS.home) famUpdate(dt); } else { updatePlayerFoot(dt, ax, ay, sprint); if (playing) checkShopDoors(dt); }
+  } else if (game.wheel) updateWheel(dt); else if (game.heli) updateHeli(dt); else if (transit.ride) updateRide(dt); else if (game.ride) { if (flight.st === 'parked') endRide(); } else if (game.inside) { if (shift.on) updateShift(dt); else updatePlayerInside(dt, ax, ay, sprint); if (game.inside && game.inside.room === ROOMS.home) famUpdate(dt); } else { updatePlayerFoot(dt, ax, ay, sprint); if (playing) checkShopDoors(dt); }
   input.jumpQ = false; if (player.bag) player.bag.visible = !game.bagChecked && !player.sit;
   if (fam.out) followUpdate(dt); else if (!game.inside || game.inside.room !== ROOMS.home) game.nearFam = null;
   if (player.hurtT > 0) player.hurtT -= dt; else player.health = Math.min(100, player.health + dt * (game.fedT > 0 ? 12 : 4)); if (game.fedT > 0) game.fedT -= dt;
@@ -4677,7 +4898,7 @@ function step(dt) {
   let tc = 0; for (const v of vehicles) if (v.driver === 'ai' && !v.leaving && v.ai.kind !== 'hwy') tc++;
   if (tc < TRAFFIC_N && Math.random() < 0.05) { const type = mpick(TRAFFIC_TYPES), car = new Vehicle(type, type === 'taxi' ? 0xf4c20d : mpick(PAINTS)); if (!recycleCar(car)) car.dispose(); }
   collideVehicles();
-  updateFlight(dt); updatePort(dt, sunState.night); updateDests(dt); updateMilitary(dt); updateTransit(dt); updateDuty(dt);
+  updateFlight(dt); updatePort(dt, sunState.night); updateDests(dt); updateMilitary(dt); updateTransit(dt); updateDuty(dt); updateGarage(dt);
   // pedestrians
   for (const p of peds) {
     const d = p.pos.distanceTo(camera.position);
@@ -4787,7 +5008,7 @@ function snapshotWorld() {
 }
 function saveGame(force) {
   if (cloud.resetting || game.state === 'boot' || game.state === 'title') return;
-  store.set('cash', game.cash); const w = snapshotWorld(); if (w) store.set('world', w); store.set('savedAt', Date.now());
+  store.set('cash', game.cash); const w = snapshotWorld(); if (w) { store.set('world', w); store.set('garageCars', snapshotGarage()); } store.set('savedAt', Date.now());
   cloudSave(force);
 }
 function saveWhere(w) { const a = w && w.at; if (!a) return ''; if (a.kind === 'shop') { const sp = shopsData[a.i]; return sp ? (sp.type === 'home' ? 'At home' : ROOMS[sp.type].name) : ''; } return (a.kind === 'car' ? 'Driving · ' : '') + districtAt(a.x, a.z); }
@@ -4837,12 +5058,12 @@ async function start(data) {
     player.pos.set(-494.6, 0, 16.5); player.yaw = -Math.PI / 2;
     starterCar = new Vehicle('sports', 0xff3f8e); starterCar.place(-492.4, 18.8, 0);
     game.owned = store.get('owned', ['coral']); game.visited = store.get('visited', []); game.pantry = store.get('pantry', {}); game.dishes = store.get('dishes', []); refreshDishes(); game.family = store.get('family', []); game.enlisted = store.get('enlisted', false); game.phoneApps = store.get('phoneApps', ['shop', 'maps', 'bank', 'weather', 'settings']).filter((id) => APPS[id]); game.phoneOwned = store.get('phoneOwned', []); game.phoneWall = store.get('phoneWall', 0); game.busTickets = store.get('busTickets', 0); game.milDuties = store.get('milDuties', 0); game.garage = store.get('garage', []); buildTransit(); spawnGarage(); 
-    setupMarkers(); setupCash(); spawnTraffic(); spawnPeds(); spawnLotCars();
+    setupMarkers(); setupCash(); spawnTraffic(); spawnPeds(); spawnLotCars(); restoreGarage();
     for (let i = 0; i < HWY_N; i++) { const c = new Vehicle(mpick(TRAFFIC_TYPES), mpick(PAINTS)); if (!placeHwy(c, false)) c.dispose(); }
     applyQuality(data.quality || store.get('quality', 'ultra'));
     updateDaylight(0); refreshEnv(true);
     renderer.compile(scene, camera);
-    game.state = 'title'; window.__solanoRunning = true; window.__solanoDebug = { saveGame, cloud, store, phone, APPS, openPhone, closePhone, duty, DUTIES, startDuty, transit, CATALOG, DEALER, makeHuman, randomLook, poseHuman, mil, Vehicle, PAINTS, ROOMS, ferris, famList: fam.list, renderer, game, camera, cam, player, officers, police, shopsData, vehicles, flight, RING_H, peek: () => ({ shopCD, t: +game.time.toFixed(2) }), crime: (n) => crime(n, 'Test heat') };
+    game.state = 'title'; window.__solanoRunning = true; window.__solanoDebug = { GARAGE, garage, openSearch, closeSearch, search, shift, startShift, transitRef: () => transit, saveGame, cloud, store, phone, APPS, openPhone, closePhone, duty, DUTIES, startDuty, transit, CATALOG, DEALER, makeHuman, randomLook, poseHuman, mil, Vehicle, PAINTS, ROOMS, ferris, famList: fam.list, renderer, game, camera, cam, player, officers, police, shopsData, vehicles, flight, RING_H, peek: () => ({ shopCD, t: +game.time.toFixed(2) }), crime: (n) => crime(n, 'Test heat') };
     { const sw = store.get('world', null); if (sw && sw.at) { $('playBtn').textContent = 'Continue'; const si = $('saveInfo'); si.textContent = `Saved game · ${saveWhere(sw)} · ${money(game.cash)}${cloud.restored ? ' · loaded from your account' : ''}`; si.hidden = false; $('newGameT').hidden = false; } }
     $('loading').hidden = true; $('title').hidden = false;
     renderer.setAnimationLoop(frame);
