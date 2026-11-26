@@ -2459,14 +2459,14 @@ function updateGarage(dt) {
   if (inside && !garage.inside && !garage.told) { garage.told = true; toast(player.car ? 'Your garage · leave a car here and it stays parked, even after a restart' : 'Your garage · the side door leads to the house', 3600); }
   garage.inside = inside;
 }
-function snapshotGarage() { const r2 = (n) => Math.round(n * 100) / 100; return vehicles.filter((v) => !v.scripted && v !== player.car && v.driver !== 'ai' && v.driver !== 'police' && inGarage(v.pos.x, v.pos.z)).map((v) => ({ type: v.type, color: v.color ?? null, owned: v.owned || null, army: !!v.army, x: r2(v.pos.x), z: r2(v.pos.z), yaw: r2(v.yaw) })); }
+function snapshotGarage() { const r2 = (n) => Math.round(n * 100) / 100; return vehicles.filter((v) => !v.scripted && v !== player.car && v.driver !== 'ai' && v.driver !== 'police' && inGarage(v.pos.x, v.pos.z)).map((v) => ({ type: v.type, color: v.color ?? null, owned: v.owned || null, army: !!v.army, issued: !!v.issued, x: r2(v.pos.x), z: r2(v.pos.z), yaw: r2(v.yaw) })); }
 function restoreGarage() {
   const list = store.get('garageCars', null); if (!Array.isArray(list)) return;
   for (const v of [...vehicles]) if (!v.scripted && v.driver === null && inGarage(v.pos.x, v.pos.z)) v.dispose();
   for (const c of list) {
     const cat = c.owned && CATALOG.find((x) => x.id === c.owned);
     if (cat) spawnOwned(cat, c.x, c.z, c.yaw);
-    else { const t = DIMS[c.type] && c.type !== 'bus' && c.type !== 'police' ? c.type : 'sedan', v = new Vehicle(t, t === 'taxi' ? 0xf4c20d : c.color ?? 0xffc857); v.place(c.x, c.z, c.yaw); v.keep = true; if (c.army) v.army = true; }
+    else { const t = DIMS[c.type] && c.type !== 'bus' && (c.type !== 'police' || c.issued) ? c.type : 'sedan', v = new Vehicle(t, t === 'taxi' ? 0xf4c20d : c.color ?? 0xffc857); v.place(c.x, c.z, c.yaw); v.keep = true; if (c.army) v.army = true; if (c.issued && t === 'police') v.issued = true; }
   }
   const have = new Set(list.map((c) => c.owned).filter(Boolean)), free = GARAGE_BAYS.filter(([x, z]) => !list.some((c) => Math.hypot(c.x - x, c.z - z) < 2.2));
   for (const id of game.garage) if (!have.has(id)) { const cat = CATALOG.find((x) => x.id === id), b = free.shift(); if (cat && b) spawnOwned(cat, b[0], b[1], b[2]); }
@@ -2493,8 +2493,8 @@ const signs = [];
 // ---------------------------------------------------------------- shops: storefronts + walk-in interiors (built far below the map)
 const shopsData = [], IY = -400;
 const SHOP_LOOK = { mart: { name: '24/7 MART', hex: 0x2a9d8f }, threads: { name: 'THREADS', hex: 0xff3f8e }, terminal: { name: 'DEPARTURES', hex: 0x18b3a6 }, airstrip: { name: 'ISLAND AIR', hex: 0x2a9d8f }, home: { name: 'HOME', hex: 0xffc857 }, grocery: { name: 'MERCADO FRESCO', hex: 0x3fae5c } };
-const SHOP_COL = { mart: '#2be0cf', threads: '#ff7aa8', terminal: '#9ad8f2', airstrip: '#9ad8f2', home: '#ffd36e', grocery: '#9be15d', metro: '#e63946', restaurant: '#ff8c42' };
-const ROOMS = { mart: { name: '24/7 Mart', cx: 0, cz: 0, w: 18, d: 14, H: 5.2 }, threads: { name: 'Threads', cx: 80, cz: 0, w: 16, d: 14, H: 5.2 }, terminal: { name: 'Solano International', cx: 200, cz: 0, w: 56, d: 40, H: 10 }, airstrip: { name: 'Island Airstrip', cx: 300, cz: 0, w: 22, d: 16, H: 6 }, grocery: { name: 'Mercado Fresco', cx: 540, cz: 0, w: 24, d: 18, H: 5.2, hello: 'Mercado Fresco · buy ingredients, then cook them in your kitchen at home' }, restaurant: { name: 'Restaurant', cx: 1100, cz: 0, w: 22, d: 18, H: 5 }, metro: { name: 'Solano Metro', cx: 900, cz: 0, w: 18, d: 70, H: 7, hello: 'Solano Metro · walk up to a ticket machine and type where you want to go' }, home: { name: 'Home', cx: 440, cz: 0, w: 22, d: 16, H: 7.2, hello: 'Home sweet home · kitchen, dining & living room down here, bedroom upstairs' } };
+const SHOP_COL = { mart: '#2be0cf', threads: '#ff7aa8', terminal: '#9ad8f2', airstrip: '#9ad8f2', home: '#ffd36e', grocery: '#9be15d', metro: '#e63946', restaurant: '#ff8c42', police: '#8b5a2b' };
+const ROOMS = { mart: { name: '24/7 Mart', cx: 0, cz: 0, w: 18, d: 14, H: 5.2 }, threads: { name: 'Threads', cx: 80, cz: 0, w: 16, d: 14, H: 5.2 }, terminal: { name: 'Solano International', cx: 200, cz: 0, w: 56, d: 40, H: 10 }, airstrip: { name: 'Island Airstrip', cx: 300, cz: 0, w: 22, d: 16, H: 6 }, grocery: { name: 'Mercado Fresco', cx: 540, cz: 0, w: 24, d: 18, H: 5.2, hello: 'Mercado Fresco · buy ingredients, then cook them in your kitchen at home' }, police: { name: 'Solano PD', cx: 1300, cz: 0, w: 22, d: 16, H: 5 }, restaurant: { name: 'Restaurant', cx: 1100, cz: 0, w: 22, d: 18, H: 5 }, metro: { name: 'Solano Metro', cx: 900, cz: 0, w: 18, d: 70, H: 7, hello: 'Solano Metro · walk up to a ticket machine and type where you want to go' }, home: { name: 'Home', cx: 440, cz: 0, w: 22, d: 16, H: 7.2, hello: 'Home sweet home · kitchen, dining & living room down here, bedroom upstairs' } };
 const interiorLight = new THREE.PointLight(0xfff0dc, 0, 34, 1.3); scene.add(interiorLight);
 const roomLightMat = new THREE.MeshBasicMaterial({ color: new THREE.Color(2.2, 2.15, 2.0) });
 const fridgeMat = new THREE.MeshBasicMaterial({ color: new THREE.Color(0.9, 1.3, 1.5) });
@@ -2711,7 +2711,7 @@ function buildPoliceLot(blk, fx, fz) {
   for (const x of [-4.2, -1.5, 1.5, 4.2]) { const [px, pz] = F.W(x, 3.2); addPost(px, pz, 0.3, 4.4); } { const [px, pz] = F.W(7.5, 5); addPost(px, pz, 0.12, 11); }
   lots.push({ ...F.rect(-28, 28, 5.8, 25.8), y: CURB, max: 3, police: true });
   mapPaint.push({ ...F.rect(-16, 16, -24, 0), c: '#8b5a2b' });
-  const [sx, sz] = F.W(0, 5.2); POLICE_ST.push({ name, x: sx, z: sz });
+  const [sx, sz] = F.W(0, 5.2), [ddx, ddz] = F.W(0, 0.1); POLICE_ST.push({ name, x: sx, z: sz, yaw: Math.atan2(fx, fz), spots: [F.W(-5, 9), F.W(5, 9), F.W(-11, 9), F.W(11, 9), F.W(-17, 9), F.W(17, 9)] }); shopsData.push({ dx: ddx, dz: ddz, nx: fx, nz: fz, type: 'police', name, st: POLICE_ST.length - 1 });
 }
 function payParking(c) {
   const L = lots.find((q) => q.pay && c.pos.x > q.x0 && c.pos.x < q.x1 && c.pos.z > q.z0 && c.pos.z < q.z1); if (!L) return;
@@ -2802,6 +2802,134 @@ function restUpdate(dt) {
   h.root.position.set(w.x, IY, w.z); h.root.rotation.y = w.yaw; poseHuman(h, dt, sp, false, game.time);
   if (R.tray) { h.armR.rotation.x = -1.25; h.elbowR.rotation.x = -0.3; h.armL.rotation.x = -1.1; }
 }
+// ---- Solano PD: walk-in stations, joining the force, patrol shifts with dispatch calls, your own cruiser
+const COP_RANKS = [{ name: 'Cadet', at: 0, mult: 1 }, { name: 'Officer', at: 4, mult: 1.25 }, { name: 'Sergeant', at: 10, mult: 1.5 }, { name: 'Detective', at: 18, mult: 1.8 }, { name: 'Captain', at: 30, mult: 2.2 }];
+const copRank = () => { let r = COP_RANKS[0]; for (const k of COP_RANKS) if ((game.copCalls || 0) >= k.at) r = k; return r; };
+const cop = { on: false, call: null, left: 0, earned: 0, good: 0, gap: 0, tgt: null, marker: null, prev: null, old: [] };
+function buildPoliceRoom(R) {
+  buildRoom(R, tileTex, 0xdfe4ea); const { cx, cz } = R, P = R.parts, OFC = { ...OFFICER_LOOK, shades: false };
+  P.push(boxAt(10, 1.15, 0.9, cx, IY + 0.575, cz - 2.2, 0x6b4a2f), boxAt(10.2, 0.07, 1.05, cx, IY + 1.18, cz - 2.2, 0xd9d2c3), boxAt(10, 0.3, 0.05, cx, IY + 0.8, cz - 1.73, 0x1d2b4a));
+  for (const x of [cx - 3, cx + 3]) P.push(boxAt(0.55, 0.38, 0.05, x, IY + 1.47, cz - 2.4, 0x15161a), boxAt(0.12, 0.22, 0.12, x, IY + 1.26, cz - 2.4, 0x2b2b30));
+  for (const x of [cx - 4.5, cx + 4.5]) P.push(boxAt(2.2, 0.75, 1.0, x, IY + 0.375, cz - 6, 0x9aa0a8), boxAt(2.3, 0.05, 1.1, x, IY + 0.77, cz - 6, 0x6b4a2f), boxAt(0.7, 0.45, 0.05, x, IY + 1.05, cz - 6.3, 0x15161a), boxAt(0.5, 0.05, 0.3, x + 0.2, IY + 0.82, cz - 5.8, 0x2b2b30));
+  R.obst.push({ minX: cx - 6.4, maxX: cx + 6.4, minZ: cz - 8, maxZ: cz - 1.7 });
+  R.counters.push({ x: cx, z: cz - 1.05, type: 'police', title: 'Front desk' });
+  addClerk(R, cx, cz - 3.2, 0, { ...OFC, skin: 0x8d5a3b, hair: 0x111111 }); addClerk(R, cx - 4.5, cz - 7.0, 0, { ...OFC, skin: 0xe2b48f }); addClerk(R, cx + 4.5, cz - 7.0, 0, { ...OFC, skin: 0x5a3a24 });
+  // holding cell with bars on the west side
+  const bars = []; for (let z = cz - 7.9; z <= cz - 3.05; z += 0.3) bars.push(boxAt(0.05, 2.6, 0.05, cx - 6.5, IY + 1.3, z)); for (let x = cx - 10.9; x <= cx - 6.5; x += 0.3) bars.push(boxAt(0.05, 2.6, 0.05, x, IY + 1.3, cz - 3));
+  bars.push(boxAt(0.08, 0.1, 5, cx - 6.5, IY + 2.6, cz - 5.5), boxAt(4.5, 0.1, 0.08, cx - 8.75, IY + 2.6, cz - 3)); R.group.add(new THREE.Mesh(mergeAll(bars), new THREE.MeshStandardMaterial({ color: 0x8d949b, metalness: 0.8, roughness: 0.35 })));
+  P.push(boxAt(0.6, 0.45, 3, cx - 10.6, IY + 0.3, cz - 6, 0x6b6f63)); R.obst.push({ minX: cx - 11, maxX: cx - 6.4, minZ: cz - 8, maxZ: cz - 2.9 }); addVisitor(R, cx - 10.45, cz - 6, 'sit', false, Math.PI / 2);
+  // lockers on the east wall, the badge and the wanted board on the back wall
+  for (let k = 0; k < 8; k++) P.push(boxAt(0.5, 2.0, 0.58, cx + 10.7, IY + 1.0, cz - 7.6 + k * 0.6, k % 2 ? 0x2f5c8a : 0x274e76), boxAt(0.02, 0.2, 0.04, cx + 10.44, IY + 1.2, cz - 7.6 + k * 0.6, 0xc9ccd1));
+  R.obst.push({ minX: cx + 10.4, maxX: cx + 11, minZ: cz - 8, maxZ: cz - 2.7 });
+  const wanted = canvasTex(768, 320, (g) => { g.fillStyle = '#5b4632'; g.fillRect(0, 0, 768, 320); [0, 1, 2].forEach((i) => { const x = 30 + i * 250; g.fillStyle = '#f2e6c8'; g.fillRect(x, 26, 210, 270); g.fillStyle = '#c8372d'; g.font = '900 40px Impact, sans-serif'; g.textAlign = 'center'; g.fillText('WANTED', x + 105, 70); g.fillStyle = '#3b3b3b'; g.beginPath(); g.arc(x + 105, 140, 38, 0, 7); g.fill(); g.fillRect(x + 50, 180, 110, 70); g.fillStyle = '#5b4632'; g.font = '700 22px sans-serif'; g.fillText(['$500 REWARD', 'CAR THIEF', 'LAST SEEN: PORT'][i], x + 105, 278); }); });
+  { const m = new THREE.Mesh(new THREE.PlaneGeometry(4.2, 1.75), new THREE.MeshBasicMaterial({ map: wanted })); m.position.set(cx + 4, IY + 2.9, cz - 7.98); R.group.add(m); }
+  const badge = canvasTex(256, 256, (g) => { g.clearRect(0, 0, 256, 256); g.fillStyle = '#d4af37'; g.beginPath(); for (let i = 0; i < 14; i++) { const a = -Math.PI / 2 + i * Math.PI / 7, r = i % 2 ? 62 : 120; g.lineTo(128 + Math.cos(a) * r, 128 + Math.sin(a) * r); } g.fill(); g.fillStyle = '#1d2b4a'; g.beginPath(); g.arc(128, 128, 52, 0, 7); g.fill(); g.fillStyle = '#f4e9d8'; g.font = '800 26px sans-serif'; g.textAlign = 'center'; g.fillText('SOLANO', 128, 124); g.fillText('PD', 128, 152); });
+  { const m = new THREE.Mesh(new THREE.PlaneGeometry(2, 2), new THREE.MeshBasicMaterial({ map: badge, transparent: true })); m.position.set(cx - 3, IY + 3.1, cz - 7.98); R.group.add(m); }
+  // station name sign over the desk (redrawn for each station)
+  R.signCv = document.createElement('canvas'); R.signCv.width = 1024; R.signCv.height = 128; R.signTex = new THREE.CanvasTexture(R.signCv); R.signTex.colorSpace = THREE.SRGBColorSpace;
+  { const m = new THREE.Mesh(new THREE.PlaneGeometry(7, 0.875), new THREE.MeshBasicMaterial({ map: R.signTex, color: new THREE.Color(1.2, 1.2, 1.2) })); m.position.set(cx, IY + 3.35, cz - 2.66); R.group.add(m); P.push(boxAt(7.2, 1, 0.12, cx, IY + 3.35, cz - 2.74, 0x1d2b4a)); }
+  // waiting area: benches by the west wall, a water cooler and plants
+  P.push(boxAt(0.6, 0.45, 4.2, cx - 10.5, IY + 0.375, cz + 2.4, 0x2f5c8a), boxAt(0.12, 0.6, 4.2, cx - 10.85, IY + 0.85, cz + 2.4, 0x2f5c8a)); R.obst.push({ minX: cx - 11, maxX: cx - 10.15, minZ: cz + 0.3, maxZ: cz + 4.5 });
+  for (const k of [-1.3, 0, 1.3]) addSeat(R, cx - 10.45, cz + 2.4 + k, 0, 0.6, Math.PI / 2);
+  addVisitor(R, cx - 10.45, cz + 1.1, 'sit', false, Math.PI / 2);
+  P.push(boxAt(0.45, 1.1, 0.45, cx + 6.2, IY + 0.55, cz - 1.2, 0xe8e8e8), colorize(new THREE.CylinderGeometry(0.17, 0.17, 0.45, 12).translate(cx + 6.2, IY + 1.33, cz - 1.2), 0x8ecae6)); R.obst.push({ minX: cx + 5.95, maxX: cx + 6.45, minZ: cz - 1.45, maxZ: cz - 0.95 });
+  for (const x of [cx - 2.2, cx + 2.2]) P.push(colorize(new THREE.CylinderGeometry(0.3, 0.24, 0.5, 12).translate(x, IY + 0.25, cz + 7.2), 0xc8a27a), colorize(new THREE.SphereGeometry(0.5, 10, 8).translate(x, IY + 0.95, cz + 7.2), 0x2e7d32));
+  addRestroom(R, P, cx + 7.6, cx + 11, cz + 4.6, cz + 8, 'w');
+  R.spots = [[cx - 3, cz + 3], [cx + 4, cz + 2], [cx + 8, cz - 0.5], [cx - 2, cz + 5.5]]; addVisitor(R, cx + 4, cz + 2, 'walk');
+  finishRoom(R, 'SERVE · PROTECT · SOLANO', '#7dd3ff');
+}
+function policeSetStation(s) {
+  const R = ROOMS.police; R.name = s.name; R.station = s; for (const c of R.counters) c.title = s.name;
+  R.hello = `${s.name} · walk up to the front desk${game.copJoined ? ' to start a patrol shift' : ' to join the police'}`;
+  const g = R.signCv.getContext('2d'); g.fillStyle = '#1d2b4a'; g.fillRect(0, 0, 1024, 128); g.fillStyle = '#d4af37'; g.fillRect(0, 118, 1024, 10); g.fillStyle = '#ffffff'; g.textAlign = 'center'; g.textBaseline = 'middle'; fitText(g, s.name.toUpperCase(), 512, 62, 960, 70); R.signTex.needsUpdate = true;
+}
+function policeDeskItems() {
+  const st = game.inside && game.inside.shop, items = [];
+  if (game.wanted > 0) { const fine = 50 * game.wanted; items.push({ name: 'Turn yourself in', desc: `Pay a $${fine} fine and the police stop chasing you`, price: fine, sw: 0xff6b6b, buy: () => { clearHeat(); return 'Fine paid · you are free to go'; } }); }
+  if (!game.copJoined) { items.push({ name: 'Join Solano PD', desc: 'Get a badge, a uniform and your own police cruiser you can take home · then work patrol shifts for pay', price: 0, label: 'JOIN', sw: 0x7dd3ff, disabled: game.wanted > 0, buy: () => { closeShopPanel(); copJoin(st); return null; } }); return items; }
+  const rk = copRank(), nx = COP_RANKS[COP_RANKS.indexOf(rk) + 1];
+  if (!cop.on) items.push({ name: 'Start a patrol shift', desc: `Answer 3 dispatch calls: patrols, crashes and speeders · about $${Math.round(63 * rk.mult)} a call`, price: 0, label: 'GO', sw: 0x9be15d, disabled: game.wanted > 0 || duty.on || !!game.job, buy: () => { closeShopPanel(); copStartShift(st); return null; } });
+  else items.push({ name: 'End your shift', desc: `${cop.good} call${cop.good === 1 ? '' : 's'} done · $${cop.earned} earned so far`, price: 0, label: 'END', sw: 0xff6b6b, buy: () => { closeShopPanel(); copEndShift(false, 'You clocked out'); return null; } });
+  items.push({ name: 'Bring my cruiser here', desc: 'Your own police car gets parked right outside this station · drive it anywhere and take it home', price: 0, label: 'CAR', sw: 0x1d2b4a, buy: () => (copCruiser(st) ? 'Your cruiser is parked outside' : 'You are using your cruiser right now') });
+  const wearing = game.outfit === 'police'; items.push({ name: wearing ? 'Change out of uniform' : 'Put on your uniform', desc: wearing ? 'Back into your own clothes' : 'Solano PD blues', price: 0, label: wearing ? 'OFF' : 'WEAR', sw: 0x1d2b4a, buy: () => { copWear(!wearing); return wearing ? 'Back in your own clothes' : 'Uniform on'; } });
+  items.push({ name: `Rank: ${rk.name}`, desc: nx ? `${game.copCalls || 0} calls answered · ${nx.name} after ${nx.at} · pay ${Math.round(rk.mult * 100)}%` : `${game.copCalls || 0} calls answered · top rank · pay ${Math.round(rk.mult * 100)}%`, price: 0, label: '★', sw: 0xffc857, disabled: true, buy: () => null });
+  return items;
+}
+function copWear(on) {
+  if (on) { if (game.outfit !== 'police') { cop.prev = game.outfit; store.set('outfitPrev', game.outfit); } setOutfit(OUTFITS.find((o) => o.id === 'police')); }
+  else { const id = cop.prev || store.get('outfitPrev', 'coral'), o = OUTFITS.find((x) => x.id === id && x.id !== 'police') || OUTFITS[0]; setOutfit(o); }
+}
+function copCruiser(st) {
+  const ps = POLICE_ST[st && st.st !== undefined ? st.st : 1] || POLICE_ST[0]; let v = vehicles.find((q) => q.issued);
+  if (v && v === player.car) return null;
+  if (!v) { v = new Vehicle('police'); v.issued = true; }
+  v.keep = true; v.driver = null; v.held = false;
+  const spot = ps.spots.find(([x, z]) => !vehicles.some((q) => q !== v && Math.hypot(q.pos.x - x, q.pos.z - z) < 3.4)) || ps.spots[0];
+  v.place(spot[0], spot[1], ps.yaw); return v;
+}
+function copJoin(st) {
+  game.copJoined = true; store.set('copJoined', true); fadeFlash('Welcome to Solano PD, officer!', 1.6); sfxChime(); copWear(true); copCruiser(st);
+  toast('You joined Solano PD! Your own cruiser is parked outside · drive it anywhere, park it in your garage · start a patrol shift at any front desk', 6000);
+}
+function copStartShift(st) {
+  if (duty.on || game.job || shift.on) { toast('Finish what you are doing first'); return; }
+  Object.assign(cop, { on: true, call: null, left: 3, earned: 0, good: 0, gap: 2, tgt: null }); copWear(true);
+  if (!vehicles.some((q) => q.issued)) copCruiser(st);
+  toast(`Patrol shift started · ${copRank().name} · dispatch will send you 3 calls · your cruiser is outside`, 4500); sfxChime();
+}
+function copTitle() { return cop.call ? `${cop.call.title} · call ${4 - cop.left}/3` : cop.left > 0 ? 'Patrol shift · waiting for dispatch…' : 'Patrol shift'; }
+function copNextCall() {
+  const f = focusPos(), kinds = ['patrol', 'crash', 'speeder'], rk = copRank(); let kind = kinds[(3 - cop.left + Math.floor(Math.random() * 3)) % 3];
+  const c = { kind, t: 200, hold: 0 };
+  if (kind === 'speeder') { let best = null, bd = 1e9; for (const v of vehicles) if (v.driver === 'ai' && v.ai && v.ai.kind !== 'hwy' && !v.isCop && !v.held && !v.scripted) { const d = Math.hypot(v.pos.x - f.x, v.pos.z - f.z); if (d > 50 && d < 230 && d < bd) { bd = d; best = v; } } if (best) { c.car = best; best.flagged = true; c.x = best.pos.x; c.z = best.pos.z; } else kind = c.kind = 'patrol'; }
+  if (kind !== 'speeder') { let x = 0, z = 0; for (let k = 0; k < 80; k++) { const n = (Math.random() * NN * NN) | 0; x = nodeX(n); z = nodeZ(n); const d = Math.hypot(x - f.x, z - f.z); if (d > 160 && d < 480) break; } c.x = x; c.z = z; }
+  if (kind === 'crash') { c.wrecks = []; for (const [ox, oz, yaw] of [[-2.4, -0.6, 0.7], [2.2, 0.8, -2.2]]) { const v = new Vehicle(mpick(['sedan', 'hatch', 'suv']), mpick(PAINTS)); v.place(c.x + ox, c.z + oz, yaw); c.wrecks.push(v); } }
+  c.pay = Math.round({ patrol: 45, crash: 60, speeder: 85 }[kind] * rk.mult / 5) * 5; c.where = districtAt(c.x, c.z);
+  c.title = kind === 'patrol' ? `Patrol ${c.where}` : kind === 'crash' ? `Crash in ${c.where} · secure the scene` : `Speeding car in ${c.where} · pull it over`;
+  cop.call = c; cop.tgt = { x: c.x, z: c.z, path: [], pathT: 0 };
+  if (!cop.marker) cop.marker = makeMarker(new THREE.Color(0.6, 1.6, 4), true);
+  toast(`📻 Dispatch: ${c.title}${kind === 'speeder' ? ' · you need a police car' : ''}`, 4200); sfxChime();
+}
+function copCallDone(ok, msg) {
+  const c = cop.call; if (!c) return;
+  if (c.car) { c.car.flagged = false; if (c.car.driver === 'ai') c.car.held = false; }
+  if (c.crk) scene.remove(c.crk.h.root); if (c.wrecks) cop.old.push(...c.wrecks);
+  cop.call = null; cop.tgt = null; cop.left--; cop.gap = 3.5; if (cop.marker) cop.marker.visible = false;
+  if (ok) {
+    const rk0 = copRank(); addCash(c.pay, 'Solano PD · ' + c.title.split(' · ')[0]); cop.earned += c.pay; cop.good++; game.copCalls = (game.copCalls || 0) + 1; store.set('copCalls', game.copCalls);
+    showBanner('CALL COMPLETE', `+$${c.pay} · ${msg}`, 'var(--money)', 2600); sfxChime();
+    const rk1 = copRank(); if (rk1 !== rk0) setTimeout(() => { showBanner('PROMOTED', `${rk1.name} · calls now pay ${Math.round(rk1.mult * 100)}%`, '#7dd3ff', 3200); sfxChime(); }, 2800);
+  } else showBanner('CALL MISSED', msg, 'var(--coral)', 2400);
+}
+function copEndShift(done, why) {
+  if (!cop.on) return; if (cop.call) copCallDone(false, why || 'Shift over'); cop.on = false; cop.tgt = null; if (cop.marker) cop.marker.visible = false; $('mission').hidden = true;
+  const bonus = done && cop.good === 3 ? Math.round(40 * copRank().mult) : 0; if (bonus) addCash(bonus, 'Solano PD · shift bonus');
+  setTimeout(() => showBanner('SHIFT OVER', `+$${cop.earned + bonus} · ${cop.good} of 3 calls${bonus ? ` · $${bonus} bonus` : ''}${why ? ' · ' + why : ''}`, done ? 'var(--money)' : '#7dd3ff', 3200), done ? 2700 : 0);
+}
+function updateCop(dt) {
+  for (let i = cop.old.length - 1; i >= 0; i--) { const v = cop.old[i]; if (!vehicles.includes(v)) cop.old.splice(i, 1); else if (v.driver === null && v.pos.distanceTo(focusPos()) > 90) { v.dispose(); cop.old.splice(i, 1); } }
+  if (!cop.on || game.state !== 'play') return;
+  if (game.wanted > 0) { copEndShift(false, 'You were suspended for breaking the law'); return; }
+  if (!cop.call) { cop.gap -= dt; if (cop.gap <= 0) { if (cop.left <= 0) copEndShift(true); else copNextCall(); } return; }
+  const c = cop.call, f = focusPos(), mk = cop.marker; c.t -= dt;
+  if (c.kind === 'speeder' && !c.out) { const v = c.car; if (!vehicles.includes(v) || v.driver === 'player') { copCallDone(false, 'The speeder got away'); return; } c.x = v.pos.x; c.z = v.pos.z; }
+  mk.visible = !(c.kind === 'speeder' && c.out); mk.position.set(c.x, c.kind === 'speeder' && !c.out ? c.car.y + 2.6 : surfaceH(c.x, c.z), c.z); mk.userData.gem.rotation.y = game.time * 1.6;
+  const tg = cop.tgt; tg.x = c.x; tg.z = c.z; tg.pathT -= dt; if (tg.pathT <= 0) { tg.pathT = 0.5; tg.path = gridRoute(f, c); }
+  if (c.t <= 0) { copCallDone(false, 'The call timed out'); return; }
+  const d = Math.hypot(c.x - f.x, c.z - f.z);
+  if (c.kind === 'patrol') { if (d < 9) copCallDone(true, `${c.where} is quiet`); }
+  else if (c.kind === 'crash') { if (d < 14) { c.hold += dt; if (!c.said) { c.said = true; toast('Securing the scene… stay close for a moment', 2600); } if (c.hold > 4) copCallDone(true, 'Scene secured · tow trucks are on the way'); } }
+  else {
+    const v = c.car;
+    if (!c.stopped) { if (d < 13 && player.car && player.car.isCop) { v.held = true; c.stopped = true; toast('🚨 Pull over! The driver is stopping · get out and walk up to arrest them', 4000); } else if (d < 13 && !c.warned) { c.warned = true; toast('You need a police car to pull them over', 2600); } }
+    else if (!c.out) { if (v.speed() < 0.8) { const bx = Math.cos(v.yaw), bz = -Math.sin(v.yaw); c.crk = ccHuman(randomLook(), v.pos.x + bx * 1.6, v.y, v.pos.z + bz * 1.6, Math.atan2(bx, bz)); c.out = true; v.driver = null; v.held = false; v.flagged = false; c.x = c.crk.x; c.z = c.crk.z; } }
+    else {
+      const K = c.crk; K.yaw += angDiff(K.yaw, Math.atan2(player.pos.x - K.x, player.pos.z - K.z)) * (1 - Math.exp(-5 * dt));
+      K.h.root.position.set(K.x, surfaceH(K.x, K.z, K.y + 0.5), K.z); K.h.root.rotation.y = K.yaw; poseHuman(K.h, dt, 0, false, game.time); K.h.armL.rotation.x = K.h.armR.rotation.x = -2.9;
+      if (!player.car && Math.hypot(player.pos.x - K.x, player.pos.z - K.z) < 2.6) { fadeFlash('Cuffed · the suspect is on the way to Solano PD', 1.0); copCallDone(true, 'Speeder arrested and booked'); }
+    }
+  }
+}
 // ---- crash reports: when a driver hits you, a police car comes and arrests them
 const cc = { on: false, cd: 0 };
 function reportCrash(v, how) {
@@ -2878,7 +3006,7 @@ function buildShops() {
   const openMat = new THREE.MeshBasicMaterial({ map: openTex, transparent: true, color: new THREE.Color(2.2, 2.2, 2.2), depthWrite: false });
   for (const sp of shopsData) {
     if (sp.type === 'metro') { metroKiosk(sp); continue; }
-    if (sp.type === 'restaurant') continue;
+    if (sp.type === 'restaurant' || sp.type === 'police') continue;
     if (sp.type === 'mart' || sp.type === 'grocery' || sp.type === 'threads') {
       const L0 = SHOP_LOOK[sp.type], ang = Math.atan2(sp.nx, sp.nz), place = (gg, x, y, z) => { gg.rotateY(ang); gg.translate(sp.dx + Math.cos(ang) * x + Math.sin(ang) * z, y, sp.dz - Math.sin(ang) * x + Math.cos(ang) * z); return gg; };
       const W = [], F = [];
@@ -2901,7 +3029,7 @@ function buildShops() {
     const ring = new THREE.Mesh(new THREE.CylinderGeometry(0.85, 0.85, 0.7, 24, 1, true), new THREE.MeshBasicMaterial({ color: new THREE.Color(0.6, 2.4, 2.2), map: beamTex, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, side: THREE.DoubleSide }));
     ring.position.set(0, CURB + 0.35, 1.3); g.add(ring); scene.add(g);
   }
-  buildMart(ROOMS.mart); buildThreads(ROOMS.threads); buildTerminal(ROOMS.terminal); buildAirstrip(ROOMS.airstrip); buildHome(ROOMS.home); buildGrocery(ROOMS.grocery); buildMetro(ROOMS.metro); buildRestaurant(ROOMS.restaurant);
+  buildMart(ROOMS.mart); buildThreads(ROOMS.threads); buildTerminal(ROOMS.terminal); buildAirstrip(ROOMS.airstrip); buildHome(ROOMS.home); buildGrocery(ROOMS.grocery); buildMetro(ROOMS.metro); buildRestaurant(ROOMS.restaurant); buildPoliceRoom(ROOMS.police);
   for (const k of SHIFT_TYPES) { ROOMS[k].hello = (ROOMS[k].hello || `${ROOMS[k].name} · walk up to the counter to buy`) + ' · stand on the green WORK spot by the door to earn money'; addWorkSpot(ROOMS[k]); }
   for (const k in ROOMS) markSeats(ROOMS[k]);
 }
@@ -3376,6 +3504,7 @@ const OUTFITS = [
   { id: 'sunset', name: 'Golden-hour polo & khakis', shirt: 0xffc857, pants: 0xb59b74, price: 75 },
   { id: 'midnight', name: 'Midnight suit', shirt: 0x1b1f2e, pants: 0x1b1f2e, price: 250 },
   { id: 'fatigues', name: 'Army fatigues', shirt: 0x4b5320, pants: 0x55603a, price: 0, mil: true },
+  { id: 'police', name: 'Solano PD uniform', shirt: 0x1d2b4a, pants: 0x131a2a, price: 0, mil: true },
 ];
 function buildGrocery(R) {
   buildRoom(R, checkerTex, 0xf6efd9); const { cx, cz, w, d } = R, P = R.parts, F = [];
@@ -4254,6 +4383,7 @@ function checkShopDoors(dt) {
 function enterShop(s) {
   {
     if (s.type === 'restaurant') restSetBrand(s);
+    if (s.type === 'police') policeSetStation(s);
     const Rm = ROOMS[s.type]; game.inside = { shop: s, room: Rm, out: new THREE.Vector3(s.dx + s.nx * 2.2, CURB, s.dz + s.nz * 2.2) };
     Rm.group.visible = true; player.pos.set(Rm.spawn.x, IY, Rm.spawn.z); player.vel.set(0, 0, 0); player.yaw = Math.PI;
     cam.yaw = 0; cam.pitch = 0.16; interiorLight.position.set(Rm.cx, IY + Rm.H - 0.8, Rm.cz); interiorLight.intensity = Rm.w > 30 ? 90 : Rm.w > 20 ? 40 : 16; interiorLight.distance = Rm.w > 30 ? 80 : 34; if (Rm.followLight) { interiorLight.intensity = Rm.lightI || 40; interiorLight.distance = Rm.lightD || 30; }
@@ -4598,7 +4728,7 @@ function refreshDishes() {
 }
 function heal(n) { player.health = Math.min(100, player.health + n); }
 const SHOP_ITEMS = {
-  restaurant: () => restMenuItems(),
+  restaurant: () => restMenuItems(), police: () => policeDeskItems(),
   mart: [
     { name: 'Café cubano', desc: 'Strong and sweet. Restores 25 health.', price: 4, buy: () => { heal(25); return 'Café cubano · +25 health'; } },
     { name: 'Mango smoothie', desc: 'Restores all your health.', price: 9, buy: () => { heal(100); return 'Fully refreshed'; } },
@@ -4942,7 +5072,7 @@ function drawBigmap() {
   const g = bmx, z = bm.zoom * dpr, X = (x) => W / 2 + (x - bm.cx) * z, Z = (v) => H / 2 + (v - bm.cz) * z;
   g.setTransform(1, 0, 0, 1, 0, 0); g.fillStyle = '#0f3a4b'; g.fillRect(0, 0, W, H);
   g.imageSmoothingEnabled = true; g.drawImage(mapImg, X(MAP.x0), Z(MAP.z0), MAP.w * z, MAP.h * z);
-  const jt = game.job || duty.tgt, f = focusPos(), tg = jt || game.waypoint, path = jt ? jt.path : game.route;
+  const jt = game.job || duty.tgt || cop.tgt, f = focusPos(), tg = jt || game.waypoint, path = jt ? jt.path : game.route;
   if (tg && path) { g.strokeStyle = game.job ? '#ffc857' : '#b18cff'; g.lineWidth = 4 * dpr; g.lineJoin = g.lineCap = 'round'; g.beginPath(); g.moveTo(X(f.x), Z(f.z)); for (const n of path) g.lineTo(X(nodeX(n)), Z(nodeZ(n))); g.lineTo(X(tg.x), Z(tg.z)); g.stroke(); }
   g.textAlign = 'center'; g.textBaseline = 'middle';
   for (const [t, x, zz, big] of MAP_LABELS) { g.font = `${big ? 800 : 700} ${Math.round((big ? 16 : 13) * dpr)}px 'Barlow Condensed', 'Arial Narrow', sans-serif`; g.lineWidth = 3.5 * dpr; g.strokeStyle = 'rgba(14,10,23,.8)'; g.strokeText(t.toUpperCase(), X(x), Z(zz)); g.fillStyle = big ? '#ffc857' : '#fff3e8'; g.fillText(t.toUpperCase(), X(x), Z(zz)); }
@@ -4963,6 +5093,7 @@ function drawBigmap() {
   if (!game.job) for (const m of markers) if (m.m.visible) dot(m.x, m.z, 6.5, '#ff3f8e');
   if (game.job) dot(game.job.x, game.job.z, 7.5, '#ffc857');
   if (duty.tgt) dot(duty.tgt.x, duty.tgt.z, 7.5, '#7dff9a');
+  if (cop.tgt) dot(cop.tgt.x, cop.tgt.z, 7.5, '#7dd3ff');
   if (game.waypoint) dot(game.waypoint.x, game.waypoint.z, 7.5, '#b18cff');
   for (const c of police) dot(c.pos.x, c.pos.z, 5, '#ff3050');
   if (flight.m && flight.y > 10) dot(flight.x, flight.z, 4, '#ffffff');
@@ -5292,7 +5423,7 @@ function drawMinimap() {
   mm.setTransform(1, 0, 0, 1, 0, 0);
   const W = (x, z) => { const rx = x - f.x, rz = z - f.z; return [R + (rx * cy - rz * sy) * scale, R + (rx * sy + rz * cy) * scale]; };
   const clampEdge = (p, m) => { const dx = p[0] - R, dy = p[1] - R, l = Math.hypot(dx, dy); if (l > R - m) return [R + dx / l * (R - m), R + dy / l * (R - m)]; return p; };
-  const j = game.job || duty.tgt, tg = j || game.waypoint, path = j ? j.path : game.route;
+  const j = game.job || duty.tgt || cop.tgt, tg = j || game.waypoint, path = j ? j.path : game.route;
   if (tg && path && path.length) {
     mm.strokeStyle = j ? 'rgba(255,200,87,.95)' : 'rgba(177,140,255,.95)'; mm.lineWidth = S * 0.028; mm.lineJoin = mm.lineCap = 'round'; mm.beginPath();
     let p = W(f.x, f.z); mm.moveTo(p[0], p[1]); for (const n of path) { p = W(nodeX(n), nodeZ(n)); mm.lineTo(p[0], p[1]); } p = W(tg.x, tg.z); mm.lineTo(p[0], p[1]); mm.stroke();
@@ -5366,14 +5497,14 @@ function updateHUD(dt) {
   if (game.heli) hint = TOUCH ? 'Helicopter tour · drag to look · tap LAND to skip' : 'Helicopter tour · mouse to look · F to land';
   if (game.wheel) hint = `Ferris wheel · ${Math.round(game.wheel.pos.y)} m up · ${TOUCH ? 'drag to look · GET OFF to stop' : 'mouse to look · F to get off'}`;
   if (shift.on) hint = shiftHint();
-  if (!hint && !game.inside && !player.car) { const ps = POLICE_ST.find((q) => Math.hypot(q.x - player.pos.x, q.z - player.pos.z) < 7); if (ps) hint = `${ps.name} · police station`; }
+  if (!hint && !game.inside && !player.car) { const ps = POLICE_ST.find((q) => Math.hypot(q.x - player.pos.x, q.z - player.pos.z) < 7); if (ps) hint = `${ps.name} · walk in${game.copJoined ? ' to start a patrol shift' : ' to join the police'}`; }
   if (cc.on && !hint) hint = ccHint();
   if (nearWorkSpot()) hint = TOUCH ? 'Work a shift at the register · tap WORK' : 'Press F to work a shift at the register';
   if (metro.ride && metro.ride.phase !== 'depart') hint = `Metro to ${metro.ride.dest.name} · ${metro.ride.phase === 'arrive' ? 'train arriving' : metro.ride.phase === 'ride' ? 'next stop ' + metro.ride.dest.name : 'arriving'}`;
   if (!hint && !game.inside && !player.car) { const ms = nearestMetro(player.pos.x, player.pos.z, 7); if (ms) hint = `Metro · ${ms.name} · walk in to ride anywhere`; }
   if (!hint && mil.near) hint = 'Fort Halcón · restricted military area · keep out';
   if (hint !== lastHint) { lastHint = hint; ui.hint.textContent = hint; ui.hint.hidden = !hint; }
-  const j0 = game.job, j = j0 ? { m: `Deliver ${j0.cargo} to ${j0.where}`, t: j0.t } : duty.on ? { m: dutyTitle(), t: duty.t } : shift.on ? { m: shiftTitle(), t: shift.t } : null;
+  const j0 = game.job, j = j0 ? { m: `Deliver ${j0.cargo} to ${j0.where}`, t: j0.t } : duty.on ? { m: dutyTitle(), t: duty.t } : cop.on ? { m: copTitle(), t: cop.call ? cop.call.t : 0 } : shift.on ? { m: shiftTitle(), t: shift.t } : null;
   if (j) { const m = j.m; if (m !== lastMission) { lastMission = m; ui.mTitle.textContent = m; } ui.mission.hidden = false; const s = Math.max(0, Math.ceil(j.t)); ui.mTimer.textContent = `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`; ui.mTimer.classList.toggle('low', s <= 10); }
   drawMinimap();
 }
@@ -5528,7 +5659,7 @@ document.addEventListener('visibilitychange', () => { if (!document.hidden && ga
 $('playBtn').addEventListener('click', () => {
   initAudio(); keepAwake(); $('title').hidden = true; $('hud').hidden = false; $('touch').hidden = !TOUCH; game.state = 'play'; cam.init = false; cam.yaw = Math.PI / 2; cam.pitch = 0.2;
   renderStars(); game.seenDistrict = '';
-  const back = !game.restored && restoreWorld(); game.restored = true;
+  const back = !game.restored && restoreWorld(); game.restored = true; if (game.copJoined && !vehicles.some((v) => v.issued)) copCruiser(null);
   setTimeout(() => toast(back ? 'Welcome back · everything is right where you left it' : 'Your home is the white villa just down the promenade. Pink markers are delivery jobs.', 4800), 600);
   const sm = Math.min(window.devicePixelRatio || 1, 3); mmCanvas.width = mmCanvas.height = Math.round(116 * sm);
 });
@@ -5569,7 +5700,7 @@ function step(dt) {
   for (const v of vehicles) {
     const d = v.pos.distanceTo(f);
     if (v.scripted) { v.root.visible = d < 420; v.lodSwap(d); continue; }
-    if (v.driver === 'ai') { if (v.held) { v.thr = 0; v.hb = true; v.str = 0; } else if (v.ai.kind === 'hwy') { if (d > 470) { placeHwy(v, true); continue; } aiHwy(v, dt); } else { if (d > 240 && !v.leaving) { recycleCar(v); continue; } if (v.leaving && d > 170) { v.dispose(); continue; } aiTraffic(v, dt); } }
+    if (v.driver === 'ai') { if (v.held) { v.thr = 0; v.hb = true; v.str = 0; } else if (v.ai.kind === 'hwy') { if (d > 470) { placeHwy(v, true); continue; } aiHwy(v, dt); } else { if (d > 240 && !v.leaving && !v.flagged) { recycleCar(v); continue; } if (v.leaving && d > 170) { v.dispose(); continue; } aiTraffic(v, dt); } }
     else if (v.driver === 'police') copAI(v, dt);
     else if (v.driver === 'resp') respAI(v, dt);
     else if (v.driver === null) { v.thr = 0; v.hb = true; if (d > 300 && v !== starterCar && !v.keep) { v.dispose(); continue; } }
@@ -5584,7 +5715,7 @@ function step(dt) {
   let tc = 0; for (const v of vehicles) if (v.driver === 'ai' && !v.leaving && v.ai.kind !== 'hwy') tc++;
   if (tc < TRAFFIC_N && Math.random() < 0.05) { const type = mpick(TRAFFIC_TYPES), car = new Vehicle(type, type === 'taxi' ? 0xf4c20d : mpick(PAINTS)); if (!recycleCar(car)) car.dispose(); }
   collideVehicles();
-  updateFlight(dt); updatePort(dt, sunState.night); updateDests(dt); updateMilitary(dt); updateTransit(dt); updateDuty(dt); updateGarage(dt);
+  updateFlight(dt); updatePort(dt, sunState.night); updateDests(dt); updateMilitary(dt); updateTransit(dt); updateDuty(dt); updateCop(dt); updateGarage(dt);
   // pedestrians
   for (const p of peds) {
     const d = p.pos.distanceTo(camera.position);
@@ -5626,13 +5757,16 @@ function collideVehicles() {
   }
 }
 function pedHits(dt) {
+  if (!player.car && !game.inside) for (const p of walkers) { const dx = p.pos.x - player.pos.x, dz = p.pos.z - player.pos.z, d = Math.hypot(dx, dz); if (d < 0.65 && d > 1e-3 && Math.abs(p.pos.y - player.pos.y) < 1.2) { const k = (0.65 - d) / d; p.pos.x += dx * k; p.pos.z += dz * k; } }
   for (const v of vehicles) {
     if (v.asleep) continue;
     const sp = v.speed(); const fx = Math.sin(v.yaw), fz = Math.cos(v.yaw), rx = -fz, rz = fx;
     for (const p of walkers) {
       const ox = p.pos.x - v.pos.x, oz = p.pos.z - v.pos.z; if (ox * ox + oz * oz > 16) continue;
       const lz = ox * fx + oz * fz, lx = ox * rx + oz * rz;
+      if (v.driver === 'player' && sp > 3 && Math.abs(p.pos.y - v.y) < 1.5) { const ah = v.vf >= 0 ? lz : -lz; if (ah > 0 && ah < v.d.l / 2 + sp * 0.45 && Math.abs(lx) < v.d.w / 2 + 0.8) { const sd = lx >= 0 ? 1 : -1, st = Math.min(v.d.w / 2 + 0.9 - Math.abs(lx), 8 * dt); p.pos.x += rx * sd * st; p.pos.z += rz * sd * st; if (p.state === 'walk') p.scare(v.pos.x, v.pos.z, 2); } }
       if (Math.abs(lx) < v.d.w / 2 + 0.3 && Math.abs(lz) < v.d.l / 2 + 0.3 && Math.abs(p.pos.y - v.y) < 1.5) {
+        if (v.driver === 'player' || v.driver === 'resp') { const sd = lx >= 0 ? 1 : -1, need = v.d.w / 2 + 0.5 - Math.abs(lx); p.pos.x += rx * sd * need; p.pos.z += rz * sd * need; continue; }
         if (sp > 3.5) { if (p.knock(v.vx, v.vz) && v.driver === 'player') { crime(p.cop ? 3 : 1, p.cop ? 'You ran down an officer' : game.wanted === 0 ? 'Hit-and-run reported' : null); sfxImpact(0.5); cam.shake = 0.25; } v.vx *= 0.94; v.vz *= 0.94; }
         else { tmpV.copy(p.pos); pushOutOfCar(v, tmpV, 0.3); p.pos.x = tmpV.x; p.pos.z = tmpV.z; }
       }
@@ -5690,7 +5824,7 @@ function snapshotWorld() {
   else if (game.heli) w.at = foot(290, -1254, Math.PI);
   else if (game.inside && metro.ride) w.at = { kind: 'shop', i: shopsData.indexOf(metro.ride.dest) };
   else if (game.inside) w.at = { kind: 'shop', i: shopsData.indexOf(game.inside.shop) };
-  else if (player.car) { const c = player.car; w.at = { kind: 'car', x: r2(c.pos.x), y: r2(c.y), z: r2(c.pos.z), yaw: r2(c.yaw), type: c.type, color: c.color ?? null, owned: c.owned || null, army: !!c.army }; }
+  else if (player.car) { const c = player.car; w.at = { kind: 'car', x: r2(c.pos.x), y: r2(c.y), z: r2(c.pos.z), yaw: r2(c.yaw), type: c.type, color: c.color ?? null, owned: c.owned || null, army: !!c.army, issued: !!c.issued }; }
   else w.at = { kind: 'foot', x: r2(player.pos.x), y: r2(player.pos.y), z: r2(player.pos.z), yaw: r2(player.yaw) };
   return w;
 }
@@ -5699,7 +5833,7 @@ function saveGame(force) {
   store.set('cash', game.cash); const w = snapshotWorld(); if (w) { store.set('world', w); store.set('garageCars', snapshotGarage()); } store.set('savedAt', Date.now());
   cloudSave(force);
 }
-function saveWhere(w) { const a = w && w.at; if (!a) return ''; if (a.kind === 'shop') { const sp = shopsData[a.i]; return sp ? (sp.type === 'home' ? 'At home' : sp.type === 'metro' ? 'Metro · ' + sp.name : sp.type === 'restaurant' ? RESTAURANTS[sp.brand].name : ROOMS[sp.type].name) : ''; } return (a.kind === 'car' ? 'Driving · ' : '') + districtAt(a.x, a.z); }
+function saveWhere(w) { const a = w && w.at; if (!a) return ''; if (a.kind === 'shop') { const sp = shopsData[a.i]; return sp ? (sp.type === 'home' ? 'At home' : sp.type === 'metro' ? 'Metro · ' + sp.name : sp.type === 'restaurant' ? RESTAURANTS[sp.brand].name : sp.type === 'police' ? sp.name : ROOMS[sp.type].name) : ''; } return (a.kind === 'car' ? 'Driving · ' : '') + districtAt(a.x, a.z); }
 function restoreWorld() {
   const w = store.get('world', null); if (!w || !w.at) return false;
   if (Number.isFinite(w.tod)) { game.tod = w.tod; updateDaylight(0); refreshEnv(true); }
@@ -5712,7 +5846,7 @@ function restoreWorld() {
     let v = null;
     if (a.owned) { v = vehicles.find((x) => x.owned === a.owned && !x.driver) || null; if (!v) { const c = CATALOG.find((x) => x.id === a.owned); if (c) v = spawnOwned(c, a.x, a.z, a.yaw); } }
     else if (a.army && mil.trucks) v = mil.trucks.find((x) => x.driver !== 'player') || null;
-    if (!v) { const t = a.type === 'police' || !DIMS[a.type] || a.type === 'bus' ? 'sedan' : a.type; v = new Vehicle(t, a.type === 'police' ? 0x111317 : t === 'taxi' ? 0xf4c20d : a.color ?? mpick(PAINTS)); v.keep = true; }
+    if (!v) { const t = (a.type === 'police' && !a.issued) || !DIMS[a.type] || a.type === 'bus' ? 'sedan' : a.type; v = new Vehicle(t, a.type === 'police' ? 0x111317 : t === 'taxi' ? 0xf4c20d : a.color ?? mpick(PAINTS)); v.keep = true; if (a.issued && t === 'police') v.issued = true; }
     v.place(a.x, a.z, a.yaw || 0, a.y || 0); player.pos.set(a.x, a.y || 0, a.z); enterCar(v);
   } else if (Number.isFinite(a.x)) { player.pos.set(a.x, surfaceH(a.x, a.z, (a.y || 0) + 0.5) + 0.05, a.z); player.vel.set(0, 0, 0); player.yaw = a.yaw || 0; player.onGround = false; }
   if (w.waypoint) setWaypoint(w.waypoint.x, w.waypoint.z);
@@ -5745,13 +5879,13 @@ async function start(data) {
     game.sound = store.get('sound', true); game.radio = store.get('radio', true); setSound(game.sound);
     player.pos.set(-494.6, 0, 16.5); player.yaw = -Math.PI / 2;
     starterCar = new Vehicle('sports', 0xff3f8e); starterCar.place(-492.4, 18.8, 0);
-    game.owned = store.get('owned', ['coral']); game.visited = store.get('visited', []); game.pantry = store.get('pantry', {}); game.dishes = store.get('dishes', []); refreshDishes(); game.family = store.get('family', []); game.enlisted = store.get('enlisted', false); game.phoneApps = store.get('phoneApps', ['shop', 'maps', 'bank', 'weather', 'settings']).filter((id) => APPS[id]); game.phoneOwned = store.get('phoneOwned', []); game.phoneWall = store.get('phoneWall', 0); game.busTickets = store.get('busTickets', 0); game.milDuties = store.get('milDuties', 0); game.garage = store.get('garage', []); buildTransit(); spawnGarage(); 
+    game.owned = store.get('owned', ['coral']); game.visited = store.get('visited', []); game.pantry = store.get('pantry', {}); game.dishes = store.get('dishes', []); refreshDishes(); game.family = store.get('family', []); game.enlisted = store.get('enlisted', false); game.copJoined = store.get('copJoined', false); game.copCalls = store.get('copCalls', 0); game.phoneApps = store.get('phoneApps', ['shop', 'maps', 'bank', 'weather', 'settings']).filter((id) => APPS[id]); game.phoneOwned = store.get('phoneOwned', []); game.phoneWall = store.get('phoneWall', 0); game.busTickets = store.get('busTickets', 0); game.milDuties = store.get('milDuties', 0); game.garage = store.get('garage', []); buildTransit(); spawnGarage(); 
     setupMarkers(); setupCash(); spawnTraffic(); spawnPeds(); spawnLotCars(); restoreGarage();
     for (let i = 0; i < HWY_N; i++) { const c = new Vehicle(mpick(TRAFFIC_TYPES), mpick(PAINTS)); if (!placeHwy(c, false)) c.dispose(); }
     applyQuality(data.quality || store.get('quality', 'ultra'));
     updateDaylight(0); refreshEnv(true);
     renderer.compile(scene, camera);
-    game.state = 'title'; window.__solanoRunning = true; window.__solanoDebug = { phone, phoneTv, phoneRender, TY_SQ, cc, reportCrash, POLICE_ST, RESTAURANTS, lots, restDine, metro, BRIDGES, startMetroRide, nearestMetro, GARAGE, garage, openSearch, closeSearch, search, shift, startShift, transitRef: () => transit, saveGame, cloud, store, phone, APPS, openPhone, closePhone, duty, DUTIES, startDuty, transit, CATALOG, DEALER, makeHuman, randomLook, poseHuman, mil, Vehicle, PAINTS, ROOMS, ferris, famList: fam.list, renderer, game, camera, cam, player, officers, police, shopsData, vehicles, flight, RING_H, peek: () => ({ shopCD, t: +game.time.toFixed(2) }), crime: (n) => crime(n, 'Test heat') };
+    game.state = 'title'; window.__solanoRunning = true; window.__solanoDebug = { cop, copStartShift, copCruiser, copNextCall, policeDeskItems, peds, walkers: () => walkers, phone, phoneTv, phoneRender, TY_SQ, cc, reportCrash, POLICE_ST, RESTAURANTS, lots, restDine, metro, BRIDGES, startMetroRide, nearestMetro, GARAGE, garage, openSearch, closeSearch, search, shift, startShift, transitRef: () => transit, saveGame, cloud, store, phone, APPS, openPhone, closePhone, duty, DUTIES, startDuty, transit, CATALOG, DEALER, makeHuman, randomLook, poseHuman, mil, Vehicle, PAINTS, ROOMS, ferris, famList: fam.list, renderer, game, camera, cam, player, officers, police, shopsData, vehicles, flight, RING_H, peek: () => ({ shopCD, t: +game.time.toFixed(2) }), crime: (n) => crime(n, 'Test heat') };
     { const sw = store.get('world', null); if (sw && sw.at) { $('playBtn').textContent = 'Continue'; const si = $('saveInfo'); si.textContent = `Saved game · ${saveWhere(sw)} · ${money(game.cash)}${cloud.restored ? ' · loaded from your account' : ''}`; si.hidden = false; $('newGameT').hidden = false; } }
     $('loading').hidden = true; $('title').hidden = false;
     renderer.setAnimationLoop(frame);
