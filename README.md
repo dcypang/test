@@ -41,7 +41,7 @@ Open `index.html` in Safari (or any modern browser). Landscape works best on a p
 | Taxi: walk up to a yellow TAXI sign, pick a destination (fare by distance), skip ahead if you like | TAXI, SKIP | F |
 | Buy a car at Coastline Motors (next to your house): walk up to any of the 100 cars, or use the sales desk for the full list; cars you own wait at your house | BUY / CARS | F |
 | Ride the Ferris wheel at Bayside ($10, one full turn, look around while you ride) | RIDE, GET OFF | F |
-| Phone: home screen, App Shop (download / buy / delete apps), FlyNow flights, BusGo tickets, Cabby taxis, Bank, Weather, Maps, Settings, games (Sky Hopper, Neon Snake, Stack Up) | phone button by your cash | T |
+| Phone: home screen, App Shop with search (download / buy / delete apps), FlyNow flights, BusGo tickets, Cabby taxis, Bank, Weather, Maps, Settings, Solano TV (watch every channel), Calculator, Notes, games (Solano Tycoon board game, Tic Tac Toe, Memory Match, Sky Hopper, Neon Snake, Stack Up) | phone button by your cash | T |
 | Delete apps: Edit on the home screen (or hold an icon), tap ×; or Delete in the App Shop | Edit / × | same |
 | Search places: type where you want to go, then Route, Taxi, Bus (drops you at the nearest stop), Metro, Drive (to an island bridge) or Fly | magnifier button, or Search on the map | / or K |
 | Solano Metro subway: walk into a red M entrance (every park, the plaza, the airport, the port, Fort Halcón and every island), walk up to a ticket machine, type where you want to go and tap Ride; the train takes you underground, then take the stairs up to the street | walk in, Ride | walk in, Enter |
