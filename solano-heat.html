@@ -48,6 +48,7 @@ button:focus-visible{outline:3px solid var(--lagoon);outline-offset:3px}
 #phoneBtn svg{width:19px;height:19px;fill:var(--shell);stroke:var(--shell)}
 #searchBtn{pointer-events:auto;width:38px;height:38px;border-radius:50%;border:1.5px solid var(--line);background:var(--glass);display:grid;place-items:center;padding:0}
 #searchBtn svg{width:19px;height:19px;stroke:var(--shell);fill:none}
+#jobsBtn{pointer-events:auto;width:38px;height:38px;border-radius:50%;border:1.5px solid var(--line);background:var(--glass);display:grid;place-items:center;padding:0}#jobsBtn svg{width:19px;height:19px;stroke:var(--shell);fill:none}
 #search{position:absolute;inset:0;z-index:58;display:flex;justify-content:center;align-items:flex-start;padding:calc(env(safe-area-inset-top,0px) + 10px) 16px 10px;box-sizing:border-box;background:rgba(8,6,14,.62);-webkit-backdrop-filter:blur(4px);backdrop-filter:blur(4px);font-family:var(--font-body)}
 #search[hidden]{display:none}
 .sr-card{width:min(560px,100%);max-height:100%;display:flex;flex-direction:column;background:#f2f2f6;color:#15161a;border-radius:18px;overflow:hidden;box-shadow:0 20px 60px rgba(0,0,0,.5)}
@@ -263,6 +264,7 @@ button:focus-visible{outline:3px solid var(--lagoon);outline-offset:3px}
     <div id="tl"><div id="clock">18:00</div><div id="district">Ocean Row</div></div>
     <div id="tr">
       <div id="cashRow"><div id="cash">$0</div>
+        <button id="jobsBtn" aria-label="Jobs"><svg viewBox="0 0 24 24"><rect x="3.5" y="7.5" width="17" height="12" rx="2.2" fill="none" stroke-width="2"/><path d="M9 7.5V5.6a1.6 1.6 0 0 1 1.6-1.6h2.8A1.6 1.6 0 0 1 15 5.6v1.9M3.5 12.5h17" fill="none" stroke-width="2"/></svg></button>
         <button id="searchBtn" aria-label="Search places"><svg viewBox="0 0 24 24"><circle cx="10.5" cy="10.5" r="6" fill="none" stroke-width="2.4"/><path d="M15 15l5.5 5.5" stroke-width="2.6" stroke-linecap="round"/></svg></button>
         <button id="phoneBtn" aria-label="Phone"><svg viewBox="0 0 24 24"><rect x="6.5" y="2" width="11" height="20" rx="2.6" fill="none" stroke-width="2"/><rect x="10" y="17.6" width="4" height="1.7" rx=".85"/></svg></button>
         <button id="pauseBtn" aria-label="Pause"><svg viewBox="0 0 14 14"><rect x="2" y="1" width="3.5" height="12" rx="1"/><rect x="8.5" y="1" width="3.5" height="12" rx="1"/></svg></button>
@@ -2306,25 +2308,29 @@ $('search').addEventListener('click', (e) => { if (e.target === $('search')) { c
   else if (b.dataset.act === 'busoff') { const st = pl.stop || nearestStopTo(pl.x, pl.z); transit.ride.offAt = st; closeSearch(); toast(`You'll get off at ${st.name}`, 3500); }
   else if (b.dataset.act === 'fly') { const f = flyOptions(), o = f.opts.find((x) => x.kind === (b.dataset.k || pl.dest)); closeSearch(); if (!o) return; if (game.wanted > 0) { toast('Lose the cops first'); return; } if (game.cash < o.price) { toast(`That flight is $${o.price}`); return; } phoneFly(o, f.from); }
 });
+$('jobsBtn').addEventListener('click', () => { initAudio(); openJobs(); });
 $('searchBtn').addEventListener('click', () => { initAudio(); if (game.state === 'search') closeSearch(); else openSearch(); });
 $('bmSearch').addEventListener('click', () => { closeMap(); openSearch(); });
 // ---------------------------------------------------------------- shop shifts: run the register at a 24/7 Mart, Mercado Fresco or Threads
 const shift = { on: false, cust: null };
-const SHIFT_TYPES = ['mart', 'grocery', 'threads', 'restaurant'];
-function shiftItem() { return { name: 'Work a shift here', desc: 'Run the register: serve 6 customers · about $15–25 each with tips, plus a $30 bonus', price: 0, label: 'JOB', sw: 0x9be15d, buy: () => { closeShopPanel(); startShift(); return null; } }; }
+const SHIFT_TYPES = ['mart', 'grocery', 'threads', 'restaurant', 'hotel'];
+const SHIFT_VERB = { restaurant: 'SERVE', hotel: 'CHECK IN' };
+const isCaptain = () => (game.copCalls || 0) >= 30 || (game.milDuties || 0) >= 20;
+function shiftItem() { const cap = isCaptain(); return { name: 'Work a shift here', desc: `${cap ? 'Captain ★ · ' : ''}Serve ${cap ? 10 : 6} customers · about ${cap ? '$22–38' : '$15–25'} each with tips, plus a $${cap ? 60 : 30} bonus`, price: 0, label: 'JOB', sw: 0x9be15d, buy: () => { closeShopPanel(); startShift(); return null; } }; }
 function startShift() {
   if (!game.inside || shift.on) return; const R = game.inside.room, type = game.inside.shop.type;
   const ct = type === 'grocery' ? R.counters.find((c) => /checkout 1/.test(c.title)) : R.counters.find((c) => c.type === type); if (!ct) return;
   let clerk = null, bd = 1e9; for (const c of R.clerks) { if (c.mannequin) continue; const d = Math.hypot(c.root.position.x - ct.x, c.root.position.z - ct.z); if (d < bd) { bd = d; clerk = c; } } if (!clerk) return;
   if (player.sit) standUp();
-  Object.assign(shift, { on: true, R, type, ct, clerk, px: clerk.root.position.x, pz: clerk.root.position.z, yaw: clerk.root.rotation.y, cust: null, served: 0, goal: 6, earned: 0, t: 150, gap: 1.2, items: [], scanT: 0, missed: 0 });
+  Object.assign(shift, { on: true, R, type, ct, clerk, px: clerk.root.position.x, pz: clerk.root.position.z, yaw: clerk.root.rotation.y, cust: null, served: 0, goal: isCaptain() ? 10 : 6, earned: 0, t: 150, gap: 1.2, items: [], scanT: 0, missed: 0 });
   clerk.root.visible = false; player.pos.set(shift.px, IY, shift.pz); player.vel.set(0, 0, 0); player.yaw = shift.yaw; cam.yaw = shift.yaw + Math.PI; cam.pitch = 0.34; cam.manual = 0;
-  toast(`Shift started at ${R.name} · serve 6 customers · tap ${type === 'restaurant' ? 'SERVE' : 'SCAN'} for each item`, 4200); sfxChime();
+  toast(`Shift started at ${R.name} · ${type === 'hotel' ? 'check in' : 'serve'} ${shift.goal} ${type === 'hotel' ? 'guests' : 'customers'}${isCaptain() ? ' · Captain ★ 1.5× pay' : ''} · tap ${SHIFT_VERB[type] || 'SCAN'} for each ${type === 'hotel' ? 'step' : 'item'}`, 4200); sfxChime();
 }
 function shiftSpawnCustomer() {
   const S = shift, R = S.R, h = makeHuman(randomLook(), false); R.group.add(h.root);
+  if (S.type === 'hotel') { const sc = new THREE.Mesh(boxAt(0.42, 0.62, 0.24, 0.42, 0.35, -0.05, mpick([0x1f6fb2, 0xc8372d, 0x2a2f38, 0xffc857, 0x2a9d8f])), vcolMat); h.root.add(sc); }
   const c = { h, x: R.spawn.x, z: R.spawn.z, yaw: Math.PI, state: 'in', items: 2 + Math.floor(Math.random() * 4), scanned: 0, waitT: 0, stuck: 0 }; S.cust = c;
-  const PAL = S.type === 'restaurant' ? [0xd99a4e, 0xf2c14e, 0xe76f51, 0xf4f4f0, 0x8ac926] : S.type === 'threads' ? [0xff6b4a, 0x2be0cf, 0xffc857, 0x9b5de5, 0x1f6fb2] : S.type === 'grocery' ? [0xd62828, 0xffb703, 0x8ac926, 0xf4efe4, 0xf2b8a0] : [0xff6b6b, 0x06d6a0, 0x118ab2, 0xffd166, 0xef476f];
+  const PAL = S.type === 'hotel' ? [0xd4af37, 0x9b5de5, 0xffffff, 0x1f6fb2, 0xc8372d] : S.type === 'restaurant' ? [0xd99a4e, 0xf2c14e, 0xe76f51, 0xf4f4f0, 0x8ac926] : S.type === 'threads' ? [0xff6b4a, 0x2be0cf, 0xffc857, 0x9b5de5, 0x1f6fb2] : S.type === 'grocery' ? [0xd62828, 0xffb703, 0x8ac926, 0xf4efe4, 0xf2b8a0] : [0xff6b6b, 0x06d6a0, 0x118ab2, 0xffd166, 0xef476f];
   const mx = (S.ct.x + S.px) / 2, mz = (S.ct.z + S.pz) / 2, dx = S.px - S.ct.x, dz = S.pz - S.ct.z, l = Math.hypot(dx, dz) || 1, sx = -dz / l, sz = dx / l;
   S.items = []; for (let i = 0; i < c.items; i++) { const off = (i - (c.items - 1) / 2) * 0.24, m = new THREE.Mesh(S.type === 'threads' ? boxAt(0.22, 0.06, 0.18, 0, 0.03, 0, PAL[i % PAL.length]) : boxAt(0.14, 0.18 + (i % 2) * 0.06, 0.12, 0, 0.1, 0, PAL[(i * 3) % PAL.length]), vcolMat); m.position.set(mx + sx * off, IY + 1.1, mz + sz * off); m.visible = false; R.group.add(m); S.items.push(m); }
 }
@@ -2332,19 +2338,19 @@ function shiftScan() {
   const S = shift, c = S.cust; if (!c || c.state !== 'wait' || c.scanned >= c.items) return;
   const m = S.items[c.scanned]; if (m) { S.R.group.remove(m); m.geometry.dispose(); } c.scanned++; S.scanT = 0.25; sfxTick(true);
   if (c.scanned >= c.items) {
-    const tip = Math.max(0, Math.round(8 - c.waitT * 0.6)), pay = 4 + c.items * 3 + tip; S.earned += pay; S.served++; addCash(pay, `Shift · ${S.R.name}`);
-    toast(`+$${pay}${tip ? ` · tip $${tip}` : ''} · ${S.served}/${S.goal} customers`, 1800); sfxChime(); c.state = 'out';
+    const tip = Math.max(0, Math.round(8 - c.waitT * 0.6)), pay = Math.round((4 + c.items * 3 + tip) * (isCaptain() ? 1.5 : 1)); S.earned += pay; S.served++; addCash(pay, `Shift · ${S.R.name}`);
+    toast(`+$${pay}${tip ? ` · tip $${tip}` : ''} · ${S.served}/${S.goal} ${S.type === 'hotel' ? 'guests' : 'customers'}`, 1800); sfxChime(); c.state = 'out';
   }
 }
 function shiftClearCustomer() { const S = shift, c = S.cust; if (!c) return; S.R.group.remove(c.h.root); for (const m of S.items) { S.R.group.remove(m); m.geometry.dispose(); } S.items = []; S.cust = null; S.gap = 1.4 + Math.random(); }
 function endShift(done) {
   const S = shift; if (!S.on) return; shiftClearCustomer(); S.on = false; S.clerk.root.visible = true; $('mission').hidden = true;
-  const bonus = S.served >= S.goal ? 30 : 0; if (bonus) addCash(bonus, `Shift bonus · ${S.R.name}`);
+  const bonus = S.served >= S.goal ? (isCaptain() ? 60 : 30) : 0; if (bonus) addCash(bonus, `Shift bonus · ${S.R.name}`);
   player.pos.set(S.ct.x, IY, S.ct.z); player.yaw = S.yaw + Math.PI; cam.yaw = S.yaw; shopCD = 1.5;
-  showBanner(done ? 'SHIFT DONE' : 'SHIFT OVER', `+$${S.earned + bonus} · ${S.served} customer${S.served === 1 ? '' : 's'}${bonus ? ' · $30 bonus' : ''}`, 'var(--money)', 3000);
+  showBanner(done ? 'SHIFT DONE' : 'SHIFT OVER', `+$${S.earned + bonus} · ${S.served} customer${S.served === 1 ? '' : 's'}${bonus ? ` · $${bonus} bonus` : ''}`, 'var(--money)', 3000);
 }
-function shiftTitle() { const S = shift; return `Shift · ${S.R.name} · ${S.served}/${S.goal} customers · $${S.earned}`; }
-function shiftHint() { const c = shift.cust; return !c ? 'Next customer coming…' : c.state === 'in' ? 'A customer is walking up…' : c.state === 'wait' ? `${c.items - c.scanned} item${c.items - c.scanned === 1 ? '' : 's'} to ${shift.type === 'restaurant' ? 'serve' : 'scan'} · ${TOUCH ? (shift.type === 'restaurant' ? 'tap SERVE' : 'tap SCAN') : 'press F'} · END stops the shift` : 'Thanks! Next customer…'; }
+function shiftTitle() { const S = shift; return `Shift · ${S.R.name} · ${S.served}/${S.goal} ${S.type === 'hotel' ? 'guests' : 'customers'} · $${S.earned}`; }
+function shiftHint() { const c = shift.cust; return !c ? 'Next customer coming…' : c.state === 'in' ? 'A customer is walking up…' : c.state === 'wait' ? `${c.items - c.scanned} ${shift.type === 'hotel' ? 'step' : 'item'}${c.items - c.scanned === 1 ? '' : 's'} to ${(SHIFT_VERB[shift.type] || 'scan').toLowerCase()} · ${TOUCH ? 'tap ' + (SHIFT_VERB[shift.type] || 'SCAN') : 'press F'} · END stops the shift` : 'Thanks! Next customer…'; }
 function updateShift(dt) {
   const S = shift, R = S.R, p = player;
   p.pos.set(S.px, IY, S.pz); p.vel.set(0, 0, 0); p.yaw = S.yaw; p.h.root.position.copy(p.pos); p.h.root.rotation.set(0, p.yaw, 0, 'YXZ'); poseHuman(p.h, dt, 0, false, game.time);
@@ -3126,6 +3132,36 @@ function buildParkingGarage(F, x0, x1, z0, z1, name) {
     ped: { stairs: w2(xs, z0 + 1.1), lift: w2(fl, z0 + 1.1), esc: w2(xe, z0 + 1.1) },
     path: { stairs: { front: w2(xs, fz), back: w2(xs, bz) }, escUp: { front: w2(xe + 0.75, fz), back: w2(xe + 0.75, bz) }, escDn: { front: w2(xe - 0.75, fz), back: w2(xe - 0.75, bz) } } });
 }
+// ---- JOBS: every job in one list · start here, go there, change jobs, or quit
+function curJob() { return shift.on ? `${shift.R.name} shift` : duty.on ? `Army · ${duty.name}` : cop.on ? 'Police patrol shift' : game.job ? 'Delivery' : null; }
+function quitCurJob(why) { if (shift.on) { const ct = shift.ct, Rm = shift.R; endShift(false); const dx = Rm.cx - ct.x, dz = Rm.cz - ct.z, l = Math.hypot(dx, dz) || 1; player.pos.x = ct.x + dx / l * 2.6; player.pos.z = ct.z + dz / l * 2.6; shopCD = 3; } if (duty.on) dutyEnd(false, why); if (cop.on) copEndShift(false, why); if (game.job) endJob(false); }
+function openJobs() {
+  if (game.state === 'shop' && game.counter && game.counter.type === 'jobs') { closeShopPanel(); return; }
+  if (game.state !== 'play') return;
+  openShopPanel({ type: 'jobs', title: `Jobs${isCaptain() ? ' · Captain ★' : ''}${curJob() ? ' · working: ' + curJob() : ''}`, outdoor: true, x: player.pos.x, z: player.pos.z });
+}
+function jobsItems() {
+  const items = [], cur = curJob(), f = phonePos(), cap = isCaptain(), dist = (x, z) => Math.hypot(x - f.x, z - f.z);
+  const near = (list, x, z) => list.reduce((a, q) => (!a || dist(x(q), z(q)) < dist(x(a), z(a)) ? q : a), null);
+  const go = (x, z, msg) => () => { if (curJob()) quitCurJob('You changed jobs'); closeShopPanel(); setWaypoint(x, z); toast(msg, 4500); return null; };
+  if (cur) items.push({ name: `Quit: ${cur}`, desc: 'Stop the job you are doing now · or pick another job below to change jobs', price: 0, label: 'QUIT', sw: 0xff6b6b, buy: () => { quitCurJob('You quit'); closeShopPanel(); return 'You stopped working'; } });
+  if (cap) items.push({ name: 'Captain ★', desc: 'You help more people everywhere: 10 customers a shift with 1.5× pay, and 6 police calls a shift', price: 0, label: '★', sw: 0xffd166, disabled: true, buy: () => null });
+  for (const [type, nm, what] of [['mart', 'Cashier · 24/7 Mart', 'scan items'], ['grocery', 'Checkout · Mercado Fresco', 'scan groceries'], ['threads', 'Sales · Threads', 'ring up clothes'], ['restaurant', 'Server · restaurant', 'serve meals'], ['hotel', 'Front desk · hotel', 'check in guests']]) {
+    const sp = near(shopsData.filter((q) => q.type === type), (q) => q.dx, (q) => q.dz); if (!sp) continue;
+    const here = !!(game.inside && game.inside.shop.type === type && game.inside.room === ROOMS[type]), place = here ? ROOMS[type].name : type === 'restaurant' ? RESTAURANTS[sp.brand].name : type === 'hotel' ? HOTELS[sp.hotel].name : ROOMS[type].name, n = cap ? 10 : 6;
+    const working = shift.on && shift.type === type && here;
+    items.push({ name: nm, desc: working ? `You're working here now` : here ? `You're here · start now: ${what} for ${n} ${type === 'hotel' ? 'guests' : 'customers'}` : `Nearest: ${place} · ${srDist(dist(sp.dx, sp.dz))} · ${what} for ${n} ${type === 'hotel' ? 'guests' : 'customers'}`, price: 0, label: working ? 'ON' : here ? 'START' : 'GO', sw: parseInt(SHOP_COL[type].slice(1), 16), disabled: working,
+      buy: here ? () => { if (curJob()) quitCurJob('You changed jobs'); closeShopPanel(); startShift(); return null; } : go(sp.dx + sp.nx * 3, sp.dz + sp.nz * 3, `Go to ${place} · walk in and stand on the green WORK spot`) });
+  }
+  const ps = near(POLICE_ST, (q) => q.x, (q) => q.z);
+  if (game.copJoined) items.push({ name: `Police patrol · ${copRank().name}`, desc: cop.on ? 'You are on patrol now' : `Answer ${cap ? 6 : 3} dispatch calls, starting right where you are · about $${Math.round(63 * copRank().mult)} a call`, price: 0, label: cop.on ? 'ON' : 'START', sw: 0x1d2b4a, disabled: cop.on, buy: () => { if (curJob()) quitCurJob('You changed jobs'); closeShopPanel(); copStartShift(null); return null; } });
+  else if (ps) items.push({ name: 'Police officer · Solano PD', desc: `Join at a front desk · nearest: ${ps.name} · ${srDist(dist(ps.x, ps.z))}`, price: 0, label: 'GO', sw: 0x8b5a2b, buy: go(ps.x, ps.z, `Go to ${ps.name} · walk in and tap Join Solano PD at the front desk`) });
+  if (game.enlisted) items.push({ name: `Army duty · ${milRank().name}`, desc: 'Pick a duty at the board just inside the Fort Halcón gate', price: 0, label: 'GO', sw: 0x4b5320, buy: go(29.2, -788, 'Go to the duty board inside the Fort Halcón gate') });
+  else items.push({ name: 'Soldier · Fort Halcón', desc: 'Enlist at the gate, then pick paid duties', price: 0, label: 'GO', sw: 0x4b5320, buy: go(31.5, -749, 'Go to the Fort Halcón gate and enlist') });
+  const ms = nearestMetro(f.x, f.z); if (ms) items.push({ name: 'Metro driver', desc: `Drive a train and stop at the STOP sign for tips · nearest: ${ms.name}`, price: 0, label: 'GO', sw: 0xe63946, buy: go(ms.dx + ms.nx * 3, ms.dz + ms.nz * 3, `Go to ${ms.name} station · tap Drive at the ticket machine`) });
+  const mk = near(markers.filter((m) => m.m.visible), (q) => q.x, (q) => q.z); if (mk) items.push({ name: 'Deliveries', desc: `Pick up a package at a pink marker and deliver it · ${srDist(dist(mk.x, mk.z))}`, price: 0, label: 'GO', sw: 0xff3f8e, buy: go(mk.x, mk.z, 'Go to the pink marker to start a delivery') });
+  return items;
+}
 // walking around a garage: elevator to any floor, stairs and escalators one floor at a time
 const GPED_NAME = { stairs: 'Stairs', lift: 'Elevator', esc: 'Escalators' }, GPED_LABEL = { stairs: 'STAIRS', lift: 'LIFT', esc: 'RIDE' };
 function nearGaragePed() {
@@ -3218,7 +3254,7 @@ function buildSuite(R) {
 }
 function hotelSetCurrent(s) {
   const H = HOTELS[s.hotel], R = ROOMS.hotel; R.name = H.name; for (const c of R.counters) if (c.type === 'hotel') c.title = H.name;
-  const mine = stayActive() && game.stay.h === s.hotel; R.hello = mine ? `Welcome back to ${H.name} · your room ${game.stay.room} is on floor ${game.stay.floor} · take the elevator` : `${H.name} · book a room at the front desk · elevators on the right`;
+  const mine = stayActive() && game.stay.h === s.hotel; R.hello = (mine ? `Welcome back to ${H.name} · your room ${game.stay.room} is on floor ${game.stay.floor} · take the elevator` : `${H.name} · book a room at the front desk · elevators on the right`) + ' · stand on the green WORK spot to work the front desk';
   const g = R.signCv.getContext('2d'); g.fillStyle = '#1b1430'; g.fillRect(0, 0, 1024, 128); g.fillStyle = '#d4af37'; g.fillRect(0, 118, 1024, 10); g.fillStyle = '#f4e9d8'; g.textAlign = 'center'; g.textBaseline = 'middle'; fitText(g, H.name.toUpperCase(), 512, 62, 960, 70); R.signTex.needsUpdate = true;
 }
 function hotelDeskItems() {
@@ -3297,7 +3333,7 @@ function policeDeskItems() {
   if (game.wanted > 0) { const fine = 50 * game.wanted; items.push({ name: 'Turn yourself in', desc: `Pay a $${fine} fine and the police stop chasing you`, price: fine, sw: 0xff6b6b, buy: () => { clearHeat(); return 'Fine paid · you are free to go'; } }); }
   if (!game.copJoined) { items.push({ name: 'Join Solano PD', desc: 'Get a badge, a uniform and your own police cruiser you can take home · officers never get arrested · work patrol shifts for pay', price: 0, label: 'JOIN', sw: 0x7dd3ff, disabled: game.wanted > 0, buy: () => { closeShopPanel(); copJoin(st); return null; } }); return items; }
   const rk = copRank(), nx = COP_RANKS[COP_RANKS.indexOf(rk) + 1];
-  if (!cop.on) items.push({ name: 'Start a patrol shift', desc: `Answer 3 dispatch calls: patrols, crashes and speeders · about $${Math.round(63 * rk.mult)} a call`, price: 0, label: 'GO', sw: 0x9be15d, disabled: game.wanted > 0 || duty.on || !!game.job, buy: () => { closeShopPanel(); copStartShift(st); return null; } });
+  if (!cop.on) items.push({ name: 'Start a patrol shift', desc: `Answer ${isCaptain() ? 6 : 3} dispatch calls: patrols, crashes and speeders · about $${Math.round(63 * rk.mult)} a call`, price: 0, label: 'GO', sw: 0x9be15d, disabled: game.wanted > 0 || duty.on || !!game.job, buy: () => { closeShopPanel(); copStartShift(st); return null; } });
   else items.push({ name: 'End your shift', desc: `${cop.good} call${cop.good === 1 ? '' : 's'} done · $${cop.earned} earned so far`, price: 0, label: 'END', sw: 0xff6b6b, buy: () => { closeShopPanel(); copEndShift(false, 'You clocked out'); return null; } });
   items.push({ name: 'Bring my cruiser here', desc: 'Your own police car gets parked right outside this station · drive it anywhere and take it home', price: 0, label: 'CAR', sw: 0x1d2b4a, buy: () => (copCruiser(st) ? 'Your cruiser is parked outside' : 'You are using your cruiser right now') });
   const wearing = game.outfit === 'police'; items.push({ name: wearing ? 'Change out of uniform' : 'Put on your uniform', desc: wearing ? 'Back into your own clothes' : 'Solano PD blues', price: 0, label: wearing ? 'OFF' : 'WEAR', sw: 0x1d2b4a, buy: () => { copWear(!wearing); return wearing ? 'Back in your own clothes' : 'Uniform on'; } });
@@ -3322,12 +3358,12 @@ function copJoin(st) {
 }
 function copStartShift(st) {
   if (duty.on || game.job || shift.on) { toast('Finish what you are doing first'); return; }
-  Object.assign(cop, { on: true, call: null, left: 3, earned: 0, good: 0, gap: 2, tgt: null }); copWear(true);
+  Object.assign(cop, { on: true, call: null, left: isCaptain() ? 6 : 3, total: isCaptain() ? 6 : 3, earned: 0, good: 0, gap: 2, tgt: null }); copWear(true);
   if (!vehicles.some((q) => q.issued)) copCruiser(st);
-  toast(`Patrol shift started · ${copRank().name} · dispatch will send you 3 calls · your cruiser is outside`, 4500); sfxChime();
+  toast(`Patrol shift started · ${copRank().name} · dispatch will send you ${cop.total} calls${isCaptain() ? ' · Captain ★' : ''} · your cruiser is outside`, 4500); sfxChime();
 }
 function policeSafe() { if (game.inside) return game.inside.room === ROOMS.police; const f = focusPos(); return POLICE_ST.some((ps) => Math.hypot(f.x - ps.x, f.z - ps.z) < 40); }
-function copTitle() { return cop.call ? `${cop.call.title} · call ${4 - cop.left}/3` : cop.left > 0 ? 'Patrol shift · waiting for dispatch…' : 'Patrol shift'; }
+function copTitle() { return cop.call ? `${cop.call.title} · call ${cop.total + 1 - cop.left}/${cop.total}` : cop.left > 0 ? 'Patrol shift · waiting for dispatch…' : 'Patrol shift'; }
 function copNextCall() {
   const f = focusPos(), kinds = ['patrol', 'crash', 'speeder'], rk = copRank(); let kind = kinds[(3 - cop.left + Math.floor(Math.random() * 3)) % 3];
   const c = { kind, t: 200, hold: 0 };
@@ -3353,8 +3389,8 @@ function copCallDone(ok, msg) {
 }
 function copEndShift(done, why) {
   if (!cop.on) return; if (cop.call) copCallDone(false, why || 'Shift over'); cop.on = false; cop.tgt = null; if (cop.marker) cop.marker.visible = false; $('mission').hidden = true;
-  const bonus = done && cop.good === 3 ? Math.round(40 * copRank().mult) : 0; if (bonus) addCash(bonus, 'Solano PD · shift bonus');
-  setTimeout(() => showBanner('SHIFT OVER', `+$${cop.earned + bonus} · ${cop.good} of 3 calls${bonus ? ` · $${bonus} bonus` : ''}${why ? ' · ' + why : ''}`, done ? 'var(--money)' : '#7dd3ff', 3200), done ? 2700 : 0);
+  const bonus = done && cop.good === cop.total ? Math.round(40 * copRank().mult) : 0; if (bonus) addCash(bonus, 'Solano PD · shift bonus');
+  setTimeout(() => showBanner('SHIFT OVER', `+$${cop.earned + bonus} · ${cop.good} of ${cop.total} calls${bonus ? ` · $${bonus} bonus` : ''}${why ? ' · ' + why : ''}`, done ? 'var(--money)' : '#7dd3ff', 3200), done ? 2700 : 0);
 }
 function updateCop(dt) {
   if (game.wanted > 0 && game.inside && game.inside.room === ROOMS.police && game.state === 'play') { cop.safeT = (cop.safeT || 0) + dt; if (cop.safeT > 3) { cop.safeT = 0; clearHeat(); toast('You are safe inside the police station · the chase is called off', 4200); sfxChime(); } } else cop.safeT = 0;
@@ -5181,7 +5217,7 @@ function refreshDishes() {
 }
 function heal(n) { player.health = Math.min(100, player.health + n); }
 const SHOP_ITEMS = {
-  restaurant: () => restMenuItems(), police: () => policeDeskItems(), sky: () => skyTicketItems(), gped: () => gpedItems(), hotel: () => hotelDeskItems(), elevator: () => elevatorItems(),
+  restaurant: () => restMenuItems(), police: () => policeDeskItems(), sky: () => skyTicketItems(), jobs: () => jobsItems(), gped: () => gpedItems(), hotel: () => hotelDeskItems(), elevator: () => elevatorItems(),
   mart: [
     { name: 'Café cubano', desc: 'Strong and sweet. Restores 25 health.', price: 4, buy: () => { heal(25); return 'Café cubano · +25 health'; } },
     { name: 'Mango smoothie', desc: 'Restores all your health.', price: 9, buy: () => { heal(100); return 'Fully refreshed'; } },
@@ -5265,7 +5301,7 @@ function renderShop() {
 function openShopPanel(ct) {
   if (ct.type === 'metro') { openSearch('metro'); return; } game.counter = ct; game.state = 'shop'; player.autoTo = null; renderShop(); $('shop').hidden = false; if (document.pointerLockElement) document.exitPointerLock(); }
 function closeShopPanel() {
-  $('shop').hidden = true; game.state = 'play'; if (!game.inside) return; const ct = game.counter, Rm = game.inside.room, dx = Rm.cx - ct.x, dz = Rm.cz - ct.z, l = Math.hypot(dx, dz) || 1;
+  $('shop').hidden = true; game.state = 'play'; if (!game.inside || (game.counter && game.counter.type === 'jobs')) return; const ct = game.counter, Rm = game.inside.room, dx = Rm.cx - ct.x, dz = Rm.cz - ct.z, l = Math.hypot(dx, dz) || 1;
   if (ct.back) { player.pos.x = ct.x + ct.back[0]; player.pos.z = ct.z + ct.back[1]; } else { player.pos.x = ct.x + dx / l * 1.7; player.pos.z = ct.z + dz / l * 1.7; } shopCD = 0.6; if (ct.desk && ct.desk.busy === 'player') ct.desk.busy = null;
 }
 $('shopClose').addEventListener('click', closeShopPanel);
@@ -5718,6 +5754,7 @@ addEventListener('keydown', (e) => {
   if (e.repeat) return;
   if (game.state === 'search') { if (c === 'Escape') closeSearch(); return; }
   if ((c === 'Slash' || c === 'KeyK') && game.state === 'play') { e.preventDefault(); openSearch(); return; }
+  if (c === 'KeyJ' && game.state === 'play') { e.preventDefault(); openJobs(); return; }
   if (game.state === 'phone') { if (c === 'Escape' || c === 'KeyT') closePhone(); else if (phone.games) { phone.games.G.key(c); if (['Space', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(c)) e.preventDefault(); } return; }
   if (c === 'KeyT' && game.state === 'play') { openPhone(); return; }
   if (c === 'KeyM') { if (game.state === 'play') openMap(); else if (game.state === 'map') closeMap(); return; }
@@ -5921,7 +5958,7 @@ function updateHUD(dt) {
   const dboard = !c && nearDutyBoard(), tb = !c && busAtStop(), tk = !c && nearRank(), dcar = !c && nearDealerCar(), ddesk = !c && nearDealerDesk(), stop = !c && !tb && nearStop();
   const ne = !c && nearEnlist(), nh = !c && nearHeliPad(), fw = !c && nearFerris(), near = !c && !fw && !ne && !nh && !dboard && !tb && !tk && !dcar && !ddesk && !transit.ride && !game.inside && !game.ride && !game.wheel && !game.heli && nearestEnterable(3.8);
   const seat = game.inside ? game.nearSeat : null, hug0 = hugTarget(), hugM = hug0 && (game.inside || !near || game.famD < 1.0) ? hug0 : null;
-  ui.bCar.textContent = shift.on ? (shift.cust && shift.cust.state === 'wait' ? (shift.type === 'restaurant' ? 'SERVE' : 'SCAN') : 'WAIT') : metro.ride && metro.ride.phase !== 'depart' ? (metro.ride.drive ? 'DRIVING' : 'RIDING') : skyrail.ride && skyrail.ride.phase !== 'wait' ? 'RIDING' : game.pmove ? '…' : nearSky() ? 'TICKET' : nearGaragePed() ? GPED_LABEL[nearGaragePed().kind] : nearWorkSpot() ? 'WORK' : transit.ride ? (transit.ride.kind === 'bus' ? 'GET OFF' : 'SKIP') : dboard ? 'DUTY' : tb ? 'BOARD' : tk ? 'TAXI' : dcar ? 'BUY' : ddesk ? 'CARS' : game.wheel ? 'GET OFF' : game.heli ? 'LAND' : ne ? 'ENLIST' : nh ? 'FLY' : fw ? 'RIDE' : game.ride ? 'LAND' : c ? 'GET OUT' : hugM && !game.inside ? 'HUG' : player.sit ? (player.sit.bed ? 'GET UP' : 'STAND') : hugM ? 'HUG' : seat ? (seat.bed ? 'LIE DOWN' : seat.toilet ? 'USE' : 'SIT') : 'GET IN'; ui.bCar.classList.toggle('ready', nearWorkSpot() || !!nearSky() || !!nearGaragePed() || (shift.on && !!shift.cust && shift.cust.state === 'wait') || !!near || fw || ne || nh || dboard || !!tb || !!tk || !!dcar || ddesk || !!hugM || (!!seat && !player.sit));
+  ui.bCar.textContent = shift.on ? (shift.cust && shift.cust.state === 'wait' ? (SHIFT_VERB[shift.type] || 'SCAN') : 'WAIT') : metro.ride && metro.ride.phase !== 'depart' ? (metro.ride.drive ? 'DRIVING' : 'RIDING') : skyrail.ride && skyrail.ride.phase !== 'wait' ? 'RIDING' : game.pmove ? '…' : nearSky() ? 'TICKET' : nearGaragePed() ? GPED_LABEL[nearGaragePed().kind] : nearWorkSpot() ? 'WORK' : transit.ride ? (transit.ride.kind === 'bus' ? 'GET OFF' : 'SKIP') : dboard ? 'DUTY' : tb ? 'BOARD' : tk ? 'TAXI' : dcar ? 'BUY' : ddesk ? 'CARS' : game.wheel ? 'GET OFF' : game.heli ? 'LAND' : ne ? 'ENLIST' : nh ? 'FLY' : fw ? 'RIDE' : game.ride ? 'LAND' : c ? 'GET OUT' : hugM && !game.inside ? 'HUG' : player.sit ? (player.sit.bed ? 'GET UP' : 'STAND') : hugM ? 'HUG' : seat ? (seat.bed ? 'LIE DOWN' : seat.toilet ? 'USE' : 'SIT') : 'GET IN'; ui.bCar.classList.toggle('ready', nearWorkSpot() || !!nearSky() || !!nearGaragePed() || (shift.on && !!shift.cust && shift.cust.state === 'wait') || !!near || fw || ne || nh || dboard || !!tb || !!tk || !!dcar || ddesk || !!hugM || (!!seat && !player.sit));
   ui.bAction.textContent = shift.on ? 'END' : c ? 'DRIFT' : player.sit && player.sit.bed ? 'SLEEP' : player.sit && player.sit.tv ? (game.tvWatch ? 'CHANNEL' : 'TV') : 'JUMP'; ui.bHorn.hidden = !c; ui.bRadio.hidden = !c; ui.bBlinkL.hidden = ui.bBlinkR.hidden = !c; { const bl = c ? c.blink : 0, lit = c ? blinkLit(c) : false; ui.bBlinkL.classList.toggle('sel', (bl & 1) > 0); ui.bBlinkR.classList.toggle('sel', (bl & 2) > 0); ui.bBlinkL.classList.toggle('flash', lit && (bl & 1) > 0); ui.bBlinkR.classList.toggle('flash', lit && (bl & 2) > 0); ui.blkL.classList.toggle('on', lit && (bl & 1) > 0); ui.blkR.classList.toggle('on', lit && (bl & 2) > 0); } ui.bAction.style.visibility = game.wheel || game.ride || game.heli || transit.ride ? 'hidden' : '';
   let hint = '';
   if (near && !TOUCH) hint = near.driver === 'ai' ? 'Press F to carjack' : near.isCop && near.driver ? 'Press F to steal the cruiser' : 'Press F to get in';
@@ -6348,7 +6385,7 @@ async function start(data) {
     applyQuality(data.quality || store.get('quality', 'ultra'));
     updateDaylight(0); refreshEnv(true);
     renderer.compile(scene, camera);
-    game.state = 'title'; window.__solanoRunning = true; window.__solanoDebug = { nearGaragePed, garageMove, SKY, skyrail, startSkyRide, metroStops, HOTELS, GARAGES, hotelAvail, stayBook, stayActive, goToSuite, decks, gameDate, nextDay, sleepUntil, metroDriveHint, notesList, calHolidays, policeSafe, busted, police, cop, copStartShift, copCruiser, copNextCall, policeDeskItems, peds, walkers: () => walkers, phone, phoneTv, phoneRender, TY_SQ, cc, reportCrash, POLICE_ST, RESTAURANTS, lots, restDine, metro, BRIDGES, startMetroRide, nearestMetro, GARAGE, garage, openSearch, closeSearch, search, shift, startShift, transitRef: () => transit, saveGame, cloud, store, phone, APPS, openPhone, closePhone, duty, DUTIES, startDuty, transit, CATALOG, DEALER, makeHuman, randomLook, poseHuman, mil, Vehicle, PAINTS, ROOMS, ferris, famList: fam.list, renderer, game, camera, cam, player, officers, police, shopsData, vehicles, flight, RING_H, peek: () => ({ shopCD, t: +game.time.toFixed(2) }), crime: (n) => crime(n, 'Test heat') };
+    game.state = 'title'; window.__solanoRunning = true; window.__solanoDebug = { openJobs, jobsItems, isCaptain, endShift, nearGaragePed, garageMove, SKY, skyrail, startSkyRide, metroStops, HOTELS, GARAGES, hotelAvail, stayBook, stayActive, goToSuite, decks, gameDate, nextDay, sleepUntil, metroDriveHint, notesList, calHolidays, policeSafe, busted, police, cop, copStartShift, copCruiser, copNextCall, policeDeskItems, peds, walkers: () => walkers, phone, phoneTv, phoneRender, TY_SQ, cc, reportCrash, POLICE_ST, RESTAURANTS, lots, restDine, metro, BRIDGES, startMetroRide, nearestMetro, GARAGE, garage, openSearch, closeSearch, search, shift, startShift, transitRef: () => transit, saveGame, cloud, store, phone, APPS, openPhone, closePhone, duty, DUTIES, startDuty, transit, CATALOG, DEALER, makeHuman, randomLook, poseHuman, mil, Vehicle, PAINTS, ROOMS, ferris, famList: fam.list, renderer, game, camera, cam, player, officers, police, shopsData, vehicles, flight, RING_H, peek: () => ({ shopCD, t: +game.time.toFixed(2) }), crime: (n) => crime(n, 'Test heat') };
     { const sw = store.get('world', null); if (sw && sw.at) { $('playBtn').textContent = 'Continue'; const si = $('saveInfo'); si.textContent = `Saved game · ${saveWhere(sw)} · ${money(game.cash)}${cloud.restored ? ' · loaded from your account' : ''}`; si.hidden = false; $('newGameT').hidden = false; } }
     $('loading').hidden = true; $('title').hidden = false;
     renderer.setAnimationLoop(frame);
