@@ -53,6 +53,7 @@ Open `index.html` in Safari (or any modern browser). Landscape works best on a p
 | Police work: walk into any of the three Solano PD stations, join at the front desk, start a patrol shift and answer 3 dispatch calls (patrols, crash scenes, pulling over speeders) · ranks from Cadet to Captain raise your pay | walk in, front desk | walk in, F |
 | Your police cruiser: joining gives you your own cruiser · drive it anywhere and park it in your garage to take it home (it stays after a restart) · Bring my cruiser here at any front desk | — | — |
 | People step out of your way when you walk or drive, so you never knock anyone down | — | — |
+| Getting arrested: crimes (carjacking near cops, ramming or stealing a police car, sneaking into Fort Halcón) give wanted stars, and cops arrest you if they catch you stopped · police officers never get wanted stars or arrested · police station grounds are a safe zone, and walking into a station ends the chase | — | — |
 | Work a shift at a 24/7 Mart, Mercado Fresco, Threads or any restaurant: stand on the green WORK HERE spot just inside the door (or pick Work a shift here at the counter), then scan each customer's items | WORK, SCAN, END | F, Space |
 | Pause (quality, time of day, sound, New game) | II button | Esc |
 | Continue where you left off: the game saves itself every few seconds and when you leave | Continue | Continue |
