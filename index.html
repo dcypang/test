@@ -131,7 +131,7 @@ button:focus-visible{outline:3px solid var(--lagoon);outline-offset:3px}
 .ph-calc{flex:1;min-height:0;display:flex;flex-direction:column;background:#111;padding:3cqw;gap:2.5cqw}.ph-cdisp{color:#fff;font:300 13cqw system-ui,sans-serif;text-align:right;padding:2cqw 2cqw 0;overflow:hidden;white-space:nowrap}
 .ph-cgrid{flex:1;min-height:0;display:grid;grid-template-columns:repeat(4,1fr);gap:2.4cqw}.ph-cgrid button{border:0;border-radius:6cqw;background:#333;color:#fff;font:500 6.5cqw system-ui,sans-serif}.ph-cgrid button.op{background:#ff9f1c}.ph-cgrid button.fn{background:#a5a5a5;color:#111}.ph-cgrid button:active{filter:brightness(1.3)}
 .ph-notes{width:100%;box-sizing:border-box;min-height:60cqh;border:0;border-radius:3cqw;padding:3cqw;background:#fffbe6;font:500 16px system-ui,sans-serif;color:#15161a;resize:none;outline:none}
-.cal-today{padding:.5cqw 1cqw 3cqw;color:#c8372d;font:700 3.5cqw system-ui,sans-serif;text-transform:uppercase}.cal-today b{display:block;color:#15161a;font-size:6.4cqw;text-transform:none;margin-top:.5cqw}
+.cal-today{padding:.5cqw 1cqw 3cqw;color:#c8372d;font:700 3.5cqw system-ui,sans-serif;text-transform:uppercase}.cal-today small{display:block;margin-top:1cqw;color:#8a8f98;font:500 3.2cqw system-ui,sans-serif;text-transform:none}.cal-today b{display:block;color:#15161a;font-size:6.4cqw;text-transform:none;margin-top:.5cqw}
 .cal-bar{display:flex;align-items:center;gap:2cqw;margin:0 0 2cqw}.cal-bar b{flex:1;font-size:4.8cqw;color:#15161a}.cal-bar button{border:0;background:#e2e2e8;border-radius:2.5cqw;min-width:8.5cqw;height:8.5cqw;font:700 4.8cqw system-ui,sans-serif;color:#1f6fb2}.cal-bar .cal-t{padding:0 3cqw;font-size:3.6cqw}
 .cal-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:.8cqw;margin-bottom:2.5cqw}.cal-h{text-align:center;font:700 3.2cqw system-ui,sans-serif;color:#8a8f98;padding-bottom:1cqw}.cal-d{position:relative;border:0;background:none;aspect-ratio:1;border-radius:50%;font:600 4cqw system-ui,sans-serif;color:#15161a;padding:0}.cal-d.sel{background:#dde6f3}.cal-d.today{background:#e63946;color:#fff}.cal-d i{position:absolute;left:50%;bottom:.5cqw;width:1.3cqw;height:1.3cqw;margin-left:-.65cqw;border-radius:50%;background:#ff9f1c}
 .cal-ic{flex:none;width:9cqw;height:9cqw;display:grid;place-items:center;font-size:5.6cqw}.cal-add{display:flex;gap:2cqw;margin-top:2.5cqw}.cal-add input{flex:1;min-width:0;border:0;border-radius:3cqw;background:#e2e2e8;padding:2.4cqw 3cqw;font:500 16px system-ui,sans-serif;color:#15161a;outline:none}
@@ -1649,7 +1649,7 @@ const APPS = {
   tv: { name: 'Solano TV', cat: 'Entertainment', price: 0, canvas: true, bg: 'linear-gradient(160deg,#ff6b6b,#9b1d4a)', hint: 'Tap a channel', keys: 'tv television watch shows news sports soccer cartoon movies channels video live stream', desc: 'Watch every Solano TV channel live: news, sports, cartoons and the sky cam', svg: `<rect x="3" y="6" width="18" height="12" rx="2" fill="${W2}"/><rect x="5" y="8" width="14" height="8" rx="1" fill="#9b1d4a"/><path d="M9 3.5l3 2.5 3-2.5" stroke="${W2}" stroke-width="1.6" fill="none"/><path d="M10.5 10v4l3.5-2z" fill="${W2}"/>` },
   calc: { name: 'Calculator', cat: 'Utilities', price: 0, bg: 'linear-gradient(160deg,#5c636b,#24282d)', keys: 'calculator math numbers add sums plus minus', desc: 'Add, subtract, multiply and divide', svg: `<rect x="5" y="2.5" width="14" height="19" rx="2.5" fill="${W2}"/><rect x="7.2" y="4.8" width="9.6" height="4" rx="1" fill="#24282d"/><circle cx="9" cy="12.5" r="1.1" fill="#24282d"/><circle cx="12" cy="12.5" r="1.1" fill="#24282d"/><circle cx="15" cy="12.5" r="1.1" fill="#ff9f1c"/><circle cx="9" cy="16.5" r="1.1" fill="#24282d"/><circle cx="12" cy="16.5" r="1.1" fill="#24282d"/><circle cx="15" cy="16.5" r="1.1" fill="#ff9f1c"/>` },
   subway: { name: 'MetroGo', cat: 'Travel', price: 0, bg: 'linear-gradient(160deg,#ff6b6b,#c1121f)', keys: 'metro subway underground train transit tube station tickets', desc: 'The Solano Metro underground: a map of every station, the nearest one, and tickets to anywhere', svg: `<rect x="5" y="3" width="14" height="15" rx="4" fill="${W2}"/><rect x="7" y="6" width="10" height="5" rx="1.2" fill="#c1121f"/><circle cx="9" cy="14.3" r="1.3" fill="#c1121f"/><circle cx="15" cy="14.3" r="1.3" fill="#c1121f"/><path d="M8 18l-2 3M16 18l2 3" stroke="${W2}" stroke-width="1.8" stroke-linecap="round"/>` },
-  cal: { name: 'Calendar', cat: 'Utilities', price: 0, bg: '#ffffff', keys: 'calendar date day month year events holidays schedule planner today', desc: "Today's date, month and year · holidays, Solano events and your own plans", get svg() { const d = new Date(); return `<rect x="3" y="3.5" width="18" height="17.5" rx="3" fill="#fff" stroke="#e2e2e8" stroke-width=".6"/><path d="M3 6.5a3 3 0 0 1 3-3h12a3 3 0 0 1 3 3V9H3z" fill="#e63946"/><text x="12" y="7.9" font-size="3.6" font-weight="800" text-anchor="middle" fill="#fff" font-family="system-ui,sans-serif">${['SUN', 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT'][d.getDay()]}</text><text x="12" y="18.6" font-size="9" font-weight="700" text-anchor="middle" fill="#15161a" font-family="system-ui,sans-serif">${d.getDate()}</text>`; } },
+  cal: { name: 'Calendar', cat: 'Utilities', price: 0, bg: '#ffffff', keys: 'calendar date day month year events holidays schedule planner today', desc: "Today's date, month and year · holidays, Solano events and your own plans", get svg() { const d = gameDate(); return `<rect x="3" y="3.5" width="18" height="17.5" rx="3" fill="#fff" stroke="#e2e2e8" stroke-width=".6"/><path d="M3 6.5a3 3 0 0 1 3-3h12a3 3 0 0 1 3 3V9H3z" fill="#e63946"/><text x="12" y="7.9" font-size="3.6" font-weight="800" text-anchor="middle" fill="#fff" font-family="system-ui,sans-serif">${['SUN', 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT'][d.getDay()]}</text><text x="12" y="18.6" font-size="9" font-weight="700" text-anchor="middle" fill="#15161a" font-family="system-ui,sans-serif">${d.getDate()}</text>`; } },
   notes: { name: 'Notes', cat: 'Utilities', price: 0, bg: 'linear-gradient(160deg,#ffe066,#f4b400)', keys: 'notes write text memo list todo diary stories story reminders remember', desc: 'Notes, stories and reminders · everything stays saved until you delete it', svg: `<rect x="5" y="3" width="14" height="18" rx="2" fill="${W2}"/><path d="M8 8h8M8 11.5h8M8 15h5" stroke="#f4b400" stroke-width="1.6" stroke-linecap="round"/>` },
 };
 const phone = { open: false, app: null, edit: false, dl: {}, games: null, cab: null, lp: 0, lpFired: false, popT: 0 };
@@ -1672,7 +1672,7 @@ function phoneRender() {
   scr.style.background = !a ? PH_WALLS[game.phoneWall % PH_WALLS.length] : game_ ? '#000' : '#f2f2f6'; scr.classList.toggle('light', !!a && !game_);
   if (!a) {
     const w = weatherRows()[0];
-    body.innerHTML = `<div class="ph-top"><div class="ph-date">Solano<small>${w.sunny ? 'Sunny' : 'Partly cloudy'} · ${w.tmp}°F</small></div><button class="ph-pill" data-act="edit">${phone.edit ? 'Done' : 'Edit'}</button></div>
+    body.innerHTML = `<div class="ph-top"><div class="ph-date">Solano<small>${fmtGameDate(true)} · ${w.sunny ? 'Sunny' : 'Partly cloudy'} · ${w.tmp}°F</small></div><button class="ph-pill" data-act="edit">${phone.edit ? 'Done' : 'Edit'}</button></div>
       <div class="ph-grid${phone.edit ? ' wiggle' : ''}">${game.phoneApps.map((id) => `<button class="ph-app" data-open="${id}">${icon(id)}${phone.edit && !ph(id).builtin ? `<span class="ph-x" data-del="${id}" aria-label="Delete ${esc(ph(id).name)}">×</span>` : ''}<span class="ph-lbl">${esc(ph(id).name)}</span></button>`).join('')}</div>
       <div class="ph-tip">${phone.edit ? 'Tap × to delete an app · tap Done when finished' : game.phoneApps.length < 7 ? 'Get more apps and games in the App Shop' : 'Hold an app to delete it'}</div>`;
     return;
@@ -1718,7 +1718,7 @@ function phoneRender() {
     if (n) html = `<div class="ph-head"><button data-note="back" aria-label="Back to all notes">‹</button>${NOTE_KIND[n.kind][1]}<span>${new Date(n.at).toLocaleDateString()}</span></div><div class="ph-scroll"><textarea class="ph-notes" id="phNotes" placeholder="${n.kind === 'story' ? 'Once upon a time…' : n.kind === 'remind' ? 'Something to remember…' : 'Write anything…'}" maxlength="20000">${esc(n.text)}</textarea><div class="ph-note">Saved automatically · erasing the words keeps this ${NOTE_KIND[n.kind][1].toLowerCase()} · only Delete removes it</div><button class="ph-del" data-note="del:${n.id}">${phone.delArm === n.id ? 'Tap again to delete it for good' : `Delete ${NOTE_KIND[n.kind][1].toLowerCase()}`}</button></div>`;
     else html = head() + `<div class="ph-scroll"><div class="note-new">${Object.entries(NOTE_KIND).map(([k, [ic, nm]]) => `<button data-note="new:${k}">${ic} New ${nm.toLowerCase()}</button>`).join('')}</div>` + (L.length ? L.slice().sort((x, y) => y.at - x.at).map((x) => `<button class="ph-row" data-note="open:${x.id}"><span class="cal-ic">${NOTE_KIND[x.kind][0]}</span><div class="ph-meta"><b>${esc(noteTitle(x))}</b><small>${NOTE_KIND[x.kind][1]} · ${new Date(x.at).toLocaleDateString()}${notePreview(x) ? ' · ' + esc(notePreview(x)) : ''}</small></div></button>`).join('') : '<div class="ph-note">Nothing here yet · tap New note, New story or New reminder</div>') + '</div>';
   } else if (a === 'cal') {
-    const now = new Date(), today = calKey(now), C = phone.cal || (phone.cal = { y: now.getFullYear(), m: now.getMonth(), sel: today });
+    const now = gameDate(), today = calKey(now), C = phone.cal || (phone.cal = { y: now.getFullYear(), m: now.getMonth(), sel: today }); if (C.day !== today) Object.assign(C, { y: now.getFullYear(), m: now.getMonth(), sel: today, day: today });
     const first = new Date(C.y, C.m, 1), days = new Date(C.y, C.m + 1, 0).getDate(), hol = calHolidays(C.y), mine = store.get('calEvents', {});
     let grid = CAL_DAYS.map((d) => `<span class="cal-h">${d[0]}</span>`).join(''); for (let i = 0; i < first.getDay(); i++) grid += '<span></span>';
     for (let d = 1; d <= days; d++) { const k = calKey(new Date(C.y, C.m, d)), dot = hol[k] || (mine[k] && mine[k].length); grid += `<button class="cal-d${k === today ? ' today' : ''}${k === C.sel ? ' sel' : ''}" data-cal="day:${k}">${d}${dot ? '<i></i>' : ''}</button>`; }
@@ -1726,13 +1726,13 @@ function phoneRender() {
     (calHolidays(sy)[C.sel] || []).forEach((n) => evs.push(`<div class="ph-row"><span class="cal-ic">🎉</span><div class="ph-meta"><b>${esc(n)}</b><small>Holiday</small></div></div>`));
     CAL_WEEKLY[sd.getDay()].forEach(([n, t, k]) => evs.push(`<div class="ph-row"><span class="cal-ic">📍</span><div class="ph-meta"><b>${esc(n)}</b><small>${t} · every ${CAL_DAYS_LONG[sd.getDay()]} in Solano</small></div><button class="ph-btn" data-cal="go:${k}">GO</button></div>`));
     (mine[C.sel] || []).forEach((n, i) => evs.push(`<div class="ph-row"><span class="cal-ic">⭐</span><div class="ph-meta"><b>${esc(n)}</b><small>Your event</small></div><button class="ph-link" data-cal="rm:${i}">Delete</button></div>`));
-    html = head() + `<div class="ph-scroll"><div class="cal-today">${CAL_DAYS_LONG[now.getDay()]}<b>${CAL_MONTHS[now.getMonth()]} ${now.getDate()}, ${now.getFullYear()}</b></div><div class="cal-bar"><button data-cal="prev" aria-label="Previous month">‹</button><b>${CAL_MONTHS[C.m]} ${C.y}</b><button data-cal="next" aria-label="Next month">›</button><button class="cal-t" data-cal="today">Today</button></div><div class="cal-grid">${grid}</div><div class="ph-sec">${CAL_DAYS_LONG[sd.getDay()]}, ${CAL_MONTHS[sd.getMonth()]} ${sd.getDate()}${C.sel === today ? ' · today' : ''}</div>${evs.join('')}<div class="cal-add"><input id="calInput" placeholder="Add your own event…" maxlength="80" enterkeyhint="done"><button class="ph-btn" data-cal="add">ADD</button></div></div>`;
+    html = head() + `<div class="ph-scroll"><div class="cal-today">${CAL_DAYS_LONG[now.getDay()]} · in Solano<b>${CAL_MONTHS[now.getMonth()]} ${now.getDate()}, ${now.getFullYear()}</b><small>The date moves to the next day at midnight and when you sleep through the night</small></div><div class="cal-bar"><button data-cal="prev" aria-label="Previous month">‹</button><b>${CAL_MONTHS[C.m]} ${C.y}</b><button data-cal="next" aria-label="Next month">›</button><button class="cal-t" data-cal="today">Today</button></div><div class="cal-grid">${grid}</div><div class="ph-sec">${CAL_DAYS_LONG[sd.getDay()]}, ${CAL_MONTHS[sd.getMonth()]} ${sd.getDate()}${C.sel === today ? ' · today' : ''}</div>${evs.join('')}<div class="cal-add"><input id="calInput" placeholder="Add your own event…" maxlength="80" enterkeyhint="done"><button class="ph-btn" data-cal="add">ADD</button></div></div>`;
   } else if (a === 'subway') {
     const pp = phonePos(), here = game.inside && game.inside.shop.type === 'metro' ? game.inside.shop : null, near = here || nearestMetro(pp.x, pp.z), sts = shopsData.filter((x) => x.type === 'metro').sort((x, y) => x.name.localeCompare(y.name));
     const xs = sts.map((q) => q.dx), zs = sts.map((q) => q.dz), x0 = Math.min(...xs) - 200, x1 = Math.max(...xs) + 200, z0 = Math.min(...zs) - 200, z1 = Math.max(...zs) + 200, hub = sts.find((q) => /Plaza/.test(q.name)) || sts[0];
     const svg = `<svg class="sub-map" viewBox="${x0} ${z0} ${x1 - x0} ${z1 - z0}" preserveAspectRatio="xMidYMid meet"><rect x="-480" y="-480" width="960" height="960" rx="40" fill="#e9e4d8"/><rect x="-300" y="480" width="600" height="420" rx="30" fill="#e9e4d8"/><rect x="420" y="-480" width="420" height="800" rx="30" fill="#e9e4d8"/>${DESTS.map((d) => `<rect x="${d.rect.x0}" y="${d.rect.z0}" width="${d.rect.x1 - d.rect.x0}" height="${d.rect.z1 - d.rect.z0}" rx="40" fill="#d9e8b8"/>`).join('')}${sts.filter((q) => q !== hub).map((q) => `<line x1="${hub.dx}" y1="${hub.dz}" x2="${q.dx}" y2="${q.dz}" stroke="#e63946" stroke-width="26" stroke-linecap="round" opacity=".45"/>`).join('')}${sts.map((q) => `<circle cx="${q.dx}" cy="${q.dz}" r="${q === near ? 95 : 62}" fill="${q === near ? '#1f6fb2' : '#e63946'}" stroke="#fff" stroke-width="22"/>`).join('')}<text x="${near.dx}" y="${near.dz - 150}" font-size="190" font-weight="800" text-anchor="middle" fill="#1f6fb2" font-family="system-ui,sans-serif">${esc(here ? 'You are here' : 'Nearest')}</text></svg>`;
-    html = head() + `<div class="ph-scroll">${svg}<div class="ph-card"><b>${here ? `You're at ${esc(here.name)} station` : `Nearest station: ${esc(near.name)} · ${srDist(Math.hypot(near.dx - pp.x, near.dz - pp.z))}`}</b><div class="ph-note">${here ? 'Tap a station to ride there right now' : 'Tap a station: we route you to the nearest entrance, and your train leaves when you walk in'}${game.metroPlan ? ` · planned: ${esc(game.metroPlan.name)}` : ''}</div>${here ? '' : `<button class="ph-btn" data-sub="route">ROUTE TO ${esc(near.name.toUpperCase())}</button>`}</div><div class="ph-sec">All ${sts.length} stations · fares from ${esc(near.name)}</div>`
-      + sts.map((q) => { const i = shopsData.indexOf(q), cur = q === near, fare = metroFare(near, q); return `<div class="ph-row">${icon('subway')}<div class="ph-meta"><b>${esc(q.name)}</b><small>${cur ? (here ? 'You are here' : 'Your nearest station') : `${srDist(Math.hypot(q.dx - near.dx, q.dz - near.dz))} away${destAt(q.dx, q.dz) ? ' · island' : ''}`}</small></div>${cur ? '' : `<button class="ph-btn buy" data-sub="${i}" ${game.cash < fare || game.wanted > 0 ? 'disabled' : ''}>$${fare}</button>`}</div>`; }).join('') + '</div>';
+    html = head() + `<div class="ph-scroll">${svg}<div class="ph-card"><b>${here ? `You're at ${esc(here.name)} station` : `Nearest station: ${esc(near.name)} · ${srDist(Math.hypot(near.dx - pp.x, near.dz - pp.z))}`}</b><div class="ph-note">${here ? 'Tap DRIVE to drive the train yourself, or the fare to ride' : 'Tap a station: we route you to the nearest entrance, and your train leaves when you walk in'}${game.metroPlan ? ` · planned: ${esc(game.metroPlan.name)}` : ''}</div>${here ? '' : `<button class="ph-btn" data-sub="route">ROUTE TO ${esc(near.name.toUpperCase())}</button>`}</div><div class="ph-sec">All ${sts.length} stations · fares from ${esc(near.name)}</div>`
+      + sts.map((q) => { const i = shopsData.indexOf(q), cur = q === near, fare = metroFare(near, q); return `<div class="ph-row">${icon('subway')}<div class="ph-meta"><b>${esc(q.name)}</b><small>${cur ? (here ? 'You are here' : 'Your nearest station') : `${srDist(Math.hypot(q.dx - near.dx, q.dz - near.dz))} away${destAt(q.dx, q.dz) ? ' · island' : ''}`}</small></div>${cur ? '' : `${here ? `<button class="ph-btn" data-sub="d${i}">DRIVE</button>` : ''}<button class="ph-btn buy" data-sub="${i}" ${game.cash < fare || game.wanted > 0 ? 'disabled' : ''}>$${fare}</button>`}</div>`; }).join('') + '</div>';
   } else if (game_) {
     html = head(`<span>${ph(a).hint || (ph(a).name === 'Neon Snake' ? 'Swipe or tap to steer' : 'Tap to play')}</span>`) + '<div class="ph-game"><canvas></canvas></div>';
   }
@@ -1852,6 +1852,9 @@ function noteAct(a) {
 }
 // ---- Calendar: the real date, holidays, weekly Solano events and your own plans
 const CAL_MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'], CAL_DAYS_LONG = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'], CAL_DAYS = CAL_DAYS_LONG.map((d) => d.slice(0, 3));
+const gameDate = () => { const [y, m, d] = String(game.date || calKey(new Date())).split('-').map(Number); return new Date(y, m - 1, d); };
+const fmtGameDate = (short) => { const d = gameDate(); return short ? `${CAL_DAYS[d.getDay()]}, ${CAL_MONTHS[d.getMonth()].slice(0, 3)} ${d.getDate()}` : `${CAL_DAYS_LONG[d.getDay()]}, ${CAL_MONTHS[d.getMonth()]} ${d.getDate()}, ${d.getFullYear()}`; };
+function nextDay() { const d = gameDate(); d.setDate(d.getDate() + 1); game.date = calKey(d); store.set('gameDate', game.date); }
 const calKey = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 function calHolidays(y) {
   const nth = (m, wd, n) => { const f = new Date(y, m, 1); return new Date(y, m, 1 + ((wd - f.getDay() + 7) % 7) + (n - 1) * 7); }, last = (m, wd) => { const l = new Date(y, m + 1, 0); return new Date(y, m, l.getDate() - ((l.getDay() - wd + 7) % 7)); };
@@ -1875,7 +1878,7 @@ function calPlace(k) {
 }
 function calAdd() { const inp = $('calInput'), v = inp && inp.value.trim(); if (!v) return; const mine = store.get('calEvents', {}); (mine[phone.cal.sel] = mine[phone.cal.sel] || []).push(v.slice(0, 80)); store.set('calEvents', mine); phoneRender(); phoneMsg('Event added'); }
 function calAct(a) {
-  const C = phone.cal, [cmd, arg] = a.split(/:(.*)/), now = new Date();
+  const C = phone.cal, [cmd, arg] = a.split(/:(.*)/), now = gameDate();
   if (cmd === 'prev' || cmd === 'next') { C.m += cmd === 'next' ? 1 : -1; if (C.m < 0) { C.m = 11; C.y--; } if (C.m > 11) { C.m = 0; C.y++; } }
   else if (cmd === 'today') Object.assign(C, { y: now.getFullYear(), m: now.getMonth(), sel: calKey(now) });
   else if (cmd === 'day') C.sel = arg;
@@ -1888,8 +1891,8 @@ function calAct(a) {
 function subwayAct(a) {
   const pp = phonePos(), here = game.inside && game.inside.shop.type === 'metro' ? game.inside.shop : null, from = here || nearestMetro(pp.x, pp.z);
   if (a === 'route') { closePhone(); setWaypoint(from.dx + from.nx * 3, from.dz + from.nz * 3); toast(`Route set · ${from.name} station · walk in to ride`); return; }
-  const st = shopsData[+a]; if (!st || st.type !== 'metro' || st === from || game.wanted > 0) return;
-  if (here) { closePhone(); startMetroRide(st); return; }
+  const drv = a[0] === 'd', st = shopsData[+(drv ? a.slice(1) : a)]; if (!st || st.type !== 'metro' || st === from || game.wanted > 0) return;
+  if (here) { closePhone(); startMetroRide(st, drv); return; }
   game.metroPlan = st; closePhone(); setWaypoint(from.dx + from.nx * 3, from.dz + from.nz * 3);
   toast(`Walk to ${from.name} station · your train to ${st.name} leaves when you get there ($${metroFare(from, st)})`, 4500);
 }
@@ -2245,7 +2248,7 @@ function renderMetroSearch() {
   rows = rows.slice(0, 16); search.list = rows;
   $('srCtx').textContent = `Metro · you're at ${from.name} · type where you want to go, then tap Ride`;
   $('srList').innerHTML = rows.length ? rows.map((pl, i) => { const st = metroFor(pl), [col, glyph] = SR_KIND[pl.kind] || SR_KIND.place, fare = metroFare(from, st), here = st === from;
-    return `<div class="sr-row"><span class="sr-ic" style="background:${col}">${glyph}</span><div class="sr-meta"><b>${esc(pl.name)}</b><small>${here ? 'This station' : `Metro to ${esc(st.name)} · ${srDist(Math.hypot(st.dx - from.dx, st.dz - from.dz))}`}</small></div><div class="sr-acts">${here ? '<button disabled>You are here</button>' : `<button class="mt" data-act="metro" data-i="${i}" ${game.cash < fare ? 'disabled' : ''}>Ride $${fare}</button>`}</div></div>`; }).join('')
+    return `<div class="sr-row"><span class="sr-ic" style="background:${col}">${glyph}</span><div class="sr-meta"><b>${esc(pl.name)}</b><small>${here ? 'This station' : `Metro to ${esc(st.name)} · ${srDist(Math.hypot(st.dx - from.dx, st.dz - from.dz))}`}</small></div><div class="sr-acts">${here ? '<button disabled>You are here</button>' : `<button class="go" data-act="metrodrive" data-i="${i}">Drive</button><button class="mt" data-act="metro" data-i="${i}" ${game.cash < fare ? 'disabled' : ''}>Ride $${fare}</button>`}</div></div>`; }).join('')
     : `<div class="sr-empty">No stations or places match “${esc(q)}”</div>`;
 }
 function renderSearch() {
@@ -2290,6 +2293,7 @@ $('search').addEventListener('click', (e) => { if (e.target === $('search')) { c
     if (game.cash < fare) { toast(`The taxi is $${fare}`); return; } addCash(-fare, 'Taxi · ' + pl.name); fadeFlash('A taxi pulls up…', 0.9); startTaxi(rk, d, pln);
   }
   else if (b.dataset.act === 'bus') { const to = pl.stop || nearestStopTo(pl.x, pl.z), pp = phonePos(), from = nearestStopTo(pp.x, pp.z); game.busPlan = to; closeSearch(); setWaypoint(from.sx, from.sz); toast(from === to ? `You're already near ${to.name}` : `Walk to ${from.name} · board the bus and it will drop you at ${to.name}`, 4500); }
+  else if (b.dataset.act === 'metrodrive') { const st = metroFor(pl); closeSearch(); if (st && game.inside && game.inside.shop.type === 'metro') startMetroRide(st, true); }
   else if (b.dataset.act === 'metro') {
     const st = metroFor(pl); closeSearch(); if (!st) return;
     if (game.inside && game.inside.shop.type === 'metro') startMetroRide(st);
@@ -2709,21 +2713,22 @@ function buildMetro(R) {
   tg.add(new THREE.Mesh(mergeAll(wins), new THREE.MeshBasicMaterial({ color: new THREE.Color(1.5, 1.42, 1.15) }))); tg.visible = false; tg.position.set(TX, IY - 0.95, cz); R.group.add(tg); R.train = tg;
   const pm = new THREE.Mesh(mergeAll(P), vcolMat); pm.receiveShadow = true; R.group.add(pm);
   R.spots = [[cx - 6, cz - 22], [cx - 2, cz - 8], [cx - 6, cz + 6], [cx - 1.5, cz + 14], [cx - 3, cz - 30]];
+  { const sb = new THREE.Mesh(new THREE.PlaneGeometry(1.2, 1.2), new THREE.MeshBasicMaterial({ map: canvasTex(128, 128, (g) => { g.fillStyle = '#fff'; g.fillRect(0, 0, 128, 128); g.fillStyle = '#e63946'; g.fillRect(8, 8, 112, 112); g.fillStyle = '#fff'; g.font = '900 44px Impact, sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText('STOP', 64, 66); }), color: new THREE.Color(1.3, 1.3, 1.3) })); sb.position.set(PE + 0.35, IY + 1.6, cz - 24.9); R.group.add(sb); R.group.add(new THREE.Mesh(boxAt(0.08, 1.6, 0.08, PE + 0.35, IY + 0.5, cz - 24.95, 0x9aa0a8), vcolMat)); }
   addVisitor(R, cx - 6, cz - 22, 'walk', true); addVisitor(R, cx - 1.5, cz + 14, 'walk'); addVisitor(R, X0 + 0.55, cz - 14, 'sit', false, Math.PI / 2); addVisitor(R, X0 + 0.55, cz + 5.3, 'sit', true, Math.PI / 2);
 }
 function metroFare(a, b) { const isl = !!(destAt(a.dx, a.dz) || destAt(b.dx, b.dz)); return 3 + Math.round(Math.hypot(a.dx - b.dx, a.dz - b.dz) / 400) + (isl ? 8 : 0); }
 function nearestMetro(x, z, maxD = 1e9) { let best = null, bd = maxD; for (const st of shopsData) if (st.type === 'metro') { const dd = Math.hypot(st.dx - x, st.dz - z); if (dd < bd) { bd = dd; best = st; } } return best; }
-function startMetroRide(dest) {
+function startMetroRide(dest, drive = false) {
   const Rm = ROOMS.metro, from = game.inside && game.inside.shop;
   if (!from || from.type !== 'metro' || !dest) return; if (metro.ride && metro.ride.phase !== 'depart') return;
   if (dest === from) { toast(`You are already at ${dest.name}`); return; }
-  const fare = metroFare(from, dest); if (game.cash < fare) { toast(`The ride to ${dest.name} is $${fare}`); return; }
-  addCash(-fare, 'Metro · ' + dest.name); game.metroPlan = null; if (player.sit) standUp(); if (game.waypoint) setWaypoint(null);
+  const fare = drive ? 0 : metroFare(from, dest); if (game.cash < fare) { toast(`The ride to ${dest.name} is $${fare}`); return; }
+  if (fare) addCash(-fare, 'Metro · ' + dest.name); game.metroPlan = null; if (player.sit) standUp(); if (game.waypoint) setWaypoint(null);
   const dist = Math.hypot(from.dx - dest.dx, from.dz - dest.dz);
-  metro.ride = { from, dest, phase: 'arrive', t: 0, z: 260, v: 0, rideT: clamp(5 + dist / 450, 5, 12), boardZ: player.pos.z, hide: false };
-  Rm.train.visible = true; toast(`Ticket to ${dest.name} · $${fare} · your train is coming`, 3000);
+  metro.ride = { from, dest, phase: 'arrive', t: 0, z: 260, v: 0, rideT: clamp(5 + dist / 450, 5, 12), boardZ: player.pos.z, hide: false, drive, s: 0, L: clamp(dist * 0.22, 380, 1000), swapped: false, back: false, ebrake: false };
+  Rm.train.visible = true; toast(drive ? `You're the driver! Your train to ${dest.name} is coming · then ${TOUCH ? 'push the joystick up' : 'hold W'} to go and ${TOUCH ? 'pull it down' : 'S'} to brake` : `Ticket to ${dest.name} · $${fare} · your train is coming`, drive ? 4500 : 3000);
 }
-function updateMetro(dt) {
+function updateMetro(dt, ay = 0) {
   const Rm = ROOMS.metro, M = metro.ride, p = player, TX = Rm.cx + 5.6;
   M.t += dt; const ease = (t) => 1 - Math.pow(1 - clamp(t, 0, 1), 2);
   if (M.phase === 'arrive' || M.phase === 'arrive2') {
@@ -2733,14 +2738,39 @@ function updateMetro(dt) {
       if (M.phase === 'arrive') { M.phase = 'board'; M.t = 0; fadeFlash('All aboard…', 0.7); }
       else { M.phase = 'depart'; M.t = 0; M.v = 0; M.hide = false; p.h.root.visible = true; p.pos.set(Rm.cx + 1.4, IY, Rm.cz + 3); p.yaw = -Math.PI / 2; cam.yaw = p.yaw + Math.PI; cam.init = false; shopCD = 1; toast(`${M.dest.name} · take the stairs at the end of the platform up to the street`, 4000); }
     }
-  } else if (M.phase === 'board') { if (M.t > 0.45) { p.h.root.visible = false; M.hide = true; } if (M.t >= 1.0) { M.phase = 'ride'; M.t = 0; M.v = 0; } }
+  } else if (M.phase === 'board') { if (M.t > 0.45) { p.h.root.visible = false; M.hide = true; } if (M.t >= 1.0) { M.phase = M.drive ? 'drive' : 'ride'; M.t = 0; M.v = 0; if (M.drive) { M.z = Rm.cz; toast(`Cab ready · ${TOUCH ? 'joystick up' : 'W'} to go · ${M.dest.name} is ${Math.round(M.L)} m away · stop at the STOP sign`, 4000); } } }
+  else if (M.phase === 'drive') metroDrive(dt, ay);
   else if (M.phase === 'ride') {
     M.v = Math.min(24, M.v + 6 * dt); M.z -= M.v * dt;
     if (M.t >= M.rideT) { fadeFlash(`Arriving at ${M.dest.name}…`, 1.0); const dd = M.dest; game.inside.shop = dd; game.inside.out.set(dd.dx + dd.nx * 2.2, CURB, dd.dz + dd.nz * 2.2); metroSetStation(dd); M.phase = 'arrive2'; M.t = 0; M.z = 260; }
   }
   Rm.train.position.set(TX, IY - 0.95, M.z);
-  interiorLight.position.set(M.phase === 'ride' ? TX : p.pos.x, IY + 3.6, M.phase === 'ride' ? M.z + 22 : p.pos.z);
+  interiorLight.position.set(M.phase === 'ride' || M.phase === 'drive' ? TX : p.pos.x, IY + 3.6, M.phase === 'ride' ? M.z + 22 : M.phase === 'drive' ? M.z - 34 : p.pos.z);
   updateVisitors(Rm, dt);
+}
+function metroDrive(dt, ay) {
+  const M = metro.ride, Rm = ROOMS.metro, thr = ay > 0.3 ? 1 : 0, brk = ay < -0.3 || M.ebrake ? 1 : 0;
+  if (M.back) { M.v = Math.min(3, M.v + 2 * dt); M.z += M.v * dt; if (M.z >= Rm.cz) { M.z = Rm.cz; metroDriveDone(-1); } return; }
+  M.v = clamp(M.v + (thr * 2.4 - brk * 4.8 - 0.12) * dt, 0, 24); const step = M.v * dt; M.s += step; M.z -= step;
+  if (!M.swapped) {
+    if (M.z < Rm.cz - 420) M.z += 390;
+    if (M.L - M.s <= 320) { M.swapped = true; M.z = Rm.cz + (M.L - M.s); const dd = M.dest; game.inside.shop = dd; game.inside.out.set(dd.dx + dd.nx * 2.2, CURB, dd.dz + dd.nz * 2.2); metroSetStation(dd); toast(`Next stop: ${dd.name} · start braking for the STOP sign`, 3200); }
+    return;
+  }
+  if (M.z < Rm.cz - 30 && !M.ebrake) { M.ebrake = true; toast('Too far! Emergency brake', 2200); }
+  if (M.v < 0.05) { const err = Math.abs(M.z - Rm.cz); if (M.ebrake || M.z < Rm.cz - 22) { M.back = true; M.v = 0; toast('You went past the platform · backing up', 2400); } else if (err <= 22 && !thr) metroDriveDone(err); }
+}
+function metroDriveDone(err) {
+  const M = metro.ride, Rm = ROOMS.metro, p = player, bonus = err < 0 ? 0 : err < 4 ? 20 : err < 10 ? 10 : 5;
+  if (bonus) addCash(bonus, 'Metro driver · ' + M.dest.name);
+  showBanner(err < 0 ? 'ARRIVED' : err < 4 ? 'PERFECT STOP' : 'GOOD STOP', `${M.dest.name}${bonus ? ` · driver tip +$${bonus}` : ' · try to stop at the STOP sign next time'}`, err < 0 ? '#7dd3ff' : 'var(--money)', 3000); sfxChime();
+  M.phase = 'depart'; M.t = 0; M.v = 0; M.hide = false; p.h.root.visible = true; p.pos.set(Rm.cx + 1.4, IY, Rm.cz + 3); p.yaw = -Math.PI / 2; cam.yaw = p.yaw + Math.PI; cam.init = false; shopCD = 1;
+  setTimeout(() => toast(`${M.dest.name} · take the stairs at the end of the platform up to the street`, 4000), 2600);
+}
+function metroDriveHint() {
+  const M = metro.ride, Rm = ROOMS.metro, mph = Math.round(M.v * 2.237), to = M.swapped ? Math.round(M.z - Rm.cz) : Math.round(M.L - M.s);
+  if (M.back) return 'Backing up to the platform…';
+  return `🚇 ${mph} mph · ${M.swapped ? (to >= 0 ? `${to} m to the STOP sign` : `${-to} m past the STOP sign`) : `${Math.max(0, to)} m to ${M.dest.name}`} · ${TOUCH ? 'joystick ▲ go · ▼ brake' : 'W go · S brake'}`;
 }
 function metroTrainTick(dt) { const M = metro.ride, Rm = ROOMS.metro; if (!M || M.phase !== 'depart') return; M.t += dt; if (M.t > 1.5) { M.v = Math.min(24, M.v + 5 * dt); M.z -= M.v * dt; } Rm.train.position.set(Rm.cx + 5.6, IY - 0.95, M.z); if (M.z < -330) { Rm.train.visible = false; metro.ride = null; } }
 // ---- restaurants (with paid parking out front) and brown police stations, built on whole city blocks
@@ -4601,7 +4631,7 @@ function fadeFlash(text, holdSec) {
   const el = $('fade'); $('fadeText').textContent = text; el.hidden = false; requestAnimationFrame(() => el.classList.add('on'));
   clearTimeout(fadeTimer); fadeTimer = setTimeout(() => { el.classList.remove('on'); setTimeout(() => { if (!el.classList.contains('on')) el.hidden = true; }, 700); }, holdSec * 1000);
 }
-function sleepUntil(h) { fadeFlash('Sleeping…', 1.6); game.tod = h; heal(100); store.set('cash', game.cash); return `Rested · it's ${fmtTime(h)}`; }
+function sleepUntil(h) { fadeFlash('Sleeping…', 1.6); const nd = h <= game.tod; game.tod = h; if (nd) nextDay(); heal(100); store.set('cash', game.cash); return `Rested · it's ${fmtTime(h)}${nd ? ` · a new day: ${fmtGameDate()}` : ''}`; }
 const INGR = {
   fish: { name: 'Snapper fillets', price: 9, color: 0xf2d3c2 }, tortilla: { name: 'Corn tortillas', price: 3, color: 0xf2d59b }, lime: { name: 'Limes', price: 2, color: 0x8ac926 },
   mango: { name: 'Mangoes', price: 4, color: 0xffb703 }, milk: { name: 'Milk', price: 3, color: 0xf7f7f7 }, rice: { name: 'Rice', price: 3, color: 0xf4efe4 },
@@ -5417,8 +5447,9 @@ function updateCamera(dt) {
     if (Math.abs(camera.fov - (baseFov + 8)) > 0.05) { camera.fov = baseFov + 8; camera.updateProjectionMatrix(); }
     return;
   }
-  if (game.inside && metro.ride && ['board', 'ride', 'arrive2'].includes(metro.ride.phase)) {
+  if (game.inside && metro.ride && ['board', 'ride', 'arrive2', 'drive'].includes(metro.ride.phase)) {
     const Rm = ROOMS.metro, TX = Rm.cx + 5.6, z = metro.ride.z;
+    if (metro.ride.phase === 'drive') { const zf = z - 24.7; camera.position.set(TX - 0.3, IY + 1.55, zf - 0.35); camera.lookAt(TX - 0.3, IY + 1.3, zf - 40); cam.init = false; if (Math.abs(camera.fov - 66) > 0.05) { camera.fov = 66; camera.updateProjectionMatrix(); } return; }
     if (metro.ride.phase === 'ride') { camera.position.set(TX - 0.6, IY + 2.7, z + 33); camera.lookAt(TX, IY + 1.5, z - 20); }
     else { camera.position.set(Rm.cx - 4, IY + 2.6, Rm.cz + 27); camera.lookAt(TX - 1, IY + 1.2, Rm.cz - 8); }
     cam.init = false; if (Math.abs(camera.fov - baseFov) > 0.05) { camera.fov = baseFov; camera.updateProjectionMatrix(); }
@@ -5561,7 +5592,7 @@ function updateHUD(dt) {
   if (bankLast === null) bankLast = game.cash; else if (game.cash !== bankLast) { logTxn(game.cash - bankLast, ''); bankLast = game.cash; }
   game.shownCash = Math.abs(game.shownCash - game.cash) < 1 ? game.cash : damp(game.shownCash, game.cash, 6, dt);
   const cs = Math.round(game.shownCash); if (cs !== lastCash) { lastCash = cs; ui.cash.textContent = '$' + cs.toLocaleString('en-US'); }
-  const hh = Math.floor(game.tod), mn = Math.floor((game.tod - hh) * 60), ck = `${hh % 12 === 0 ? 12 : hh % 12}:${String(mn).padStart(2, '0')} ${hh < 12 ? 'AM' : 'PM'}`;
+  const hh = Math.floor(game.tod), mn = Math.floor((game.tod - hh) * 60), ck = `${CAL_DAYS[gameDate().getDay()]} ${hh % 12 === 0 ? 12 : hh % 12}:${String(mn).padStart(2, '0')} ${hh < 12 ? 'AM' : 'PM'}`;
   if (ck !== lastClock) { lastClock = ck; ui.clock.textContent = ck; }
   const f = focusPos(), dn = districtAt(f.x, f.z);
   if (dn !== game.seenDistrict) { game.seenDistrict = dn; ui.district.textContent = dn; ui.district.classList.add('show'); clearTimeout(districtT); districtT = setTimeout(() => ui.district.classList.remove('show'), 3500); }
@@ -5570,7 +5601,7 @@ function updateHUD(dt) {
   const dboard = !c && nearDutyBoard(), tb = !c && busAtStop(), tk = !c && nearRank(), dcar = !c && nearDealerCar(), ddesk = !c && nearDealerDesk(), stop = !c && !tb && nearStop();
   const ne = !c && nearEnlist(), nh = !c && nearHeliPad(), fw = !c && nearFerris(), near = !c && !fw && !ne && !nh && !dboard && !tb && !tk && !dcar && !ddesk && !transit.ride && !game.inside && !game.ride && !game.wheel && !game.heli && nearestEnterable(3.8);
   const seat = game.inside ? game.nearSeat : null, hug0 = hugTarget(), hugM = hug0 && (game.inside || !near || game.famD < 1.0) ? hug0 : null;
-  ui.bCar.textContent = shift.on ? (shift.cust && shift.cust.state === 'wait' ? (shift.type === 'restaurant' ? 'SERVE' : 'SCAN') : 'WAIT') : metro.ride && metro.ride.phase !== 'depart' ? 'RIDING' : nearWorkSpot() ? 'WORK' : transit.ride ? (transit.ride.kind === 'bus' ? 'GET OFF' : 'SKIP') : dboard ? 'DUTY' : tb ? 'BOARD' : tk ? 'TAXI' : dcar ? 'BUY' : ddesk ? 'CARS' : game.wheel ? 'GET OFF' : game.heli ? 'LAND' : ne ? 'ENLIST' : nh ? 'FLY' : fw ? 'RIDE' : game.ride ? 'LAND' : c ? 'GET OUT' : hugM && !game.inside ? 'HUG' : player.sit ? (player.sit.bed ? 'GET UP' : 'STAND') : hugM ? 'HUG' : seat ? (seat.bed ? 'LIE DOWN' : seat.toilet ? 'USE' : 'SIT') : 'GET IN'; ui.bCar.classList.toggle('ready', nearWorkSpot() || (shift.on && !!shift.cust && shift.cust.state === 'wait') || !!near || fw || ne || nh || dboard || !!tb || !!tk || !!dcar || ddesk || !!hugM || (!!seat && !player.sit));
+  ui.bCar.textContent = shift.on ? (shift.cust && shift.cust.state === 'wait' ? (shift.type === 'restaurant' ? 'SERVE' : 'SCAN') : 'WAIT') : metro.ride && metro.ride.phase !== 'depart' ? (metro.ride.drive ? 'DRIVING' : 'RIDING') : nearWorkSpot() ? 'WORK' : transit.ride ? (transit.ride.kind === 'bus' ? 'GET OFF' : 'SKIP') : dboard ? 'DUTY' : tb ? 'BOARD' : tk ? 'TAXI' : dcar ? 'BUY' : ddesk ? 'CARS' : game.wheel ? 'GET OFF' : game.heli ? 'LAND' : ne ? 'ENLIST' : nh ? 'FLY' : fw ? 'RIDE' : game.ride ? 'LAND' : c ? 'GET OUT' : hugM && !game.inside ? 'HUG' : player.sit ? (player.sit.bed ? 'GET UP' : 'STAND') : hugM ? 'HUG' : seat ? (seat.bed ? 'LIE DOWN' : seat.toilet ? 'USE' : 'SIT') : 'GET IN'; ui.bCar.classList.toggle('ready', nearWorkSpot() || (shift.on && !!shift.cust && shift.cust.state === 'wait') || !!near || fw || ne || nh || dboard || !!tb || !!tk || !!dcar || ddesk || !!hugM || (!!seat && !player.sit));
   ui.bAction.textContent = shift.on ? 'END' : c ? 'DRIFT' : player.sit && player.sit.bed ? 'SLEEP' : player.sit && player.sit.tv ? (game.tvWatch ? 'CHANNEL' : 'TV') : 'JUMP'; ui.bHorn.hidden = !c; ui.bRadio.hidden = !c; ui.bBlinkL.hidden = ui.bBlinkR.hidden = !c; { const bl = c ? c.blink : 0, lit = c ? blinkLit(c) : false; ui.bBlinkL.classList.toggle('sel', (bl & 1) > 0); ui.bBlinkR.classList.toggle('sel', (bl & 2) > 0); ui.bBlinkL.classList.toggle('flash', lit && (bl & 1) > 0); ui.bBlinkR.classList.toggle('flash', lit && (bl & 2) > 0); ui.blkL.classList.toggle('on', lit && (bl & 1) > 0); ui.blkR.classList.toggle('on', lit && (bl & 2) > 0); } ui.bAction.style.visibility = game.wheel || game.ride || game.heli || transit.ride ? 'hidden' : '';
   let hint = '';
   if (near && !TOUCH) hint = near.driver === 'ai' ? 'Press F to carjack' : near.isCop && near.driver ? 'Press F to steal the cruiser' : 'Press F to get in';
@@ -5608,7 +5639,8 @@ function updateHUD(dt) {
   if (!hint && game.wanted > 0 && policeSafe()) hint = game.inside ? 'Safe inside the police station · nobody can arrest you here' : 'Police station grounds · safe zone · nobody can arrest you here';
   if (cc.on && !hint) hint = ccHint();
   if (nearWorkSpot()) hint = TOUCH ? 'Work a shift at the register · tap WORK' : 'Press F to work a shift at the register';
-  if (metro.ride && metro.ride.phase !== 'depart') hint = `Metro to ${metro.ride.dest.name} · ${metro.ride.phase === 'arrive' ? 'train arriving' : metro.ride.phase === 'ride' ? 'next stop ' + metro.ride.dest.name : 'arriving'}`;
+  if (metro.ride && metro.ride.phase === 'drive') hint = metroDriveHint();
+  else if (metro.ride && metro.ride.phase !== 'depart') hint = `Metro to ${metro.ride.dest.name} · ${metro.ride.phase === 'arrive' ? 'train arriving' : metro.ride.phase === 'ride' ? 'next stop ' + metro.ride.dest.name : 'arriving'}`;
   if (!hint && !game.inside && !player.car) { const ms = nearestMetro(player.pos.x, player.pos.z, 7); if (ms) hint = `Metro · ${ms.name} · walk in to ride anywhere`; }
   if (!hint && mil.near) hint = 'Fort Halcón · restricted military area · keep out';
   if (hint !== lastHint) { lastHint = hint; ui.hint.textContent = hint; ui.hint.hidden = !hint; }
@@ -5623,7 +5655,7 @@ const sunState = { elevDeg: 0, night: 0, day: 1, golden: 0 };
 const DAY_LEN = 16 * 60; // real seconds per in-game day
 const fogDay = new THREE.Color(0.72, 0.79, 0.9), fogGold = new THREE.Color(0.95, 0.6, 0.46), fogNight = new THREE.Color(0.04, 0.026, 0.05);
 function updateDaylight(dt) {
-  if (game.state === 'play') game.tod = (game.tod + dt * 24 / DAY_LEN) % 24;
+  if (game.state === 'play') { const t0 = game.tod; game.tod = (game.tod + dt * 24 / DAY_LEN) % 24; if (game.tod < t0) { nextDay(); toast(`Midnight · it's ${fmtGameDate()}`, 3000); } }
   const a = (game.tod - 6) / 12 * Math.PI;
   sunDir.set(Math.cos(a), Math.sin(a) * 0.9, Math.sin(a) * 0.42 + 0.12).normalize();
   moonDir.set(-sunDir.x * 0.85, -sunDir.y, -sunDir.z + 0.3).normalize();
@@ -5799,7 +5831,7 @@ function step(dt) {
     player.pos.set(c.pos.x, c.y, c.pos.z);
     if (c.blink === 1 || c.blink === 2) { const dy = angDiff(game.blinkYaw ?? c.yaw, c.yaw); game.blinkAcc = (game.blinkAcc || 0) + (c.blink === 1 ? dy : -dy); if (game.blinkAcc > 0.75 && Math.abs(c.str) < 0.15) c.blink = 0; }
     game.blinkYaw = c.yaw; const lit = blinkLit(c); if (lit !== game.blinkLit) { game.blinkLit = lit; if (c.blink || !lit) { if (c.blink) sfxTick(lit); } }
-  } else if (game.wheel) updateWheel(dt); else if (game.heli) updateHeli(dt); else if (transit.ride) updateRide(dt); else if (game.ride) { if (flight.st === 'parked') endRide(); } else if (game.inside) { if (shift.on) updateShift(dt); else if (metro.ride && metro.ride.phase !== 'depart') updateMetro(dt); else updatePlayerInside(dt, ax, ay, sprint); if (game.inside && game.inside.room === ROOMS.metro) metroTrainTick(dt); if (game.inside && game.inside.room === ROOMS.home) famUpdate(dt); if (game.inside && game.inside.room === ROOMS.restaurant) restUpdate(dt); } else { updatePlayerFoot(dt, ax, ay, sprint); if (playing) checkShopDoors(dt); }
+  } else if (game.wheel) updateWheel(dt); else if (game.heli) updateHeli(dt); else if (transit.ride) updateRide(dt); else if (game.ride) { if (flight.st === 'parked') endRide(); } else if (game.inside) { if (shift.on) updateShift(dt); else if (metro.ride && metro.ride.phase !== 'depart') updateMetro(dt, ay); else updatePlayerInside(dt, ax, ay, sprint); if (game.inside && game.inside.room === ROOMS.metro) metroTrainTick(dt); if (game.inside && game.inside.room === ROOMS.home) famUpdate(dt); if (game.inside && game.inside.room === ROOMS.restaurant) restUpdate(dt); } else { updatePlayerFoot(dt, ax, ay, sprint); if (playing) checkShopDoors(dt); }
   input.jumpQ = false; if (player.bag) player.bag.visible = !game.bagChecked && !player.sit;
   if (fam.out) followUpdate(dt); else if (!game.inside || game.inside.room !== ROOMS.home) game.nearFam = null;
   if (player.hurtT > 0) player.hurtT -= dt; else player.health = Math.min(100, player.health + dt * (game.fedT > 0 ? 12 : 4)); if (game.fedT > 0) game.fedT -= dt;
@@ -5987,13 +6019,13 @@ async function start(data) {
     game.sound = store.get('sound', true); game.radio = store.get('radio', true); setSound(game.sound);
     player.pos.set(-494.6, 0, 16.5); player.yaw = -Math.PI / 2;
     starterCar = new Vehicle('sports', 0xff3f8e); starterCar.place(-492.4, 18.8, 0);
-    game.owned = store.get('owned', ['coral']); game.visited = store.get('visited', []); game.pantry = store.get('pantry', {}); game.dishes = store.get('dishes', []); refreshDishes(); game.family = store.get('family', []); game.enlisted = store.get('enlisted', false); game.copJoined = store.get('copJoined', false); game.copCalls = store.get('copCalls', 0); game.phoneApps = store.get('phoneApps', ['shop', 'maps', 'bank', 'weather', 'settings']).filter((id) => APPS[id]); game.phoneOwned = store.get('phoneOwned', []); game.phoneWall = store.get('phoneWall', 0); game.busTickets = store.get('busTickets', 0); game.milDuties = store.get('milDuties', 0); game.garage = store.get('garage', []); buildTransit(); spawnGarage(); 
+    game.owned = store.get('owned', ['coral']); game.visited = store.get('visited', []); game.pantry = store.get('pantry', {}); game.dishes = store.get('dishes', []); refreshDishes(); game.family = store.get('family', []); game.enlisted = store.get('enlisted', false); game.date = store.get('gameDate', null) || calKey(new Date()); game.copJoined = store.get('copJoined', false); game.copCalls = store.get('copCalls', 0); game.phoneApps = store.get('phoneApps', ['shop', 'maps', 'bank', 'weather', 'settings']).filter((id) => APPS[id]); game.phoneOwned = store.get('phoneOwned', []); game.phoneWall = store.get('phoneWall', 0); game.busTickets = store.get('busTickets', 0); game.milDuties = store.get('milDuties', 0); game.garage = store.get('garage', []); buildTransit(); spawnGarage(); 
     setupMarkers(); setupCash(); spawnTraffic(); spawnPeds(); spawnLotCars(); restoreGarage();
     for (let i = 0; i < HWY_N; i++) { const c = new Vehicle(mpick(TRAFFIC_TYPES), mpick(PAINTS)); if (!placeHwy(c, false)) c.dispose(); }
     applyQuality(data.quality || store.get('quality', 'ultra'));
     updateDaylight(0); refreshEnv(true);
     renderer.compile(scene, camera);
-    game.state = 'title'; window.__solanoRunning = true; window.__solanoDebug = { notesList, calHolidays, policeSafe, busted, police, cop, copStartShift, copCruiser, copNextCall, policeDeskItems, peds, walkers: () => walkers, phone, phoneTv, phoneRender, TY_SQ, cc, reportCrash, POLICE_ST, RESTAURANTS, lots, restDine, metro, BRIDGES, startMetroRide, nearestMetro, GARAGE, garage, openSearch, closeSearch, search, shift, startShift, transitRef: () => transit, saveGame, cloud, store, phone, APPS, openPhone, closePhone, duty, DUTIES, startDuty, transit, CATALOG, DEALER, makeHuman, randomLook, poseHuman, mil, Vehicle, PAINTS, ROOMS, ferris, famList: fam.list, renderer, game, camera, cam, player, officers, police, shopsData, vehicles, flight, RING_H, peek: () => ({ shopCD, t: +game.time.toFixed(2) }), crime: (n) => crime(n, 'Test heat') };
+    game.state = 'title'; window.__solanoRunning = true; window.__solanoDebug = { gameDate, nextDay, sleepUntil, metroDriveHint, notesList, calHolidays, policeSafe, busted, police, cop, copStartShift, copCruiser, copNextCall, policeDeskItems, peds, walkers: () => walkers, phone, phoneTv, phoneRender, TY_SQ, cc, reportCrash, POLICE_ST, RESTAURANTS, lots, restDine, metro, BRIDGES, startMetroRide, nearestMetro, GARAGE, garage, openSearch, closeSearch, search, shift, startShift, transitRef: () => transit, saveGame, cloud, store, phone, APPS, openPhone, closePhone, duty, DUTIES, startDuty, transit, CATALOG, DEALER, makeHuman, randomLook, poseHuman, mil, Vehicle, PAINTS, ROOMS, ferris, famList: fam.list, renderer, game, camera, cam, player, officers, police, shopsData, vehicles, flight, RING_H, peek: () => ({ shopCD, t: +game.time.toFixed(2) }), crime: (n) => crime(n, 'Test heat') };
     { const sw = store.get('world', null); if (sw && sw.at) { $('playBtn').textContent = 'Continue'; const si = $('saveInfo'); si.textContent = `Saved game · ${saveWhere(sw)} · ${money(game.cash)}${cloud.restored ? ' · loaded from your account' : ''}`; si.hidden = false; $('newGameT').hidden = false; } }
     $('loading').hidden = true; $('title').hidden = false;
     renderer.setAnimationLoop(frame);
