@@ -125,6 +125,7 @@ button:focus-visible{outline:3px solid var(--lagoon);outline-offset:3px}
 .cal-ic{flex:none;width:9cqw;height:9cqw;display:grid;place-items:center;font-size:5.6cqw}.cal-add{display:flex;gap:2cqw;margin-top:2.5cqw}.cal-add input{flex:1;min-width:0;border:0;border-radius:3cqw;background:#e2e2e8;padding:2.4cqw 3cqw;font:500 16px system-ui,sans-serif;color:#15161a;outline:none}
 .note-new{display:flex;gap:1.5cqw;margin-bottom:2.5cqw}.note-new button{flex:1;border:0;border-radius:3cqw;background:#fff3c4;padding:2.6cqw .6cqw;font:700 3.2cqw system-ui,sans-serif;color:#5b4a00}.ph-del{display:block;width:100%;margin-top:3cqw;border:0;border-radius:3cqw;background:#ffe3e0;color:#c8372d;padding:3cqw;font:700 4cqw system-ui,sans-serif}
 .sub-map{display:block;width:100%;height:46cqw;margin-bottom:2.5cqw;border-radius:3cqw;background:#bfe3ef}
+.stay-opts{display:grid;grid-template-columns:1fr 1fr;gap:1.6cqw;margin:-1cqw 0 2.5cqw}.stay-opts button{border:0;border-radius:3cqw;background:#efe3ff;color:#3c096c;padding:2.2cqw 1cqw;font:700 3.3cqw system-ui,sans-serif}.stay-opts button b{display:block;font-size:4cqw;margin-top:.5cqw}.stay-opts button:disabled{opacity:.45}.st-ok{color:#2d8f4e;font-weight:700}.st-bad{color:#c8372d;font-weight:700}
 .ph-game{flex:1;min-height:0;position:relative;background:#000}.ph-game canvas{position:absolute;inset:0;width:100%;height:100%;touch-action:none}
 #stars{display:flex;gap:3px}
 #stars svg{width:21px;height:21px}
@@ -347,7 +348,7 @@ button:focus-visible{outline:3px solid var(--lagoon);outline-offset:3px}
       <div><div class="bm-title">Solano</div><div class="bm-hint">Drag to pan · pinch to zoom · tap to drop a waypoint</div></div>
       <div class="bm-actions"><button class="ghost" id="bmSearch">Search</button><button class="ghost" id="bmHome">Home</button><button class="ghost" id="bmClear" hidden>Clear waypoint</button><button class="bm-btn" id="bmIn" aria-label="Zoom in">+</button><button class="bm-btn" id="bmOut" aria-label="Zoom out">−</button><button class="bm-btn" id="bmClose" aria-label="Close map">✕</button></div>
     </div>
-    <div class="bm-legend"><span><i style="background:#fff3e8"></i>You</span><span><i style="background:#ff3f8e"></i>Jobs</span><span><i class="sq" style="background:#2be0cf"></i>24/7 Mart</span><span><i class="sq" style="background:#ff7aa8"></i>Threads</span><span><i class="sq" style="background:#9be15d"></i>Groceries</span><span><i class="sq" style="background:#9ad8f2"></i>Airport terminal</span><span><i class="sq" style="background:#ffd36e"></i>Home</span><span><i style="background:#86ffb0"></i>Cash</span><span><i style="background:#3fa9f5"></i>Bus stop · B</span><span><i style="background:#ffc21a"></i>Taxi stand · T</span><span><i style="background:#e63946"></i>Metro · M</span><span><i style="background:#ff8c42"></i>Restaurant · R</span><span><i style="background:#8b5a2b"></i>Police station · ★</span><span><i class="sq" style="background:#3fa9f5;height:3px;width:14px"></i>Bus route</span><span><i style="background:#b18cff"></i>Waypoint</span><span><i style="background:#ff3050"></i>Police</span></div>
+    <div class="bm-legend"><span><i style="background:#fff3e8"></i>You</span><span><i style="background:#ff3f8e"></i>Jobs</span><span><i class="sq" style="background:#2be0cf"></i>24/7 Mart</span><span><i class="sq" style="background:#ff7aa8"></i>Threads</span><span><i class="sq" style="background:#9be15d"></i>Groceries</span><span><i class="sq" style="background:#9ad8f2"></i>Airport terminal</span><span><i class="sq" style="background:#ffd36e"></i>Home</span><span><i style="background:#86ffb0"></i>Cash</span><span><i style="background:#3fa9f5"></i>Bus stop · B</span><span><i style="background:#ffc21a"></i>Taxi stand · T</span><span><i style="background:#e63946"></i>Metro · M</span><span><i style="background:#ff8c42"></i>Restaurant · R</span><span><i style="background:#8b5a2b"></i>Police station · ★</span><span><i style="background:#9b5de5"></i>Hotel · H</span><span><i style="background:#1f6fb2"></i>Parking garage · P</span><span><i class="sq" style="background:#3fa9f5;height:3px;width:14px"></i>Bus route</span><span><i style="background:#b18cff"></i>Waypoint</span><span><i style="background:#ff3050"></i>Police</span></div>
   </div>
 
   <div id="shop" class="overlay" hidden>
@@ -539,6 +540,7 @@ function addCollider(c) {
     }
 }
 function addBox(minX, maxX, minZ, maxZ, h) { addCollider({ box: true, minX, maxX, minZ, maxZ, h }); }
+function addBoxY(minX, maxX, minZ, maxZ, y0, h) { addCollider({ box: true, minX, maxX, minZ, maxZ, h, y0 }); }
 function addPost(x, z, r, h = 8) { addCollider({ box: false, x, z, r, minX: x - r, maxX: x + r, minZ: z - r, maxZ: z + r, h }); }
 function query(x, z, r) {
   qStamp++; qOut.length = 0;
@@ -553,7 +555,7 @@ const hitN = { x: 0, z: 0 };
 function pushOut(p, r, y) {
   const list = query(p.x, p.z, r + 0.5); let hit = false; hitN.x = hitN.z = 0;
   for (const c of list) {
-    if (y > c.h) continue;
+    if (y > c.h || (c.y0 !== undefined && y + 1.5 < c.y0)) continue;
     if (c.box) {
       const qx = clamp(p.x, c.minX, c.maxX), qz = clamp(p.z, c.minZ, c.maxZ);
       const dx = p.x - qx, dz = p.z - qz, d2 = dx * dx + dz * dz;
@@ -576,7 +578,7 @@ function pushOut(p, r, y) {
 }
 function insideBuilding(x, y, z, pad) {
   const list = query(x, z, pad + 0.1);
-  for (const c of list) { if (!c.box || y > c.h + pad) continue; if (x > c.minX - pad && x < c.maxX + pad && z > c.minZ - pad && z < c.maxZ + pad) return true; }
+  for (const c of list) { if (!c.box || y > c.h + pad || (c.y0 !== undefined && y + 1.5 < c.y0)) continue; if (x > c.minX - pad && x < c.maxX + pad && z > c.minZ - pad && z < c.maxZ + pad) return true; }
   return false;
 }
 function hasLOS(ax, az, bx, bz) { const dx = bx - ax, dz = bz - az, n = Math.ceil(Math.hypot(dx, dz) / 3); for (let i = 1; i < n; i++) { const t = i / n; if (insideBuilding(ax + dx * t, 1.2, az + dz * t, 0)) return false; } return true; }
@@ -940,9 +942,10 @@ function buildWorld() {
         const n = ri(1, 3); for (let k = 0; k < n; k++) roofBoxes.push({ x: lx + rr(-w / 2 + 2, w / 2 - 2), z: lz + rr(-d / 2 + 2, d / 2 - 2), y: top, sx: rr(1.4, 3), sy: rr(0.8, 1.8), sz: rr(1.4, 3) });
       }
     }
-    if (ghost) { B.length = nB; neon.length = nN; roofBoxes.length = nR; blink.length = nK; shopsData.length = nS; blk.kind = SP[0]; if (SP[0] === 'police') buildPoliceLot(blk, SP[1], SP[2]); else buildRestaurantLot(blk, SP[1], SP[2], SP[3]); }
+    if (ghost) { B.length = nB; neon.length = nN; roofBoxes.length = nR; blink.length = nK; shopsData.length = nS; blk.kind = SP[0]; if (SP[0] === 'police') buildPoliceLot(blk, SP[1], SP[2]); else if (SP[0] === 'hotel') buildHotelLot(blk, SP[1], SP[2], SP[3], addB); else buildRestaurantLot(blk, SP[1], SP[2], SP[3]); }
   }
   extraZones(addB, roofBoxes, blink);
+  hotelTower('Isla Verde Grand', -2340, -600, 1, 0, addB, { color: 0x7fb8d6, price: 240, stars: 5 });
   addMetroStations(parks);
   buildShops();
   // building instanced mesh (custom per-instance style + seed attributes)
@@ -1089,6 +1092,7 @@ function townZone(addB, d) {
       for (let k = 0; k < 10; k++) { const a = k / 10 * Math.PI * 2; extraPalms.push([pcx + Math.cos(a) * 22, pcz + Math.sin(a) * 22]); }
       return;
     }
+    if (i === 0 && j === 0) { islandHotel(d, (ax + bx) / 2, (az + bz) / 2 - 2, addB); return; }
     const iw = bx - ax - 8, id = bz - az - 8, nx = Math.max(1, Math.round(iw / 36)), nz = Math.max(1, Math.round(id / 32)), gap = 4, lw = (iw - gap * (nx - 1)) / nx, ld = (id - gap * (nz - 1)) / nz;
     for (let a = 0; a < nx; a++) for (let b = 0; b < nz; b++) {
       const lx = ax + 4 + a * (lw + gap) + lw / 2, lz = az + 4 + b * (ld + gap) + ld / 2, w = lw - rr(0, 3), dd = ld - rr(0, 3);
@@ -1636,6 +1640,7 @@ const APPS = {
   memory: { name: 'Memory Match', cat: 'Games', price: 2, bg: 'linear-gradient(160deg,#c77dff,#7b2cbf)', hint: 'Find the pairs', keys: 'memory match cards pairs concentration puzzle brain', desc: 'Flip two cards at a time and find all the matching pairs', svg: `<rect x="3.5" y="5" width="8" height="11" rx="1.5" fill="${W2}" transform="rotate(-8 7.5 10.5)"/><rect x="12.5" y="7" width="8" height="11" rx="1.5" fill="#ffd166" transform="rotate(8 16.5 12.5)"/>` },
   tv: { name: 'Solano TV', cat: 'Entertainment', price: 0, canvas: true, bg: 'linear-gradient(160deg,#ff6b6b,#9b1d4a)', hint: 'Tap a channel', keys: 'tv television watch shows news sports soccer cartoon movies channels video live stream', desc: 'Watch every Solano TV channel live: news, sports, cartoons and the sky cam', svg: `<rect x="3" y="6" width="18" height="12" rx="2" fill="${W2}"/><rect x="5" y="8" width="14" height="8" rx="1" fill="#9b1d4a"/><path d="M9 3.5l3 2.5 3-2.5" stroke="${W2}" stroke-width="1.6" fill="none"/><path d="M10.5 10v4l3.5-2z" fill="${W2}"/>` },
   calc: { name: 'Calculator', cat: 'Utilities', price: 0, bg: 'linear-gradient(160deg,#5c636b,#24282d)', keys: 'calculator math numbers add sums plus minus', desc: 'Add, subtract, multiply and divide', svg: `<rect x="5" y="2.5" width="14" height="19" rx="2.5" fill="${W2}"/><rect x="7.2" y="4.8" width="9.6" height="4" rx="1" fill="#24282d"/><circle cx="9" cy="12.5" r="1.1" fill="#24282d"/><circle cx="12" cy="12.5" r="1.1" fill="#24282d"/><circle cx="15" cy="12.5" r="1.1" fill="#ff9f1c"/><circle cx="9" cy="16.5" r="1.1" fill="#24282d"/><circle cx="12" cy="16.5" r="1.1" fill="#24282d"/><circle cx="15" cy="16.5" r="1.1" fill="#ff9f1c"/>` },
+  stay: { name: 'StayNow', cat: 'Travel', price: 0, bg: 'linear-gradient(160deg,#c77dff,#5a189a)', keys: 'hotel hotels booking book room stay sleep suite floor travel', desc: 'Book a hotel room anywhere: which hotels are free, your room number and your floor', svg: `<path d="M3 18.5V7.5M3 14h18v4.5" stroke="${W2}" stroke-width="2" fill="none" stroke-linecap="round"/><rect x="9" y="9.5" width="11" height="4.5" rx="1.6" fill="${W2}"/><circle cx="6.1" cy="11.6" r="1.9" fill="${W2}"/>` },
   subway: { name: 'MetroGo', cat: 'Travel', price: 0, bg: 'linear-gradient(160deg,#ff6b6b,#c1121f)', keys: 'metro subway underground train transit tube station tickets', desc: 'The Solano Metro underground: a map of every station, the nearest one, and tickets to anywhere', svg: `<rect x="5" y="3" width="14" height="15" rx="4" fill="${W2}"/><rect x="7" y="6" width="10" height="5" rx="1.2" fill="#c1121f"/><circle cx="9" cy="14.3" r="1.3" fill="#c1121f"/><circle cx="15" cy="14.3" r="1.3" fill="#c1121f"/><path d="M8 18l-2 3M16 18l2 3" stroke="${W2}" stroke-width="1.8" stroke-linecap="round"/>` },
   cal: { name: 'Calendar', cat: 'Utilities', price: 0, bg: '#ffffff', keys: 'calendar date day month year events holidays schedule planner today', desc: "Today's date, month and year · holidays, Solano events and your own plans", get svg() { const d = gameDate(); return `<rect x="3" y="3.5" width="18" height="17.5" rx="3" fill="#fff" stroke="#e2e2e8" stroke-width=".6"/><path d="M3 6.5a3 3 0 0 1 3-3h12a3 3 0 0 1 3 3V9H3z" fill="#e63946"/><text x="12" y="7.9" font-size="3.6" font-weight="800" text-anchor="middle" fill="#fff" font-family="system-ui,sans-serif">${['SUN', 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT'][d.getDay()]}</text><text x="12" y="18.6" font-size="9" font-weight="700" text-anchor="middle" fill="#15161a" font-family="system-ui,sans-serif">${d.getDate()}</text>`; } },
   notes: { name: 'Notes', cat: 'Utilities', price: 0, bg: 'linear-gradient(160deg,#ffe066,#f4b400)', keys: 'notes write text memo list todo diary stories story reminders remember', desc: 'Notes, stories and reminders · everything stays saved until you delete it', svg: `<rect x="5" y="3" width="14" height="18" rx="2" fill="${W2}"/><path d="M8 8h8M8 11.5h8M8 15h5" stroke="#f4b400" stroke-width="1.6" stroke-linecap="round"/>` },
@@ -1715,6 +1720,10 @@ function phoneRender() {
     CAL_WEEKLY[sd.getDay()].forEach(([n, t, k]) => evs.push(`<div class="ph-row"><span class="cal-ic">📍</span><div class="ph-meta"><b>${esc(n)}</b><small>${t} · every ${CAL_DAYS_LONG[sd.getDay()]} in Solano</small></div><button class="ph-btn" data-cal="go:${k}">GO</button></div>`));
     (mine[C.sel] || []).forEach((n, i) => evs.push(`<div class="ph-row"><span class="cal-ic">⭐</span><div class="ph-meta"><b>${esc(n)}</b><small>Your event</small></div><button class="ph-link" data-cal="rm:${i}">Delete</button></div>`));
     html = head() + `<div class="ph-scroll"><div class="cal-today">${CAL_DAYS_LONG[now.getDay()]} · in Solano<b>${CAL_MONTHS[now.getMonth()]} ${now.getDate()}, ${now.getFullYear()}</b><small>The date moves to the next day at midnight and when you sleep through the night</small></div><div class="cal-bar"><button data-cal="prev" aria-label="Previous month">‹</button><b>${CAL_MONTHS[C.m]} ${C.y}</b><button data-cal="next" aria-label="Next month">›</button><button class="cal-t" data-cal="today">Today</button></div><div class="cal-grid">${grid}</div><div class="ph-sec">${CAL_DAYS_LONG[sd.getDay()]}, ${CAL_MONTHS[sd.getMonth()]} ${sd.getDate()}${C.sel === today ? ' · today' : ''}</div>${evs.join('')}<div class="cal-add"><input id="calInput" placeholder="Add your own event…" maxlength="80" enterkeyhint="done"><button class="ph-btn" data-cal="add">ADD</button></div></div>`;
+  } else if (a === 'stay') {
+    const st = stayActive() ? game.stay : null, sel = phone.hotelSel;
+    html = head() + `<div class="ph-scroll">${st ? `<div class="ph-card"><b>Your room: ${st.room} · floor ${st.floor}</b><div class="ph-note">${esc(HOTELS[st.h].name)} · until ${fmtKey(st.until)} · ride the elevator up to your floor</div><button class="ph-btn" data-stay="route:${st.h}">ROUTE THERE</button> <button class="ph-btn buy" data-stay="extend" ${game.cash < HOTELS[st.h].price ? 'disabled' : ''}>+1 NIGHT $${HOTELS[st.h].price}</button></div>` : '<div class="ph-note">Book a room in any hotel · most nights you get the top floor</div>'}<div class="ph-sec">Hotels tonight · ${fmtGameDate(true)}</div>`
+      + HOTELS.map((H, i) => { const av = hotelAvail(i), mine = st && st.h === i; return `<div class="ph-row">${icon('stay')}<div class="ph-meta"><b>${esc(H.name)}</b><small>${'★'.repeat(H.stars)} · ${esc(H.where)} · $${H.price}/night · <span class="${av.full && !mine ? 'st-bad' : 'st-ok'}">${mine ? 'your hotel' : av.full ? 'fully booked' : `${av.left} rooms left · ${av.top ? 'top floor free' : 'floor ' + av.floor}`}</span></small></div>${mine ? `<button class="ph-btn" data-stay="route:${i}">GO</button>` : `<button class="ph-btn buy" data-stay="sel:${i}" ${av.full ? 'disabled' : ''}>${av.full ? 'FULL' : 'BOOK'}</button>`}</div>${sel === i && !av.full && !mine ? `<div class="stay-opts">${[1, 3, 7, 30].map((n) => `<button data-stay="book:${i}:${n}" ${game.cash < stayCost(i, n) ? 'disabled' : ''}>${n === 30 ? 'Live here · 30 nights' : n + (n > 1 ? ' nights' : ' night')}<b>$${stayCost(i, n).toLocaleString('en-US')}</b></button>`).join('')}</div>` : ''}`; }).join('') + '</div>';
   } else if (a === 'subway') {
     const pp = phonePos(), here = game.inside && game.inside.shop.type === 'metro' ? game.inside.shop : null, near = here || nearestMetro(pp.x, pp.z), sts = shopsData.filter((x) => x.type === 'metro').sort((x, y) => x.name.localeCompare(y.name));
     const xs = sts.map((q) => q.dx), zs = sts.map((q) => q.dz), x0 = Math.min(...xs) - 200, x1 = Math.max(...xs) + 200, z0 = Math.min(...zs) - 200, z1 = Math.max(...zs) + 200, hub = sts.find((q) => /Plaza/.test(q.name)) || sts[0];
@@ -1772,8 +1781,9 @@ function phoneDelete(id) {
 $('phone').addEventListener('click', (e) => {
   if (e.target === $('phone')) { closePhone(); return; }
   if (e.target.closest('#phHome')) { if (phone.app) { phone.app = null; phoneRender(); } else if (phone.edit) { phone.edit = false; phoneRender(); } else closePhone(); return; }
-  const el = e.target.closest('[data-note],[data-cal],[data-sub],[data-calc],[data-del],[data-act],[data-open],[data-get],[data-fly],[data-cab],[data-bus],[data-stop],[data-wall],[data-map]'); if (!el) return;
+  const el = e.target.closest('[data-stay],[data-note],[data-cal],[data-sub],[data-calc],[data-del],[data-act],[data-open],[data-get],[data-fly],[data-cab],[data-bus],[data-stop],[data-wall],[data-map]'); if (!el) return;
   const d = el.dataset; sfxTick(true);
+  if (d.stay) { stayAct(d.stay); return; }
   if (d.note) { noteAct(d.note); return; }
   if (d.cal) { calAct(d.cal); return; }
   if (d.sub) { subwayAct(d.sub); return; }
@@ -2198,7 +2208,7 @@ const PHONE_GAMES = {
 // ---------------------------------------------------------------- search: type a place, then route, taxi, bus or fly there
 const search = { places: [], list: [] };
 const inCity = (x, z) => Math.abs(x) <= HALF + 24 && Math.abs(z) <= HALF + 24;
-const SR_KIND = { home: ['#ffc857', 'H', 'home'], cars: ['#2be0cf', 'C', 'car dealer'], airport: ['#7fb8d6', '✈', 'airport'], place: ['#b18cff', '•', 'place'], area: ['#9b8fd6', '◦', 'neighborhood'], mart: ['#2be0cf', 'M', '24/7 Mart'], grocery: ['#7cc84a', 'G', 'grocery store'], threads: ['#ff7aa8', 'T', 'clothes shop'], bus: ['#3fa9f5', 'B', 'bus stop'], taxi: ['#e0a800', 'T', 'taxi stand'], island: ['#18b3a6', '≈', 'island'], metro: ['#e63946', 'M', 'metro station'], restaurant: ['#ff8c42', 'R', 'restaurant'], police: ['#8b5a2b', '★', 'police station'] };
+const SR_KIND = { home: ['#ffc857', 'H', 'home'], cars: ['#2be0cf', 'C', 'car dealer'], airport: ['#7fb8d6', '✈', 'airport'], place: ['#b18cff', '•', 'place'], area: ['#9b8fd6', '◦', 'neighborhood'], mart: ['#2be0cf', 'M', '24/7 Mart'], grocery: ['#7cc84a', 'G', 'grocery store'], threads: ['#ff7aa8', 'T', 'clothes shop'], bus: ['#3fa9f5', 'B', 'bus stop'], taxi: ['#e0a800', 'T', 'taxi stand'], island: ['#18b3a6', '≈', 'island'], metro: ['#e63946', 'M', 'metro station'], restaurant: ['#ff8c42', 'R', 'restaurant'], hotel: ['#9b5de5', 'H', 'hotel'], police: ['#8b5a2b', '★', 'police station'] };
 function buildPlaces() {
   const P = [], add = (name, x, z, kind, keys = '', extra = {}) => P.push({ name, x, z, kind, keys: (name + ' ' + keys).toLowerCase(), ...extra });
   const home = shopsData.find((sp) => sp.type === 'home');
@@ -2210,8 +2220,9 @@ function buildPlaces() {
   add('Port of Solano', 505, -60, 'place', 'port harbor ships docks cargo', { pop: 9 });
   add('Fort Halcón', 20, -722, 'place', 'army military base fort halcon soldiers duty', { pop: 10 });
   for (const [t, x, z] of MAP_LABELS) if (!DESTS.some((d) => d.name === t) && !P.some((q) => q.name.startsWith(t.split(' ')[0])) && !/Fort|Solano Freeway|Coastline/.test(t)) add(t, x, z, 'area', 'district neighborhood area', t === 'Downtown Solano' ? { pop: 11 } : {});
-  const SK = { mart: 'store shop snacks convenience food drinks 24/7 mart', grocery: 'grocery groceries supermarket food market fresh ingredients cook mercado', threads: 'clothes clothing outfit fashion shop threads', restaurant: 'restaurant food eat dinner lunch breakfast meal hungry' };
-  for (const sp of shopsData) if (SK[sp.type] && !destAt(sp.dx, sp.dz)) { const rb = sp.type === 'restaurant' && RESTAURANTS[sp.brand]; add(`${rb ? rb.name : ROOMS[sp.type].name} · ${districtAt(sp.dx, sp.dz)}`, sp.dx + sp.nx * 3, sp.dz + sp.nz * 3, sp.type, SK[sp.type] + (rb ? ' ' + rb.key : '')); }
+  const SK = { mart: 'store shop snacks convenience food drinks 24/7 mart', grocery: 'grocery groceries supermarket food market fresh ingredients cook mercado', threads: 'clothes clothing outfit fashion shop threads', restaurant: 'restaurant food eat dinner lunch breakfast meal hungry', hotel: 'hotel hotels stay room sleep suite inn book booking' };
+  for (const sp of shopsData) if (SK[sp.type] && (!destAt(sp.dx, sp.dz) || sp.type === 'hotel')) { const rb = sp.type === 'restaurant' && RESTAURANTS[sp.brand]; add(`${rb ? rb.name : sp.type === 'hotel' ? HOTELS[sp.hotel].name : ROOMS[sp.type].name} · ${districtAt(sp.dx, sp.dz)}`, sp.dx + sp.nx * 3, sp.dz + sp.nz * 3, sp.type, SK[sp.type] + (rb ? ' ' + rb.key : '')); }
+  for (const gg of GARAGES) add(gg.name, gg.x, gg.z, 'place', 'parking garage park car levels floors ' + gg.name);
   for (const ps of POLICE_ST) add(ps.name, ps.x, ps.z, 'police', 'police station cops pd jail officer sheriff 911');
   if (transit.built) { for (const st of transit.stops) add(`Bus ${st.name}`, st.px, st.pz, 'bus', 'bus stop station', { stop: st }); for (const rk of transit.ranks) add(`Taxi stand · ${districtAt(rk.cx, rk.cz)}`, rk.sx, rk.sz, 'taxi', 'taxi cab stand rank'); }
   for (const st of shopsData) if (st.type === 'metro') add(`Metro · ${st.name}`, st.dx + st.nx * 3, st.dz + st.nz * 3, 'metro', 'metro subway underground train station ' + st.area.toLowerCase(), { station: st });
@@ -2244,7 +2255,7 @@ function renderSearch() {
   const q = $('srInput').value.trim().toLowerCase(), pp = phonePos(), here = destAt(pp.x, pp.z), onBus = transit.ride && transit.ride.kind === 'bus', rk = !here ? cabbyRank() : null, fly = flyOptions();
   const dist = (pl) => Math.hypot(pl.x - pp.x, pl.z - pp.z);
   let list;
-  if (!q) { const best = {}; for (const pl of search.places) if (['grocery', 'mart', 'bus', 'taxi', 'restaurant', 'police'].includes(pl.kind) && (!best[pl.kind] || dist(pl) < dist(best[pl.kind]))) best[pl.kind] = pl; list = [...search.places.filter((pl) => pl.pop).sort((a, b) => a.pop - b.pop), ...Object.values(best)].sort((a, b) => (a.pop || 5) - (b.pop || 5)); }
+  if (!q) { const best = {}; for (const pl of search.places) if (['grocery', 'mart', 'bus', 'taxi', 'restaurant', 'police', 'hotel'].includes(pl.kind) && (!best[pl.kind] || dist(pl) < dist(best[pl.kind]))) best[pl.kind] = pl; list = [...search.places.filter((pl) => pl.pop).sort((a, b) => a.pop - b.pop), ...Object.values(best)].sort((a, b) => (a.pop || 5) - (b.pop || 5)); }
   else { const words = q.split(/\s+/); list = search.places.filter((pl) => words.every((w) => pl.keys.includes(w))).map((pl) => ({ pl, sc: (pl.name.toLowerCase().startsWith(q) ? 0 : pl.name.toLowerCase().includes(q) ? 1 : 2) * 1e6 + dist(pl) })).sort((a, b) => a.sc - b.sc).map((o) => o.pl); }
   list = list.slice(0, 16); search.list = list;
   $('srCtx').textContent = onBus ? `On the bus${transit.ride.offAt ? ` · getting off at ${transit.ride.offAt.name}` : ''} · pick a place and you'll get off at the closest stop` : here ? `You're on ${here.name} · fly anywhere from the airstrip` : '';
@@ -2589,8 +2600,8 @@ const signs = [];
 // ---------------------------------------------------------------- shops: storefronts + walk-in interiors (built far below the map)
 const shopsData = [], IY = -400;
 const SHOP_LOOK = { mart: { name: '24/7 MART', hex: 0x2a9d8f }, threads: { name: 'THREADS', hex: 0xff3f8e }, terminal: { name: 'DEPARTURES', hex: 0x18b3a6 }, airstrip: { name: 'ISLAND AIR', hex: 0x2a9d8f }, home: { name: 'HOME', hex: 0xffc857 }, grocery: { name: 'MERCADO FRESCO', hex: 0x3fae5c } };
-const SHOP_COL = { mart: '#2be0cf', threads: '#ff7aa8', terminal: '#9ad8f2', airstrip: '#9ad8f2', home: '#ffd36e', grocery: '#9be15d', metro: '#e63946', restaurant: '#ff8c42', police: '#8b5a2b' };
-const ROOMS = { mart: { name: '24/7 Mart', cx: 0, cz: 0, w: 18, d: 14, H: 5.2 }, threads: { name: 'Threads', cx: 80, cz: 0, w: 16, d: 14, H: 5.2 }, terminal: { name: 'Solano International', cx: 200, cz: 0, w: 56, d: 40, H: 10 }, airstrip: { name: 'Island Airstrip', cx: 300, cz: 0, w: 22, d: 16, H: 6 }, grocery: { name: 'Mercado Fresco', cx: 540, cz: 0, w: 24, d: 18, H: 5.2, hello: 'Mercado Fresco · buy ingredients, then cook them in your kitchen at home' }, police: { name: 'Solano PD', cx: 1300, cz: 0, w: 22, d: 16, H: 5 }, restaurant: { name: 'Restaurant', cx: 1100, cz: 0, w: 22, d: 18, H: 5 }, metro: { name: 'Solano Metro', cx: 900, cz: 0, w: 18, d: 70, H: 7, hello: 'Solano Metro · walk up to a ticket machine and type where you want to go' }, home: { name: 'Home', cx: 440, cz: 0, w: 22, d: 16, H: 7.2, hello: 'Home sweet home · kitchen, dining & living room down here, bedroom upstairs' } };
+const SHOP_COL = { mart: '#2be0cf', threads: '#ff7aa8', terminal: '#9ad8f2', airstrip: '#9ad8f2', home: '#ffd36e', grocery: '#9be15d', metro: '#e63946', restaurant: '#ff8c42', police: '#8b5a2b', hotel: '#9b5de5' };
+const ROOMS = { mart: { name: '24/7 Mart', cx: 0, cz: 0, w: 18, d: 14, H: 5.2 }, threads: { name: 'Threads', cx: 80, cz: 0, w: 16, d: 14, H: 5.2 }, terminal: { name: 'Solano International', cx: 200, cz: 0, w: 56, d: 40, H: 10 }, airstrip: { name: 'Island Airstrip', cx: 300, cz: 0, w: 22, d: 16, H: 6 }, grocery: { name: 'Mercado Fresco', cx: 540, cz: 0, w: 24, d: 18, H: 5.2, hello: 'Mercado Fresco · buy ingredients, then cook them in your kitchen at home' }, hotel: { name: 'Hotel', cx: 1500, cz: 0, w: 24, d: 16, H: 6 }, suite: { name: 'Your room', cx: 1700, cz: 0, w: 14, d: 10, H: 3.4 }, police: { name: 'Solano PD', cx: 1300, cz: 0, w: 22, d: 16, H: 5 }, restaurant: { name: 'Restaurant', cx: 1100, cz: 0, w: 22, d: 18, H: 5 }, metro: { name: 'Solano Metro', cx: 900, cz: 0, w: 18, d: 70, H: 7, hello: 'Solano Metro · walk up to a ticket machine and type where you want to go' }, home: { name: 'Home', cx: 440, cz: 0, w: 22, d: 16, H: 7.2, hello: 'Home sweet home · kitchen, dining & living room down here, bedroom upstairs' } };
 const interiorLight = new THREE.PointLight(0xfff0dc, 0, 34, 1.3); scene.add(interiorLight);
 const roomLightMat = new THREE.MeshBasicMaterial({ color: new THREE.Color(2.2, 2.15, 2.0) });
 const fridgeMat = new THREE.MeshBasicMaterial({ color: new THREE.Color(0.9, 1.3, 1.5) });
@@ -2776,7 +2787,7 @@ const RESTAURANTS = [
     { name: 'Lo mein noodles', price: 9, heal: 60, fed: 240, look: ['bowl', 0xc8372d, 0xe9c46a, 0x8b5a2b] }, { name: 'Pork dumplings', price: 7, heal: 45, fed: 180, look: ['slices', 0xf4efe4, 0xe9e2d0] },
     { name: 'Fried rice', price: 8, heal: 55, fed: 210, look: ['mound', 0xf2c14e, 0x8ac926, 0xd62828] }, { name: 'Bubble tea', price: 5, heal: 20, fed: 80, look: ['glass', 0xc68642, 0x2b2b30] }] },
 ];
-const SPECIAL_BLOCKS = { '6,2': ['police', 0, 1], '2,8': ['police', 1, 0], '10,6': ['police', -1, 0], '3,3': ['rest', 0, 1, 0], '8,2': ['rest', 0, 1, 1], '4,8': ['rest', 0, -1, 2], '9,7': ['rest', 1, 0, 3], '7,8': ['rest', 0, 1, 0] };
+const SPECIAL_BLOCKS = { '5,4': ['hotel', 0, 1, 0], '9,4': ['hotel', 0, 1, 1], '3,9': ['hotel', 0, -1, 2], '6,2': ['police', 0, 1], '2,8': ['police', 1, 0], '10,6': ['police', -1, 0], '3,3': ['rest', 0, 1, 0], '8,2': ['rest', 0, 1, 1], '4,8': ['rest', 0, -1, 2], '9,7': ['rest', 1, 0, 3], '7,8': ['rest', 0, 1, 0] };
 const POLICE_ST = [];
 const restAccentMat = new THREE.MeshStandardMaterial({ color: 0xff5d8f, roughness: 0.45 }), restGlowMat = new THREE.MeshBasicMaterial({ color: new THREE.Color(0.8, 0.66, 0.46) }), lampBlueMat = new THREE.MeshBasicMaterial({ color: new THREE.Color(0.4, 0.8, 4) });
 const parkSignMat = new THREE.MeshBasicMaterial({ color: new THREE.Color(1.3, 1.3, 1.3), map: canvasTex(256, 256, (g) => { g.fillStyle = '#1f5fbf'; g.fillRect(0, 0, 256, 256); g.strokeStyle = '#fff'; g.lineWidth = 10; g.strokeRect(12, 12, 232, 232); g.fillStyle = '#fff'; g.textAlign = 'center'; g.textBaseline = 'middle'; g.font = '900 150px system-ui, sans-serif'; g.fillText('P', 128, 110); g.font = '800 44px system-ui, sans-serif'; g.fillText('$3', 128, 212); }) });
@@ -2785,10 +2796,10 @@ function lotFrame(blk, fx, fz) {
   const yaw = Math.atan2(fx, fz), c = Math.cos(yaw), sn = Math.sin(yaw), cx = blk.cx, cz = blk.cz;
   const W = (lx, lz) => [cx + lx * c + lz * sn, cz - lx * sn + lz * c];
   const rect = (x0, x1, z0, z1) => { const a = W(x0, z0), b = W(x1, z1); return { x0: Math.min(a[0], b[0]), x1: Math.max(a[0], b[0]), z0: Math.min(a[1], b[1]), z1: Math.max(a[1], b[1]) }; };
-  const box = (x0, x1, z0, z1, h) => { const r = rect(x0, x1, z0, z1); addBox(r.x0, r.x1, r.z0, r.z1, h); };
+  const box = (x0, x1, z0, z1, h) => { const r = rect(x0, x1, z0, z1); addBox(r.x0, r.x1, r.z0, r.z1, h); }, boxY = (x0, x1, z0, z1, y0, h) => { const r = rect(x0, x1, z0, z1); addBoxY(r.x0, r.x1, r.z0, r.z1, y0, h); };
   const mesh = (parts, mat = vcolMat) => { const g = mergeAll(parts); g.rotateY(yaw); g.translate(cx, 0, cz); const m = new THREE.Mesh(g, mat); m.castShadow = m.receiveShadow = mat === vcolMat; scene.add(m); return m; };
   const plane = (mat, w, h, lx, y, lz, ry = 0) => { const m = new THREE.Mesh(new THREE.PlaneGeometry(w, h), mat); const [x, z] = W(lx, lz); m.position.set(x, y, z); m.rotation.y = yaw + ry; scene.add(m); return m; };
-  return { W, rect, box, mesh, plane };
+  return { W, rect, box, boxY, mesh, plane, yaw };
 }
 function buildRestaurantLot(blk, fx, fz, bi) {
   const F = lotFrame(blk, fx, fz), b = RESTAURANTS[bi], P = [], y0 = CURB;
@@ -2923,6 +2934,153 @@ function restUpdate(dt) {
   if (serving && l < 1.2) w.yaw += angDiff(w.yaw, Math.atan2(o.st.place[0] - w.x, o.st.place[1] - w.z)) * (1 - Math.exp(-8 * dt));
   h.root.position.set(w.x, IY, w.z); h.root.rotation.y = w.yaw; poseHuman(h, dt, sp, false, game.time);
   if (R.tray) { h.armR.rotation.x = -1.25; h.elbowR.rotation.x = -0.3; h.armL.rotation.x = -1.1; }
+}
+// ---- hotels (20 floors) with 10-level parking garages, booking, a lobby and your own room
+const HOTELS = [], GARAGES = [];
+const HOTEL_CITY = [{ name: 'Hotel Solano Grand', color: 0x9fb9c9, price: 220, stars: 5 }, { name: 'The Coral Tower', color: 0xd99a8a, price: 180, stars: 4 }, { name: 'Sunset Palms Hotel', color: 0xe9c46a, price: 140, stars: 4 }];
+const HOTEL_ISLAND = { marco: { name: 'Marco Bay Hotel', price: 160, stars: 4 }, coral: { name: 'Lighthouse Inn & Tower', price: 120, stars: 3 }, luz: { name: 'Hotel Volcán', price: 140, stars: 4 }, bay: { name: 'Boardwalk Tower Hotel', price: 130, stars: 3 } };
+function hotelTower(name, cx, cz, fx, fz, addB, o = {}) {
+  const Wd = 24, Dp = 20, h = 20 * FLOOR[0] + 1 + CURB, alongX = Math.abs(fz) > 0.5, w = alongX ? Wd : Dp, d = alongX ? Dp : Wd;
+  addB(cx, cz, w, d, h, 0, o.color || 0x9fb9c9, 0); addBox(cx - w / 2, cx + w / 2, cz - d / 2, cz + d / 2, h);
+  const yaw = Math.atan2(fx, fz), c = Math.cos(yaw), sn = Math.sin(yaw), W = (lx, lz) => [cx + lx * c + lz * sn, cz - lx * sn + lz * c], P = [], y0 = CURB;
+  P.push(boxAt(12, 0.35, 6.5, 0, 4.3, Dp / 2 + 3.25, 0x2b2e33), boxAt(12.2, 0.5, 0.2, 0, 4.0, Dp / 2 + 6.45, 0xd4af37), boxAt(0.3, 4.2, 0.3, -5.5, 2.1, Dp / 2 + 6, 0xd4af37), boxAt(0.3, 4.2, 0.3, 5.5, 2.1, Dp / 2 + 6, 0xd4af37), boxAt(14, 0.1, 7, 0, y0 + 0.05, Dp / 2 + 3.5, 0x8b1e3f), boxAt(Wd + 0.6, 1.2, Dp + 0.6, 0, h + 0.6, 0, 0x2b2e33));
+  const g = mergeAll(P); g.rotateY(yaw); g.translate(cx, 0, cz); const m = new THREE.Mesh(g, vcolMat); m.castShadow = m.receiveShadow = true; scene.add(m);
+  const glow = mergeAll([boxAt(9, 3, 0.05, 0, y0 + 1.6, Dp / 2 + 0.06), boxAt(Wd + 0.7, 0.25, 0.05, 0, h + 1.25, Dp / 2 + 0.33)]); glow.rotateY(yaw); glow.translate(cx, 0, cz); scene.add(new THREE.Mesh(glow, new THREE.MeshBasicMaterial({ color: new THREE.Color(1.6, 1.25, 0.8) })));
+  const sign = (txt, sw, sh, y, lz, col) => { const t = new THREE.Mesh(new THREE.PlaneGeometry(sw, sh), new THREE.MeshBasicMaterial({ map: textTex(txt, 1024, Math.round(1024 * sh / sw), col), transparent: true, color: new THREE.Color(1.8, 1.8, 1.8) })); const [x, z] = W(0, lz); t.position.set(x, y, z); t.rotation.y = yaw; scene.add(t); };
+  sign(name.toUpperCase(), 20, 2.6, h - 3.2, Dp / 2 + 0.12, '#ffffff'); sign('HOTEL', 6, 1.1, 4.0, Dp / 2 + 6.6, '#ffd166');
+  for (const lx of [-5.5, 5.5]) { const [px, pz] = W(lx, Dp / 2 + 6); addPost(px, pz, 0.25, 4.5); }
+  const [dx, dz] = W(0, Dp / 2); const where = destAt(cx, cz) ? destAt(cx, cz).name : districtAt(cx, cz);
+  shopsData.push({ dx, dz, nx: fx, nz: fz, type: 'hotel', hotel: HOTELS.length });
+  HOTELS.push({ name, x: dx + fx * 4, z: dz + fz * 4, where, price: o.price || 150, stars: o.stars || 4 });
+}
+function buildHotelLot(blk, fx, fz, i, addB) {
+  const F = lotFrame(blk, fx, fz), H = HOTEL_CITY[i], [tx, tz] = F.W(-15, -11);
+  hotelTower(H.name, tx, tz, fx, fz, addB, H); buildParkingGarage(F, 2, 28, -26, 14, H.name);
+  const r = F.rect(-28, 28, 14, 28); mapPaint.push({ ...F.rect(2, 28, -26, 14), c: '#6d7280' });
+  lots.push({ ...F.rect(-27, -3, 9.5, 26), y: CURB, max: 3 }); void r;
+}
+function islandHotel(d, cx, cz, addB) { const H = HOTEL_ISLAND[d.id]; if (!H) return; hotelTower(H.name, cx, cz, 0, 1, addB, { color: [0xb5c7d3, 0xe0b48a, 0xd9a066, 0xf2b8a0][Object.keys(HOTEL_ISLAND).indexOf(d.id)], price: H.price, stars: H.stars }); }
+const garageLightMat = new THREE.MeshBasicMaterial({ color: new THREE.Color(1.9, 1.85, 1.7) });
+function buildParkingGarage(F, x0, x1, z0, z1, name) {
+  const LH = 3, N = 10, lane = x0 + 6, lx = x0 + 3, y = (L) => CURB + L * LH, top = y(N - 1), P = [], LT = [], deck = (ax, az, bx, bz, w, h0, h1) => { const [a1, a2] = F.W(ax, az), [b1, b2] = F.W(bx, bz); addDeck(a1, a2, b1, b2, w, h0, h1, false).garage = true; };
+  const fl = (x1 + lane) / 2, fw = x1 - lane, zl = z1 - z0, rz0 = z0 + 5, rz1 = z1 - 5, run = rz1 - rz0, ang = Math.atan2(LH, run), rl = Math.hypot(run, LH);
+  for (let L = 1; L < N; L++) { deck(fl, z1, fl, z0, fw, y(L), y(L)); P.push(boxAt(fw, 0.3, zl, fl, y(L) - 0.15, (z0 + z1) / 2, 0x9a9d9f)); LT.push(boxAt(fw - 4, 0.05, 0.4, fl, y(L) - 0.33, (z0 + z1) / 2)); }
+  for (let r = 0; r < N - 1; r++) {
+    const up = r % 2 === 0; deck(lx, up ? rz1 : rz0, lx, up ? rz0 : rz1, 6, y(r), y(r + 1));
+    P.push(colorize(new THREE.BoxGeometry(6, 0.3, rl).rotateX(up ? ang : -ang).translate(lx, (y(r) + y(r + 1)) / 2 - 0.15, (rz0 + rz1) / 2), 0x8d9093));
+    if (up) { deck(lx, z0, lx, rz0, 6, y(r + 1), y(r + 1)); P.push(boxAt(6, 0.3, 5, lx, y(r + 1) - 0.15, z0 + 2.5, 0x9a9d9f)); F.boxY(lane - 0.1, lane + 0.1, z1 - 5, z1, y(r + 1) - 0.5, y(r + 1) + 1.5); }
+    else { deck(lx, rz1, lx, z1, 6, y(r + 1), y(r + 1)); P.push(boxAt(6, 0.3, 5, lx, y(r + 1) - 0.15, z1 - 2.5, 0x9a9d9f)); F.boxY(lane - 0.1, lane + 0.1, z0, z0 + 5, y(r + 1) - 0.5, y(r + 1) + 1.5); }
+  }
+  // divider between the ramp lane and the parking floors, outer walls, and railings over the entrance
+  P.push(boxAt(0.3, top + 1.2, run, lane, (top + 1.2) / 2, (rz0 + rz1) / 2, 0xb8b3a7)); F.box(lane - 0.15, lane + 0.15, rz0, rz1, top + 1.5);
+  F.box(x0 - 0.2, x0, z0, z1, top + 1.5); F.box(x1, x1 + 0.2, z0, z1, top + 1.5); F.box(x0, x1, z0 - 0.2, z0, top + 1.5); F.boxY(x0, x1, z1, z1 + 0.2, 2.2, top + 1.5);
+  for (let L = 0; L < N; L++) {
+    const yy = y(L), wallH = L === 0 ? 0 : 1.05;
+    if (wallH) P.push(boxAt(0.3, wallH, zl, x0 + 0.15, yy + wallH / 2, (z0 + z1) / 2, 0xd9d2c3), boxAt(0.3, wallH, zl, x1 - 0.15, yy + wallH / 2, (z0 + z1) / 2, 0xd9d2c3), boxAt(x1 - x0, wallH, 0.3, (x0 + x1) / 2, yy + wallH / 2, z0 + 0.15, 0xd9d2c3), boxAt(x1 - x0, wallH, 0.3, (x0 + x1) / 2, yy + wallH / 2, z1 - 0.15, 0xd9d2c3), boxAt(x1 - x0, 0.12, 0.32, (x0 + x1) / 2, yy + wallH + 0.06, z1 - 0.15, 0x1f6fb2));
+    for (let z = z0 + 7; z <= z1 - 7.5; z += 2.8) P.push(boxAt(5.2, 0.02, 0.1, x1 - 3, yy + 0.02, z, 0xf4f1ea));
+  }
+  for (const [cx2, cz2] of [[x0, z0], [x1, z0], [x0, z1], [x1, z1], [x0, (z0 + z1) / 2], [x1, (z0 + z1) / 2]]) P.push(boxAt(0.6, top + 1.2, 0.6, cx2, (top + 1.2) / 2, cz2, 0xb8b3a7));
+  P.push(boxAt(1.2, 7, 1.2, x1 - 2, top + 4.5, z1 - 1, 0x1f6fb2));
+  F.mesh(P); F.mesh(LT, garageLightMat);
+  const pTex = canvasTex(256, 512, (g) => { g.fillStyle = '#1f6fb2'; g.fillRect(0, 0, 256, 512); g.fillStyle = '#fff'; g.font = '900 200px system-ui, sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText('P', 128, 150); g.font = '800 44px system-ui, sans-serif'; g.fillText('PARKING', 128, 320); g.fillText('10 LEVELS', 128, 390); });
+  F.plane(new THREE.MeshBasicMaterial({ map: pTex, color: new THREE.Color(1.3, 1.3, 1.3) }), 1.1, 2.2, x1 - 2, top + 5.5, z1 - 0.38);
+  for (let L = 0; L < N; L++) { const lt = canvasTex(128, 128, (g) => { g.fillStyle = '#1f6fb2'; g.fillRect(0, 0, 128, 128); g.fillStyle = '#fff'; g.font = '900 64px system-ui, sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText('P' + (L + 1), 64, 68); }); F.plane(new THREE.MeshBasicMaterial({ map: lt }), 1.2, 1.2, lane + 0.17, y(L) + 1.7, (z0 + z1) / 2, Math.PI / 2); }
+  const [ex, ez] = F.W(lx, z1 + 2), [ax, az] = F.W(0, 0), [bx, bz] = F.W(1, 0), yawX = Math.atan2(bx - ax, bz - az), bays = [];
+  for (let L = 0; L < N; L++) for (let z = z0 + 8.4; z <= z1 - 8.5; z += 2.8) { const [px, pz] = F.W(x1 - 3, z); bays.push([px, pz, yawX, y(L)]); }
+  GARAGES.push({ name: `${name} Garage`, x: ex, z: ez, bays });
+}
+function spawnGarageCars() { for (const gg of GARAGES) { const used = new Set(); for (let k = 0; k < 7; k++) { const i = Math.floor(Math.random() * gg.bays.length); if (used.has(i)) continue; used.add(i); const [x, z, yaw, yy] = gg.bays[i], type = mpick(['sedan', 'suv', 'sports', 'hatch', 'pickup']), v = new Vehicle(type, mpick(PAINTS)); v.place(x, z, yaw, yy); v.keep = true; } } }
+const fmtKey = (k) => { const [y, m, d] = k.split('-').map(Number), dt = new Date(y, m - 1, d); return `${CAL_DAYS[dt.getDay()]}, ${CAL_MONTHS[dt.getMonth()].slice(0, 3)} ${dt.getDate()}`; };
+const dateAdd = (k, n) => { const [y, m, d] = k.split('-').map(Number); return calKey(new Date(y, m - 1, d + n)); };
+const stayActive = () => !!(game.stay && game.stay.until > (game.date || ''));
+const stayCost = (i, n) => Math.round(HOTELS[i].price * n * (n >= 30 ? 0.6 : n >= 7 ? 0.8 : 1) / 5) * 5;
+function hotelAvail(i) { let h = 2166136261; for (const ch of `${game.date}:${i}`) h = Math.imul(h ^ ch.charCodeAt(0), 16777619) >>> 0; const left = (h % 11) - 2, top = ((h >>> 5) % 7) !== 0; return { left: Math.max(0, left), full: left <= 0, top, floor: top ? 20 : 19 - ((h >>> 9) % 3), room: 1 + ((h >>> 13) % 12) }; }
+function stayBook(i, n, paid) {
+  const av = hotelAvail(i), cost = stayCost(i, n); if (av.full) return false; if (!paid) { if (game.cash < cost) return false; addCash(-cost, `${HOTELS[i].name} · ${n} night${n > 1 ? 's' : ''}`); }
+  game.stay = { h: i, floor: av.floor, room: av.floor * 100 + av.room, until: dateAdd(game.date, n), nights: n }; store.set('stay', game.stay); return true;
+}
+function stayAct(a) {
+  const [cmd, x, y] = a.split(':'), i = +x;
+  if (cmd === 'sel') { phone.hotelSel = phone.hotelSel === i ? null : i; phoneRender(); }
+  else if (cmd === 'book') { if (stayBook(i, +y)) { phone.hotelSel = null; phoneRender(); phoneMsg(`Booked! Room ${game.stay.room} · floor ${game.stay.floor}`); } }
+  else if (cmd === 'extend') { const st = game.stay, H = HOTELS[st.h]; if (game.cash < H.price) return; addCash(-H.price, `${H.name} · 1 more night`); st.until = dateAdd(st.until, 1); store.set('stay', st); phoneRender(); phoneMsg('One more night added'); }
+  else if (cmd === 'route') { const H = HOTELS[i]; closePhone(); if (destAt(H.x, H.z) && !destAt(phonePos().x, phonePos().z)) toast(`${H.name} is on ${H.where} · take the bridge, the Metro or FlyNow`, 4000); setWaypoint(H.x, H.z); }
+}
+function switchRoom(R2, x, z, yaw) {
+  const Rm = game.inside.room; if (player.sit) standUp(); closeShopPanel(); Rm.group.visible = false; game.inside.room = R2; R2.group.visible = true;
+  player.pos.set(x, IY, z); player.vel.set(0, 0, 0); player.yaw = yaw; cam.yaw = yaw + Math.PI; cam.pitch = 0.16; cam.init = false; game.nearSeat = null;
+  interiorLight.position.set(R2.cx, IY + R2.H - 0.8, R2.cz); interiorLight.intensity = R2.w > 20 ? 40 : 16; interiorLight.distance = 34; shopCD = 1.5;
+}
+function signCanvas(R, w, h, x, y, z, ry, pw, ph_) { R.signCv = document.createElement('canvas'); R.signCv.width = w; R.signCv.height = h; R.signTex = new THREE.CanvasTexture(R.signCv); R.signTex.colorSpace = THREE.SRGBColorSpace; const m = new THREE.Mesh(new THREE.PlaneGeometry(pw, ph_), new THREE.MeshBasicMaterial({ map: R.signTex, color: new THREE.Color(1.2, 1.2, 1.2) })); m.position.set(x, y, z); m.rotation.y = ry; R.group.add(m); }
+function buildHotelLobby(R) {
+  buildRoom(R, tileTex, 0xefe6d8); const { cx, cz } = R, P = R.parts, CL = { skin: 0xc89470, shirt: 0x1d2b4a, pants: 0x15161a, shoes: 0x111111, hair: 0x2b1d14, shades: false, shorts: false };
+  P.push(boxAt(7, 1.1, 0.9, cx - 4, IY + 0.55, cz - 4.4, 0x6b4a2f), boxAt(7.2, 0.07, 1.05, cx - 4, IY + 1.13, cz - 4.4, 0xf4f1ea), boxAt(0.5, 0.35, 0.4, cx - 2.5, IY + 1.33, cz - 4.5, 0x222831), boxAt(0.3, 0.25, 0.3, cx - 5.6, IY + 1.29, cz - 4.3, 0xd4af37));
+  R.obst.push({ minX: cx - 12, maxX: cx + 3.2, minZ: cz - 8, maxZ: cz - 3.9 }); R.counters.push({ x: cx - 4, z: cz - 3.3, type: 'hotel', title: 'Front desk' });
+  addClerk(R, cx - 4.8, cz - 5.4, 0, CL); addClerk(R, cx - 2.6, cz - 5.4, 0, { ...CL, skin: 0x744a2e, hair: 0x111111 });
+  for (const x of [cx + 5.5, cx + 8.5]) P.push(boxAt(2.2, 3, 0.1, x, IY + 1.5, cz - 7.94, 0xb5b9bf), boxAt(0.06, 3, 0.12, x, IY + 1.5, cz - 7.9, 0x8d949b), boxAt(2.6, 0.35, 0.12, x, IY + 3.25, cz - 7.9, 0x2b2b30), boxAt(0.25, 0.4, 0.06, x + 1.5, IY + 1.3, cz - 7.9, 0x2b2b30));
+  R.counters.push({ x: cx + 7, z: cz - 6.5, type: 'elevator', title: 'Elevator' }); roomText(R, 'ELEVATORS · ALL FLOORS', '#ffd166', cx + 7, IY + 4.0, cz - 7.85, 3.6, 0.42);
+  // lounge: sofas with seats, a rug, plants, a chandelier, luggage carts
+  P.push(boxAt(9, 0.02, 5, cx - 3, IY + 0.01, cz + 2.4, 0x8b1e3f));
+  for (const [sx, sz, yaw] of [[cx - 6.5, cz + 2.4, Math.PI / 2], [cx + 0.5, cz + 2.4, -Math.PI / 2]]) { const along = 3; P.push(boxAt(0.9, 0.45, along, sx, IY + 0.35, sz, 0x2f5c8a), boxAt(0.2, 0.7, along, sx - Math.sin(yaw) * 0.4, IY + 0.8, sz, 0x2f5c8a)); R.obst.push({ minX: sx - 0.5, maxX: sx + 0.5, minZ: sz - 1.5, maxZ: sz + 1.5 }); for (const k of [-0.9, 0.9]) addSeat(R, sx, sz + k, 0, 0.6, yaw); }
+  P.push(boxAt(1.6, 0.4, 1, cx - 3, IY + 0.2, cz + 2.4, 0x6b4a2f)); R.obst.push({ minX: cx - 3.8, maxX: cx - 2.2, minZ: cz + 1.9, maxZ: cz + 2.9 });
+  for (const [x, z] of [[cx - 11, cz + 7], [cx + 3.6, cz + 7], [cx - 11, cz - 2.6], [cx + 11, cz - 2]]) P.push(colorize(new THREE.CylinderGeometry(0.35, 0.28, 0.6, 12).translate(x, IY + 0.3, z), 0xd4af37), colorize(new THREE.SphereGeometry(0.65, 10, 8).translate(x, IY + 1.2, z), 0x2e7d32));
+  P.push(boxAt(0.9, 1.2, 0.6, cx + 3.2, IY + 0.75, cz - 1.5, 0xd4af37), boxAt(0.7, 0.5, 0.4, cx + 3.2, IY + 0.75, cz - 1.5, 0x1f6fb2)); R.obst.push({ minX: cx + 2.7, maxX: cx + 3.7, minZ: cz - 1.85, maxZ: cz - 1.15 });
+  R.group.add(new THREE.Mesh(mergeAll([colorize(new THREE.CylinderGeometry(1.4, 0.6, 0.9, 16).translate(cx - 3, IY + 5.2, cz + 2.4), 0xffffff)]), roomLightMat));
+  signCanvas(R, 1024, 128, cx - 4, IY + 3.3, cz - 7.9, 0, 7, 0.875);
+  addRestroom(R, P, cx + 8.6, cx + 12, cz + 4.6, cz + 8, 'w');
+  R.spots = [[cx - 1, cz + 5.5], [cx + 5, cz + 2], [cx + 7, cz - 4.5], [cx - 8, cz + 6]]; addVisitor(R, cx + 5, cz + 2, 'walk', true); addVisitor(R, cx - 8, cz + 6, 'walk', true); addVisitor(R, cx - 6.5, cz + 1.5, 'sit', false, Math.PI / 2);
+  finishRoom(R, 'WELCOME', '#ffd166');
+}
+const carpetTex = canvasTex(128, 128, (g) => { g.fillStyle = '#6d5a4a'; g.fillRect(0, 0, 128, 128); for (let i = 0; i < 700; i++) { g.fillStyle = `rgba(${Math.random() < 0.5 ? '255,255,255' : '0,0,0'},.06)`; g.fillRect(Math.random() * 128, Math.random() * 128, 2, 2); } });
+function buildSuite(R) {
+  buildRoom(R, carpetTex, 0xf2ede4, true); const { cx, cz, d } = R, P = R.parts;
+  const view = canvasTex(1024, 384, (g) => { const gr = g.createLinearGradient(0, 0, 0, 384); gr.addColorStop(0, '#2a1b4d'); gr.addColorStop(0.55, '#ff8f6b'); gr.addColorStop(0.75, '#ffd29a'); g.fillStyle = gr; g.fillRect(0, 0, 1024, 384); g.fillStyle = '#ffe2a8'; g.beginPath(); g.arc(760, 250, 46, 0, 7); g.fill(); g.fillStyle = '#3a6ea5'; g.fillRect(0, 300, 1024, 84);
+    for (let i = 0; i < 46; i++) { const x = i * 23 + Math.random() * 10, w = 16 + Math.random() * 26, hh = 40 + Math.random() * 170 * (1 - Math.abs(i - 23) / 30); g.fillStyle = '#1d1a33'; g.fillRect(x, 300 - hh, w, hh); g.fillStyle = 'rgba(255,214,120,.75)'; for (let wy = 300 - hh + 6; wy < 296; wy += 9) for (let wx = x + 3; wx < x + w - 3; wx += 6) if (Math.random() < 0.35) g.fillRect(wx, wy, 3, 4); } });
+  { const m = new THREE.Mesh(new THREE.PlaneGeometry(22, 8.2), new THREE.MeshBasicMaterial({ map: view })); m.position.set(cx, IY + 1.8, cz - d / 2 - 3); R.group.add(m); }
+  P.push(boxAt(2.4, 0.45, 2.3, cx - 5.6, IY + 0.3, cz - 1.6, 0xf4f1ea), boxAt(0.2, 1.3, 2.4, cx - 6.85, IY + 0.65, cz - 1.6, 0x6b4a2f), boxAt(1.2, 0.12, 2.1, cx - 6.1, IY + 0.58, cz - 1.6, 0x9b5de5), boxAt(0.5, 0.5, 0.5, cx - 6.5, IY + 0.25, cz - 3.2, 0x6b4a2f), boxAt(0.5, 0.5, 0.5, cx - 6.5, IY + 0.25, cz, 0x6b4a2f));
+  R.obst.push({ minX: cx - 7, maxX: cx - 4.4, minZ: cz - 2.8, maxZ: cz - 0.4 }); addSeat(R, cx - 5.4, cz - 1.6, 0, 0.62, Math.PI / 2, true);
+  P.push(boxAt(0.12, 1.1, 2, cx + 6.92, IY + 1.6, cz - 1.6, 0x15161a), boxAt(1.4, 0.5, 0.5, cx + 6.6, IY + 0.25, cz - 1.6, 0x6b4a2f)); { const tv = new THREE.Mesh(new THREE.PlaneGeometry(1.9, 1.0), tvMat); tv.position.set(cx + 6.85, IY + 1.6, cz - 1.6); tv.rotation.y = -Math.PI / 2; R.group.add(tv); }
+  P.push(boxAt(0.9, 0.45, 2.6, cx + 2.4, IY + 0.35, cz - 1.6, 0x2f5c8a), boxAt(0.2, 0.7, 2.6, cx + 1.95, IY + 0.8, cz - 1.6, 0x2f5c8a)); R.obst.push({ minX: cx + 1.9, maxX: cx + 2.9, minZ: cz - 2.9, maxZ: cz - 0.3 }); for (const k of [-0.7, 0.7]) addSeat(R, cx + 2.4, cz - 1.6 + k, 0, 0.6, Math.PI / 2);
+  P.push(boxAt(1.6, 0.75, 0.7, cx - 5.8, IY + 0.375, cz + 3.9, 0x6b4a2f), boxAt(0.5, 0.5, 0.05, cx - 5.8, IY + 1.05, cz + 4.15, 0x15161a), boxAt(0.6, 0.9, 0.6, cx - 3.9, IY + 0.45, cz + 4.3, 0xe8e8e8)); R.obst.push({ minX: cx - 6.6, maxX: cx - 3.5, minZ: cz + 3.5, maxZ: cz + 5 });
+  addRestroom(R, P, cx + 3.6, cx + 7, cz + 1.6, cz + 5, 'w');
+  P.push(boxAt(0.3, 0.45, 0.06, cx - 1.9, IY + 1.3, cz + 4.95, 0x2b2b30)); R.counters.push({ x: cx - 1.9, z: cz + 3.9, type: 'elevator', title: 'Elevator' });
+  signCanvas(R, 1024, 160, cx, IY + 2.55, cz + 4.94, Math.PI, 4.6, 0.72);
+  R.spawn = { x: cx, z: cz + 2.6 }; finishRoom(R, '', '#ffffff');
+}
+function hotelSetCurrent(s) {
+  const H = HOTELS[s.hotel], R = ROOMS.hotel; R.name = H.name; for (const c of R.counters) if (c.type === 'hotel') c.title = H.name;
+  const mine = stayActive() && game.stay.h === s.hotel; R.hello = mine ? `Welcome back to ${H.name} · your room ${game.stay.room} is on floor ${game.stay.floor} · take the elevator` : `${H.name} · book a room at the front desk · elevators on the right`;
+  const g = R.signCv.getContext('2d'); g.fillStyle = '#1b1430'; g.fillRect(0, 0, 1024, 128); g.fillStyle = '#d4af37'; g.fillRect(0, 118, 1024, 10); g.fillStyle = '#f4e9d8'; g.textAlign = 'center'; g.textBaseline = 'middle'; fitText(g, H.name.toUpperCase(), 512, 62, 960, 70); R.signTex.needsUpdate = true;
+}
+function hotelDeskItems() {
+  const i = game.inside.shop.hotel, H = HOTELS[i], st = stayActive() && game.stay.h === i ? game.stay : null, av = hotelAvail(i), items = [];
+  if (st) {
+    items.push({ name: `Your room: ${st.room}`, desc: `Floor ${st.floor} · until ${fmtKey(st.until)} · take the elevator up`, price: 0, label: '🔑', sw: 0x9b5de5, disabled: true, buy: () => null });
+    items.push({ name: 'Stay one more night', desc: `Until ${fmtKey(dateAdd(st.until, 1))}`, price: H.price, sw: 0x9be15d, buy: () => { st.until = dateAdd(st.until, 1); store.set('stay', game.stay); return `Extended · until ${fmtKey(st.until)}`; } });
+    items.push({ name: 'Check out', desc: 'Give back your key card', price: 0, label: 'OUT', sw: 0xff6b6b, buy: () => { game.stay = null; store.set('stay', null); return 'Checked out · see you again'; } });
+  } else if (av.full) {
+    items.push({ name: 'Fully booked tonight', desc: 'No rooms left · try another hotel in StayNow', price: 0, label: 'FULL', sw: 0xff6b6b, disabled: true, buy: () => null });
+    const alt = HOTELS.map((_, k) => k).filter((k) => k !== i && !hotelAvail(k).full)[0];
+    if (alt !== undefined) items.push({ name: `Try ${HOTELS[alt].name}`, desc: `${HOTELS[alt].where} · rooms free tonight · we'll set a route`, price: 0, label: 'ROUTE', sw: 0x7dd3ff, buy: () => { closeShopPanel(); setWaypoint(HOTELS[alt].x, HOTELS[alt].z); return null; } });
+  } else {
+    if (stayActive()) items.push({ name: `You have a room at ${HOTELS[game.stay.h].name}`, desc: 'Booking here moves your stay to this hotel', price: 0, label: 'ℹ', sw: 0x8a8f98, disabled: true, buy: () => null });
+    for (const n of [1, 3, 7, 30]) items.push({ name: n === 30 ? 'Live here · 30 nights' : `${n} night${n > 1 ? 's' : ''}`, desc: `${av.top ? 'Top floor' : 'Floor ' + av.floor} · room ${av.floor * 100 + av.room} · ${av.left} rooms left${n >= 7 ? ' · long-stay discount' : ''}`, price: stayCost(i, n), sw: 0x9b5de5, buy: () => { stayBook(i, n, true); hotelSetCurrent(game.inside.shop); return `Room ${game.stay.room} on floor ${game.stay.floor} is yours · take the elevator`; } });
+  }
+  return items;
+}
+function goToSuite() {
+  const st = game.stay, H = HOTELS[st.h], R = ROOMS.suite; fadeFlash(`Going up to floor ${st.floor}…`, 1.1);
+  const g = R.signCv.getContext('2d'); g.fillStyle = '#1b1430'; g.fillRect(0, 0, 1024, 160); g.fillStyle = '#d4af37'; g.textAlign = 'center'; g.textBaseline = 'middle'; fitText(g, `ROOM ${st.room} · FLOOR ${st.floor}`, 512, 62, 960, 72); g.fillStyle = '#f4e9d8'; fitText(g, H.name.toUpperCase(), 512, 126, 900, 40); R.signTex.needsUpdate = true;
+  switchRoom(R, R.cx, R.cz + 2.6, Math.PI); toast(`Room ${st.room} · floor ${st.floor} · ${H.name} · sleep in the bed to start a new day`, 4500);
+}
+function elevatorItems() {
+  const R = ROOMS.hotel, i = game.inside.shop.hotel, st = stayActive() && game.stay.h === i ? game.stay : null;
+  if (game.inside.room === ROOMS.suite) return [{ name: 'Lobby', desc: 'Ride down to the lobby', price: 0, label: 'L', sw: 0xffd166, buy: () => { fadeFlash('Going down to the lobby…', 0.9); switchRoom(R, R.cx + 7, R.cz - 5.2, 0); return null; } }];
+  const items = [];
+  if (st) items.push({ name: `Floor ${st.floor} · room ${st.room}`, desc: 'Your room · your key card works', price: 0, label: String(st.floor), sw: 0x9b5de5, buy: () => { goToSuite(); return null; } });
+  else items.push({ name: 'Your key card opens your floor', desc: 'Book a room at the front desk or in StayNow first', price: 0, label: '🔒', sw: 0x8a8f98, disabled: true, buy: () => null });
+  items.push({ name: 'Floors 1–20', desc: 'Guests only', price: 0, label: '—', sw: 0x8a8f98, disabled: true, buy: () => null });
+  return items;
 }
 // ---- Solano PD: walk-in stations, joining the force, patrol shifts with dispatch calls, your own cruiser
 const COP_RANKS = [{ name: 'Cadet', at: 0, mult: 1 }, { name: 'Officer', at: 4, mult: 1.25 }, { name: 'Sergeant', at: 10, mult: 1.5 }, { name: 'Detective', at: 18, mult: 1.8 }, { name: 'Captain', at: 30, mult: 2.2 }];
@@ -3130,7 +3288,7 @@ function buildShops() {
   const openMat = new THREE.MeshBasicMaterial({ map: openTex, transparent: true, color: new THREE.Color(2.2, 2.2, 2.2), depthWrite: false });
   for (const sp of shopsData) {
     if (sp.type === 'metro') { metroKiosk(sp); continue; }
-    if (sp.type === 'restaurant' || sp.type === 'police') continue;
+    if (sp.type === 'restaurant' || sp.type === 'police' || sp.type === 'hotel') continue;
     if (sp.type === 'mart' || sp.type === 'grocery' || sp.type === 'threads') {
       const L0 = SHOP_LOOK[sp.type], ang = Math.atan2(sp.nx, sp.nz), place = (gg, x, y, z) => { gg.rotateY(ang); gg.translate(sp.dx + Math.cos(ang) * x + Math.sin(ang) * z, y, sp.dz - Math.sin(ang) * x + Math.cos(ang) * z); return gg; };
       const W = [], F = [];
@@ -3153,7 +3311,7 @@ function buildShops() {
     const ring = new THREE.Mesh(new THREE.CylinderGeometry(0.85, 0.85, 0.7, 24, 1, true), new THREE.MeshBasicMaterial({ color: new THREE.Color(0.6, 2.4, 2.2), map: beamTex, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, side: THREE.DoubleSide }));
     ring.position.set(0, CURB + 0.35, 1.3); g.add(ring); scene.add(g);
   }
-  buildMart(ROOMS.mart); buildThreads(ROOMS.threads); buildTerminal(ROOMS.terminal); buildAirstrip(ROOMS.airstrip); buildHome(ROOMS.home); buildGrocery(ROOMS.grocery); buildMetro(ROOMS.metro); buildRestaurant(ROOMS.restaurant); buildPoliceRoom(ROOMS.police);
+  buildMart(ROOMS.mart); buildThreads(ROOMS.threads); buildTerminal(ROOMS.terminal); buildAirstrip(ROOMS.airstrip); buildHome(ROOMS.home); buildGrocery(ROOMS.grocery); buildMetro(ROOMS.metro); buildRestaurant(ROOMS.restaurant); buildPoliceRoom(ROOMS.police); buildHotelLobby(ROOMS.hotel); buildSuite(ROOMS.suite);
   for (const k of SHIFT_TYPES) { ROOMS[k].hello = (ROOMS[k].hello || `${ROOMS[k].name} · walk up to the counter to buy`) + ' · stand on the green WORK spot by the door to earn money'; addWorkSpot(ROOMS[k]); }
   for (const k in ROOMS) markSeats(ROOMS[k]);
 }
@@ -3491,7 +3649,7 @@ function renderTvCam(tt = game.time) {
   renderer.shadowMap.autoUpdate = au; scene.environmentIntensity = ei; hemi.color.copy(hc); hemi.groundColor.copy(hg); hemi.intensity = hi;
 }
 function updateTV(dt) {
-  if (!game.inside || game.inside.room !== ROOMS.home) return;
+  if (!game.inside || (game.inside.room !== ROOMS.home && game.inside.room !== ROOMS.suite)) return;
   tvState.frame++; const want = tvState.ch === 1 ? tvRT.texture : tvTex; if (tvMat.map !== want) { tvMat.map = want; tvMat.needsUpdate = true; }
   if (tvState.ch === 1) { if (tvState.frame % 2 === 0) renderTvCam(); return; }
   tvState.acc += dt; if (tvState.acc < 0.05) return; tvState.acc = 0; drawTV(game.time);
@@ -3778,6 +3936,7 @@ function buildHighways() {
   addDeck(PORT.x1 - 2, 230, PORT.x1 + 100, 230, 10, 0.05, 0.05);
   const pillars = [], hp = [], hh = [];
   for (const d of decks) {
+    if (d.garage) continue;
     const dh = d.h1 - d.h0, sl = Math.hypot(d.len, dh), pier = d.h0 < 1 && d.h1 < 1, th = pier ? 0.6 : 1.3;
     const g = new THREE.Group(); g.rotation.order = 'YXZ';
     g.position.set((d.ax + d.bx) / 2, (d.h0 + d.h1) / 2, (d.az + d.bz) / 2); g.rotation.y = Math.atan2(d.dx, d.dz); g.rotation.x = -Math.atan2(dh, d.len);
@@ -4508,6 +4667,7 @@ function enterShop(s) {
   {
     if (s.type === 'restaurant') restSetBrand(s);
     if (s.type === 'police') policeSetStation(s);
+    if (s.type === 'hotel') hotelSetCurrent(s);
     const Rm = ROOMS[s.type]; game.inside = { shop: s, room: Rm, out: new THREE.Vector3(s.dx + s.nx * 2.2, CURB, s.dz + s.nz * 2.2) };
     Rm.group.visible = true; player.pos.set(Rm.spawn.x, IY, Rm.spawn.z); player.vel.set(0, 0, 0); player.yaw = Math.PI;
     cam.yaw = 0; cam.pitch = 0.16; interiorLight.position.set(Rm.cx, IY + Rm.H - 0.8, Rm.cz); interiorLight.intensity = Rm.w > 30 ? 90 : Rm.w > 20 ? 40 : 16; interiorLight.distance = Rm.w > 30 ? 80 : 34; if (Rm.followLight) { interiorLight.intensity = Rm.lightI || 40; interiorLight.distance = Rm.lightD || 30; }
@@ -4852,7 +5012,7 @@ function refreshDishes() {
 }
 function heal(n) { player.health = Math.min(100, player.health + n); }
 const SHOP_ITEMS = {
-  restaurant: () => restMenuItems(), police: () => policeDeskItems(),
+  restaurant: () => restMenuItems(), police: () => policeDeskItems(), hotel: () => hotelDeskItems(), elevator: () => elevatorItems(),
   mart: [
     { name: 'Café cubano', desc: 'Strong and sweet. Restores 25 health.', price: 4, buy: () => { heal(25); return 'Café cubano · +25 health'; } },
     { name: 'Mango smoothie', desc: 'Restores all your health.', price: 9, buy: () => { heal(100); return 'Fully refreshed'; } },
@@ -5205,7 +5365,8 @@ function drawBigmap() {
   for (const c of cashSpots) if (c.cd <= 0) dot(c.x, c.z, 3.5, '#86ffb0');
   for (const sp of shopsData) dot(sp.dx, sp.dz, 5, SHOP_COL[sp.type], true);
   { const bd = (x, zz, col, t) => { const r = 8.5 * dpr; g.fillStyle = col; g.strokeStyle = 'rgba(14,10,23,.9)'; g.lineWidth = 2 * dpr; g.beginPath(); g.arc(X(x), Z(zz), r, 0, Math.PI * 2); g.fill(); g.stroke(); g.fillStyle = '#fff'; g.font = `800 ${Math.round(11 * dpr)}px system-ui, sans-serif`; g.fillText(t, X(x), Z(zz) + 0.5 * dpr); };
-    for (const sp of shopsData) if (sp.type === 'restaurant') bd(sp.dx, sp.dz, '#ff8c42', 'R'); for (const ps of POLICE_ST) bd(ps.x, ps.z, '#8b5a2b', '★'); }
+    for (const sp of shopsData) if (sp.type === 'restaurant') bd(sp.dx, sp.dz, '#ff8c42', 'R'); for (const ps of POLICE_ST) bd(ps.x, ps.z, '#8b5a2b', '★');
+    for (const sp of shopsData) if (sp.type === 'hotel') bd(sp.dx, sp.dz, '#9b5de5', 'H'); for (const gg of GARAGES) bd(gg.x, gg.z, '#1f6fb2', 'P'); }
   if (transit.built) {
     g.save(); g.strokeStyle = 'rgba(63,169,245,.8)'; g.lineWidth = 3 * dpr; g.setLineDash([9 * dpr, 6 * dpr]); g.beginPath(); transit.loop.pts.forEach(([x, zz], i) => (i ? g.lineTo(X(x), Z(zz)) : g.moveTo(X(x), Z(zz)))); g.closePath(); g.stroke(); g.restore();
     const badge = (x, zz, col, t, tc, hi) => { const r = (hi ? 10 : 7.5) * dpr; g.fillStyle = col; g.strokeStyle = hi ? '#fff' : 'rgba(14,10,23,.9)'; g.lineWidth = (hi ? 3 : 2) * dpr; g.beginPath(); g.arc(X(x), Z(zz), r, 0, Math.PI * 2); g.fill(); g.stroke(); g.fillStyle = tc; g.font = `800 ${Math.round((hi ? 12 : 10) * dpr)}px system-ui, sans-serif`; g.fillText(t, X(x), Z(zz) + 0.5 * dpr); };
@@ -5538,7 +5699,7 @@ function buildMapImage(B, parks) {
   g.fillStyle = '#3f6e3a'; for (const p of parks) g.fillRect(X(p.cx - 32), X(p.cz - 32), 64 * k, 64 * k);
   g.fillStyle = '#8b879c'; for (let i = 0; i < NN; i++) { g.fillRect(X(roadC(i) - 8), X(-HALF - 8), 16 * k, (2 * HALF + 16) * k); g.fillRect(X(-HALF - 8), X(roadC(i) - 8), (2 * HALF + 16) * k, 16 * k); }
   g.fillStyle = '#211e2b'; for (const b of B) if (b.y === 0) g.fillRect(X(b.x - b.w / 2), X(b.z - b.d / 2), b.w * k, b.d * k);
-  g.lineCap = 'butt'; for (const d of decks) { g.strokeStyle = d.h0 < 1 && d.h1 < 1 ? '#a07a52' : '#e2dcea'; g.lineWidth = Math.max(2, d.w * k); g.beginPath(); g.moveTo(X(d.ax), X(d.az)); g.lineTo(X(d.bx), X(d.bz)); g.stroke(); }
+  g.lineCap = 'butt'; for (const d of decks) { if (d.garage) continue; g.strokeStyle = d.h0 < 1 && d.h1 < 1 ? '#a07a52' : '#e2dcea'; g.lineWidth = Math.max(2, d.w * k); g.beginPath(); g.moveTo(X(d.ax), X(d.az)); g.lineTo(X(d.bx), X(d.bz)); g.stroke(); }
   return c;
 }
 function drawMinimap() {
@@ -5626,6 +5787,7 @@ function updateHUD(dt) {
   if (!hint && !game.inside && !player.car) { const ps = POLICE_ST.find((q) => Math.hypot(q.x - player.pos.x, q.z - player.pos.z) < 7); if (ps) hint = game.wanted > 0 ? `${ps.name} · safe zone · walk in and the chase stops` : `${ps.name} · walk in${game.copJoined ? ' to start a patrol shift' : ' to join the police'}`; }
   if (!hint && game.wanted > 0 && policeSafe()) hint = game.inside ? 'Safe inside the police station · nobody can arrest you here' : 'Police station grounds · safe zone · nobody can arrest you here';
   if (cc.on && !hint) hint = ccHint();
+  if (!hint && game.inside && game.inside.room === ROOMS.suite && stayActive()) hint = `Room ${game.stay.room} · Floor ${game.stay.floor} · ${HOTELS[game.stay.h].name}`;
   if (nearWorkSpot()) hint = TOUCH ? 'Work a shift at the register · tap WORK' : 'Press F to work a shift at the register';
   if (metro.ride && metro.ride.phase === 'drive') hint = metroDriveHint();
   else if (metro.ride && metro.ride.phase !== 'depart') hint = `Metro to ${metro.ride.dest.name} · ${metro.ride.phase === 'arrive' ? 'train arriving' : metro.ride.phase === 'ride' ? 'next stop ' + metro.ride.dest.name : 'arriving'}`;
@@ -5961,7 +6123,7 @@ function saveGame(force) {
   store.set('cash', game.cash); const w = snapshotWorld(); if (w) { store.set('world', w); store.set('garageCars', snapshotGarage()); } store.set('savedAt', Date.now());
   cloudSave(force);
 }
-function saveWhere(w) { const a = w && w.at; if (!a) return ''; if (a.kind === 'shop') { const sp = shopsData[a.i]; return sp ? (sp.type === 'home' ? 'At home' : sp.type === 'metro' ? 'Metro · ' + sp.name : sp.type === 'restaurant' ? RESTAURANTS[sp.brand].name : sp.type === 'police' ? sp.name : ROOMS[sp.type].name) : ''; } return (a.kind === 'car' ? 'Driving · ' : '') + districtAt(a.x, a.z); }
+function saveWhere(w) { const a = w && w.at; if (!a) return ''; if (a.kind === 'shop') { const sp = shopsData[a.i]; return sp ? (sp.type === 'home' ? 'At home' : sp.type === 'metro' ? 'Metro · ' + sp.name : sp.type === 'restaurant' ? RESTAURANTS[sp.brand].name : sp.type === 'police' ? sp.name : sp.type === 'hotel' ? HOTELS[sp.hotel].name : ROOMS[sp.type].name) : ''; } return (a.kind === 'car' ? 'Driving · ' : '') + districtAt(a.x, a.z); }
 function restoreWorld() {
   const w = store.get('world', null); if (!w || !w.at) return false;
   if (Number.isFinite(w.tod)) { game.tod = w.tod; updateDaylight(0); refreshEnv(true); }
@@ -6007,13 +6169,13 @@ async function start(data) {
     game.sound = store.get('sound', true); game.radio = store.get('radio', true); setSound(game.sound);
     player.pos.set(-494.6, 0, 16.5); player.yaw = -Math.PI / 2;
     starterCar = new Vehicle('sports', 0xff3f8e); starterCar.place(-492.4, 18.8, 0);
-    game.owned = store.get('owned', ['coral']); game.visited = store.get('visited', []); game.pantry = store.get('pantry', {}); game.dishes = store.get('dishes', []); refreshDishes(); game.family = store.get('family', []); game.enlisted = store.get('enlisted', false); game.date = store.get('gameDate', null) || calKey(new Date()); game.copJoined = store.get('copJoined', false); game.copCalls = store.get('copCalls', 0); game.phoneApps = store.get('phoneApps', ['shop', 'maps', 'bank', 'weather', 'settings']).filter((id) => APPS[id]); game.phoneOwned = store.get('phoneOwned', []); game.phoneWall = store.get('phoneWall', 0); game.busTickets = store.get('busTickets', 0); game.milDuties = store.get('milDuties', 0); game.garage = store.get('garage', []); buildTransit(); spawnGarage(); 
-    setupMarkers(); setupCash(); spawnTraffic(); spawnPeds(); spawnLotCars(); restoreGarage();
+    game.owned = store.get('owned', ['coral']); game.visited = store.get('visited', []); game.pantry = store.get('pantry', {}); game.dishes = store.get('dishes', []); refreshDishes(); game.family = store.get('family', []); game.enlisted = store.get('enlisted', false); game.date = store.get('gameDate', null) || calKey(new Date()); game.stay = store.get('stay', null); game.copJoined = store.get('copJoined', false); game.copCalls = store.get('copCalls', 0); game.phoneApps = store.get('phoneApps', ['shop', 'maps', 'bank', 'weather', 'settings']).filter((id) => APPS[id]); game.phoneOwned = store.get('phoneOwned', []); game.phoneWall = store.get('phoneWall', 0); game.busTickets = store.get('busTickets', 0); game.milDuties = store.get('milDuties', 0); game.garage = store.get('garage', []); buildTransit(); spawnGarage(); 
+    setupMarkers(); setupCash(); spawnTraffic(); spawnPeds(); spawnLotCars(); spawnGarageCars(); restoreGarage();
     for (let i = 0; i < HWY_N; i++) { const c = new Vehicle(mpick(TRAFFIC_TYPES), mpick(PAINTS)); if (!placeHwy(c, false)) c.dispose(); }
     applyQuality(data.quality || store.get('quality', 'ultra'));
     updateDaylight(0); refreshEnv(true);
     renderer.compile(scene, camera);
-    game.state = 'title'; window.__solanoRunning = true; window.__solanoDebug = { gameDate, nextDay, sleepUntil, metroDriveHint, notesList, calHolidays, policeSafe, busted, police, cop, copStartShift, copCruiser, copNextCall, policeDeskItems, peds, walkers: () => walkers, phone, phoneTv, phoneRender, TY_SQ, cc, reportCrash, POLICE_ST, RESTAURANTS, lots, restDine, metro, BRIDGES, startMetroRide, nearestMetro, GARAGE, garage, openSearch, closeSearch, search, shift, startShift, transitRef: () => transit, saveGame, cloud, store, phone, APPS, openPhone, closePhone, duty, DUTIES, startDuty, transit, CATALOG, DEALER, makeHuman, randomLook, poseHuman, mil, Vehicle, PAINTS, ROOMS, ferris, famList: fam.list, renderer, game, camera, cam, player, officers, police, shopsData, vehicles, flight, RING_H, peek: () => ({ shopCD, t: +game.time.toFixed(2) }), crime: (n) => crime(n, 'Test heat') };
+    game.state = 'title'; window.__solanoRunning = true; window.__solanoDebug = { HOTELS, GARAGES, hotelAvail, stayBook, stayActive, goToSuite, decks, gameDate, nextDay, sleepUntil, metroDriveHint, notesList, calHolidays, policeSafe, busted, police, cop, copStartShift, copCruiser, copNextCall, policeDeskItems, peds, walkers: () => walkers, phone, phoneTv, phoneRender, TY_SQ, cc, reportCrash, POLICE_ST, RESTAURANTS, lots, restDine, metro, BRIDGES, startMetroRide, nearestMetro, GARAGE, garage, openSearch, closeSearch, search, shift, startShift, transitRef: () => transit, saveGame, cloud, store, phone, APPS, openPhone, closePhone, duty, DUTIES, startDuty, transit, CATALOG, DEALER, makeHuman, randomLook, poseHuman, mil, Vehicle, PAINTS, ROOMS, ferris, famList: fam.list, renderer, game, camera, cam, player, officers, police, shopsData, vehicles, flight, RING_H, peek: () => ({ shopCD, t: +game.time.toFixed(2) }), crime: (n) => crime(n, 'Test heat') };
     { const sw = store.get('world', null); if (sw && sw.at) { $('playBtn').textContent = 'Continue'; const si = $('saveInfo'); si.textContent = `Saved game · ${saveWhere(sw)} · ${money(game.cash)}${cloud.restored ? ' · loaded from your account' : ''}`; si.hidden = false; $('newGameT').hidden = false; } }
     $('loading').hidden = true; $('title').hidden = false;
     renderer.setAnimationLoop(frame);
