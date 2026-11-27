@@ -354,7 +354,7 @@ button:focus-visible{outline:3px solid var(--lagoon);outline-offset:3px}
       <div><div class="bm-title">Solano</div><div class="bm-hint">Drag to pan · pinch to zoom · tap to drop a waypoint</div></div>
       <div class="bm-actions"><button class="ghost" id="bmSearch">Search</button><button class="ghost" id="bmHome">Home</button><button class="ghost" id="bmClear" hidden>Clear waypoint</button><button class="bm-btn" id="bmIn" aria-label="Zoom in">+</button><button class="bm-btn" id="bmOut" aria-label="Zoom out">−</button><button class="bm-btn" id="bmClose" aria-label="Close map">✕</button></div>
     </div>
-    <div class="bm-legend"><span><i style="background:#fff3e8"></i>You</span><span><i style="background:#ff3f8e"></i>Jobs</span><span><i class="sq" style="background:#2be0cf"></i>24/7 Mart</span><span><i class="sq" style="background:#ff7aa8"></i>Threads</span><span><i class="sq" style="background:#9be15d"></i>Groceries</span><span><i class="sq" style="background:#9ad8f2"></i>Airport terminal</span><span><i class="sq" style="background:#ffd36e"></i>Home</span><span><i style="background:#86ffb0"></i>Cash</span><span><i style="background:#3fa9f5"></i>Bus stop · B</span><span><i style="background:#ffc21a"></i>Taxi stand · T</span><span><i style="background:#e63946"></i>Metro · M</span><span><i style="background:#ff8c42"></i>Restaurant · R</span><span><i style="background:#8b5a2b"></i>Police station · ★</span><span><i style="background:#9b5de5"></i>Hotel · H</span><span><i style="background:#18b3a6"></i>Sky Train · S</span><span><i style="background:#f4b400"></i>Driver Depot · D</span><span><i style="background:#1f6fb2"></i>Parking garage · P</span><span><i class="sq" style="background:#3fa9f5;height:3px;width:14px"></i>Bus route</span><span><i style="background:#b18cff"></i>Waypoint</span><span><i style="background:#ff3050"></i>Police</span></div>
+    <div class="bm-legend"><span><i style="background:#fff3e8"></i>You</span><span><i style="background:#ff3f8e"></i>Jobs</span><span><i class="sq" style="background:#2be0cf"></i>24/7 Mart</span><span><i class="sq" style="background:#ff7aa8"></i>Threads</span><span><i class="sq" style="background:#9be15d"></i>Groceries</span><span><i class="sq" style="background:#9ad8f2"></i>Airport terminal</span><span><i class="sq" style="background:#ffd36e"></i>Home</span><span><i style="background:#86ffb0"></i>Cash</span><span><i style="background:#3fa9f5"></i>Bus stop · B</span><span><i style="background:#ffc21a"></i>Taxi stand · T</span><span><i style="background:#e63946"></i>Metro · M</span><span><i style="background:#ff8c42"></i>Restaurant · R</span><span><i style="background:#8b5a2b"></i>Police station · ★</span><span><i style="background:#ff4d6d"></i>Hospital · +</span><span><i style="background:#d62828"></i>Fire station · F</span><span><i style="background:#3a86ff"></i>Space Center · ▲</span><span><i style="background:#9b5de5"></i>Hotel · H</span><span><i style="background:#18b3a6"></i>Sky Train · S</span><span><i style="background:#f4b400"></i>Driver Depot · D</span><span><i style="background:#1f6fb2"></i>Parking garage · P</span><span><i class="sq" style="background:#3fa9f5;height:3px;width:14px"></i>Bus route</span><span><i style="background:#b18cff"></i>Waypoint</span><span><i style="background:#ff3050"></i>Police</span></div>
   </div>
 
   <div id="shop" class="overlay" hidden>
@@ -451,6 +451,7 @@ const AIRPORT = { x0: -360, x1: 860, z0: LAND - 20, z1: 1260 };
 // Fort Halcón: a fenced military base on its own land north of the city, reached by a causeway. Nobody gets in.
 const MIL = { x0: -360, x1: 600, z0: -1360, z1: -760 }, CAUSE = { x0: 5, x1: 35, z0: -790, z1: -LAND + 4 }, FENCE = { x0: -352, x1: 592, z0: -1352, z1: -768 }, GATE = { x: 20, z: -756 };
 const ISLA = { x0: -2650, x1: -1950, z0: -860, z1: -360 };
+const SPACE = { x0: -2200, x1: -1600, z0: 250, z1: 850 }; // the Solano Space Center
 const PASTEL_T = [0xf7b8c8, 0xa6e8d8, 0xfde6a0, 0xcdb9f4, 0xffcca8, 0xf4efe4, 0x9ad8f2];
 const DESTS = [
   { id: 'marco', name: 'San Marco', gate: 'B1', price: 360, rect: { x0: 2200, x1: 2900, z0: -300, z1: 250 }, blurb: 'Glass towers around a fountain plaza, right on the water.', town: { style: 0, cols: [0x47657a, 0x7d97a8, 0x8f7c5c, 0x2f5563, 0xa4adb6, 0x5b6684], fl: [6, 32], ground: [0.36, 0.38, 0.36], feature: 'plaza' } },
@@ -459,7 +460,7 @@ const DESTS = [
   { id: 'isla', name: 'Isla Verde', gate: 'B5', price: 280, rect: ISLA, blurb: 'Resort island with three beach hotels and a beach bar.' },
   { id: 'bay', name: 'Bayside', gate: 'B6', price: 260, rect: { x0: 1500, x1: 2200, z0: 2200, z1: 2700 }, blurb: 'Boardwalk beach town with a Ferris wheel by the sea.', town: { style: 2, cols: PASTEL_T, fl: [2, 5], ground: [0.3, 0.44, 0.22], feature: 'ferris' } },
 ];
-const ISLANDS = DESTS.map((d) => d.rect);
+const ISLANDS = [...DESTS.map((d) => d.rect), SPACE];
 const destAt = (x, z) => DESTS.find((d) => rectD(d.rect, x, z) < 60);
 const MAP = { x0: -2900, z0: -2900, w: 6000, h: 5700, px: 2048 };
 function rectD(r, x, z) { const dx = Math.max(r.x0 - x, 0, x - r.x1), dz = Math.max(r.z0 - z, 0, z - r.z1); return dx === 0 && dz === 0 ? 0 : Math.hypot(dx, dz); }
@@ -480,6 +481,7 @@ const BRIDGES = [
   { name: 'Port Coral Bridge', to: 'coral', pts: [[-420, -482], [-372, -2214]], link: [30, -371, -2227, false] },
   { name: 'Santa Luz Bridge', to: 'luz', pts: [[455, -482], [1700, -1814]], link: [30, 1700, -1827, false] },
   { name: 'Bayside Bridge', to: 'bay', pts: [[845, 1235], [1515, 2490]], link: [52, 1538, 2490, true] },
+  { name: 'Space Coast Bridge', to: 'space', pts: [[-482, 420], [-1380, 420], [-1616, 440]] },
 ];
 function nearBridge(x, z, pad = 4) { for (const br of BRIDGES) for (let i = 0; i < br.pts.length - 1; i++) { const [ax, az] = br.pts[i], [bx, bz] = br.pts[i + 1], dx = bx - ax, dz = bz - az, t = clamp(((x - ax) * dx + (z - az) * dz) / (dx * dx + dz * dz), 0, 1); if (Math.hypot(ax + dx * t - x, az + dz * t - z) < 8 + pad) return true; } return false; }
 function buildBridges() {
@@ -492,14 +494,14 @@ function buildBridges() {
     const hAt = (v) => (v < RAMP ? 0.15 + (H - 0.15) * v / RAMP : v > total - RAMP ? 0.15 + (H - 0.15) * (total - v) / RAMP : H);
     const corners = segs.slice(1).map((sg) => sg.s0), cuts = [...new Set([0, RAMP, total - RAMP, total, ...corners].map((v) => Math.round(v * 100) / 100))].sort((a, b) => a - b);
     for (let i = 0; i < cuts.length - 1; i++) {
-      const v0 = cuts[i], v1 = cuts[i + 1], sg = segs.find((q) => v0 >= q.s0 - 1e-6 && v1 <= q.s0 + q.l + 1e-6) || segs[0];
+      const v0 = cuts[i], v1 = cuts[i + 1], sg = segs.find((q) => v0 >= q.s0 - 0.01 && v1 <= q.s0 + q.l + 0.01) || segs[0];
       const e0 = corners.some((c) => Math.abs(c - v0) < 0.01) ? W / 2 : 0, e1 = corners.some((c) => Math.abs(c - v1) < 0.01) ? W / 2 : 0;
       const ax = sg.a[0] + sg.dx * (v0 - sg.s0 - e0), az = sg.a[1] + sg.dz * (v0 - sg.s0 - e0), bx = sg.a[0] + sg.dx * (v1 - sg.s0 + e1), bz = sg.a[1] + sg.dz * (v1 - sg.s0 + e1);
       addDeck(ax, az, bx, bz, W, hAt(v0), hAt(v1)).bridge = br.name;
     }
     // a green sign over the road at the mainland end
     const sg = segs[0], t = 26, h = hAt(t), cx = sg.a[0] + sg.dx * t, cz = sg.a[1] + sg.dz * t, nx = -sg.dz, nz = sg.dx;
-    const isl = DESTS.find((d) => d.id === br.to), tex = canvasTex(1024, 192, (g) => { g.fillStyle = '#0f6b3a'; g.fillRect(0, 0, 1024, 192); g.strokeStyle = '#f4f4f0'; g.lineWidth = 8; g.strokeRect(10, 10, 1004, 172); g.fillStyle = '#f4f4f0'; g.textAlign = 'center'; g.textBaseline = 'middle'; fitText(g, `TO ${isl.name.toUpperCase()}`, 512, 74, 940, 84); fitText(g, br.name.toUpperCase(), 512, 146, 900, 44); });
+    const isl = DESTS.find((d) => d.id === br.to) || { name: 'Space Center' }, tex = canvasTex(1024, 192, (g) => { g.fillStyle = '#0f6b3a'; g.fillRect(0, 0, 1024, 192); g.strokeStyle = '#f4f4f0'; g.lineWidth = 8; g.strokeRect(10, 10, 1004, 172); g.fillStyle = '#f4f4f0'; g.textAlign = 'center'; g.textBaseline = 'middle'; fitText(g, `TO ${isl.name.toUpperCase()}`, 512, 74, 940, 84); fitText(g, br.name.toUpperCase(), 512, 146, 900, 44); });
     const board = new THREE.Mesh(new THREE.PlaneGeometry(12, 2.25), new THREE.MeshBasicMaterial({ map: tex, color: new THREE.Color(1.1, 1.1, 1.1) })); board.position.set(cx, h + 6.2, cz); board.rotation.y = Math.atan2(-sg.dx, -sg.dz); scene.add(board);
     const sp = []; for (const sd of [-1, 1]) { sp.push(boxAt(0.35, h + 7.6, 0.35, cx + nx * sd * 8.9, (h + 7.6) / 2 - 0.4, cz + nz * sd * 8.9, 0x6b6f63)); addPost(cx + nx * sd * 8.9, cz + nz * sd * 8.9, 0.3, h + 8); }
     sp.push(boxAt(0.3, 0.3, 18, cx, h + 7.4, cz, 0x6b6f63).rotateY(0)); const gm = new THREE.Mesh(mergeAll(sp.slice(0, 2)), vcolMat); scene.add(gm);
@@ -948,9 +950,10 @@ function buildWorld() {
         const n = ri(1, 3); for (let k = 0; k < n; k++) roofBoxes.push({ x: lx + rr(-w / 2 + 2, w / 2 - 2), z: lz + rr(-d / 2 + 2, d / 2 - 2), y: top, sx: rr(1.4, 3), sy: rr(0.8, 1.8), sz: rr(1.4, 3) });
       }
     }
-    if (ghost) { B.length = nB; neon.length = nN; roofBoxes.length = nR; blink.length = nK; shopsData.length = nS; blk.kind = SP[0]; if (SP[0] === 'police') buildPoliceLot(blk, SP[1], SP[2]); else if (SP[0] === 'hotel') buildHotelLot(blk, SP[1], SP[2], SP[3], addB); else if (SP[0] === 'depot') buildDepot(blk, SP[1], SP[2]); else buildRestaurantLot(blk, SP[1], SP[2], SP[3]); }
+    if (ghost) { B.length = nB; neon.length = nN; roofBoxes.length = nR; blink.length = nK; shopsData.length = nS; blk.kind = SP[0]; if (SP[0] === 'police') buildPoliceLot(blk, SP[1], SP[2]); else if (SP[0] === 'hotel') buildHotelLot(blk, SP[1], SP[2], SP[3], addB); else if (SP[0] === 'depot') buildDepot(blk, SP[1], SP[2]); else if (SP[0] === 'hosp') buildHospitalLot(blk, SP[1], SP[2], SP[3]); else if (SP[0] === 'fire') buildFireLot(blk, SP[1], SP[2], SP[3]); else buildRestaurantLot(blk, SP[1], SP[2], SP[3]); }
   }
   extraZones(addB, roofBoxes, blink);
+  buildSpaceCenter();
   hotelTower('Isla Verde Grand', -2340, -600, 1, 0, addB, { color: 0x7fb8d6, price: 240, stars: 5 }); islandGarage(-2352, -645, 1, 0, 'Isla Verde Grand');
   buildSkyTrain();
   addMetroStations(parks);
@@ -2219,7 +2222,7 @@ const PHONE_GAMES = {
 // ---------------------------------------------------------------- search: type a place, then route, taxi, bus or fly there
 const search = { places: [], list: [] };
 const inCity = (x, z) => Math.abs(x) <= HALF + 24 && Math.abs(z) <= HALF + 24;
-const SR_KIND = { home: ['#ffc857', 'H', 'home'], cars: ['#2be0cf', 'C', 'car dealer'], airport: ['#7fb8d6', '✈', 'airport'], place: ['#b18cff', '•', 'place'], area: ['#9b8fd6', '◦', 'neighborhood'], mart: ['#2be0cf', 'M', '24/7 Mart'], grocery: ['#7cc84a', 'G', 'grocery store'], threads: ['#ff7aa8', 'T', 'clothes shop'], bus: ['#3fa9f5', 'B', 'bus stop'], taxi: ['#e0a800', 'T', 'taxi stand'], island: ['#18b3a6', '≈', 'island'], metro: ['#e63946', 'M', 'metro station'], restaurant: ['#ff8c42', 'R', 'restaurant'], hotel: ['#9b5de5', 'H', 'hotel'], sky: ['#18b3a6', 'S', 'sky train station'], police: ['#8b5a2b', '★', 'police station'] };
+const SR_KIND = { home: ['#ffc857', 'H', 'home'], cars: ['#2be0cf', 'C', 'car dealer'], airport: ['#7fb8d6', '✈', 'airport'], place: ['#b18cff', '•', 'place'], area: ['#9b8fd6', '◦', 'neighborhood'], mart: ['#2be0cf', 'M', '24/7 Mart'], grocery: ['#7cc84a', 'G', 'grocery store'], threads: ['#ff7aa8', 'T', 'clothes shop'], bus: ['#3fa9f5', 'B', 'bus stop'], taxi: ['#e0a800', 'T', 'taxi stand'], island: ['#18b3a6', '≈', 'island'], metro: ['#e63946', 'M', 'metro station'], restaurant: ['#ff8c42', 'R', 'restaurant'], hotel: ['#9b5de5', 'H', 'hotel'], sky: ['#18b3a6', 'S', 'sky train station'], police: ['#8b5a2b', '★', 'police station'], hospital: ['#ff4d6d', '+', 'hospital'], fire: ['#d62828', 'F', 'fire station'], space: ['#3a86ff', '▲', 'space center'] };
 function buildPlaces() {
   const P = [], add = (name, x, z, kind, keys = '', extra = {}) => P.push({ name, x, z, kind, keys: (name + ' ' + keys).toLowerCase(), ...extra });
   const home = shopsData.find((sp) => sp.type === 'home');
@@ -2237,9 +2240,12 @@ function buildPlaces() {
   if (DEPOT.x !== undefined) add('Driver Depot', DEPOT.x, DEPOT.z, 'place', 'depot taxi bus parking driver my taxi my bus drivework', { pop: 12 });
   for (const gg of GARAGES) add(gg.name, gg.x, gg.z, 'place', 'parking garage park car levels floors ' + gg.name);
   for (const ps of POLICE_ST) add(ps.name, ps.x, ps.z, 'police', 'police station cops pd jail officer sheriff 911');
+  for (const hs of HOSPITALS) add(`${hs.name} · ${districtAt(hs.x, hs.z)}`, hs.x, hs.z, 'hospital', 'hospital doctor nurse er emergency medical clinic sick hurt health ambulance medicine');
+  if (SC.built) add('Solano Space Center', SC.x, SC.z, 'space', 'space center rocket launch moon astronaut nasa spaceship space station mission control launch pad', { pop: 13 });
+  for (const fs of FIRE_ST) add(`${fs.name} · ${districtAt(fs.x, fs.z)}`, fs.x, fs.z, 'fire', 'fire station firefighter fireman fire truck engine rescue 911');
   if (transit.built) { for (const st of transit.stops) add(`Bus ${st.name}`, st.px, st.pz, 'bus', 'bus stop station', { stop: st }); for (const rk of transit.ranks) add(`Taxi stand · ${districtAt(rk.cx, rk.cz)}`, rk.sx, rk.sz, 'taxi', 'taxi cab stand rank'); }
   for (const st of shopsData) if (st.type === 'metro') add(`Metro · ${st.name}`, st.dx + st.nx * 3, st.dz + st.nz * 3, 'metro', 'metro subway underground train station ' + st.area.toLowerCase(), { station: st });
-  for (const br of BRIDGES) add(br.name, br.pts[0][0], br.pts[0][1], 'place', 'bridge drive road island ' + DESTS.find((d) => d.id === br.to).name, { bridge: br });
+  for (const br of BRIDGES) add(br.name, br.pts[0][0], br.pts[0][1], 'place', 'bridge drive road island space ' + (DESTS.find((d) => d.id === br.to) || { name: 'Solano Space Center' }).name, { bridge: br });
   for (const d of DESTS) add(d.name, (d.rect.x0 + d.rect.x1) / 2, (d.rect.z0 + d.rect.z1) / 2, 'island', 'island fly flight ' + d.blurb + (d.id === 'bay' ? ' ferris wheel' : ''), { dest: d.id, pop: 20 });
   return P;
 }
@@ -2268,7 +2274,7 @@ function renderSearch() {
   const q = $('srInput').value.trim().toLowerCase(), pp = phonePos(), here = destAt(pp.x, pp.z), onBus = transit.ride && transit.ride.kind === 'bus', rk = !here ? cabbyRank() : null, fly = flyOptions();
   const dist = (pl) => Math.hypot(pl.x - pp.x, pl.z - pp.z);
   let list;
-  if (!q) { const best = {}; for (const pl of search.places) if (['grocery', 'mart', 'bus', 'taxi', 'restaurant', 'police', 'hotel', 'sky'].includes(pl.kind) && (!best[pl.kind] || dist(pl) < dist(best[pl.kind]))) best[pl.kind] = pl; list = [...search.places.filter((pl) => pl.pop).sort((a, b) => a.pop - b.pop), ...Object.values(best)].sort((a, b) => (a.pop || 5) - (b.pop || 5)); }
+  if (!q) { const best = {}; for (const pl of search.places) if (['grocery', 'mart', 'bus', 'taxi', 'restaurant', 'police', 'hotel', 'sky', 'hospital', 'fire'].includes(pl.kind) && (!best[pl.kind] || dist(pl) < dist(best[pl.kind]))) best[pl.kind] = pl; list = [...search.places.filter((pl) => pl.pop).sort((a, b) => a.pop - b.pop), ...Object.values(best)].sort((a, b) => (a.pop || 5) - (b.pop || 5)); }
   else { const words = q.split(/\s+/); list = search.places.filter((pl) => words.every((w) => pl.keys.includes(w))).map((pl) => ({ pl, sc: (pl.name.toLowerCase().startsWith(q) ? 0 : pl.name.toLowerCase().includes(q) ? 1 : 2) * 1e6 + dist(pl) })).sort((a, b) => a.sc - b.sc).map((o) => o.pl); }
   list = list.slice(0, 16); search.list = list;
   $('srCtx').textContent = onBus ? `On the bus${transit.ride.offAt ? ` · getting off at ${transit.ride.offAt.name}` : ''} · pick a place and you'll get off at the closest stop` : here ? `You're on ${here.name} · fly anywhere from the airstrip` : '';
@@ -2283,7 +2289,7 @@ function renderSearch() {
       acts.push(`<button class="go" data-act="route" data-i="${i}">Route</button>`);
       if (onBus) { const st = pl.stop || stopNear(pl); if (st && inCity(pl.x, pl.z)) acts.push(`<button class="bs" data-act="busoff" data-i="${i}">Get off near</button>`); }
       else {
-        if (rk && !(pl.kind === 'taxi' && dist(pl) < 30)) { const fare = taxiPlan(rk, { name: pl.name, p: { x: pl.x, z: pl.z } }).fare + 3; acts.push(`<button class="tx" data-act="taxi" data-i="${i}" ${wanted ? 'disabled' : ''}>Taxi free</button>`); }
+        if (rk && pl.kind !== 'space' && !(pl.kind === 'taxi' && dist(pl) < 30)) { const fare = taxiPlan(rk, { name: pl.name, p: { x: pl.x, z: pl.z } }).fare + 3; acts.push(`<button class="tx" data-act="taxi" data-i="${i}" ${wanted ? 'disabled' : ''}>Taxi free</button>`); }
         const st = pl.stop || stopNear(pl); if (st && inCity(pl.x, pl.z) && inCity(pp.x, pp.z) && dist(pl) > 120) acts.push(`<button class="bs" data-act="bus" data-i="${i}">Bus free</button>`);
         if (mBtn) acts.push(mBtn);
       }
@@ -2320,24 +2326,25 @@ $('searchBtn').addEventListener('click', () => { initAudio(); if (game.state ===
 $('bmSearch').addEventListener('click', () => { closeMap(); openSearch(); });
 // ---------------------------------------------------------------- shop shifts: run the register at a 24/7 Mart, Mercado Fresco or Threads
 const shift = { on: false, cust: null };
-const SHIFT_TYPES = ['mart', 'grocery', 'threads', 'restaurant', 'hotel'];
-const SHIFT_VERB = { restaurant: 'SERVE', hotel: 'CHECK IN' };
-const isCaptain = () => (game.copCalls || 0) >= 30 || (game.milDuties || 0) >= 20;
-function shiftItem() { const cap = isCaptain(); return { name: 'Work a shift here', desc: `${cap ? 'Captain ★ · ' : ''}Serve ${cap ? 10 : 6} customers · about ${cap ? '$22–38' : '$15–25'} each with tips, plus a $${cap ? 60 : 30} bonus`, price: 0, label: 'JOB', sw: 0x9be15d, buy: () => { closeShopPanel(); startShift(); return null; } }; }
+const SHIFT_TYPES = ['mart', 'grocery', 'threads', 'restaurant', 'hotel', 'hospital'];
+const SHIFT_VERB = { restaurant: 'SERVE', hotel: 'CHECK IN', hospital: 'TREAT' };
+const isCaptain = () => (game.copCalls || 0) >= 30 || (game.milDuties || 0) >= 20 || (game.fireCalls || 0) >= 30 || (game.spaceTasks || 0) >= 12;
+function shiftItem() { const cap = isCaptain(), ty = game.inside && game.inside.shop.type; return { name: ty === 'hospital' ? 'Work a shift as a nurse' : 'Work a shift here', desc: `${cap ? 'Captain ★ · ' : ''}${ty === 'hospital' ? 'Treat' : 'Serve'} ${cap ? 10 : 6} ${ty === 'hospital' ? 'patients' : ty === 'hotel' ? 'guests' : 'customers'} · about ${cap ? '$22–38' : '$15–25'} each with tips, plus a $${cap ? 60 : 30} bonus`, price: 0, label: 'JOB', sw: 0x9be15d, buy: () => { closeShopPanel(); startShift(); return null; } }; }
 function startShift() {
   if (!game.inside || shift.on) return; const R = game.inside.room, type = game.inside.shop.type;
   const ct = type === 'grocery' ? R.counters.find((c) => /checkout 1/.test(c.title)) : R.counters.find((c) => c.type === type); if (!ct) return;
   let clerk = null, bd = 1e9; for (const c of R.clerks) { if (c.mannequin) continue; const d = Math.hypot(c.root.position.x - ct.x, c.root.position.z - ct.z); if (d < bd) { bd = d; clerk = c; } } if (!clerk) return;
   if (player.sit) standUp();
   Object.assign(shift, { on: true, R, type, ct, clerk, px: clerk.root.position.x, pz: clerk.root.position.z, yaw: clerk.root.rotation.y, cust: null, served: 0, goal: isCaptain() ? 10 : 6, earned: 0, t: 150, gap: 1.2, items: [], scanT: 0, missed: 0 });
-  clerk.root.visible = false; player.pos.set(shift.px, IY, shift.pz); player.vel.set(0, 0, 0); player.yaw = shift.yaw; cam.yaw = shift.yaw + Math.PI; cam.pitch = 0.34; cam.manual = 0;
-  toast(`Shift started at ${R.name} · ${type === 'hotel' ? 'check in' : 'serve'} ${shift.goal} ${type === 'hotel' ? 'guests' : 'customers'}${isCaptain() ? ' · Captain ★ 1.5× pay' : ''} · tap ${SHIFT_VERB[type] || 'SCAN'} for each ${type === 'hotel' ? 'step' : 'item'}`, 4200); sfxChime();
+  clerk.root.visible = false; if (type === 'hospital') wearUni('scrubs'); player.pos.set(shift.px, IY, shift.pz); player.vel.set(0, 0, 0); player.yaw = shift.yaw; cam.yaw = shift.yaw + Math.PI; cam.pitch = 0.34; cam.manual = 0;
+  toast(`Shift started at ${R.name} · ${type === 'hotel' ? 'check in' : type === 'hospital' ? 'treat' : 'serve'} ${shift.goal} ${type === 'hotel' ? 'guests' : type === 'hospital' ? 'patients' : 'customers'}${isCaptain() ? ' · Captain ★ 1.5× pay' : ''} · tap ${SHIFT_VERB[type] || 'SCAN'} for each ${(type === 'hotel' || type === 'hospital') ? 'step' : 'item'}`, 4200); sfxChime();
 }
 function shiftSpawnCustomer() {
   const S = shift, R = S.R, h = makeHuman(randomLook(), false); R.group.add(h.root);
   if (S.type === 'hotel') { const sc = new THREE.Mesh(boxAt(0.42, 0.62, 0.24, 0.42, 0.35, -0.05, mpick([0x1f6fb2, 0xc8372d, 0x2a2f38, 0xffc857, 0x2a9d8f])), vcolMat); h.root.add(sc); }
   const c = { h, x: R.spawn.x, z: R.spawn.z, yaw: Math.PI, state: 'in', items: 2 + Math.floor(Math.random() * 4), scanned: 0, waitT: 0, stuck: 0 }; S.cust = c;
-  const PAL = S.type === 'hotel' ? [0xd4af37, 0x9b5de5, 0xffffff, 0x1f6fb2, 0xc8372d] : S.type === 'restaurant' ? [0xd99a4e, 0xf2c14e, 0xe76f51, 0xf4f4f0, 0x8ac926] : S.type === 'threads' ? [0xff6b4a, 0x2be0cf, 0xffc857, 0x9b5de5, 0x1f6fb2] : S.type === 'grocery' ? [0xd62828, 0xffb703, 0x8ac926, 0xf4efe4, 0xf2b8a0] : [0xff6b6b, 0x06d6a0, 0x118ab2, 0xffd166, 0xef476f];
+  if (S.type === 'hospital') { const sl = new THREE.Mesh(boxAt(0.12, 0.34, 0.12, -0.27, 1.05, 0.1, 0xffffff), vcolMat); h.root.add(sl); }
+  const PAL = S.type === 'hospital' ? [0xffffff, 0xff6b6b, 0x8ecae6, 0x9be15d, 0xffd166] : S.type === 'hotel' ? [0xd4af37, 0x9b5de5, 0xffffff, 0x1f6fb2, 0xc8372d] : S.type === 'restaurant' ? [0xd99a4e, 0xf2c14e, 0xe76f51, 0xf4f4f0, 0x8ac926] : S.type === 'threads' ? [0xff6b4a, 0x2be0cf, 0xffc857, 0x9b5de5, 0x1f6fb2] : S.type === 'grocery' ? [0xd62828, 0xffb703, 0x8ac926, 0xf4efe4, 0xf2b8a0] : [0xff6b6b, 0x06d6a0, 0x118ab2, 0xffd166, 0xef476f];
   const mx = (S.ct.x + S.px) / 2, mz = (S.ct.z + S.pz) / 2, dx = S.px - S.ct.x, dz = S.pz - S.ct.z, l = Math.hypot(dx, dz) || 1, sx = -dz / l, sz = dx / l;
   S.items = []; for (let i = 0; i < c.items; i++) { const off = (i - (c.items - 1) / 2) * 0.24, m = new THREE.Mesh(S.type === 'threads' ? boxAt(0.22, 0.06, 0.18, 0, 0.03, 0, PAL[i % PAL.length]) : boxAt(0.14, 0.18 + (i % 2) * 0.06, 0.12, 0, 0.1, 0, PAL[(i * 3) % PAL.length]), vcolMat); m.position.set(mx + sx * off, IY + 1.1, mz + sz * off); m.visible = false; R.group.add(m); S.items.push(m); }
 }
@@ -2346,18 +2353,18 @@ function shiftScan() {
   const m = S.items[c.scanned]; if (m) { S.R.group.remove(m); m.geometry.dispose(); } c.scanned++; S.scanT = 0.25; sfxTick(true);
   if (c.scanned >= c.items) {
     const tip = Math.max(0, Math.round(8 - c.waitT * 0.6)), pay = Math.round((4 + c.items * 3 + tip) * (isCaptain() ? 1.5 : 1)); S.earned += pay; S.served++; addCash(pay, `Shift · ${S.R.name}`);
-    toast(`+$${pay}${tip ? ` · tip $${tip}` : ''} · ${S.served}/${S.goal} ${S.type === 'hotel' ? 'guests' : 'customers'}`, 1800); sfxChime(); c.state = 'out';
+    toast(`+$${pay}${tip ? ` · tip $${tip}` : ''} · ${S.served}/${S.goal} ${S.type === 'hotel' ? 'guests' : S.type === 'hospital' ? 'patients' : 'customers'}`, 1800); sfxChime(); c.state = 'out';
   }
 }
 function shiftClearCustomer() { const S = shift, c = S.cust; if (!c) return; S.R.group.remove(c.h.root); for (const m of S.items) { S.R.group.remove(m); m.geometry.dispose(); } S.items = []; S.cust = null; S.gap = 1.4 + Math.random(); }
 function endShift(done) {
-  const S = shift; if (!S.on) return; shiftClearCustomer(); S.on = false; S.clerk.root.visible = true; $('mission').hidden = true;
+  const S = shift; if (!S.on) return; shiftClearCustomer(); S.on = false; S.clerk.root.visible = true; $('mission').hidden = true; if (S.type === 'hospital' && game.outfit === 'scrubs') unwearUni();
   const bonus = S.served >= S.goal ? (isCaptain() ? 60 : 30) : 0; if (bonus) addCash(bonus, `Shift bonus · ${S.R.name}`);
   player.pos.set(S.ct.x, IY, S.ct.z); player.yaw = S.yaw + Math.PI; cam.yaw = S.yaw; shopCD = 1.5;
-  showBanner(done ? 'SHIFT DONE' : 'SHIFT OVER', `+$${S.earned + bonus} · ${S.served} customer${S.served === 1 ? '' : 's'}${bonus ? ` · $${bonus} bonus` : ''}`, 'var(--money)', 3000);
+  showBanner(done ? 'SHIFT DONE' : 'SHIFT OVER', `+$${S.earned + bonus} · ${S.served} ${S.type === 'hospital' ? 'patient' : S.type === 'hotel' ? 'guest' : 'customer'}${S.served === 1 ? '' : 's'}${bonus ? ` · $${bonus} bonus` : ''}`, 'var(--money)', 3000);
 }
-function shiftTitle() { const S = shift; return `Shift · ${S.R.name} · ${S.served}/${S.goal} ${S.type === 'hotel' ? 'guests' : 'customers'} · $${S.earned}`; }
-function shiftHint() { const c = shift.cust; return !c ? 'Next customer coming…' : c.state === 'in' ? 'A customer is walking up…' : c.state === 'wait' ? `${c.items - c.scanned} ${shift.type === 'hotel' ? 'step' : 'item'}${c.items - c.scanned === 1 ? '' : 's'} to ${(SHIFT_VERB[shift.type] || 'scan').toLowerCase()} · ${TOUCH ? 'tap ' + (SHIFT_VERB[shift.type] || 'SCAN') : 'press F'} · END stops the shift` : 'Thanks! Next customer…'; }
+function shiftTitle() { const S = shift; return `Shift · ${S.R.name} · ${S.served}/${S.goal} ${S.type === 'hotel' ? 'guests' : S.type === 'hospital' ? 'patients' : 'customers'} · $${S.earned}`; }
+function shiftHint() { const c = shift.cust; return !c ? 'Next customer coming…' : c.state === 'in' ? 'A customer is walking up…' : c.state === 'wait' ? `${c.items - c.scanned} ${(shift.type === 'hotel' || shift.type === 'hospital') ? 'step' : 'item'}${c.items - c.scanned === 1 ? '' : 's'} to ${(SHIFT_VERB[shift.type] || 'scan').toLowerCase()} · ${TOUCH ? 'tap ' + (SHIFT_VERB[shift.type] || 'SCAN') : 'press F'} · END stops the shift` : 'Thanks! Next customer…'; }
 function updateShift(dt) {
   const S = shift, R = S.R, p = player;
   p.pos.set(S.px, IY, S.pz); p.vel.set(0, 0, 0); p.yaw = S.yaw; p.h.root.position.copy(p.pos); p.h.root.rotation.set(0, p.yaw, 0, 'YXZ'); poseHuman(p.h, dt, 0, false, game.time);
@@ -2617,8 +2624,8 @@ const signs = [];
 // ---------------------------------------------------------------- shops: storefronts + walk-in interiors (built far below the map)
 const shopsData = [], IY = -400;
 const SHOP_LOOK = { mart: { name: '24/7 MART', hex: 0x2a9d8f }, threads: { name: 'THREADS', hex: 0xff3f8e }, terminal: { name: 'DEPARTURES', hex: 0x18b3a6 }, airstrip: { name: 'ISLAND AIR', hex: 0x2a9d8f }, home: { name: 'HOME', hex: 0xffc857 }, grocery: { name: 'MERCADO FRESCO', hex: 0x3fae5c } };
-const SHOP_COL = { mart: '#2be0cf', threads: '#ff7aa8', terminal: '#9ad8f2', airstrip: '#9ad8f2', home: '#ffd36e', grocery: '#9be15d', metro: '#e63946', restaurant: '#ff8c42', police: '#8b5a2b', hotel: '#9b5de5' };
-const ROOMS = { mart: { name: '24/7 Mart', cx: 0, cz: 0, w: 18, d: 14, H: 5.2 }, threads: { name: 'Threads', cx: 80, cz: 0, w: 16, d: 14, H: 5.2 }, terminal: { name: 'Solano International', cx: 200, cz: 0, w: 56, d: 40, H: 10 }, airstrip: { name: 'Island Airstrip', cx: 300, cz: 0, w: 22, d: 16, H: 6 }, grocery: { name: 'Mercado Fresco', cx: 540, cz: 0, w: 24, d: 18, H: 5.2, hello: 'Mercado Fresco · buy ingredients, then cook them in your kitchen at home' }, hotel: { name: 'Hotel', cx: 1500, cz: 0, w: 24, d: 16, H: 6 }, suite: { name: 'Your room', cx: 1700, cz: 0, w: 14, d: 10, H: 3.4 }, police: { name: 'Solano PD', cx: 1300, cz: 0, w: 22, d: 16, H: 5 }, restaurant: { name: 'Restaurant', cx: 1100, cz: 0, w: 22, d: 18, H: 5 }, metro: { name: 'Solano Metro', cx: 900, cz: 0, w: 18, d: 70, H: 7, hello: 'Solano Metro · walk up to a ticket machine and type where you want to go' }, home: { name: 'Home', cx: 440, cz: 0, w: 22, d: 16, H: 7.2, hello: 'Home sweet home · kitchen, dining & living room down here, bedroom upstairs' } };
+const SHOP_COL = { hospital: '#ff4d6d', fire: '#d62828', space: '#3a86ff', mart: '#2be0cf', threads: '#ff7aa8', terminal: '#9ad8f2', airstrip: '#9ad8f2', home: '#ffd36e', grocery: '#9be15d', metro: '#e63946', restaurant: '#ff8c42', police: '#8b5a2b', hotel: '#9b5de5' };
+const ROOMS = { mart: { name: '24/7 Mart', cx: 0, cz: 0, w: 18, d: 14, H: 5.2 }, threads: { name: 'Threads', cx: 80, cz: 0, w: 16, d: 14, H: 5.2 }, terminal: { name: 'Solano International', cx: 200, cz: 0, w: 56, d: 40, H: 10 }, airstrip: { name: 'Island Airstrip', cx: 300, cz: 0, w: 22, d: 16, H: 6 }, grocery: { name: 'Mercado Fresco', cx: 540, cz: 0, w: 24, d: 18, H: 5.2, hello: 'Mercado Fresco · buy ingredients, then cook them in your kitchen at home' }, hotel: { name: 'Hotel', cx: 1500, cz: 0, w: 24, d: 16, H: 6 }, suite: { name: 'Your room', cx: 1700, cz: 0, w: 14, d: 10, H: 3.4 }, police: { name: 'Solano PD', cx: 1300, cz: 0, w: 22, d: 16, H: 5 }, hospital: { name: 'Hospital', cx: 2100, cz: 0, w: 24, d: 18, H: 5 }, space: { name: 'Mission Control', cx: 2500, cz: 0, w: 28, d: 20, H: 7 }, fire: { name: 'Fire Station', cx: 2300, cz: 0, w: 24, d: 18, H: 6.5 }, restaurant: { name: 'Restaurant', cx: 1100, cz: 0, w: 22, d: 18, H: 5 }, metro: { name: 'Solano Metro', cx: 900, cz: 0, w: 18, d: 70, H: 7, hello: 'Solano Metro · walk up to a ticket machine and type where you want to go' }, home: { name: 'Home', cx: 440, cz: 0, w: 22, d: 16, H: 7.2, hello: 'Home sweet home · kitchen, dining & living room down here, bedroom upstairs' } };
 const interiorLight = new THREE.PointLight(0xfff0dc, 0, 34, 1.3); scene.add(interiorLight);
 const roomLightMat = new THREE.MeshBasicMaterial({ color: new THREE.Color(2.2, 2.15, 2.0) });
 const fridgeMat = new THREE.MeshBasicMaterial({ color: new THREE.Color(0.9, 1.3, 1.5) });
@@ -2911,7 +2918,7 @@ const RESTAURANTS = [
     { name: 'Lo mein noodles', price: 9, heal: 60, fed: 240, look: ['bowl', 0xc8372d, 0xe9c46a, 0x8b5a2b] }, { name: 'Pork dumplings', price: 7, heal: 45, fed: 180, look: ['slices', 0xf4efe4, 0xe9e2d0] },
     { name: 'Fried rice', price: 8, heal: 55, fed: 210, look: ['mound', 0xf2c14e, 0x8ac926, 0xd62828] }, { name: 'Bubble tea', price: 5, heal: 20, fed: 80, look: ['glass', 0xc68642, 0x2b2b30] }] },
 ];
-const SPECIAL_BLOCKS = { '1,8': ['depot', 0, 1], '5,4': ['hotel', 0, 1, 0], '9,4': ['hotel', 0, 1, 1], '3,9': ['hotel', 0, -1, 2], '6,2': ['police', 0, 1], '2,8': ['police', 1, 0], '10,6': ['police', -1, 0], '3,3': ['rest', 0, 1, 0], '8,2': ['rest', 0, 1, 1], '4,8': ['rest', 0, -1, 2], '9,7': ['rest', 1, 0, 3], '7,8': ['rest', 0, 1, 0] };
+const SPECIAL_BLOCKS = { '1,8': ['depot', 0, 1], '5,4': ['hotel', 0, 1, 0], '9,4': ['hotel', 0, 1, 1], '3,9': ['hotel', 0, -1, 2], '6,2': ['police', 0, 1], '2,8': ['police', 1, 0], '10,6': ['police', -1, 0], '3,3': ['rest', 0, 1, 0], '8,2': ['rest', 0, 1, 1], '4,8': ['rest', 0, -1, 2], '9,7': ['rest', 1, 0, 3], '5,6': ['hosp', 0, -1, 0], '8,9': ['hosp', 0, 1, 1], '2,5': ['fire', 0, 1, 0], '9,2': ['fire', 0, 1, 1], '7,8': ['rest', 0, 1, 0] };
 const POLICE_ST = [];
 const restAccentMat = new THREE.MeshStandardMaterial({ color: 0xff5d8f, roughness: 0.45 }), restGlowMat = new THREE.MeshBasicMaterial({ color: new THREE.Color(0.8, 0.66, 0.46) }), lampBlueMat = new THREE.MeshBasicMaterial({ color: new THREE.Color(0.4, 0.8, 4) });
 const parkSignMat = new THREE.MeshBasicMaterial({ color: new THREE.Color(1.3, 1.3, 1.3), map: canvasTex(256, 256, (g) => { g.fillStyle = '#1f5fbf'; g.fillRect(0, 0, 256, 256); g.strokeStyle = '#fff'; g.lineWidth = 10; g.strokeRect(12, 12, 232, 232); g.fillStyle = '#fff'; g.textAlign = 'center'; g.textBaseline = 'middle'; g.font = '900 150px system-ui, sans-serif'; g.fillText('P', 128, 110); g.font = '800 44px system-ui, sans-serif'; g.fillText('$3', 128, 212); }) });
@@ -2969,6 +2976,61 @@ function buildPoliceLot(blk, fx, fz) {
   lots.push({ ...F.rect(-28, 28, 5.8, 25.8), y: CURB, max: 3, police: true });
   mapPaint.push({ ...F.rect(-16, 16, -24, 0), c: '#8b5a2b' });
   const [sx, sz] = F.W(0, 5.2), [ddx, ddz] = F.W(0, 0.1); POLICE_ST.push({ name, x: sx, z: sz, yaw: Math.atan2(fx, fz), spots: [F.W(-5, 9), F.W(5, 9), F.W(-11, 9), F.W(11, 9), F.W(-17, 9), F.W(17, 9)] }); shopsData.push({ dx: ddx, dz: ddz, nx: fx, nz: fz, type: 'police', name, st: POLICE_ST.length - 1 });
+}
+// ---- hospitals (white towers with a red cross) and fire stations (red brick, three engine bays)
+const HOSPITALS = [], FIRE_ST = [];
+const HOSP_NAMES = ['Mercy General Hospital', 'Bayview Medical Center'], FIRE_NAMES = ['Solano Fire · Station 1', 'Solano Fire · Station 2'];
+const redCrossMat = new THREE.MeshBasicMaterial({ color: new THREE.Color(3.0, 0.22, 0.28) }), ambLightMat = new THREE.MeshBasicMaterial({ color: new THREE.Color(3.5, 0.3, 0.3) });
+function ambulanceParts(P, L, x, z) {
+  const y = CURB;
+  P.push(boxAt(2.3, 2.3, 4.0, x, y + 1.6, z - 0.9, 0xf4f4f0), boxAt(2.2, 1.45, 1.9, x, y + 1.17, z + 2.05, 0xf4f4f0), boxAt(2.0, 0.65, 0.05, x, y + 1.55, z + 3.0, 0x1a232b), boxAt(2.34, 0.28, 5.9, x, y + 1.05, z + 0.05, 0xd62828), boxAt(2.36, 0.3, 0.3, x, y + 0.5, z + 3.0, 0x2b2e33));
+  for (const sx of [-1, 1]) { for (const wz of [-1.9, 1.9]) P.push(boxAt(0.32, 0.84, 0.84, x + sx * 1.02, y + 0.42, z + wz, 0x141414)); P.push(boxAt(0.04, 0.9, 0.3, x + sx * 1.17, y + 2.0, z - 0.9, 0xd62828), boxAt(0.04, 0.3, 0.9, x + sx * 1.17, y + 2.0, z - 0.9, 0xd62828)); }
+  L.push(boxAt(1.7, 0.18, 0.32, x, y + 2.84, z - 2.6), boxAt(1.5, 0.16, 0.3, x, y + 1.97, z + 1.45));
+}
+function buildHospitalLot(blk, fx, fz, hi) {
+  const F = lotFrame(blk, fx, fz), P = [], L = [], y0 = CURB, WH = 0xf2f4f6, W2 = 0xe1e8ee, GL = 0x3d6f93, name = HOSP_NAMES[hi] || 'Solano Hospital';
+  P.push(boxAt(36, 14, 26, 0, 7, -14, WH), boxAt(36.6, 0.6, 26.6, 0, 14.3, -14, W2), boxAt(22, 34, 18, 0, 31, -17, W2), boxAt(22.6, 0.8, 18.6, 0, 48.4, -17, WH));
+  for (let k = 0; k < 4; k++) { const y = 2.2 + k * 3.3; if (k) P.push(boxAt(34, 1.5, 0.12, 0, y, -0.95, GL)); else P.push(boxAt(13, 1.5, 0.12, -10.5, y, -0.95, GL), boxAt(13, 1.5, 0.12, 10.5, y, -0.95, GL)); for (const sx of [-1, 1]) P.push(boxAt(0.12, 1.5, 24, sx * 18.05, y, -14, GL)); }
+  for (let y = 16.2; y < 39; y += 3.3) { P.push(boxAt(20, 1.5, 0.12, 0, y, -7.95, GL)); for (const sx of [-1, 1]) P.push(boxAt(0.12, 1.5, 16, sx * 11.05, y, -17, GL)); }
+  for (let y = 39.4; y < 47; y += 3.3) for (const sx of [-1, 1]) P.push(boxAt(0.12, 1.5, 16, sx * 11.05, y, -17, GL));
+  P.push(boxAt(6, 3, 0.12, 0, y0 + 1.5, -0.95, 0x1d2c3f), boxAt(0.12, 3, 0.16, 0, y0 + 1.5, -0.9, 0xb5b9bf), boxAt(14, 0.45, 6, 0, 4.4, 2, WH), boxAt(14.2, 0.5, 0.2, 0, 4.15, 5, 0xd62828));
+  for (const x of [-6.5, 6.5]) P.push(boxAt(0.4, 4.2, 0.4, x, 2.1, 4.6, 0xd9d2c3));
+  P.push(boxAt(8, 8, 0.3, 0, 42.4, -7.85, 0xffffff), colorize(new THREE.CylinderGeometry(7.5, 7.5, 0.3, 28).translate(0, 48.95, -17), 0x3a3f46));
+  ambulanceParts(P, L, -14, 12); ambulanceParts(P, L, -9.5, 12);
+  P.push(boxAt(5, 0.7, 1, -15.5, y0 + 0.35, 26.9, 0x3a5a40), boxAt(25, 0.7, 1, 5.5, y0 + 0.35, 26.9, 0x3a5a40), boxAt(6, 1.7, 0.7, -10, y0 + 0.85, 26.9, 0xb5b9bf), boxAt(6.3, 0.15, 0.85, -10, y0 + 1.75, 26.9, 0xd62828));
+  F.mesh(P);
+  F.mesh([boxAt(1.8, 6, 0.1, 0, 42.4, -7.62), boxAt(6, 1.8, 0.1, 0, 42.4, -7.62), boxAt(0.5, 1.4, 0.05, -10, y0 + 1.05, 27.3), boxAt(1.4, 0.5, 0.05, -10, y0 + 1.05, 27.3)], redCrossMat);
+  F.mesh(L, ambLightMat);
+  F.plane(new THREE.MeshBasicMaterial({ map: textTex(name.toUpperCase(), 1024, 110, '#1d4f7a'), transparent: true }), 22, 2.4, 0, 12.4, -0.85);
+  F.plane(new THREE.MeshBasicMaterial({ map: textTex('EMERGENCY', 1024, 160, '#ffffff'), transparent: true, color: new THREE.Color(1.6, 1.6, 1.6) }), 6.4, 1.0, 0, 4.15, 5.12);
+  F.plane(new THREE.MeshBasicMaterial({ map: textTex(name.toUpperCase(), 1024, 160, '#1d4f7a'), transparent: true }), 4.4, 0.7, -8.3, y0 + 1.05, 27.27);
+  { const hm = new THREE.Mesh(new THREE.PlaneGeometry(7, 7).rotateX(-Math.PI / 2), new THREE.MeshBasicMaterial({ map: textTex('H', 256, 256, '#ffffff'), transparent: true })); const [hx, hz] = F.W(0, -17); hm.position.set(hx, 49.12, hz); hm.rotation.y = F.yaw; scene.add(hm); }
+  F.box(-18, 18, -27, -1, 14.6); F.box(-11, 11, -26, -8, 49.1); F.box(-18, -13, 26.4, 27.4, 0.9); F.box(-13, -7, 26.55, 27.25, 1.8); F.box(-7, 18, 26.4, 27.4, 0.9);
+  for (const x of [-14, -9.5]) F.box(x - 1.2, x + 1.2, 12 - 2.9, 12 + 3.1, 2.9);
+  for (const x of [-6.5, 6.5]) { const [px, pz] = F.W(x, 4.6); addPost(px, pz, 0.3, 4.4); }
+  lots.push({ ...F.rect(-4, 28, 5.8, 25.8), y: CURB, max: 4 });
+  mapPaint.push({ ...F.rect(-18, 18, -27, -1), c: '#eef2f5' });
+  const [dx, dz] = F.W(0, -0.85); shopsData.push({ dx, dz, nx: fx, nz: fz, type: 'hospital', name, hs: HOSPITALS.length });
+  const [sx, sz] = F.W(0, 3.4); HOSPITALS.push({ name, x: sx, z: sz, yaw: F.yaw });
+  if (hi === 0) Object.assign(RESPAWN.hospital, { x: sx, z: sz, label: name });
+}
+function buildFireLot(blk, fx, fz, fi) {
+  const F = lotFrame(blk, fx, fz), P = [], y0 = CURB, BR = 0xa3342a, DK = 0x5a1c16, ST = 0xe8e1d3, name = FIRE_NAMES[fi] || 'Solano Fire';
+  P.push(boxAt(34, 9, 22, 0, 4.5, -12, BR), boxAt(34.6, 0.7, 22.6, 0, 9.25, -12, DK), boxAt(34.2, 0.5, 22.2, 0, 0.25, -12, DK), boxAt(34.12, 0.45, 22.12, 0, 6.0, -12, 0xf4efe4));
+  for (const x of [-11, -4, 3]) { P.push(boxAt(6, 5.4, 0.12, x, 2.7, -0.95, 0xd9dde2), boxAt(6.4, 0.3, 0.22, x, 5.55, -0.9, ST), boxAt(5.6, 0.6, 0.14, x, 4.4, -0.88, 0x1d2c3f)); for (let y = 0.9; y < 5.4; y += 0.9) P.push(boxAt(6, 0.05, 0.16, x, y, -0.9, 0x9aa0a8)); }
+  P.push(boxAt(2.4, 2.9, 0.12, 11, y0 + 1.45, -0.95, 0x1d2c3f), boxAt(2.6, 0.16, 0.22, 11, y0 + 2.95, -0.9, ST));
+  for (let x = -14; x <= 14.1; x += 3.5) P.push(boxAt(1.7, 1.3, 0.12, x, 7.55, -0.95, 0x1d2c3f), boxAt(1.95, 0.14, 0.24, x, 6.82, -0.9, ST));
+  P.push(boxAt(5, 18, 5, 14, 9, -20, BR), boxAt(5.4, 0.6, 5.4, 14, 18.3, -20, DK), boxAt(0.14, 11, 0.14, -15, 5.5, 3, 0xd0d4d8), boxAt(0.5, 0.9, 0.5, 17, y0 + 0.45, 25, 0xd62828), boxAt(0.8, 0.18, 0.18, 17, y0 + 0.6, 25, 0xd62828), boxAt(0.6, 0.15, 0.6, 17, y0 + 0.95, 25, 0xd62828));
+  for (const x of [-11, -4, 3]) P.push(boxAt(5.6, 0.02, 12, x, y0 + 0.01, 6.5, 0xc9c2b6), boxAt(0.12, 0.02, 12, x - 2.9, y0 + 0.02, 6.5, 0xffd166), boxAt(0.12, 0.02, 12, x + 2.9, y0 + 0.02, 6.5, 0xffd166));
+  F.mesh(P);
+  F.plane(new THREE.MeshBasicMaterial({ map: textTex(name.toUpperCase(), 1024, 110, '#ffffff'), transparent: true, color: new THREE.Color(1.3, 1.3, 1.3) }), 19, 1.9, -4, 8.0, -0.82);
+  F.plane(new THREE.MeshBasicMaterial({ map: textTex('RESCUE', 512, 128, '#ffd166'), transparent: true, color: new THREE.Color(1.3, 1.3, 1.3) }), 4.4, 1.1, 14, 15.5, -17.45);
+  F.plane(flagMat, 2.6, 1.6, -13.65, 10.1, 3);
+  F.box(-17, 17, -23, -1, 9.6); F.box(11.5, 16.5, -22.5, -17.5, 18.6);
+  { const [px, pz] = F.W(-15, 3); addPost(px, pz, 0.12, 11); } { const [px, pz] = F.W(17, 25); addPost(px, pz, 0.35, 1.1); }
+  mapPaint.push({ ...F.rect(-17, 17, -23, -1), c: '#a3342a' });
+  const [dx, dz] = F.W(11, -0.85); shopsData.push({ dx, dz, nx: fx, nz: fz, type: 'fire', name, fs: FIRE_ST.length });
+  const [sx, sz] = F.W(11, 3.5); FIRE_ST.push({ name, x: sx, z: sz, yaw: F.yaw, spots: [F.W(-4, 8), F.W(-11, 8), F.W(3, 8)] });
 }
 function payParking(c) {
   const L = lots.find((q) => q.pay && c.pos.x > q.x0 && c.pos.x < q.x1 && c.pos.z > q.z0 && c.pos.z < q.z1); if (!L) return;
@@ -3222,8 +3284,8 @@ function drvAct(a) {
   else if (cmd === 'depot') { closePhone(); setWaypoint(DEPOT.x, DEPOT.z); toast('Route set · Driver Depot · your taxi and bus parking', 3000); }
 }
 // ---- JOBS: every job in one list · start here, go there, change jobs, or quit
-function curJob() { return drv.on ? `${drv.kind === 'taxi' ? 'Taxi' : 'Bus'} driver shift` : shift.on ? `${shift.R.name} shift` : duty.on ? `Army · ${duty.name}` : cop.on ? 'Police patrol shift' : game.job ? 'Delivery' : null; }
-function quitCurJob(why) { if (drv.on) drvEnd(false, why); if (shift.on) { const ct = shift.ct, Rm = shift.R; endShift(false); const dx = Rm.cx - ct.x, dz = Rm.cz - ct.z, l = Math.hypot(dx, dz) || 1; player.pos.x = ct.x + dx / l * 2.6; player.pos.z = ct.z + dz / l * 2.6; shopCD = 3; } if (duty.on) dutyEnd(false, why); if (cop.on) copEndShift(false, why); if (game.job) endJob(false); }
+function curJob() { return drv.on ? `${drv.kind === 'taxi' ? 'Taxi' : 'Bus'} driver shift` : shift.on ? `${shift.R.name} shift` : duty.on ? `Army · ${duty.name}` : cop.on ? 'Police patrol shift' : fire.on ? 'Fire shift' : sjob.on ? 'Launch-prep shift' : game.job ? 'Delivery' : null; }
+function quitCurJob(why) { if (drv.on) drvEnd(false, why); if (shift.on) { const ct = shift.ct, Rm = shift.R; endShift(false); const dx = Rm.cx - ct.x, dz = Rm.cz - ct.z, l = Math.hypot(dx, dz) || 1; player.pos.x = ct.x + dx / l * 2.6; player.pos.z = ct.z + dz / l * 2.6; shopCD = 3; } if (duty.on) dutyEnd(false, why); if (cop.on) copEndShift(false, why); if (fire.on) fireEndShift(false, why); if (sjob.on) spaceEndShift(false, why); if (game.job) endJob(false); }
 function openJobs() {
   if (game.state === 'shop' && game.counter && game.counter.type === 'jobs') { closeShopPanel(); return; }
   if (game.state !== 'play') return;
@@ -3235,20 +3297,26 @@ function jobsItems() {
   const go = (x, z, msg) => () => { if (curJob()) quitCurJob('You changed jobs'); closeShopPanel(); setWaypoint(x, z); toast(msg, 4500); return null; };
   if (cur) items.push({ name: `Quit: ${cur}`, desc: 'Stop the job you are doing now · or pick another job below to change jobs', price: 0, label: 'QUIT', sw: 0xff6b6b, buy: () => { quitCurJob('You quit'); closeShopPanel(); return 'You stopped working'; } });
   if (cap) items.push({ name: 'Captain ★', desc: 'You help more people everywhere: 10 customers a shift with 1.5× pay, and 6 police calls a shift', price: 0, label: '★', sw: 0xffd166, disabled: true, buy: () => null });
-  for (const [type, nm, what] of [['mart', 'Cashier · 24/7 Mart', 'scan items'], ['grocery', 'Checkout · Mercado Fresco', 'scan groceries'], ['threads', 'Sales · Threads', 'ring up clothes'], ['restaurant', 'Server · restaurant', 'serve meals'], ['hotel', 'Front desk · hotel', 'check in guests']]) {
+  for (const [type, nm, what] of [['mart', 'Cashier · 24/7 Mart', 'scan items'], ['grocery', 'Checkout · Mercado Fresco', 'scan groceries'], ['threads', 'Sales · Threads', 'ring up clothes'], ['restaurant', 'Server · restaurant', 'serve meals'], ['hotel', 'Front desk · hotel', 'check in guests'], ['hospital', 'Nurse · hospital', 'treat patients']]) {
     const sp = near(shopsData.filter((q) => q.type === type), (q) => q.dx, (q) => q.dz); if (!sp) continue;
-    const here = !!(game.inside && game.inside.shop.type === type && game.inside.room === ROOMS[type]), place = here ? ROOMS[type].name : type === 'restaurant' ? RESTAURANTS[sp.brand].name : type === 'hotel' ? HOTELS[sp.hotel].name : ROOMS[type].name, n = cap ? 10 : 6;
+    const here = !!(game.inside && game.inside.shop.type === type && game.inside.room === ROOMS[type]), place = here ? ROOMS[type].name : type === 'restaurant' ? RESTAURANTS[sp.brand].name : type === 'hotel' ? HOTELS[sp.hotel].name : type === 'hospital' ? sp.name : ROOMS[type].name, n = cap ? 10 : 6;
     const working = shift.on && shift.type === type && here;
-    items.push({ name: nm, desc: working ? `You're working here now` : here ? `You're here · start now: ${what} for ${n} ${type === 'hotel' ? 'guests' : 'customers'}` : `Nearest: ${place} · ${srDist(dist(sp.dx, sp.dz))} · ${what} for ${n} ${type === 'hotel' ? 'guests' : 'customers'}`, price: 0, label: working ? 'ON' : here ? 'START' : 'GO', sw: parseInt(SHOP_COL[type].slice(1), 16), disabled: working,
+    items.push({ name: nm, desc: working ? `You're working here now` : here ? `You're here · start now: ${what} for ${n} ${type === 'hotel' ? 'guests' : type === 'hospital' ? 'patients' : 'customers'}` : `Nearest: ${place} · ${srDist(dist(sp.dx, sp.dz))} · ${what} for ${n} ${type === 'hotel' ? 'guests' : type === 'hospital' ? 'patients' : 'customers'}`, price: 0, label: working ? 'ON' : here ? 'START' : 'GO', sw: parseInt(SHOP_COL[type].slice(1), 16), disabled: working,
       buy: here ? () => { if (curJob()) quitCurJob('You changed jobs'); closeShopPanel(); startShift(); return null; } : go(sp.dx + sp.nx * 3, sp.dz + sp.nz * 3, `Go to ${place} · walk in and stand on the green WORK spot`) });
   }
   const ps = near(POLICE_ST, (q) => q.x, (q) => q.z);
   if (game.copJoined) items.push({ name: `Police patrol · ${copRank().name}`, desc: cop.on ? 'You are on patrol now' : `Answer ${cap ? 6 : 3} dispatch calls, starting right where you are · about $${Math.round(63 * copRank().mult)} a call`, price: 0, label: cop.on ? 'ON' : 'START', sw: 0x1d2b4a, disabled: cop.on, buy: () => { if (curJob()) quitCurJob('You changed jobs'); closeShopPanel(); copStartShift(null); return null; } });
   else if (ps) items.push({ name: 'Police officer · Solano PD', desc: `Join at a front desk · nearest: ${ps.name} · ${srDist(dist(ps.x, ps.z))}`, price: 0, label: 'GO', sw: 0x8b5a2b, buy: go(ps.x, ps.z, `Go to ${ps.name} · walk in and tap Join Solano PD at the front desk`) });
+  const fsn = near(FIRE_ST, (q) => q.x, (q) => q.z);
+  if (game.fireJoined) items.push({ name: `Firefighter · ${fireRank().name}`, desc: fire.on ? 'You are on a fire shift now' : `Answer ${cap ? 6 : 3} fire calls, starting right where you are · about $${Math.round(70 * fireRank().mult)} a fire`, price: 0, label: fire.on ? 'ON' : 'START', sw: 0xc8102e, disabled: fire.on, buy: () => { if (curJob()) quitCurJob('You changed jobs'); closeShopPanel(); fireStartShift(null); return null; } });
+  else if (fsn) items.push({ name: 'Firefighter · Solano Fire', desc: `Join at a fire station · nearest: ${fsn.name} · ${srDist(dist(fsn.x, fsn.z))}`, price: 0, label: 'GO', sw: 0xc8102e, buy: go(fsn.x, fsn.z, `Go to ${fsn.name} · walk in the door on the right and join at the duty desk`) });
   if (game.enlisted) items.push({ name: `Army duty · ${milRank().name}`, desc: 'Pick a duty at the board just inside the Fort Halcón gate', price: 0, label: 'GO', sw: 0x4b5320, buy: go(29.2, -788, 'Go to the duty board inside the Fort Halcón gate') });
   else items.push({ name: 'Soldier · Fort Halcón', desc: 'Enlist at the gate, then pick paid duties', price: 0, label: 'GO', sw: 0x4b5320, buy: go(31.5, -749, 'Go to the Fort Halcón gate and enlist') });
   const ms = nearestMetro(f.x, f.z); if (ms) items.push({ name: 'Metro driver', desc: `Drive a train and stop at the STOP sign for tips · nearest: ${ms.name}`, price: 0, label: 'GO', sw: 0xe63946, buy: go(ms.dx + ms.nx * 3, ms.dz + ms.nz * 3, `Go to ${ms.name} station · tap Drive at the ticket machine`) });
   for (const kind of ['taxi', 'bus']) items.push({ name: `${kind === 'taxi' ? 'Taxi' : 'Bus'} driver${(kind === 'taxi' ? game.ownTaxi : game.ownBus) ? ' · your own ' + kind : ''}`, desc: drv.on && drv.kind === kind ? `On shift · ${drvRemain()} left · $${drv.earned} earned` : `Open DriveWork and choose how long you want to work · ${kind === 'taxi' ? 'riders wave from the sidewalk' : 'drive the bus route stop to stop'}`, price: 0, label: 'APP', sw: kind === 'taxi' ? 0xf4c20d : 0x1f6fb2, buy: () => { closeShopPanel(); drvOpenApp(); return null; } });
+  if (SC.built) items.push(game.spaceJoined ? { name: `Launch crew · ${spaceRank().name}${canFly() ? ' · you can fly!' : ''}`, desc: sjob.on ? 'You are on a launch-prep shift now' : `${cap ? 6 : 3} jobs around the Solano Space Center · about $${Math.round(60 * spaceRank().mult)} each${canFly() ? ' · board the rocket at Mission Control' : ''}`, price: 0, label: sjob.on ? 'ON' : 'START', sw: 0x3a86ff, disabled: sjob.on, buy: () => { if (curJob()) quitCurJob('You changed jobs'); closeShopPanel(); spaceStartShift(); if (rectD(SPACE, f.x, f.z) > 60) toast('Head west over the Space Coast Bridge to the Space Center', 4000); return null; } } : { name: 'Launch crew · Solano Space Center', desc: `Join at Mission Control · ${srDist(dist(SC.x, SC.z))} · become Captain and ride the rocket to the Moon`, price: 0, label: 'GO', sw: 0x3a86ff, buy: go(SC.x, SC.z, 'Go to Mission Control at the Solano Space Center · over the Space Coast Bridge from the west beach') });
+  for (const h of HOSPITALS) items.push({ name: `🏥 ${h.name}`, desc: `Hospital · ${districtAt(h.x, h.z)} · ${srDist(dist(h.x, h.z))} · work as a nurse, or see a doctor for free`, price: 0, label: 'GO', sw: 0xff4d6d, buy: go(h.x, h.z, `Go to ${h.name} · walk in · the green WORK spot is by the door`) });
+  for (const fs of FIRE_ST) items.push({ name: `🚒 ${fs.name}`, desc: `Fire station · ${districtAt(fs.x, fs.z)} · ${srDist(dist(fs.x, fs.z))} · ${game.fireJoined ? 'start a fire shift at the duty desk' : 'join Solano Fire at the duty desk'}`, price: 0, label: 'GO', sw: 0xd62828, buy: go(fs.x, fs.z, `Go to ${fs.name} · walk in the door on the right`) });
   const mk = near(markers.filter((m) => m.m.visible), (q) => q.x, (q) => q.z); if (mk) items.push({ name: 'Deliveries', desc: `Pick up a package at a pink marker and deliver it · ${srDist(dist(mk.x, mk.z))}`, price: 0, label: 'GO', sw: 0xff3f8e, buy: go(mk.x, mk.z, 'Go to the pink marker to start a delivery') });
   return items;
 }
@@ -3507,6 +3575,638 @@ function updateCop(dt) {
     }
   }
 }
+// ---- the hospital ER: a front desk where you work as a nurse, treatment beds, a waiting room
+function buildHospitalRoom(R) {
+  buildRoom(R, tileTex, 0xeef3f6); const { cx, cz } = R, P = R.parts, G = [], NURSE = { skin: 0x8d5a3b, shirt: 0x4fb3bf, pants: 0x4fb3bf, shoes: 0xf2f2f2, hair: 0x111111, shades: false, shorts: false };
+  P.push(boxAt(7, 1.1, 0.9, cx - 4, IY + 0.55, cz - 3.4, 0xdfe7ee), boxAt(7.2, 0.07, 1.05, cx - 4, IY + 1.13, cz - 3.4, 0xffffff), boxAt(7, 0.3, 0.05, cx - 4, IY + 0.8, cz - 2.93, 0xff4d6d), boxAt(0.5, 0.35, 0.4, cx - 2.6, IY + 1.33, cz - 3.5, 0x222831), boxAt(0.3, 0.25, 0.3, cx - 6, IY + 1.29, cz - 3.4, 0x9be15d));
+  R.obst.push({ minX: cx - 7.6, maxX: cx - 0.4, minZ: cz - 3.95, maxZ: cz - 2.85 });
+  R.counters.push({ x: cx - 4, z: cz - 2.3, type: 'hospital', title: 'ER front desk' });
+  addClerk(R, cx - 4.6, cz - 4.5, 0, NURSE); addClerk(R, cx - 2.4, cz - 4.5, 0, { ...NURSE, skin: 0xe8c39e, hair: 0x6b4a2f });
+  addClerk(R, cx - 8.5, cz - 6.5, Math.PI / 2, { ...NURSE, skin: 0xe2b48f, shirt: 0xf4f4f0, pants: 0x3a4a5a, hair: 0x6b4a2f });
+  // medicine shelves behind the desk
+  for (let k = 0; k < 4; k++) P.push(boxAt(1.6, 2.2, 0.5, cx - 9 + k * 1.75, IY + 1.1, cz - 8.7, 0xf4f4f0), boxAt(1.5, 0.05, 0.45, cx - 9 + k * 1.75, IY + 1.2, cz - 8.65, 0xd9dde2), boxAt(1.3, 0.25, 0.3, cx - 9 + k * 1.75, IY + 1.45, cz - 8.6, [0xff6b6b, 0x8ecae6, 0x9be15d, 0xffd166][k]));
+  R.obst.push({ minX: cx - 10, maxX: cx - 3.2, minZ: cz - 9, maxZ: cz - 8.4 });
+  // treatment beds with curtains, heart monitors and IV poles
+  for (const [k, x] of [cx + 3.6, cx + 6.6, cx + 9.6].entries()) {
+    const z = cz - 7.3;
+    P.push(boxAt(1.1, 0.6, 2.2, x, IY + 0.3, z, 0xb5b9bf), boxAt(1.0, 0.15, 2.1, x, IY + 0.67, z, 0xffffff), boxAt(0.8, 0.12, 0.4, x, IY + 0.8, z - 0.8, 0xe8f1f8), boxAt(1.02, 0.06, 1.2, x, IY + 0.77, z + 0.35, 0x8ecae6));
+    P.push(boxAt(0.7, 0.5, 0.1, x + 0.55, IY + 1.8, cz - 8.92, 0x15161a), boxAt(0.04, 2, 0.04, x - 0.8, IY + 1, z - 0.6, 0xb5b9bf), boxAt(0.2, 0.3, 0.06, x - 0.8, IY + 1.9, z - 0.6, 0xd8f0ff));
+    G.push(boxAt(0.6, 0.38, 0.02, x + 0.55, IY + 1.8, cz - 8.86));
+    R.obst.push({ minX: x - 0.6, maxX: x + 0.6, minZ: cz - 8.6, maxZ: cz - 6.15 }); addSeat(R, x, z, 0, 0.62, 0, true);
+    if (k < 2) P.push(boxAt(0.05, 2.3, 3.2, x + 1.5, IY + 1.3, cz - 7.4, 0xa8d8ea), boxAt(0.06, 0.06, 3.3, x + 1.5, IY + 2.5, cz - 7.4, 0xb5b9bf));
+  }
+  R.group.add(new THREE.Mesh(mergeAll(G), new THREE.MeshBasicMaterial({ color: new THREE.Color(0.3, 2.2, 0.6) })));
+  R.group.add(new THREE.Mesh(mergeAll([boxAt(0.5, 1.5, 0.05, cx - 10.5, IY + 3.3, cz - 8.93), boxAt(1.5, 0.5, 0.05, cx - 10.5, IY + 3.3, cz - 8.93)]), redCrossMat));
+  roomText(R, 'EMERGENCY · TREATMENT', '#ff4d6d', cx + 6.6, IY + 3.7, cz - 8.85, 7, 0.6);
+  // waiting room: chairs by the west wall, a water cooler, plants
+  P.push(boxAt(0.6, 0.45, 5.6, cx - 11, IY + 0.375, cz + 2.6, 0x2f8f9d), boxAt(0.12, 0.6, 5.6, cx - 11.4, IY + 0.85, cz + 2.6, 0x2f8f9d)); R.obst.push({ minX: cx - 12, maxX: cx - 10.65, minZ: cz - 0.2, maxZ: cz + 5.4 });
+  for (const k of [-2, -0.7, 0.6, 1.9]) addSeat(R, cx - 10.95, cz + 2.6 + k, 0, 0.6, Math.PI / 2);
+  addVisitor(R, cx - 10.95, cz + 1.9, 'sit', false, Math.PI / 2); addVisitor(R, cx - 10.95, cz + 4.5, 'sit', false, Math.PI / 2);
+  roomText(R, 'WAITING ROOM', '#2f8f9d', cx - 11.75, IY + 2.6, cz + 2.6, 3.4, 0.45, Math.PI / 2);
+  P.push(boxAt(0.45, 1.1, 0.45, cx + 10.5, IY + 0.55, cz + 2, 0xe8e8e8), colorize(new THREE.CylinderGeometry(0.17, 0.17, 0.45, 12).translate(cx + 10.5, IY + 1.33, cz + 2), 0x8ecae6)); R.obst.push({ minX: cx + 10.25, maxX: cx + 10.75, minZ: cz + 1.75, maxZ: cz + 2.25 });
+  for (const x of [cx - 3, cx + 3]) P.push(colorize(new THREE.CylinderGeometry(0.3, 0.24, 0.5, 12).translate(x, IY + 0.25, cz + 7.6), 0xc8a27a), colorize(new THREE.SphereGeometry(0.5, 10, 8).translate(x, IY + 0.95, cz + 7.6), 0x2e7d32));
+  signCanvas(R, 1024, 128, cx - 4, IY + 2.75, cz - 8.4, 0, 6, 0.75);
+  R.spots = [[cx - 2, cz + 3], [cx + 3, cz + 2], [cx + 6, cz - 3.5], [cx - 6, cz + 1.5]]; addVisitor(R, cx + 3, cz + 2, 'walk');
+  finishRoom(R, 'MERCY · CARE · SOLANO', '#ff6b81');
+}
+function hospSet(s) {
+  const R = ROOMS.hospital; R.name = s.name; R.hosp = s; for (const c of R.counters) c.title = `${s.name} · ER front desk`;
+  R.hello = `${s.name} · see a doctor for free at the front desk · stand on the green WORK spot by the door to work as a nurse`;
+  const g = R.signCv.getContext('2d'); g.fillStyle = '#1d4f7a'; g.fillRect(0, 0, 1024, 128); g.fillStyle = '#ff4d6d'; g.fillRect(0, 118, 1024, 10); g.fillStyle = '#ffffff'; g.textAlign = 'center'; g.textBaseline = 'middle'; fitText(g, s.name.toUpperCase(), 512, 62, 960, 70); R.signTex.needsUpdate = true;
+}
+function hospitalDeskItems() {
+  const hurtNow = player.health < 100;
+  return [
+    { name: 'See a doctor', desc: hurtNow ? `Health ${Math.round(player.health)} · get patched up to full health · free for everyone in Solano` : 'You are healthy · nothing to treat today', price: 0, label: 'FREE', sw: 0xff4d6d, disabled: !hurtNow, buy: () => { heal(100); fadeFlash('The doctor patches you up…', 0.9); return 'All better · full health'; } },
+    { name: 'Flu shot', desc: 'A quick pinch · +25 health', price: 0, label: 'FREE', sw: 0x8ecae6, buy: () => { heal(25); return 'Ouch! All done · +25 health'; } },
+    { name: 'Rest in a hospital bed', desc: 'Walk over to a bed in the treatment area and lie down · you can sleep there too', price: 0, label: 'BED', sw: 0xa8d8ea, disabled: true, buy: () => null },
+  ];
+}
+// ---- the fire station: an engine bay with a fire engine, the duty desk, lockers and the fire pole
+function buildFireRoom(R) {
+  buildRoom(R, tileTex, 0xe9e1d6); const { cx, cz } = R, P = R.parts, FF = { skin: 0xb9805a, shirt: 0xc8a050, pants: 0xb8923e, shoes: 0x111111, hair: 0x2b1d14, shades: false, shorts: false };
+  { const G = carGeo('fire'), d = DIMS.fire, ex = cx - 6.5, ez = cz - 1.5;
+    for (const [geo, mat] of [[G.paint, paintMat(0xc8102e)], [G.glass, glassMat], [G.trim, carTrimMat], [G.chrome, chromeMat], [G.livery, paintMat(0xf2f2f2)], [G.barBase, trimMat], [G.barR, fireLightR], [G.barB, fireLightW], [G.head, headMat]]) { const m = new THREE.Mesh(geo, mat); m.position.set(ex, IY, ez); R.group.add(m); }
+    const wg = wheelGeo(d.r, 0xb5b9bf); for (const [sx, sz] of [[1, 1], [-1, 1], [1, -1], [-1, -1]]) { const m = new THREE.Mesh(wg, wheelMat); m.position.set(ex + sx * (d.w / 2 - 0.08), IY + d.r, ez + sz * d.wb / 2); R.group.add(m); }
+    R.obst.push({ minX: ex - 1.4, maxX: ex + 1.4, minZ: ez - 4.4, maxZ: ez + 4.4 });
+    P.push(boxAt(0.12, 0.02, 10, ex - 2.2, IY + 0.01, ez, 0xffd166), boxAt(0.12, 0.02, 10, ex + 2.2, IY + 0.01, ez, 0xffd166)); }
+  P.push(boxAt(6, 1.1, 0.9, cx + 5, IY + 0.55, cz - 3.4, 0x6b4a2f), boxAt(6.2, 0.07, 1.05, cx + 5, IY + 1.13, cz - 3.4, 0xe8e1d3), boxAt(6, 0.3, 0.05, cx + 5, IY + 0.8, cz - 2.93, 0xc8102e), boxAt(0.5, 0.35, 0.4, cx + 6.4, IY + 1.33, cz - 3.5, 0x222831), boxAt(0.4, 0.4, 0.3, cx + 3.4, IY + 1.33, cz - 3.4, 0xc8102e));
+  R.obst.push({ minX: cx + 1.8, maxX: cx + 8.2, minZ: cz - 3.95, maxZ: cz - 2.85 });
+  R.counters.push({ x: cx + 5, z: cz - 2.3, type: 'fire', title: 'Duty desk' });
+  addClerk(R, cx + 5, cz - 4.5, 0, FF); addClerk(R, cx + 9.5, cz - 6.5, -Math.PI / 2, { ...FF, skin: 0x744a2e, hair: 0x111111 });
+  // lockers with helmets, a hose rack, the brass fire pole
+  for (let k = 0; k < 8; k++) P.push(boxAt(0.55, 2.0, 0.6, cx + 11.6, IY + 1.0, cz - 1 + k * 0.65, k % 2 ? 0x8a2a20 : 0x9b2d20), colorize(new THREE.SphereGeometry(0.2, 10, 6, 0, Math.PI * 2, 0, Math.PI / 2).translate(cx + 11.4, IY + 2.2, cz - 1 + k * 0.65), 0xffc300));
+  R.obst.push({ minX: cx + 11.2, maxX: cx + 12, minZ: cz - 1.4, maxZ: cz + 4.3 });
+  for (let k = 0; k < 4; k++) P.push(colorize(new THREE.TorusGeometry(0.45, 0.12, 8, 18).translate(cx - 1.5 + k * 1.1, IY + 2.0, cz - 8.85), k % 2 ? 0xf4efe4 : 0xc8102e));
+  P.push(colorize(new THREE.CylinderGeometry(0.06, 0.06, 6.5, 10).translate(cx + 1.2, IY + 3.25, cz - 6.6), 0xd4af37), colorize(new THREE.CylinderGeometry(0.75, 0.75, 0.1, 18).translate(cx + 1.2, IY + 0.05, cz - 6.6), 0x2b2b30));
+  R.obst.push({ minX: cx + 1.0, maxX: cx + 1.4, minZ: cz - 6.8, maxZ: cz - 6.4 });
+  // a kitchen table where the crew eats
+  P.push(boxAt(2.4, 0.08, 1.2, cx + 6, IY + 0.78, cz + 3.2, 0x8a5a3c), boxAt(0.1, 0.75, 0.1, cx + 5, IY + 0.38, cz + 3.2, 0x2b2b30), boxAt(0.1, 0.75, 0.1, cx + 7, IY + 0.38, cz + 3.2, 0x2b2b30));
+  R.obst.push({ minX: cx + 4.8, maxX: cx + 7.2, minZ: cz + 2.6, maxZ: cz + 3.8 });
+  for (const x of [cx + 5.3, cx + 6.7]) addSeat(R, x, cz + 4.2, 0, 0.5, Math.PI);
+  addVisitor(R, cx + 5.3, cz + 4.2, 'sit', false, Math.PI);
+  signCanvas(R, 1024, 128, cx + 5, IY + 2.9, cz - 8.75, 0, 6, 0.75);
+  roomText(R, 'ENGINE 1', '#ffd166', cx - 6.5, IY + 4.6, cz - 8.85, 3.4, 0.6);
+  R.spots = [[cx - 1, cz + 3], [cx + 3, cz + 1.5], [cx - 2, cz - 4], [cx + 8, cz + 6]]; addVisitor(R, cx - 1, cz + 3, 'walk');
+  finishRoom(R, 'BRAVE · READY · SOLANO', '#ffb703');
+}
+function fireSetStation(s) {
+  const R = ROOMS.fire; R.name = s.name; R.station = s; for (const c of R.counters) c.title = `${s.name} · duty desk`;
+  R.hello = `${s.name} · walk up to the duty desk${game.fireJoined ? ' to start a fire shift' : ' to join Solano Fire'}`;
+  const g = R.signCv.getContext('2d'); g.fillStyle = '#9b2d20'; g.fillRect(0, 0, 1024, 128); g.fillStyle = '#ffd166'; g.fillRect(0, 118, 1024, 10); g.fillStyle = '#ffffff'; g.textAlign = 'center'; g.textBaseline = 'middle'; fitText(g, s.name.toUpperCase(), 512, 62, 960, 70); R.signTex.needsUpdate = true;
+}
+// ---- firefighter job: drive your fire truck to fires around the city and spray them out
+const fire = { on: false, call: null, left: 0, total: 0, earned: 0, good: 0, gap: 2, tgt: null, marker: null, water: null, old: [] };
+const FIRE_RANKS = [{ name: 'Recruit', at: 0, mult: 1 }, { name: 'Firefighter', at: 4, mult: 1.25 }, { name: 'Engineer', at: 10, mult: 1.5 }, { name: 'Lieutenant', at: 18, mult: 1.8 }, { name: 'Captain', at: 30, mult: 2.2 }];
+const fireRank = () => { let r = FIRE_RANKS[0]; for (const k of FIRE_RANKS) if ((game.fireCalls || 0) >= k.at) r = k; return r; };
+const flameMats = [new THREE.MeshBasicMaterial({ color: new THREE.Color(4.2, 1.4, 0.25), transparent: true, opacity: 0.85, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide }), new THREE.MeshBasicMaterial({ color: new THREE.Color(5, 3.2, 0.7), transparent: true, opacity: 0.8, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide })];
+const hoseMat = new THREE.MeshBasicMaterial({ color: new THREE.Color(1.3, 1.8, 2.4), transparent: true, opacity: 0.55, depthWrite: false });
+function fireDeskItems() {
+  const st = game.inside && game.inside.shop, items = [], cap = isCaptain();
+  if (!game.fireJoined) { items.push({ name: 'Join Solano Fire', desc: 'Get your turnout gear and your own fire truck you can take home · drive to fires and spray them out · work fire shifts for pay', price: 0, label: 'JOIN', sw: 0xffb703, disabled: game.wanted > 0, buy: () => { closeShopPanel(); fireJoin(st); return null; } }); return items; }
+  const rk = fireRank(), nx = FIRE_RANKS[FIRE_RANKS.indexOf(rk) + 1];
+  if (!fire.on) items.push({ name: 'Start a fire shift', desc: `Answer ${cap ? 6 : 3} fire calls${cap ? ' · Captain ★' : ''} · drive your fire truck there and spray until the fire is out · about $${Math.round(70 * rk.mult)} a fire`, price: 0, label: 'GO', sw: 0x9be15d, disabled: game.wanted > 0, buy: () => { closeShopPanel(); if (curJob()) quitCurJob('You changed jobs'); fireStartShift(st); return null; } });
+  else items.push({ name: 'End your shift', desc: `${fire.good} fire${fire.good === 1 ? '' : 's'} out · $${fire.earned} earned so far`, price: 0, label: 'END', sw: 0xff6b6b, buy: () => { closeShopPanel(); fireEndShift(false, 'You clocked out'); return null; } });
+  items.push({ name: 'Bring my fire truck here', desc: 'Your own fire truck gets parked right outside this station · drive it anywhere and take it home', price: 0, label: 'TRUCK', sw: 0xc8102e, buy: () => (fireTruck(st) ? 'Your fire truck is parked outside' : 'You are driving your fire truck right now') });
+  const wearing = game.outfit === 'fire'; items.push({ name: wearing ? 'Take off your gear' : 'Put on your turnout gear', desc: wearing ? 'Back into your own clothes' : 'Solano Fire turnout gear', price: 0, label: wearing ? 'OFF' : 'WEAR', sw: 0xc8a050, buy: () => { if (wearing) unwearUni(); else wearUni('fire'); return wearing ? 'Back in your own clothes' : 'Gear on'; } });
+  items.push({ name: `Rank: ${rk.name}`, desc: nx ? `${game.fireCalls || 0} fires put out · ${nx.name} after ${nx.at} · pay ${Math.round(rk.mult * 100)}%` : `${game.fireCalls || 0} fires put out · top rank · pay ${Math.round(rk.mult * 100)}%`, price: 0, label: '★', sw: 0xffc857, disabled: true, buy: () => null });
+  return items;
+}
+function fireTruck(st) {
+  const fs = FIRE_ST[st && st.fs !== undefined ? st.fs : 0] || FIRE_ST[0]; let v = vehicles.find((q) => q.fireIssued);
+  if (v && v === player.car) return null;
+  if (!v) { v = new Vehicle('fire', 0xc8102e); v.fireIssued = true; }
+  v.keep = true; v.driver = null; v.held = false;
+  const spot = fs.spots.find(([x, z]) => !vehicles.some((q) => q !== v && Math.hypot(q.pos.x - x, q.pos.z - z) < 4.5)) || fs.spots[0];
+  v.place(spot[0], spot[1], fs.yaw); return v;
+}
+function fireJoin(st) {
+  game.fireJoined = true; store.set('fireJoined', true); fadeFlash('Welcome to Solano Fire!', 1.6); sfxChime(); wearUni('fire'); fireTruck(st);
+  toast('You joined Solano Fire! Your fire truck is parked outside · start a fire shift at any duty desk or from JOBS', 6000);
+}
+function fireStartShift(st) {
+  const cap = isCaptain(); Object.assign(fire, { on: true, call: null, left: cap ? 6 : 3, total: cap ? 6 : 3, earned: 0, good: 0, gap: 2, tgt: null });
+  wearUni('fire'); if (!vehicles.some((q) => q.fireIssued)) fireTruck(st);
+  toast(`Fire shift started · ${fireRank().name} · dispatch will send you ${fire.total} fire calls${cap ? ' · Captain ★' : ''} · your fire truck is outside`, 4500); sfxChime();
+}
+function fireTitle() { const c = fire.call; return c ? `🔥 ${c.title} · call ${fire.total + 1 - fire.left}/${fire.total}` : fire.left > 0 ? 'Fire shift · waiting for dispatch…' : 'Fire shift'; }
+function fireHint() { const c = fire.call; if (!c) return ''; const f = focusPos(), d = Math.hypot(c.fx - f.x, c.fz - f.z), truck = player.car && player.car.type === 'fire'; return d < (truck ? 22 : 10) ? `💦 Spraying… ${Math.round((1 - c.hp) * 100)}% out` : `🔥 ${c.title} · ${srDist(d)} · ${truck ? 'drive up close to spray it' : 'take your fire truck (or walk up close with the hose)'}`; }
+function fireNextCall() {
+  const f = focusPos(), rk = fireRank(), kind = (fire.total - fire.left + Math.floor(Math.random() * 3)) % 3 === 1 ? 'car' : 'building', rnd = (a, b) => a + (b - a) * Math.random();
+  let b = null; for (let k = 0; k < 80 && !b; k++) { const q = randomBlockNear(f.x, f.z, 150, 460); if (!q.kind && !destAt(q.cx, q.cz)) b = q; } if (!b) b = blocks.find((q) => !q.kind) || blocks[0];
+  const sides = [[0, 1], [0, -1], [1, 0], [-1, 0]].filter(([sx, sz]) => Math.abs(b.cx + sx * 40) <= HALF && Math.abs(b.cz + sz * 40) <= HALF), [sx, sz] = mpick(sides.length ? sides : [[0, 1]]), tx = -sz, tz = sx;
+  const c = { kind, t: 240, hp: 1, mx: b.cx + sx * 40, mz: b.cz + sz * 40, where: districtAt(b.cx, b.cz) };
+  if (kind === 'building') { c.fx = b.cx + sx * 28.6; c.fz = b.cz + sz * 28.6; c.fy = CURB; }
+  else { const o = rnd(-18, 18); c.fx = b.cx + sx * 34.5 + tx * o; c.fz = b.cz + sz * 34.5 + tz * o; c.fy = 0.4; c.car = new Vehicle(mpick(['sedan', 'hatch', 'suv']), 0x3a3a3c); c.car.place(c.fx, c.fz, Math.atan2(tx, tz)); c.car.keep = true; c.mx = c.fx + sx * 5; c.mz = c.fz + sz * 5; }
+  const g = new THREE.Group(), parts = [], n = kind === 'car' ? 5 : 9, spread = kind === 'car' ? 1.6 : 7;
+  for (let i = 0; i < n; i++) { const h = kind === 'car' ? rnd(1.6, 2.8) : rnd(2.5, 5.5), geo = new THREE.ConeGeometry(rnd(0.6, 1.3), h, 8, 1, true); geo.translate(0, h / 2, 0); const m = new THREE.Mesh(geo, flameMats[i % 2]); const o = rnd(-spread, spread); m.position.set(tx * o + sx * rnd(-0.4, 0.6), kind === 'car' ? 1.1 : rnd(0, 5), tz * o + sz * rnd(-0.4, 0.6)); m.userData.ph = Math.random() * 6; g.add(m); parts.push(m); }
+  g.position.set(c.fx, c.fy, c.fz); g.userData.parts = parts; scene.add(g); c.g = g; c.sx = sx; c.sz = sz;
+  c.pay = Math.round((kind === 'car' ? 60 : 80) * rk.mult / 5) * 5; c.title = kind === 'car' ? `Car fire in ${c.where}` : `Building fire in ${c.where}`;
+  fire.call = c; fire.tgt = { x: c.mx, z: c.mz, path: [], pathT: 0 };
+  if (!fire.marker) fire.marker = makeMarker(new THREE.Color(2.2, 0.75, 0.2), true);
+  if (!fire.water) { const wg = new THREE.CylinderGeometry(0.1, 0.3, 1, 8, 1, true); wg.translate(0, 0.5, 0); wg.rotateX(Math.PI / 2); fire.water = new THREE.Mesh(wg, hoseMat); fire.water.visible = false; scene.add(fire.water); }
+  toast(`🚒 Dispatch: ${c.title} · drive your fire truck there and spray it out`, 4200); sfxChime();
+}
+function fireCallDone(ok, msg) {
+  const c = fire.call; if (!c) return;
+  scene.remove(c.g); for (const m of c.g.userData.parts) m.geometry.dispose(); if (c.car) fire.old.push(c.car);
+  fire.call = null; fire.tgt = null; fire.left--; fire.gap = 3.5; if (fire.marker) fire.marker.visible = false; if (fire.water) fire.water.visible = false;
+  if (ok) {
+    const rk0 = fireRank(); addCash(c.pay, 'Solano Fire · ' + c.title); fire.earned += c.pay; fire.good++; game.fireCalls = (game.fireCalls || 0) + 1; store.set('fireCalls', game.fireCalls);
+    showBanner('FIRE IS OUT', `+$${c.pay} · ${msg}`, 'var(--money)', 2600); sfxChime();
+    const rk1 = fireRank(); if (rk1 !== rk0) setTimeout(() => { showBanner('PROMOTED', `${rk1.name} · fires now pay ${Math.round(rk1.mult * 100)}%`, '#ffb703', 3200); sfxChime(); }, 2800);
+  } else showBanner('CALL MISSED', msg, 'var(--coral)', 2400);
+}
+function fireEndShift(done, why) {
+  if (!fire.on) return; if (fire.call) fireCallDone(false, why || 'Shift over'); fire.on = false; fire.tgt = null; if (fire.marker) fire.marker.visible = false; if (fire.water) fire.water.visible = false; $('mission').hidden = true;
+  const bonus = done && fire.good === fire.total ? Math.round(40 * fireRank().mult) : 0; if (bonus) addCash(bonus, 'Solano Fire · shift bonus');
+  setTimeout(() => showBanner('SHIFT OVER', `+$${fire.earned + bonus} · ${fire.good} of ${fire.total} fires out${bonus ? ` · $${bonus} bonus` : ''}${why ? ' · ' + why : ''}`, done ? 'var(--money)' : '#ffb703', 3200), done ? 2700 : 0);
+}
+function updateFire(dt) {
+  const fl = Math.sin(game.time * 13) > 0, drv0 = vehicles.some((q) => q.type === 'fire' && q.driver === 'player');
+  fireLightR.color.setRGB(fire.on || drv0 ? (fl ? 6 : 0.35) : 0.5, 0.05, 0.05); fireLightW.color.setScalar(fire.on || drv0 ? (fl ? 0.5 : 5) : 0.6);
+  for (let i = fire.old.length - 1; i >= 0; i--) { const v = fire.old[i]; if (!vehicles.includes(v)) fire.old.splice(i, 1); else if (v.driver === null && v.pos.distanceTo(focusPos()) > 120) { v.dispose(); fire.old.splice(i, 1); } }
+  if (!fire.on || game.state !== 'play') { if (fire.water) fire.water.visible = false; return; }
+  if (game.wanted > 0) { fireEndShift(false, 'You were suspended for breaking the law'); return; }
+  if (!fire.call) { fire.gap -= dt; if (fire.gap <= 0) { if (fire.left <= 0) fireEndShift(true); else fireNextCall(); } return; }
+  const c = fire.call, f = focusPos(), mk = fire.marker; c.t -= dt;
+  mk.visible = true; mk.position.set(c.mx, surfaceH(c.mx, c.mz), c.mz); mk.userData.gem.rotation.y = game.time * 1.6;
+  const tg = fire.tgt; tg.pathT -= dt; if (tg.pathT <= 0) { tg.pathT = 0.5; tg.path = gridRoute(f, tg); }
+  for (const m of c.g.userData.parts) { const w = 0.85 + 0.2 * Math.sin(game.time * 9 + m.userData.ph), k = Math.max(0.02, c.hp); m.scale.set(k * w, k * (0.75 + 0.35 * Math.sin(game.time * 11 + m.userData.ph * 1.7)), k * w); }
+  const dc = Math.hypot(c.fx - f.x, c.fz - f.z); c.smT = (c.smT || 0) - dt;
+  if (c.smT <= 0 && dc < 420) { c.smT = 0.1; emitSmoke(c.fx + (Math.random() - 0.5) * 5, c.fy + 4 * c.hp + 1, c.fz + (Math.random() - 0.5) * 5, 3.4, 0.45 * c.hp + 0.12, 4.5, (Math.random() - 0.5) * 0.6, 3.4, (Math.random() - 0.5) * 0.6); }
+  if (c.t <= 0) { fireCallDone(false, 'The fire burned out before you got there'); return; }
+  const truck = player.car && player.car.type === 'fire', can = !game.inside && (truck ? dc < 22 : !player.car && dc < 10);
+  if (can) {
+    c.hp = Math.max(0, c.hp - dt / (c.kind === 'car' ? 4.5 : 7)); if (!c.said) { c.said = true; toast(truck ? '💦 The water cannon is spraying…' : '💦 Spraying with the hose…', 2600); }
+    const W = fire.water, from = truck ? tmpV.set(player.car.pos.x - Math.sin(player.car.yaw) * 1.9, player.car.y + 3.4, player.car.pos.z - Math.cos(player.car.yaw) * 1.9) : tmpV.set(player.pos.x + Math.sin(player.yaw) * 0.5, player.pos.y + 1.2, player.pos.z + Math.cos(player.yaw) * 0.5);
+    W.position.copy(from); W.lookAt(c.fx, c.fy + 1.6, c.fz); W.scale.set(1 + Math.sin(game.time * 30) * 0.15, 1, Math.hypot(c.fx - from.x, c.fy + 1.6 - from.y, c.fz - from.z)); W.visible = true;
+    if (!truck) player.yaw += angDiff(player.yaw, Math.atan2(c.fx - player.pos.x, c.fz - player.pos.z)) * Math.min(1, dt * 6);
+    if (Math.random() < 0.5) emitSmoke(c.fx + (Math.random() - 0.5) * 3, c.fy + 1.5, c.fz + (Math.random() - 0.5) * 3, 2.2, 0.35, 1.6, 0, 1.6, 0);
+  } else { if (fire.water) fire.water.visible = false; if (dc < 40 && !c.hinted) { c.hinted = true; toast(player.car && !truck ? 'Get out, or bring your fire truck, to spray the fire' : 'Get closer to spray the fire', 2800); } }
+  if (c.hp <= 0) fireCallDone(true, c.kind === 'car' ? 'The car fire is out' : 'You saved the building!');
+}
+// ---------------------------------------------------------------- the Solano Space Center: launch pad, rocket, Mission Control, the Moon
+const SC = { built: false, pad: { x: -2040, z: 720 }, lz: { x: -1800, z: 780 }, x: 0, z: 0, rocket: null, tasks: [], capsule: null };
+const dayNum = (k) => { const [y, m, d] = k.split('-').map(Number); return Math.round(Date.UTC(y, m - 1, d) / 864e5); };
+const absH = () => dayNum(game.date || calKey(new Date())) * 24 + game.tod;
+function fmtAbsH(h) { const dn = Math.floor(h / 24), dt = new Date(dn * 864e5), today = dayNum(game.date || calKey(new Date())); return `${dn === today ? 'today' : dn === today + 1 ? 'tomorrow' : CAL_DAYS[dt.getUTCDay()]} ${fmtTime(h - dn * 24)}`; }
+function launchIn(dh) { if (dh <= 0.3) return 'launching now'; const m = Math.round(dh * DAY_LEN / 24 / 60 * 10) / 10; return dh < 1.6 ? `in about ${Math.max(1, Math.round(dh * DAY_LEN / 24))} seconds` : `in ${Math.floor(dh)} h ${Math.round((dh % 1) * 60)} min (about ${m} real minutes)`; }
+function nextDefaultLaunch(now = absH()) { const b = Math.floor(now / 24) * 24; return now < b + 11.5 ? b + 12 : b + 36; }
+const nextAt = (n, h) => { const b = Math.floor(n / 24) * 24; return n < b + h - 0.3 ? b + h : b + 24 + h; };
+const LAUNCH_OPTS = [['in about a minute', (n) => n + 1.5], ['in 3 hours', (n) => n + 3], ['at sunset · 6:30 PM', (n) => nextAt(n, 18.5)], ['tonight · 9:00 PM', (n) => nextAt(n, 21)], ['tomorrow · 7:00 AM', (n) => Math.floor(n / 24) * 24 + 31], ['tomorrow at noon', (n) => Math.floor(n / 24) * 24 + 36]];
+function advanceHours(h) { game.tod += h; while (game.tod >= 24) { game.tod -= 24; nextDay(); } updateDaylight(0); refreshEnv(true); }
+const SPACE_RANKS = [{ name: 'Trainee', at: 0, mult: 1 }, { name: 'Technician', at: 3, mult: 1.2 }, { name: 'Engineer', at: 6, mult: 1.4 }, { name: 'Flight Director', at: 9, mult: 1.7 }, { name: 'Captain', at: 12, mult: 2 }];
+const spaceRank = () => { let r = SPACE_RANKS[0]; for (const k of SPACE_RANKS) if ((game.spaceTasks || 0) >= k.at) r = k; return r; };
+const canFly = () => !!game.spaceJoined && isCaptain();
+const sjob = { on: false, task: null, left: 0, total: 0, earned: 0, good: 0, gap: 1.5, tgt: null, marker: null, done: [] };
+const voyage = { ride: null, trip: null };
+const onMoon = () => !!(game.inside && ROOMS.moon && game.inside.room === ROOMS.moon);
+function buildRocket(x, y, z) {
+  const g = new THREE.Group(), W = 0xf4f4f0, BK = 0x1d1f24, P = [], cyl = (r1, r2, h, yy, hex, xo = 0, seg = 24) => P.push(colorize(new THREE.CylinderGeometry(r1, r2, h, seg).translate(xo, yy + h / 2, 0), hex));
+  cyl(4.2, 4.6, 3, 0, 0x3a3f46); cyl(4.2, 4.2, 58, 3, W); for (const yy of [12, 32, 52]) cyl(4.25, 4.25, 2, yy, BK);
+  cyl(4.25, 4.25, 2, 61, BK); cyl(4.2, 4.2, 14, 63, W); cyl(2.8, 4.2, 5, 77, 0x9aa0a8); cyl(1.2, 2.8, 5, 82, W); cyl(0.35, 0.6, 7, 87, 0xc0392b); cyl(0.01, 0.35, 1.5, 94, 0xc0392b);
+  for (const sx of [-1, 1]) { cyl(2.2, 2.2, 44, 1, W, sx * 6.6); cyl(0.2, 2.2, 7, 45, W, sx * 6.6); cyl(2.25, 2.25, 1.5, 8, BK, sx * 6.6); P.push(boxAt(1.4, 0.8, 0.8, sx * 5.1, 40, 0, 0x9aa0a8), boxAt(1.4, 0.8, 0.8, sx * 5.1, 8, 0, 0x9aa0a8)); P.push(colorize(new THREE.CylinderGeometry(0.5, 0.95, 1.6, 12).translate(sx * 6.6, 0.2, 0), 0x2b2b30)); }
+  for (const [ex, ez] of [[0, 0], [1.9, 0], [-1.9, 0], [0, 1.9], [0, -1.9]]) P.push(colorize(new THREE.CylinderGeometry(0.55, 0.95, 1.8, 12).translate(ex, -0.9, ez), 0x2b2b30));
+  for (const a of [0, 1.6, 3.2, 4.8]) P.push(boxAt(0.45, 0.4, 0.12, Math.sin(a) * 2.25, 84.2, Math.cos(a) * 2.25, 0x1a232b).rotateY(0));
+  const body = new THREE.Mesh(mergeAll(P), vcolMat); body.castShadow = true; g.add(body);
+  const tg = new THREE.PlaneGeometry(30, 3.6); tg.rotateZ(Math.PI / 2); tg.rotateY(Math.PI / 2); tg.translate(4.26, 36, 0);
+  g.add(new THREE.Mesh(tg, new THREE.MeshBasicMaterial({ map: textTex('SOLANO', 1024, 124, '#1d1f24'), transparent: true })));
+  const fl = new THREE.Group(); for (const [fx0, r, h] of [[0, 3.2, 24], [6.6, 1.9, 17], [-6.6, 1.9, 17]]) { const g1 = new THREE.ConeGeometry(r, h, 14, 1, true); g1.rotateX(Math.PI); g1.translate(fx0, -h / 2 - 1.2, 0); fl.add(new THREE.Mesh(g1, flameMats[0])); const g2 = new THREE.ConeGeometry(r * 0.55, h * 0.6, 12, 1, true); g2.rotateX(Math.PI); g2.translate(fx0, -h * 0.3 - 1.2, 0); fl.add(new THREE.Mesh(g2, flameMats[1])); }
+  fl.visible = false; g.add(fl); g.position.set(x, y, z); scene.add(g);
+  return { g, fl, base: y, x, z, y: 0, v: 0, state: 'pad', t: 0, crew: false, goneAt: 0 };
+}
+function buildCapsule() {
+  const g = new THREE.Group(), P = [];
+  P.push(colorize(new THREE.CylinderGeometry(1.2, 2.6, 3.2, 20).translate(0, 1.6, 0), 0xe8e8e2), colorize(new THREE.CylinderGeometry(2.62, 2.62, 0.4, 20).translate(0, 0.2, 0), 0x6b4a2f));
+  for (const a of [0.3, 2.4, 4.5]) P.push(boxAt(0.5, 0.45, 0.12, Math.sin(a) * 1.75, 2.1, Math.cos(a) * 1.75, 0x1a232b));
+  g.add(new THREE.Mesh(mergeAll(P), vcolMat));
+  const chutes = new THREE.Group(); for (const [a, col] of [[0, 0xff7b00], [2.1, 0xf4f4f0], [4.2, 0xff7b00]]) { const c = new THREE.Mesh(new THREE.SphereGeometry(5, 16, 8, 0, Math.PI * 2, 0, Math.PI / 2.4), new THREE.MeshStandardMaterial({ color: col, side: THREE.DoubleSide, roughness: 0.8 })); c.position.set(Math.sin(a) * 5, 16, Math.cos(a) * 5); chutes.add(c); }
+  const lines = []; for (const a of [0, 2.1, 4.2]) for (const k of [-1, 1]) { const ax = Math.sin(a) * 5 + Math.cos(a) * 3.5 * k, az = Math.cos(a) * 5 - Math.sin(a) * 3.5 * k, l = Math.hypot(ax, 13, az), cg = new THREE.CylinderGeometry(0.03, 0.03, l, 4); cg.translate(0, l / 2, 0); cg.rotateX(Math.atan2(Math.hypot(ax, az), 13)); cg.rotateY(Math.atan2(ax, az)); cg.translate(0, 3.2, 0); lines.push(colorize(cg, 0xdddddd)); }
+  chutes.add(new THREE.Mesh(mergeAll(lines), vcolMat)); g.add(chutes); g.userData.chutes = chutes; g.visible = false; scene.add(g); return g;
+}
+function buildSpaceCenter() {
+  const S = SPACE, pad = SC.pad, P = [], CT = 0xc9c2b6;
+  islandTerrain(S, [0.44, 0.52, 0.32]);
+  // roads: Launch Road from the bridge, the pad road, and the road to the viewing stands
+  roadStrip(520, -1860, 440, true); const r2 = roadStrip(200, -2040, 540, false), r3 = roadStrip(252, -1740, 574, false); r2.position.y += 0.006; r3.position.y += 0.006;
+  mapPaint.push({ x0: -2120, x1: -1600, z0: 432, z1: 448, c: '#8b879c' }, { x0: -2048, x1: -2032, z0: 440, z1: 640, c: '#8b879c' }, { x0: -1748, x1: -1732, z0: 448, z1: 700, c: '#8b879c' });
+  for (let x = -1620; x >= -2110; x -= 24) { if (Math.abs(x + 1740) < 14 || Math.abs(x + 2040) < 14 || Math.abs(x + 1640) < 10) continue; extraPalms.push([x, 425], [x, 455]); }
+  // the launch pad: a concrete pad, the flame trench, the launch mount, and the red launch tower with the crew access arm
+  flat(84, 84, concreteMat, pad.x, 0.015, pad.z); mapPaint.push({ x0: pad.x - 42, x1: pad.x + 42, z0: pad.z - 42, z1: pad.z + 42, c: '#b9b4ab' });
+  P.push(boxAt(12, 0.06, 34, pad.x, 0.05, pad.z + 26, 0x2b2b30), boxAt(18, 4, 18, pad.x, 2, pad.z, 0x6b6f63), boxAt(10, 0.2, 10, pad.x, 4.05, pad.z, 0x2b2b30));
+  for (const [sx, sz] of [[-1, -1], [1, -1], [-1, 1], [1, 1]]) P.push(boxAt(1.2, 2, 1.2, pad.x + sx * 6.5, 5, pad.z + sz * 6.5, 0x3a3f46));
+  const TX = pad.x + 15, TR = 0xc0392b;
+  for (const [sx, sz] of [[-1, -1], [1, -1], [-1, 1], [1, 1]]) P.push(boxAt(0.7, 104, 0.7, TX + sx * 4, 52, pad.z + sz * 4, TR));
+  for (let y = 4; y < 104; y += 8) { P.push(boxAt(8.7, 0.35, 0.35, TX, y, pad.z - 4, TR), boxAt(8.7, 0.35, 0.35, TX, y, pad.z + 4, TR), boxAt(0.35, 0.35, 8.7, TX - 4, y, pad.z, TR), boxAt(0.35, 0.35, 8.7, TX + 4, y, pad.z, TR)); if (y % 16 === 4) P.push(boxAt(8.4, 0.25, 8.4, TX, y + 0.2, pad.z, 0x8a939c)); }
+  for (let y = 8; y < 100; y += 8) for (const sz of [-1, 1]) { const dg = new THREE.BoxGeometry(0.25, 11.3, 0.25); dg.rotateX(sz * 0.78); dg.translate(TX + 4, y, pad.z); P.push(colorize(dg, 0xa83226)); }
+  P.push(boxAt(8.4, 2.6, 2.6, TX - 7.6, 86, pad.z, 0xd9dde2), boxAt(3, 3.2, 3.2, pad.x + 5.3, 86, pad.z, 0xf4f4f0), colorize(new THREE.CylinderGeometry(0.18, 0.3, 18, 8).translate(TX, 113, pad.z), 0x9aa0a8));
+  P.push(boxAt(2.4, 3.2, 2.4, TX, 1.6, pad.z + 5.6, 0xffc300));
+  // fuel tanks, a water tower and lightning masts around the pad
+  for (const z of [pad.z - 14, pad.z + 14]) P.push(colorize(new THREE.SphereGeometry(6, 18, 12).translate(pad.x - 52, 8, z), 0xf4f4f0), colorize(new THREE.CylinderGeometry(4, 4.6, 2.5, 16).translate(pad.x - 52, 1.25, z), 0x8a939c));
+  P.push(colorize(new THREE.CylinderGeometry(7, 7, 10, 20).translate(pad.x + 55, 34, pad.z + 46), 0xe0e4e8), colorize(new THREE.ConeGeometry(7.4, 3, 20).translate(pad.x + 55, 40.5, pad.z + 46), 0xc0392b));
+  for (const [sx, sz] of [[-1, -1], [1, -1], [-1, 1], [1, 1]]) P.push(boxAt(0.6, 29, 0.6, pad.x + 55 + sx * 5, 14.5, pad.z + 46 + sz * 5, 0x6b6f63));
+  for (const [mx, mz] of [[pad.x - 34, pad.z - 34], [pad.x + 34, pad.z + 34], [pad.x - 34, pad.z + 34]]) P.push(colorize(new THREE.CylinderGeometry(0.25, 0.5, 60, 8).translate(mx, 30, mz), 0x9aa0a8));
+  // the Vehicle Assembly Building, with the crawler parked at its door
+  const VX = -1960, VZ = 600;
+  P.push(boxAt(64, 90, 56, VX, 45, VZ, 0xe9ecef), boxAt(64.6, 1.2, 56.6, VX, 90.6, VZ, 0xcfd6dd), boxAt(16, 72, 0.4, VX, 36, VZ + 28.1, 0x8a939c));
+  for (let y = 6; y < 72; y += 6) P.push(boxAt(16, 0.2, 0.5, VX, y, VZ + 28.3, 0x6b737c));
+  for (let x = -28; x <= 28; x += 4) if (Math.abs(x) > 10) P.push(boxAt(0.5, 88, 0.3, VX + x, 44, VZ + 28.1, 0xcfd6dd), boxAt(0.5, 88, 0.3, VX + x, 44, VZ - 28.1, 0xcfd6dd));
+  for (let z = -24; z <= 24; z += 4) P.push(boxAt(0.3, 88, 0.5, VX + 32.1, 44, VZ + z, 0xcfd6dd), boxAt(0.3, 88, 0.5, VX - 32.1, 44, VZ + z, 0xcfd6dd));
+  P.push(boxAt(30, 3, 30, VX, 4.5, VZ + 50, 0x8a939c), boxAt(30.4, 2.2, 4, VX, 1.1, VZ + 37, 0x3a3f46), boxAt(30.4, 2.2, 4, VX, 1.1, VZ + 63, 0x3a3f46), boxAt(6, 3, 6, VX - 10, 7.5, VZ + 40, 0xd9dde2));
+  for (const sx of [-1, 1]) P.push(boxAt(4, 3, 28, VX + sx * 12, 1.5, VZ + 50, 0x2b2e33));
+  // a rocket garden, the launch bunker, the weather station, the landing zone, the viewing stands, and the entrance arch
+  for (const [rx, rz, h] of [[-1712, 502, 18], [-1700, 518, 24], [-1716, 532, 14]]) P.push(colorize(new THREE.CylinderGeometry(1.1, 1.1, h, 14).translate(rx, h / 2 + 1, rz), 0xf4f4f0), colorize(new THREE.ConeGeometry(1.1, 3, 14).translate(rx, h + 2.5, rz), 0xc0392b), boxAt(3.4, 1, 3.4, rx, 0.5, rz, 0x6b6f63));
+  P.push(boxAt(16, 3, 10, -1950, 1.5, 800, 0x8a939c), boxAt(8, 0.6, 0.12, -1950, 1.6, 805.05, 0x1d2c3f));
+  P.push(boxAt(0.3, 12, 0.3, -1880, 6, 760, 0x9aa0a8), boxAt(2.4, 0.1, 0.1, -1880, 11.6, 760, 0x9aa0a8), colorize(new THREE.SphereGeometry(0.6, 10, 8).translate(-1880, 12.4, 760), 0xf4f4f0), boxAt(1.6, 1.4, 1.2, -1878, 0.7, 762, 0xf4f4f0));
+  P.push(colorize(new THREE.CylinderGeometry(14, 14, 0.12, 32).translate(SC.lz.x, 0.06, SC.lz.z), 0xb9b4ab), colorize(new THREE.TorusGeometry(11, 0.4, 4, 40).rotateX(Math.PI / 2).translate(SC.lz.x, 0.14, SC.lz.z), 0xffd166));
+  for (let k = 0; k < 6; k++) P.push(boxAt(1.4, 0.25 * (k + 1), 30, -1776 + k * 1.4, 0.125 * (k + 1), 700, k % 2 ? 0x9aa0a8 : 0x8a939c));
+  P.push(boxAt(2, 10, 2, -1640, 5, 424, 0xf4f4f0), boxAt(2, 10, 2, -1640, 5, 456, 0xf4f4f0), boxAt(1.6, 3, 34, -1640, 10.6, 440, 0x1d2b4a));
+  const m = new THREE.Mesh(mergeAll(P), vcolMat); m.castShadow = m.receiveShadow = true; scene.add(m);
+  // signs
+  const sign = (text, w, h, x, y, z, ry, col = '#ffffff', bg) => { const mt = new THREE.MeshBasicMaterial({ map: textTex(text, 1024, Math.round(1024 * h / w), col), transparent: true, color: new THREE.Color(1.3, 1.3, 1.3) }); const pl = new THREE.Mesh(new THREE.PlaneGeometry(w, h), mt); pl.position.set(x, y, z); pl.rotation.y = ry; scene.add(pl); return pl; };
+  sign('SOLANO SPACE CENTER', 30, 2.4, -1641.2, 10.6, 440, -Math.PI / 2); sign('SOLANO SPACE CENTER', 30, 2.4, -1638.8, 10.6, 440, Math.PI / 2);
+  sign('SOLANO', 50, 9, VX + 32.4, 70, VZ, Math.PI / 2, '#1d4f7a'); sign('VEHICLE ASSEMBLY', 50, 4, VX + 32.4, 58, VZ, Math.PI / 2, '#1d4f7a');
+  { const fm = new THREE.Mesh(new THREE.PlaneGeometry(26, 16), flagMat); fm.position.set(VX + 32.45, 34, VZ); fm.rotation.y = Math.PI / 2; scene.add(fm); }
+  sign('LAUNCH PAD 1', 14, 2, pad.x + 42.1, 3, pad.z, Math.PI / 2, '#ffd166'); sign('LAUNCH VIEWING', 12, 1.2, -1768.2, 0.78, 700, Math.PI / 2, '#ffd166'); sign('LAUNCH BUNKER', 7, 1, -1950, 2.4, 805.1, 0, '#ffd166'); sign('LZ', 10, 10, SC.lz.x, 0.2, SC.lz.z, 0, '#ffd166').rotation.set(-Math.PI / 2, 0, 0);
+  // colliders
+  addBox(pad.x - 9, pad.x + 9, pad.z - 9, pad.z + 9, 4.2); addBox(TX - 4.4, TX + 4.4, pad.z - 4.4, pad.z + 4.4, 104); addBox(VX - 32, VX + 32, VZ - 28, VZ + 28, 90.5); addBox(VX - 15, VX + 15, VZ + 35, VZ + 65, 6);
+  for (const z of [pad.z - 14, pad.z + 14]) addPost(pad.x - 52, z, 6, 14); for (const [sx, sz] of [[-1, -1], [1, -1], [-1, 1], [1, 1]]) addPost(pad.x + 55 + sx * 5, pad.z + 46 + sz * 5, 0.4, 29);
+  addBox(-1958, -1942, 795, 805, 3); addPost(-1880, 760, 0.3, 12); addBox(-1777, -1767, 685, 715, 1.6); addPost(-1640, 424, 1, 10); addPost(-1640, 456, 1, 10);
+  for (const [rx, rz] of [[-1712, 502], [-1700, 518], [-1716, 532]]) addPost(rx, rz, 1.8, 20);
+  mapPaint.push({ x0: VX - 32, x1: VX + 32, z0: VZ - 28, z1: VZ + 28, c: '#e9ecef' }, { x0: SC.lz.x - 14, x1: SC.lz.x + 14, z0: SC.lz.z - 14, z1: SC.lz.z + 14, c: '#b9b4ab' });
+  // Mission Control: walk in to work at the space center, choose the launch time and board the rocket
+  { const F = lotFrame({ cx: -1780, cz: 478 }, 0, -1), Q = [], y0 = CURB, GL = 0x2d4f73;
+    Q.push(boxAt(36, 11, 24, 0, 5.5, -12, 0xf2f4f6), boxAt(36.6, 0.6, 24.6, 0, 11.3, -12, 0x3a86ff), boxAt(34, 1.6, 0.12, 0, 7.6, -0.95, GL), boxAt(13, 2.2, 0.12, -10.5, y0 + 1.6, -0.95, GL), boxAt(13, 2.2, 0.12, 10.5, y0 + 1.6, -0.95, GL));
+    Q.push(boxAt(3.2, 2.9, 0.12, 0, y0 + 1.45, -0.95, 0x1d2c3f), boxAt(0.12, 2.9, 0.16, 0, y0 + 1.45, -0.9, 0xb5b9bf), boxAt(10, 0.4, 5, 0, 4.0, 2, 0xf4f4f0));
+    for (const x of [-4.6, 4.6]) Q.push(boxAt(0.35, 3.8, 0.35, x, 1.9, 4.2, 0xd9dde2));
+    Q.push(colorize(new THREE.CylinderGeometry(0.5, 0.8, 4, 10).translate(-10, 13.5, -14), 0xd9dde2), colorize(new THREE.SphereGeometry(4, 18, 8, 0, Math.PI * 2, 0, 1.0).rotateX(-0.6).translate(-10, 16.5, -14), 0xf4f4f0));
+    Q.push(boxAt(5, 0.7, 1, -15.5, y0 + 0.35, 26.9, 0x3a5a40), boxAt(25, 0.7, 1, 5.5, y0 + 0.35, 26.9, 0x3a5a40), boxAt(6, 1.7, 0.7, -10, y0 + 0.85, 26.9, 0x1d2b4a));
+    for (const x of [8, 11, 14]) Q.push(boxAt(0.14, 10, 0.14, x, 5, 5, 0xd0d4d8));
+    F.mesh(Q);
+    F.plane(new THREE.MeshBasicMaterial({ map: textTex('MISSION CONTROL', 1024, 110, '#1d4f7a'), transparent: true }), 18, 1.9, 0, 9.5, -0.85);
+    F.plane(new THREE.MeshBasicMaterial({ map: textTex('SOLANO SPACE CENTER', 1024, 160, '#ffffff'), transparent: true, color: new THREE.Color(1.3, 1.3, 1.3) }), 5.6, 0.88, -10, y0 + 1.05, 27.27);
+    F.plane(flagMat, 2.2, 1.4, 11, 9.3, 5.05);
+    F.box(-18, 18, -24, -1, 11.6); F.box(-18, -13, 26.4, 27.4, 0.9); F.box(-13, -7, 26.55, 27.25, 1.8); F.box(-7, 18, 26.4, 27.4, 0.9);
+    for (const x of [-4.6, 4.6]) { const [px, pz] = F.W(x, 4.2); addPost(px, pz, 0.25, 4); }
+    lots.push({ ...F.rect(-28, 28, 5.8, 25.8), y: CURB, max: 4 });
+    mapPaint.push({ ...F.rect(-18, 18, -24, -1), c: '#dfe7ee' });
+    const [dx, dz] = F.W(0, -0.85); shopsData.push({ dx, dz, nx: 0, nz: -1, type: 'space', name: 'Mission Control · Solano Space Center' });
+    const [sx, sz] = F.W(0, 4.2); SC.x = sx; SC.z = sz; }
+  MAP_LABELS.push(['Solano Space Center', -1900, 330, 1]);
+  SC.tasks = [
+    { name: 'Check the fuel lines on the launch pad', verb: 'Checking the fuel lines', x: pad.x - 14, z: pad.z - 14 },
+    { name: 'Inspect the launch tower', verb: 'Inspecting the tower', x: pad.x + 15, z: pad.z + 9 },
+    { name: 'Load supplies into the rocket', verb: 'Loading supplies', x: pad.x - 12, z: pad.z + 4 },
+    { name: 'Test the engines from the launch bunker', verb: 'Testing the engines', x: -1950, z: 812 },
+    { name: 'Check the weather station', verb: 'Reading the weather', x: -1874, z: 766 },
+    { name: 'Check the crawler at the Assembly Building', verb: 'Checking the crawler', x: VX + 22, z: VZ + 50 },
+    { name: 'Check the landing zone', verb: 'Checking the landing zone', x: SC.lz.x, z: SC.lz.z },
+    { name: 'Fill the water tower for launch day', verb: 'Filling the water tower', x: pad.x + 46, z: pad.z + 36 },
+    { name: 'Clean the rocket garden', verb: 'Cleaning the display rockets', x: -1722, z: 516 },
+  ];
+  SC.rocket = buildRocket(pad.x, 4.1, pad.z); SC.capsule = buildCapsule(); SC.built = true;
+}
+// ---- Mission Control inside: rows of consoles, a giant live screen of the launch pad, the launch director's desk
+const padRT = new THREE.WebGLRenderTarget(512, 288), padCam = new THREE.PerspectiveCamera(40, 16 / 9, 1, 5000);
+function buildMissionRoom(R) {
+  buildRoom(R, tileTex, 0xd9dee4); const { cx, cz } = R, P = R.parts, GS = [], CREW = { skin: 0xe2b48f, shirt: 0xf4f4f0, pants: 0x22304a, shoes: 0x111111, hair: 0x2b1d14, shades: false, shorts: false };
+  R.screen = new THREE.Mesh(new THREE.PlaneGeometry(10.4, 5.85), new THREE.MeshBasicMaterial({ map: padRT.texture, color: new THREE.Color(1.15, 1.15, 1.15) })); R.screen.position.set(cx, IY + 3.7, cz - 9.88); R.group.add(R.screen);
+  P.push(boxAt(11, 6.4, 0.2, cx, IY + 3.7, cz - 10.02, 0x15161a));
+  for (const [row, z] of [[0, cz - 5], [1, cz - 2], [2, cz + 1]]) {
+    for (let k = -2; k <= 2; k++) { const x = cx + k * 3.6; P.push(boxAt(3.2, 0.85, 0.8, x, IY + 0.425, z, 0x3a3f46), boxAt(3.3, 0.06, 0.95, x, IY + 0.88, z, 0x9aa0a8), boxAt(0.9, 0.6, 0.06, x - 0.8, IY + 1.25, z - 0.25, 0x15161a), boxAt(0.9, 0.6, 0.06, x + 0.8, IY + 1.25, z - 0.25, 0x15161a)); GS.push(boxAt(0.8, 0.5, 0.02, x - 0.8, IY + 1.25, z - 0.21), boxAt(0.8, 0.5, 0.02, x + 0.8, IY + 1.25, z - 0.21)); if ((k + row) % 2 === 0) addClerk(R, x, z + 0.75, Math.PI, { ...CREW, skin: mpick(SKINS), shirt: mpick([0xf4f4f0, 0x9ad8f2, 0x1d2b4a]) }); }
+    R.obst.push({ minX: cx - 9.2, maxX: cx + 9.2, minZ: z - 0.45, maxZ: z + 0.45 });
+  }
+  R.group.add(new THREE.Mesh(mergeAll(GS), new THREE.MeshBasicMaterial({ color: new THREE.Color(0.3, 1.3, 2.2) })));
+  P.push(boxAt(6, 1.1, 0.9, cx - 8, IY + 0.55, cz + 4.6, 0x1d2b4a), boxAt(6.2, 0.07, 1.05, cx - 8, IY + 1.13, cz + 4.6, 0xd9dde2), boxAt(6, 0.3, 0.05, cx - 8, IY + 0.8, cz + 5.07, 0x3a86ff), boxAt(0.5, 0.35, 0.4, cx - 6.6, IY + 1.33, cz + 4.5, 0x222831), boxAt(0.6, 0.12, 0.6, cx - 9.4, IY + 1.2, cz + 4.6, 0xc0392b));
+  R.obst.push({ minX: cx - 11.2, maxX: cx - 4.8, minZ: cz + 4.1, maxZ: cz + 5.15 });
+  R.counters.push({ x: cx - 8, z: cz + 5.75, type: 'space', title: 'Launch director', back: [0, 1.4] });
+  addClerk(R, cx - 8, cz + 3.5, 0, { ...CREW, shirt: 0x1d2b4a, skin: 0x8d5a3b, hair: 0x111111 });
+  // globes of the Earth and the Moon, and a space suit on display
+  P.push(boxAt(0.4, 1.1, 0.4, cx + 11.5, IY + 0.55, cz + 2, 0x6b4a2f), boxAt(0.4, 1.1, 0.4, cx + 11.5, IY + 0.55, cz + 5.5, 0x6b4a2f)); R.obst.push({ minX: cx + 10.6, maxX: cx + 12.4, minZ: cz + 1.1, maxZ: cz + 6.4 });
+  { const e = new THREE.Mesh(new THREE.SphereGeometry(0.75, 24, 16), new THREE.MeshStandardMaterial({ map: earthTex(), roughness: 0.6 })); e.position.set(cx + 11.5, IY + 1.95, cz + 2); R.group.add(e); R.globe = e;
+    const mo = new THREE.Mesh(new THREE.SphereGeometry(0.55, 24, 16), new THREE.MeshStandardMaterial({ map: moonTex(), roughness: 0.9 })); mo.position.set(cx + 11.5, IY + 1.75, cz + 5.5); R.group.add(mo); }
+  { const suit = addClerk(R, cx + 12, cz - 6.5, -Math.PI / 2, { skin: 0xc89470, shirt: 0xf4f4f0, pants: 0xe8e8e2, shoes: 0xdddddd, hair: 0x2b1d14, shades: false, shorts: false }); suit.mannequin = true; addHelmet(suit); R.obst.push({ minX: cx + 11.4, maxX: cx + 12.6, minZ: cz - 7.1, maxZ: cz - 5.9 }); }
+  signCanvas(R, 1024, 256, cx - 10.6, IY + 4.4, cz - 9.86, 0, 5.4, 1.35);
+  roomText(R, 'EARTH ➜ MOON · 5 DAYS', '#9ad8f2', cx + 10.6, IY + 4.4, cz - 9.86, 5.4, 0.8);
+  roomText(R, 'MISSION CONTROL', '#3a86ff', cx - 13.75, IY + 4.6, cz, 6, 0.9, Math.PI / 2);
+  R.spots = [[cx + 11, cz - 1], [cx - 12, cz - 2], [cx + 4, cz + 6], [cx - 3, cz + 7]]; addVisitor(R, cx + 4, cz + 6, 'walk'); addVisitor(R, cx - 12, cz - 2, 'walk');
+  finishRoom(R, 'MISSION CONTROL', '#3a86ff');
+}
+function missionSign() {
+  const R = ROOMS.space; if (!R.signCv) return; const g = R.signCv.getContext('2d'), now = absH(), L = game.launchT, rk = SC.rocket;
+  g.fillStyle = '#0b1622'; g.fillRect(0, 0, 1024, 256); g.fillStyle = '#3a86ff'; g.fillRect(0, 0, 1024, 10); g.textAlign = 'center'; g.textBaseline = 'middle';
+  g.fillStyle = '#9ad8f2'; g.font = "800 46px Impact, 'Arial Black', sans-serif"; g.fillText(rk && rk.state === 'count' ? 'COUNTDOWN' : rk && rk.state === 'lift' ? 'LIFTOFF!' : 'NEXT LAUNCH', 512, 62);
+  g.fillStyle = '#ffd166'; g.font = "800 82px Impact, 'Arial Black', sans-serif"; g.fillText(rk && rk.state === 'count' ? `T-${Math.max(0, Math.ceil(10 - rk.t))}` : rk && rk.state === 'lift' ? `${Math.round(rk.y * 30).toLocaleString('en-US')} m` : fmtAbsH(L).toUpperCase(), 512, 150);
+  g.fillStyle = '#ffffff'; g.font = "700 34px sans-serif"; g.fillText(game.launchCrew ? 'CREWED FLIGHT TO THE MOON' : 'SUPPLY ROCKET', 512, 222); R.signTex.needsUpdate = true;
+}
+function renderPadCam() {
+  const pad = SC.pad, r = SC.rocket, ry = r.g.position.y;
+  if (r.state === 'lift') { padCam.position.set(pad.x + 170, 25 + Math.min(ry, 1500) * 0.35, pad.z + 170); padCam.lookAt(r.g.position.x, ry + 45, r.g.position.z); }
+  else { padCam.position.set(pad.x + 120, 30, pad.z + 120); padCam.lookAt(pad.x, 46, pad.z); }
+  const ei = scene.environmentIntensity, hc = hemi.color.clone(), hg = hemi.groundColor.clone(), hi = hemi.intensity, au = renderer.shadowMap.autoUpdate;
+  scene.environmentIntensity = 1; hemi.color.copy(hemiOut.c); hemi.groundColor.copy(hemiOut.g); hemi.intensity = hemiOut.i; renderer.shadowMap.autoUpdate = false;
+  renderer.setRenderTarget(padRT); renderer.render(scene, padCam); renderer.setRenderTarget(null);
+  renderer.shadowMap.autoUpdate = au; scene.environmentIntensity = ei; hemi.color.copy(hc); hemi.groundColor.copy(hg); hemi.intensity = hi;
+}
+let padFrame = 0, padSignT = 0;
+function updatePadScreen(dt) {
+  if (!SC.built || !game.inside || game.inside.room !== ROOMS.space) return;
+  if (++padFrame % 3 === 0) renderPadCam();
+  padSignT -= dt; if (padSignT <= 0) { padSignT = 0.5; missionSign(); }
+  if (ROOMS.space.globe) ROOMS.space.globe.rotation.y += dt * 0.3;
+}
+function missionSet(s) { const R = ROOMS.space; R.hello = `Mission Control · walk up to the launch director's desk${game.spaceJoined ? (canFly() ? ' · you are a Captain: choose when the rocket launches, then board it!' : ' to start a launch-prep shift') : ' to join the launch crew'}`; missionSign(); }
+function setLaunch(t, quiet) {
+  game.launchT = t; store.set('launchT', t); const rk = SC.rocket;
+  if (rk && rk.state === 'gone') { rocketReset(); if (!quiet) setTimeout(() => toast('A new rocket rolls out to Launch Pad 1', 3000), 1600); }
+  missionSign();
+}
+function rocketReset() { const r = SC.rocket; r.g.visible = true; r.g.position.set(r.x, r.base, r.z); r.g.rotation.set(0, 0, 0); r.y = 0; r.v = 0; r.t = 0; r.state = 'pad'; r.fl.visible = false; }
+function spaceDeskItems() {
+  const items = [], cap = isCaptain(), rk = spaceRank(), nx = SPACE_RANKS[SPACE_RANKS.indexOf(rk) + 1], R = SC.rocket, now = absH(), L = game.launchT;
+  items.push({ name: `Next launch: ${fmtAbsH(L)}`, desc: `${game.launchCrew ? 'Crewed flight to the Moon' : 'Supply rocket (no crew)'} · ${launchIn(L - now)} · ${R.state === 'pad' ? 'the rocket is on Launch Pad 1' : R.state === 'gone' ? 'a new rocket rolls out soon' : 'launching right now!'}`, price: 0, label: '🚀', sw: 0x3a86ff, disabled: true, buy: () => null });
+  if (!game.spaceJoined) { items.push({ name: 'Join the launch crew', desc: 'Work at the Solano Space Center: get the rocket ready · become Captain to choose when it launches and ride it to the Moon', price: 0, label: 'JOIN', sw: 0x9be15d, buy: () => { game.spaceJoined = true; store.set('spaceJoined', true); fadeFlash('Welcome to the Solano Space Center!', 1.4); missionSet(); return canFly() ? 'You joined the launch crew · you are a Captain, so you can fly!' : 'You joined the launch crew · start a launch-prep shift'; } }); return items; }
+  if (!sjob.on) items.push({ name: 'Start a launch-prep shift', desc: `${cap ? 6 : 3} jobs around the space center: fuel lines, the tower, the bunker, the weather station… · about $${Math.round(60 * rk.mult)} each${cap ? ' · Captain ★' : ''}`, price: 0, label: 'GO', sw: 0x9be15d, buy: () => { closeShopPanel(); if (curJob()) quitCurJob('You changed jobs'); spaceStartShift(); return null; } });
+  else items.push({ name: 'End your shift', desc: `${sjob.good} job${sjob.good === 1 ? '' : 's'} done · $${sjob.earned} earned so far`, price: 0, label: 'END', sw: 0xff6b6b, buy: () => { closeShopPanel(); spaceEndShift(false, 'You clocked out'); return null; } });
+  if (canFly()) {
+    items.push({ name: '🚀 Board the rocket to the Moon', desc: R.state !== 'pad' ? 'The rocket is not on the pad right now · pick a launch time below and a new one rolls out' : `Launch ${fmtAbsH(L)} · 5 days to the Moon, 10 days to explore, 5 days home = 20 days in space`, price: 0, label: 'BOARD', sw: 0xffd166, disabled: R.state !== 'pad', buy: () => { closeShopPanel(); spaceBoard(); return null; } });
+    for (const [nm, f] of LAUNCH_OPTS) { const t = f(now); items.push({ name: `Launch ${nm}`, desc: `Set the launch for ${fmtAbsH(t)}${Math.abs(t - L) < 0.05 ? ' · already set' : ''} · you're the Captain, you choose`, price: 0, label: 'SET', sw: 0x3a86ff, disabled: R.state === 'count' || R.state === 'lift', buy: () => { setLaunch(t); return `Launch set for ${fmtAbsH(t)} · board the rocket here before then`; } }); }
+  } else items.push({ name: 'Choose when the rocket launches', desc: `Captains pick the launch time and ride the rocket to the Moon · you are ${rk.name}${nx ? ` · Captain after ${Math.max(0, 12 - (game.spaceTasks || 0))} more jobs` : ''}`, price: 0, label: '★', sw: 0xffc857, disabled: true, buy: () => null });
+  items.push({ name: `Rank: ${rk.name}${cap ? ' · Captain ★' : ''}`, desc: nx ? `${game.spaceTasks || 0} jobs done · ${nx.name} after ${nx.at} · pay ${Math.round(rk.mult * 100)}%` : `${game.spaceTasks || 0} jobs done · top rank · pay ${Math.round(rk.mult * 100)}%`, price: 0, label: '★', sw: 0xffc857, disabled: true, buy: () => null });
+  if (game.moonTrips) items.push({ name: `Moon trips: ${game.moonTrips}`, desc: `You have been to the Moon ${game.moonTrips} time${game.moonTrips > 1 ? 's' : ''} · ${game.moonRocks || 0} moon rocks collected`, price: 0, label: '🌕', sw: 0xd9d9d9, disabled: true, buy: () => null });
+  return items;
+}
+function spaceStartShift() {
+  const cap = isCaptain(); Object.assign(sjob, { on: true, task: null, left: cap ? 6 : 3, total: cap ? 6 : 3, earned: 0, good: 0, gap: 1.2, tgt: null, done: [] });
+  toast(`Launch-prep shift started · ${spaceRank().name} · ${sjob.total} jobs around the space center${cap ? ' · Captain ★' : ''}`, 4200); sfxChime();
+}
+function spaceTitle() { const T = sjob.task; return T ? `🚀 ${T.name} · job ${sjob.total + 1 - sjob.left}/${sjob.total}` : sjob.left > 0 ? 'Launch-prep shift · next job coming…' : 'Launch-prep shift'; }
+function spaceNextTask() {
+  const pool = SC.tasks.filter((q) => !sjob.done.includes(q)), q = mpick(pool.length ? pool : SC.tasks), f = focusPos(); sjob.done.push(q);
+  sjob.task = { ...q, t: Math.hypot(q.x - f.x, q.z - f.z) > 600 ? 420 : 240, hold: 0, said: false, pay: Math.round(60 * spaceRank().mult / 5) * 5 };
+  sjob.tgt = { x: q.x, z: q.z, path: [], pathT: 0 }; if (!sjob.marker) sjob.marker = makeMarker(new THREE.Color(0.6, 1.2, 4), true);
+  toast(`🚀 Next job: ${q.name}`, 3600); sfxChime();
+}
+function spaceTaskDone(ok) {
+  const T = sjob.task; if (!T) return; sjob.task = null; sjob.tgt = null; sjob.left--; sjob.gap = 2.5; if (sjob.marker) sjob.marker.visible = false;
+  if (ok) {
+    const rk0 = spaceRank(), cap0 = canFly(); addCash(T.pay, 'Space Center · ' + T.name); sjob.earned += T.pay; sjob.good++; game.spaceTasks = (game.spaceTasks || 0) + 1; store.set('spaceTasks', game.spaceTasks);
+    showBanner('JOB DONE', `+$${T.pay} · ${T.name}`, 'var(--money)', 2400); sfxChime();
+    const rk1 = spaceRank(); if (rk1 !== rk0) setTimeout(() => { showBanner('PROMOTED', rk1.name === 'Captain' ? 'Captain ★ · you can choose when the rocket launches and ride it to the Moon!' : `${rk1.name} · jobs now pay ${Math.round(rk1.mult * 100)}%`, '#9ad8f2', 4200); sfxChime(); }, 2600);
+    else if (!cap0 && canFly()) setTimeout(() => showBanner('CAPTAIN ★', 'Choose the launch time at Mission Control and ride the rocket!', '#ffd166', 4200), 2600);
+  } else showBanner('JOB MISSED', 'You ran out of time', 'var(--coral)', 2200);
+}
+function spaceEndShift(done, why) {
+  if (!sjob.on) return; if (sjob.task) { sjob.task = null; sjob.tgt = null; } sjob.on = false; if (sjob.marker) sjob.marker.visible = false; $('mission').hidden = true;
+  const bonus = done && sjob.good === sjob.total ? Math.round(40 * spaceRank().mult) : 0; if (bonus) addCash(bonus, 'Space Center · shift bonus');
+  setTimeout(() => showBanner('SHIFT OVER', `+$${sjob.earned + bonus} · ${sjob.good} of ${sjob.total} jobs${bonus ? ` · $${bonus} bonus` : ''}${why ? ' · ' + why : ''}`, done ? 'var(--money)' : '#9ad8f2', 3200), done ? 2600 : 0);
+}
+function scheduleNextLaunch() { const now = absH(); if (!(game.launchT > now + 0.3)) { game.launchT = nextDefaultLaunch(now); game.launchCrew = false; store.set('launchT', game.launchT); store.set('launchCrew', false); } }
+function updateRocket(dt) {
+  const r = SC.rocket, pad = SC.pad, now = absH(), f = focusPos(), dPad = Math.hypot(f.x - pad.x, f.z - pad.z), watch = !!voyage.ride || (game.inside && game.inside.room === ROOMS.space) || (!game.inside && dPad < 2400);
+  if (!Number.isFinite(game.launchT)) { game.launchT = nextDefaultLaunch(now); store.set('launchT', game.launchT); }
+  if (r.state === 'pad') {
+    if (now >= game.launchT + 0.35) { r.state = 'gone'; r.goneAt = now; r.g.visible = false; scheduleNextLaunch(); }
+    else if (now >= game.launchT - 0.25 && game.state === 'play') { r.state = 'count'; r.t = 0; r.say = 99; r.crew = !!voyage.ride; }
+  } else if (r.state === 'count') {
+    r.t += dt; const left = Math.ceil(10 - r.t);
+    if (left !== r.say && left > 0) { r.say = left; if (watch) showBanner(`T-${left}`, r.crew ? 'Solano Space Center · crewed flight to the Moon' : 'Solano Space Center · supply rocket launch', '#ffd166', 950); if (left <= 3 && watch) sfxImpact(0.4); }
+    if (r.t > 7) { r.fl.visible = true; r.fl.scale.set(1, (r.t - 7) / 3 * (0.9 + Math.random() * 0.2), 1); if (dPad < 2400 || voyage.ride) for (let k = 0; k < 3; k++) emitSmoke(pad.x + (Math.random() - 0.5) * 30, 2 + Math.random() * 4, pad.z + 18 + Math.random() * 20, 9, 0.5, 6, (Math.random() - 0.5) * 8, 1.5, 4 + Math.random() * 6); }
+    if (r.t >= 10) { r.state = 'lift'; r.t = 0; r.v = 0; if (watch) { showBanner('LIFTOFF!', r.crew ? 'You are on your way to the Moon!' : 'The supply rocket is flying to the Moon', '#7dff9a', 2600); sfxImpact(1); vibrate(80); } }
+  } else if (r.state === 'lift') {
+    r.t += dt; r.v += (4 + r.t * 0.9) * dt; const tilt = Math.min(0.42, r.y / 4500); r.y += Math.cos(tilt) * r.v * dt; r.g.position.x -= Math.sin(tilt) * r.v * dt;
+    r.g.position.y = r.base + r.y; r.g.rotation.z = tilt; r.fl.scale.set(1 + Math.sin(game.time * 40) * 0.08, 1.15 + Math.sin(game.time * 31) * 0.12 + Math.min(1.5, r.y / 600), 1 + Math.cos(game.time * 37) * 0.08);
+    if (dPad < 3000 || voyage.ride) { if (r.y < 120) for (let k = 0; k < 3; k++) emitSmoke(pad.x + (Math.random() - 0.5) * 40, 2 + Math.random() * 5, pad.z + 15 + Math.random() * 30, 10, 0.45, 7, (Math.random() - 0.5) * 10, 2, 5 + Math.random() * 8); emitSmoke(r.g.position.x + (Math.random() - 0.5) * 3, r.g.position.y - 8 - Math.random() * 10, r.g.position.z + (Math.random() - 0.5) * 3, 6 + Math.min(10, r.y / 120), 0.42, 6, (Math.random() - 0.5) * 2, -2, (Math.random() - 0.5) * 2); }
+    if (r.y > 2600 || r.t > 30) { r.state = 'gone'; r.goneAt = now; r.g.visible = false; r.fl.visible = false; if (voyage.ride && voyage.ride.phase === 'launch') startCruise(); scheduleNextLaunch(); }
+  } else if (r.state === 'gone') {
+    if (now > game.launchT - 0.6 || (now > r.goneAt + 1.5 && (dPad > 500 || game.inside)) || now > r.goneAt + 8) rocketReset();
+  }
+}
+function updateSpace(dt) {
+  if (!SC.built) return;
+  updateRocket(dt);
+  if (sjob.on && game.state === 'play') {
+    if (!sjob.task) { sjob.gap -= dt; if (sjob.gap <= 0) { if (sjob.left <= 0) spaceEndShift(true); else spaceNextTask(); } }
+    else {
+      const T = sjob.task, f = focusPos(), mk = sjob.marker; T.t -= dt; mk.visible = true; mk.position.set(T.x, surfaceH(T.x, T.z), T.z); mk.userData.gem.rotation.y = game.time * 1.6;
+      const tg = sjob.tgt; tg.pathT -= dt; if (tg.pathT <= 0) { tg.pathT = 0.5; tg.path = rectD(SPACE, f.x, f.z) < 60 ? [] : gridRoute(f, { x: -482, z: 420 }); }
+      const d = Math.hypot(T.x - f.x, T.z - f.z);
+      if (d < 7 && !game.inside) { T.hold += dt; if (!T.said) { T.said = true; toast(`${T.verb}…`, 2200); } if (T.hold > 3) spaceTaskDone(true); }
+      else if (T.t <= 0) spaceTaskDone(false);
+    }
+  }
+  if (onMoon()) updateMoon(dt);
+}
+function spaceHint() {
+  const r = SC.rocket, f = focusPos();
+  if (voyage.ride) return voyageHint();
+  if (onMoon()) return moonHint();
+  if (sjob.on && sjob.task) { const d = Math.hypot(sjob.task.x - f.x, sjob.task.z - f.z); return d < 7 ? `${sjob.task.verb}… stay here` : `🚀 ${sjob.task.name} · ${srDist(d)}${rectD(SPACE, f.x, f.z) > 60 ? ' · take the Space Coast Bridge from the west beach' : ''}`; }
+  if (game.inside || player.car || !SC.built) return '';
+  if (Math.hypot(f.x - SC.x, f.z - SC.z) < 7) return `Mission Control · walk in to ${game.spaceJoined ? (canFly() ? 'choose the launch time and board the rocket' : 'start a launch-prep shift') : 'join the launch crew'}`;
+  if (r.state === 'count') return `🚀 T-${Math.max(0, Math.ceil(10 - r.t))} · launch from Pad 1!`;
+  if (Math.hypot(f.x - SC.pad.x, f.z - SC.pad.z) < 70 || Math.hypot(f.x + 1770, f.z - 700) < 30) return `🚀 Launch Pad 1 · next launch ${fmtAbsH(game.launchT)} · ${launchIn(game.launchT - absH())}`;
+  return '';
+}
+function addHelmet(h) {
+  const hm = new THREE.Mesh(new THREE.SphereGeometry(0.2, 18, 14), new THREE.MeshStandardMaterial({ color: 0xf4f4f0, roughness: 0.35 })); hm.position.set(0, 0.15, 0.0); h.neck.add(hm);
+  const vz = new THREE.Mesh(new THREE.SphereGeometry(0.206, 18, 12, 0, Math.PI, 0.75, 1.15), new THREE.MeshStandardMaterial({ color: 0xd4a017, metalness: 0.95, roughness: 0.15 })); vz.position.copy(hm.position); h.neck.add(vz);
+  const pk = new THREE.Mesh(boxAt(0.42, 0.5, 0.22, 0, 0.2, -0.2, 0xe8e8e2), vcolMat); h.spine.add(pk); h.helmet = [hm, vz, pk];
+}
+// ---- textures for the Earth and the Moon
+let _earthTex = null, _moonTex = null;
+function earthTex() {
+  if (_earthTex) return _earthTex; const rnd = mulberry32(42);
+  _earthTex = canvasTex(512, 256, (g) => {
+    const gr = g.createLinearGradient(0, 0, 0, 256); gr.addColorStop(0, '#1b4f8f'); gr.addColorStop(0.5, '#2a6fbd'); gr.addColorStop(1, '#1b4f8f'); g.fillStyle = gr; g.fillRect(0, 0, 512, 256);
+    for (let k = 0; k < 9; k++) { const cx = rnd() * 512, cy = 50 + rnd() * 156, n = 6 + Math.floor(rnd() * 8); g.fillStyle = rnd() < 0.7 ? '#3f8f4a' : '#a7864f'; for (let i = 0; i < n; i++) { g.beginPath(); g.ellipse(cx + (rnd() - 0.5) * 90, cy + (rnd() - 0.5) * 50, 10 + rnd() * 34, 8 + rnd() * 22, rnd() * 3, 0, 7); g.fill(); } }
+    g.fillStyle = '#f4f8fb'; g.fillRect(0, 0, 512, 14); g.fillRect(0, 242, 512, 14);
+    g.globalAlpha = 0.55; g.fillStyle = '#ffffff'; for (let i = 0; i < 60; i++) { g.beginPath(); g.ellipse(rnd() * 512, 20 + rnd() * 216, 14 + rnd() * 40, 3 + rnd() * 6, (rnd() - 0.5) * 0.6, 0, 7); g.fill(); } g.globalAlpha = 1;
+  });
+  return _earthTex;
+}
+function moonTex() {
+  if (_moonTex) return _moonTex; const rnd = mulberry32(7);
+  _moonTex = canvasTex(512, 256, (g) => {
+    g.fillStyle = '#9b9a96'; g.fillRect(0, 0, 512, 256);
+    for (let i = 0; i < 14; i++) { g.fillStyle = 'rgba(70,70,72,.35)'; g.beginPath(); g.ellipse(rnd() * 512, 40 + rnd() * 176, 20 + rnd() * 50, 14 + rnd() * 30, rnd() * 3, 0, 7); g.fill(); }
+    for (let i = 0; i < 160; i++) { const x = rnd() * 512, y = rnd() * 256, r = 1.5 + rnd() * 9; g.fillStyle = 'rgba(60,60,60,.45)'; g.beginPath(); g.arc(x, y, r, 0, 7); g.fill(); g.strokeStyle = 'rgba(230,230,225,.45)'; g.lineWidth = 1.2; g.beginPath(); g.arc(x - 0.6, y - 0.6, r, 0, 7); g.stroke(); }
+  });
+  return _moonTex;
+}
+
+// ---- the trip: ride the rocket, 5 days to the Moon, up to 10 days exploring, 5 days home (20 days in space)
+const CRUISE = { x: 4200, z: 4200, group: null }, SPACE_SUN = new THREE.Vector3(0.55, 0.5, 0.35).normalize(), MOON_SHOP = { type: 'moon', dx: 0, dz: 0, nx: 0, nz: -1 };
+function spaceSky(grp, cx, cz, n) {
+  const sky = new THREE.Mesh(new THREE.SphereGeometry(900, 24, 16), new THREE.MeshBasicMaterial({ color: 0x000000, side: THREE.BackSide, fog: false })); sky.position.set(cx, IY, cz); grp.add(sky);
+  const a = new Float32Array(n * 3), rnd = mulberry32(5); for (let i = 0; i < n; i++) { const u = rnd() * 2 - 1, t = rnd() * Math.PI * 2, r = Math.sqrt(1 - u * u); a[i * 3] = cx + Math.cos(t) * r * 850; a[i * 3 + 1] = IY + u * 850; a[i * 3 + 2] = cz + Math.sin(t) * r * 850; }
+  const sg = new THREE.BufferGeometry(); sg.setAttribute('position', new THREE.BufferAttribute(a, 3)); const st = new THREE.Points(sg, new THREE.PointsMaterial({ color: 0xffffff, size: 1.7, sizeAttenuation: false, fog: false })); st.frustumCulled = false; grp.add(st);
+  const sunM = new THREE.Mesh(new THREE.CircleGeometry(24, 32), new THREE.MeshBasicMaterial({ color: new THREE.Color(9, 8.5, 7), fog: false })); sunM.position.set(cx + SPACE_SUN.x * 820, IY + SPACE_SUN.y * 820, cz + SPACE_SUN.z * 820); sunM.lookAt(cx, IY, cz); grp.add(sunM);
+}
+function buildCruise() {
+  const C = CRUISE, g = new THREE.Group(); g.visible = false; scene.add(g); C.group = g; spaceSky(g, C.x, C.z, 1800);
+  C.earth = new THREE.Mesh(new THREE.SphereGeometry(40, 48, 32), new THREE.MeshStandardMaterial({ map: earthTex(), roughness: 0.7, fog: false })); g.add(C.earth);
+  C.moon = new THREE.Mesh(new THREE.SphereGeometry(22, 40, 28), new THREE.MeshStandardMaterial({ map: moonTex(), roughness: 0.95, fog: false })); g.add(C.moon);
+  const P = [];
+  P.push(colorize(new THREE.CylinderGeometry(0.9, 2.2, 2.6, 20).translate(0, 4.2, 0), 0xe8e8e2), colorize(new THREE.CylinderGeometry(2.2, 2.2, 4.2, 20).translate(0, 0.8, 0), 0xd9dde2), colorize(new THREE.CylinderGeometry(0.6, 1.3, 1.6, 14).translate(0, -2.1, 0), 0x2b2b30));
+  for (const sx of [-1, 1]) P.push(boxAt(7, 0.08, 2.2, sx * 6, 1, 0, 0x1d3f7a), boxAt(1.6, 0.15, 0.3, sx * 2.8, 1, 0, 0x9aa0a8));
+  for (const a of [0.3, 2.4, 4.4]) P.push(boxAt(0.45, 0.4, 0.1, Math.sin(a) * 1.62, 4.3, Math.cos(a) * 1.62, 0x1a232b));
+  P.push(boxAt(0.12, 0.12, 1.4, 0, 2.5, 2.3, 0x9aa0a8), colorize(new THREE.SphereGeometry(0.5, 10, 6, 0, Math.PI * 2, 0, 1.1).translate(0, 2.5, 3.0), 0xf4f4f0));
+  const ship = new THREE.Mesh(mergeAll(P), new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.5, metalness: 0.3, fog: false })); ship.position.set(C.x, IY, C.z); ship.rotation.z = Math.PI / 2; g.add(ship); C.ship = ship;
+  const fg = new THREE.ConeGeometry(0.9, 5, 12, 1, true); fg.rotateX(Math.PI); fg.translate(0, -5.4, 0); C.flame = new THREE.Mesh(fg, flameMats[1]); ship.add(C.flame);
+}
+function buildMoon(R) {
+  const { cx, cz } = R; R.group = new THREE.Group(); R.group.visible = false; scene.add(R.group);
+  Object.assign(R, { obst: [], clerks: [], counters: [], visitors: [], spots: [], seats: [], parts: [], moon: true, camD: 5.2, hy: 0, vy: 0, door: { x: cx, z: cz + 99999 }, spawn: { x: cx + 2, z: cz + 9 } });
+  spaceSky(R.group, cx, cz, 2600);
+  const rnd = mulberry32(99), CR = [];
+  for (let i = 0; i < 70; i++) { const a = rnd() * Math.PI * 2, d = 18 + Math.pow(rnd(), 0.7) * 620, r = 3 + Math.pow(rnd(), 2) * (d > 200 ? 70 : 26); CR.push({ x: Math.cos(a) * d, z: Math.sin(a) * d, r }); }
+  CR.push({ x: -70, z: -95, r: 34 }, { x: 95, z: 60, r: 22 }, { x: -120, z: 80, r: 18 });
+  const tg = new THREE.PlaneGeometry(1500, 1500, 160, 160); tg.rotateX(-Math.PI / 2); const tp = tg.attributes.position, col = new Float32Array(tp.count * 3);
+  for (let i = 0; i < tp.count; i++) {
+    const lx = tp.getX(i), lz = tp.getZ(i), rr0 = Math.hypot(lx, lz), far = smooth(150, 200, rr0); let h = 0, c = 0.56 + 0.05 * Math.sin(lx * 0.07) * Math.cos(lz * 0.05) + (rnd() - 0.5) * 0.05;
+    for (const q of CR) { const d = Math.hypot(lx - q.x, lz - q.z) / q.r; if (d > 1.4) continue; const bowl = d < 1 ? -(1 - d * d) : 0, rim = Math.exp(-(((d - 1) / 0.16) ** 2)) * 0.3; h += q.r * 0.16 * (bowl + rim) * (0.03 + 0.97 * far); c += bowl * 0.1 + rim * 0.12; }
+    h += smooth(185, 650, rr0) * (30 + 26 * Math.sin(lx * 0.011) * Math.cos(lz * 0.013) + 14 * Math.sin(lx * 0.031 + 1.3) * Math.sin(lz * 0.027));
+    tp.setY(i, h); col[i * 3] = c; col[i * 3 + 1] = c * 0.99; col[i * 3 + 2] = c * 0.97;
+  }
+  tg.setAttribute('color', new THREE.BufferAttribute(col, 3)); tg.translate(cx, IY - 0.03, cz); tg.computeVertexNormals();
+  R.group.add(new THREE.Mesh(tg, new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 1, metalness: 0, fog: false })));
+  const e = new THREE.Mesh(new THREE.SphereGeometry(48, 40, 28), new THREE.MeshStandardMaterial({ map: earthTex(), roughness: 0.7, fog: false })); e.position.set(cx - 260, IY + 120, cz - 500); R.group.add(e); R.earth = e;
+  const mat = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.6, metalness: 0.2, fog: false }), L = [], GOLD = 0xd4a017;
+  // the Moonship (your lander) with its ladder
+  L.push(boxAt(4.2, 2.6, 4.2, cx, IY + 2.6, cz, GOLD), boxAt(4.3, 0.2, 4.3, cx, IY + 3.95, cz, 0xb8860b));
+  for (const [sx, sz] of [[-1, -1], [1, -1], [-1, 1], [1, 1]]) { const lg = new THREE.CylinderGeometry(0.12, 0.12, 3.4, 6); lg.rotateZ(sx * 0.5); lg.rotateX(-sz * 0.5); lg.translate(cx + sx * 2.85, IY + 1.5, cz + sz * 2.85); L.push(colorize(lg, 0x9aa0a8), colorize(new THREE.CylinderGeometry(0.55, 0.62, 0.15, 12).translate(cx + sx * 3.55, IY + 0.08, cz + sz * 3.55), 0x9aa0a8)); }
+  L.push(colorize(new THREE.CylinderGeometry(1.9, 2.1, 2.8, 16).translate(cx, IY + 5.4, cz), 0xe8e8e2), colorize(new THREE.ConeGeometry(1.9, 1.5, 16).translate(cx, IY + 7.55, cz), 0xd9dde2), boxAt(0.7, 0.6, 0.12, cx, IY + 5.7, cz + 2.02, 0x1a232b));
+  for (let k = 0; k < 7; k++) L.push(boxAt(0.9, 0.06, 0.08, cx, IY + 0.4 + k * 0.45, cz + 2.25, 0x9aa0a8)); for (const sx of [-1, 1]) L.push(boxAt(0.07, 3.2, 0.08, cx + sx * 0.46, IY + 1.7, cz + 2.25, 0x9aa0a8));
+  L.push(boxAt(0.08, 1.6, 0.08, cx + 1.2, IY + 8.6, cz, 0x9aa0a8), colorize(new THREE.SphereGeometry(0.7, 12, 6, 0, Math.PI * 2, 0, 1.1).rotateX(-0.8).translate(cx + 1.2, IY + 9.4, cz), 0xf4f4f0));
+  R.obst.push({ minX: cx - 2.4, maxX: cx + 2.4, minZ: cz - 2.4, maxZ: cz + 2.2 }); R.counters.push({ x: cx, z: cz + 3.4, type: 'lander', title: 'Solano Moonship', r: 1.4, back: [0, 1.7] });
+  // Solano Moon Base: two domes and a tunnel, solar panels, an antenna
+  const bx = cx + 40, bz = cz - 28;
+  L.push(colorize(new THREE.SphereGeometry(9, 28, 14, 0, Math.PI * 2, 0, Math.PI / 2).translate(bx, IY, bz), 0xeef0f2), colorize(new THREE.SphereGeometry(6, 24, 12, 0, Math.PI * 2, 0, Math.PI / 2).translate(bx + 15, IY, bz + 6), 0xeef0f2), colorize(new THREE.CylinderGeometry(1.8, 1.8, 8, 14).rotateZ(Math.PI / 2).translate(bx + 8, IY + 1.6, bz + 3), 0xd9dde2));
+  L.push(boxAt(3, 3, 2.4, bx, IY + 1.5, bz + 8.9, 0xd9dde2), boxAt(1.5, 2.3, 0.1, bx, IY + 1.15, bz + 10.12, 0x1d2c3f), boxAt(10, 0.35, 0.1, bx, IY + 3.2, bz + 8.7, 0x3a86ff));
+  for (let k = 0; k < 4; k++) { const sp = new THREE.BoxGeometry(5, 0.1, 2.6); sp.rotateX(-0.5); sp.translate(bx - 22 + k * 6, IY + 1.6, bz - 4); L.push(colorize(sp, 0x1d3f7a), boxAt(0.15, 1.4, 0.15, bx - 22 + k * 6, IY + 0.7, bz - 4, 0x9aa0a8)); }
+  L.push(boxAt(0.14, 9, 0.14, bx + 15, IY + 10, bz + 6, 0x9aa0a8), colorize(new THREE.SphereGeometry(1.3, 12, 6, 0, Math.PI * 2, 0, 1.1).rotateX(-0.6).translate(bx + 15, IY + 14.4, bz + 6), 0xf4f4f0));
+  R.obst.push({ minX: bx - 8.5, maxX: bx + 8.5, minZ: bz - 8.5, maxZ: bz + 10.1 }, { minX: bx + 9.5, maxX: bx + 20.5, minZ: bz + 0.5, maxZ: bz + 11.5 }, { minX: bx - 25, maxX: bx - 1, minZ: bz - 5.4, maxZ: bz - 2.6 });
+  R.counters.push({ x: bx, z: bz + 11.4, type: 'moonbase', title: 'Solano Moon Base', r: 1.5, back: [0, 1.7] });
+  // a parked moon buggy
+  const vx = cx - 22, vz = cz - 4;
+  L.push(boxAt(2.2, 0.3, 3.4, vx, IY + 0.9, vz, 0x9aa0a8), boxAt(0.5, 0.7, 0.5, vx - 0.5, IY + 1.35, vz - 0.2, 0x3a3f46), boxAt(0.5, 0.7, 0.5, vx + 0.5, IY + 1.35, vz - 0.2, 0x3a3f46), boxAt(0.06, 1.6, 0.06, vx + 0.9, IY + 1.8, vz - 1.4, 0x9aa0a8), colorize(new THREE.SphereGeometry(0.4, 10, 6, 0, Math.PI * 2, 0, 1.1).translate(vx + 0.9, IY + 2.6, vz - 1.4), 0xf4f4f0));
+  for (const [sx, sz] of [[-1, -1], [1, -1], [-1, 1], [1, 1]]) L.push(colorize(new THREE.CylinderGeometry(0.45, 0.45, 0.3, 14).rotateZ(Math.PI / 2).translate(vx + sx * 1.2, IY + 0.45, vz + sz * 1.3), 0x3a3f46));
+  R.obst.push({ minX: vx - 1.4, maxX: vx + 1.4, minZ: vz - 1.8, maxZ: vz + 1.8 });
+  R.group.add(new THREE.Mesh(mergeAll(L), mat));
+  { const t = new THREE.Mesh(new THREE.PlaneGeometry(9, 1.1), new THREE.MeshBasicMaterial({ map: textTex('SOLANO MOON BASE', 1024, 125, '#1d4f7a'), transparent: true, fog: false })); t.position.set(bx, IY + 4.6, bz + 8.2); R.group.add(t); }
+  // the Solano flag (planted when you choose) and moon rocks to collect
+  R.flag = new THREE.Group(); R.flag.add(new THREE.Mesh(boxAt(0.06, 3, 0.06, 0, 1.5, 0, 0xd9dde2), vcolMat), new THREE.Mesh(boxAt(1.7, 0.05, 0.05, 0.85, 2.95, 0, 0xd9dde2), vcolMat)); { const fm = new THREE.Mesh(new THREE.PlaneGeometry(1.7, 1.05), flagMat); fm.position.set(0.85, 2.4, 0); R.flag.add(fm); } R.flag.position.set(cx + 5, IY, cz + 6); R.flag.visible = false; R.group.add(R.flag);
+  const ringMat = new THREE.MeshBasicMaterial({ color: new THREE.Color(0.6, 1.6, 2.4), map: beamTex, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, side: THREE.DoubleSide, fog: false });
+  R.rocks = []; for (let i = 0; i < 10; i++) { let x, z; for (let k = 0; k < 30; k++) { const a = rnd() * Math.PI * 2, d = 22 + rnd() * 130; x = Math.cos(a) * d; z = Math.sin(a) * d; if (Math.hypot(x - 40, z + 28) > 18 && Math.hypot(x + 22, z + 4) > 5) break; }
+    const k = new THREE.Mesh(new THREE.DodecahedronGeometry(0.42), new THREE.MeshStandardMaterial({ color: 0xdfe3e8, roughness: 0.5, emissive: 0x223344, fog: false })); k.position.set(cx + x, IY + 0.3, cz + z); R.group.add(k);
+    const ring = new THREE.Mesh(new THREE.CylinderGeometry(0.8, 0.8, 1.2, 20, 1, true), ringMat); ring.position.set(cx + x, IY + 0.6, cz + z); R.group.add(ring); k.userData.ring = ring; R.rocks.push(k); }
+}
+function moonHop(Rm, p, dt) {
+  if (input.jumpQ && Rm.hy <= 0.001) Rm.vy = 3.4;
+  Rm.vy -= 1.62 * dt; Rm.hy = Math.max(0, Rm.hy + Rm.vy * dt); if (Rm.hy <= 0) Rm.vy = 0;
+  const lx = p.pos.x - Rm.cx, lz = p.pos.z - Rm.cz, r = Math.hypot(lx, lz); if (r > 172) { p.pos.x = Rm.cx + lx / r * 172; p.pos.z = Rm.cz + lz / r * 172; }
+  return IY + Rm.hy;
+}
+const moonDay = () => (voyage.trip && voyage.trip.arriveDay ? dayNum(game.date) - voyage.trip.arriveDay + 1 : 1);
+function moonHint() { const T = voyage.trip, d = moonDay(); return `🌕 Moon · day ${Math.min(d, 10)} of 10 · moon rocks ${T ? T.rocks : 0}/10 · ${TOUCH ? 'JUMP' : 'Space'} = moon jump`; }
+function updateMoon(dt) {
+  const R = ROOMS.moon, T = voyage.trip; R.earth.rotation.y += dt * 0.02; if (!T) return;
+  for (const k of R.rocks) { if (!k.visible) continue; k.rotation.y += dt; k.userData.ring.rotation.y -= dt; if (Math.hypot(player.pos.x - k.position.x, player.pos.z - k.position.z) < 1.6 && R.hy < 1.2) { k.visible = false; k.userData.ring.visible = false; T.rocks++; game.moonRocks = (game.moonRocks || 0) + 1; store.set('moonRocks', game.moonRocks); addCash(50, 'Moon rock'); toast(`🌑 Moon rock! ${T.rocks}/10 · +$50`, 2400); sfxChime(); } }
+  if (moonDay() > 10 && !T.autoHome && game.state === 'play') { T.autoHome = true; toast('Mission Control: “Your 10 days on the Moon are done · time to fly home!”', 4200); setTimeout(() => { if (onMoon()) leaveMoon(); }, 2600); }
+}
+function landerItems() {
+  const T = voyage.trip || { rocks: 0 }, d = moonDay(), R = ROOMS.moon, left = Math.max(0, 10 - d);
+  return [
+    { name: `Moon mission · day ${Math.min(d, 10)} of 10`, desc: `${left} more day${left === 1 ? '' : 's'} to explore · moon rocks ${T.rocks}/10 · then 5 days home`, price: 0, label: '🌕', sw: 0xd9d9d9, disabled: true, buy: () => null },
+    { name: T.flag ? 'The Solano flag is planted' : 'Plant the Solano flag', desc: T.flag ? 'It looks great on the Moon' : 'Plant the flag of Solano next to the Moonship', price: 0, label: T.flag ? '✓' : 'FLAG', sw: 0x18797a, disabled: !!T.flag, buy: () => { T.flag = true; R.flag.visible = true; return 'You planted the Solano flag on the Moon!'; } },
+    { name: d >= 10 ? '🚀 Fly home to Earth' : '🚀 Fly home early', desc: d >= 10 ? 'Your 10 days are done · 5 days back to Earth' : `5 days back to Earth · you still have ${left} day${left === 1 ? '' : 's'} left to explore`, price: 0, label: 'FLY', sw: 0xffd166, buy: () => { leaveMoon(); return null; } },
+  ];
+}
+function moonBaseItems() {
+  const d = moonDay();
+  return [
+    { name: 'Sleep until tomorrow', desc: d >= 10 ? 'Tomorrow you fly home' : `Sleep in your bunk · wake up on day ${d + 1} of 10`, price: 0, label: 'SLEEP', sw: 0x9b5de5, buy: () => { fadeFlash('Sleeping in the Moon Base…', 1.6); game.tod = 7; nextDay(); heal(100); return `Good morning! Day ${Math.min(moonDay(), 10)} on the Moon · ${fmtGameDate()}`; } },
+    { name: 'Space food', desc: 'Freeze-dried ice cream and a juice pouch · +40 health', price: 0, label: 'EAT', sw: 0xff8fab, buy: () => { heal(40); return 'Crunchy space ice cream · +40 health'; } },
+    { name: 'Call Mission Control', desc: 'Say hi to Earth', price: 0, label: 'CALL', sw: 0x3a86ff, buy: () => mpick(['Mission Control: “Looking good up there! Earth says hi.”', 'Mission Control: “We can see your footprints from here!”', 'Mission Control: “Don’t forget the moon rocks!”']) },
+  ];
+}
+function spaceBoard() {
+  const r = SC.rocket; if (r.state !== 'pad' || voyage.ride) return;
+  if (curJob()) quitCurJob('You are going to space');
+  if (game.inside) exitShop();
+  game.launchCrew = true; store.set('launchCrew', true);
+  wearUni('astro'); addHelmet(player.h);
+  const wait = game.launchT - absH(); if (wait > 0.3) advanceHours(wait - 0.26);
+  fadeFlash(wait > 0.3 ? 'Suiting up… up the tower… into the capsule… waiting for launch time' : 'Suiting up… up the tower… into the capsule!', 1.8);
+  voyage.ride = { phase: 'launch', t: 0 }; voyage.trip = { l0: dayNum(game.date), rocks: 0, arriveDay: 0, flag: false };
+  player.h.root.visible = false; player.vel.set(0, 0, 0); player.pos.set(SC.pad.x + 60, 0.2, SC.pad.z + 80);
+  r.state = 'count'; r.t = 0; r.say = 99; r.crew = true; missionSign();
+}
+function startCruise() { if (!CRUISE.group) buildCruise(); CRUISE.group.visible = true; voyage.ride = { phase: 'cruise', t: 0, u: 0, days: 0 }; fadeFlash('Engines off · next stop: the Moon!', 1.2); }
+function enterMoon() {
+  if (!ROOMS.moon) { ROOMS.moon = { name: 'The Moon', cx: 4200, cz: -4200, w: 360, d: 360, H: 300 }; buildMoon(ROOMS.moon); }
+  const R = ROOMS.moon, T = voyage.trip || (voyage.trip = { l0: dayNum(game.date) - 5, rocks: 0, flag: false });
+  if (CRUISE.group) CRUISE.group.visible = false; voyage.ride = null; T.arriveDay = dayNum(game.date); T.rocks = 0; T.autoHome = false; T.flag = false;
+  for (const k of R.rocks) { k.visible = true; k.userData.ring.visible = true; } R.flag.visible = false;
+  game.inside = { shop: MOON_SHOP, room: R, out: new THREE.Vector3(SC.lz.x, 0, SC.lz.z) }; R.group.visible = true;
+  player.h.root.visible = true; player.pos.set(R.spawn.x, IY, R.spawn.z); player.vel.set(0, 0, 0); player.yaw = Math.PI; cam.yaw = 0; cam.pitch = 0.22; cam.manual = 0; cam.init = false; R.hy = 0; R.vy = 0;
+  interiorLight.intensity = 0; shopCD = 1.5;
+  fadeFlash('Touchdown! You are on the Moon', 1.6); setTimeout(() => showBanner('THE MOON', 'Day 1 of 10 · collect moon rocks · sleep at the Moon Base · fly home at the Moonship', '#ffd166', 4600), 1800);
+}
+function leaveMoon() {
+  const R = ROOMS.moon; if (game.state === 'shop') { $('shop').hidden = true; game.state = 'play'; }
+  R.group.visible = false; game.inside = null; interiorLight.intensity = 0; player.h.root.visible = false;
+  if (!CRUISE.group) buildCruise(); CRUISE.group.visible = true; voyage.ride = { phase: 'home', t: 0, u: 0, days: 0 };
+  fadeFlash('Liftoff from the Moon! Heading home to Earth…', 1.6); sfxImpact(0.8);
+}
+function startLanding() { if (CRUISE.group) CRUISE.group.visible = false; voyage.ride = { phase: 'land', t: 0 }; const Cp = SC.capsule; Cp.visible = true; Cp.position.set(SC.lz.x, 420, SC.lz.z); Cp.userData.chutes.visible = true; fadeFlash('Re-entry… parachutes out!', 1.2); }
+function finishTrip() {
+  const T = voyage.trip || { l0: dayNum(game.date), rocks: 0 }, days = dayNum(game.date) - T.l0; voyage.ride = null; voyage.trip = null; SC.capsule.userData.chutes.visible = false;
+  unwearUni(); player.h.root.visible = true; player.pos.set(SC.lz.x + 4, 0.2, SC.lz.z + 7); player.vel.set(0, 0, 0); player.yaw = 0; player.onGround = false; cam.yaw = Math.PI; cam.pitch = 0.2; cam.init = false;
+  game.moonTrips = (game.moonTrips || 0) + 1; store.set('moonTrips', game.moonTrips); game.launchCrew = false; store.set('launchCrew', false);
+  addCash(2000, 'Moon mission bonus'); sfxChime();
+  showBanner('WELCOME HOME!', `${days} days in space · ${T.rocks} moon rock${T.rocks === 1 ? '' : 's'} · +$2,000 mission bonus`, 'var(--money)', 5200);
+  toast(`You're back at the Solano Space Center · it's ${fmtGameDate()}`, 5000);
+}
+function voyageSkip() { const V = voyage.ride; if (V && (V.phase === 'cruise' || V.phase === 'home')) V.u = Math.min(1, (Math.floor(V.u * 5 + 1e-6) + 1) / 5); }
+function updateVoyage(dt) {
+  const V = voyage.ride; V.t += dt; player.vel.set(0, 0, 0);
+  if (V.phase === 'launch') { player.pos.set(SC.pad.x + 60, 0.2, SC.pad.z + 80); return; }
+  if (V.phase === 'cruise' || V.phase === 'home') {
+    const C = CRUISE; V.u = Math.min(1, V.u + dt / 30); const e = V.u * V.u * (3 - 2 * V.u), ahead = V.phase === 'cruise' ? C.moon : C.earth, behind = V.phase === 'cruise' ? C.earth : C.moon;
+    ahead.position.set(C.x - lerp(760, 82, e), IY + lerp(130, 14, e), C.z - lerp(200, 26, e)); behind.position.set(C.x + lerp(76, 760, e), IY - lerp(28, 120, e), C.z + lerp(36, 220, e));
+    C.earth.rotation.y += dt * 0.05; C.moon.rotation.y += dt * 0.01; C.ship.rotation.x = Math.sin(V.t * 0.3) * 0.06; C.flame.visible = V.u < 0.1 || V.u > 0.92; C.flame.scale.y = 0.8 + Math.random() * 0.4;
+    player.pos.set(SC.lz.x + 4, 0.2, SC.lz.z + 7);
+    const days = Math.min(5, Math.floor(V.u * 5 + 1e-6)); while (V.days < days) { V.days++; nextDay(); toast(`${V.phase === 'cruise' ? '🚀 To the Moon' : '🌍 Back to Earth'} · day ${V.days} of 5 done · ${fmtGameDate()}`, 2600); }
+    if (V.u >= 1) { if (V.phase === 'cruise') enterMoon(); else startLanding(); }
+  } else if (V.phase === 'land') {
+    const Cp = SC.capsule, k = Math.min(1, V.t / 14), y = 420 * Math.pow(1 - k, 1.6); Cp.position.set(SC.lz.x, y, SC.lz.z); Cp.rotation.y += dt * 0.2; Cp.userData.chutes.visible = y > 0.5;
+    player.pos.set(SC.lz.x + 4, 0.2, SC.lz.z + 7);
+    if (k >= 1) finishTrip();
+  }
+}
+function voyageHint() {
+  const V = voyage.ride, r = SC.rocket;
+  if (V.phase === 'launch') return r.state === 'count' ? `🚀 T-${Math.max(0, Math.ceil(10 - r.t))} · strapped in and ready for launch` : `🚀 Liftoff! Altitude ${Math.round(r.y * 30).toLocaleString('en-US')} m`;
+  if (V.phase === 'land') return '🪂 Parachutes out · landing at the Solano Space Center';
+  const d = Math.min(5, V.days + 1), km = Math.round((V.phase === 'cruise' ? V.u : 1 - V.u) * 384400);
+  return `${V.phase === 'cruise' ? '🚀 To the Moon' : '🌍 Back to Earth'} · day ${d} of 5 · ${km.toLocaleString('en-US')} km from Earth · ${TOUCH ? 'tap SKIP' : 'press F'} to skip a day`;
+}
+function voyageCamera(dt) {
+  const V = voyage.ride, r = SC.rocket, pad = SC.pad; let fov = baseFov;
+  if (V.phase === 'launch') {
+    const ry = r.g.position.y, rx = r.g.position.x, sh = r.state === 'lift' && r.y < 400 ? (1 - r.y / 400) * 0.5 : r.state === 'count' && r.t > 7 ? 0.2 : 0;
+    if (r.state !== 'lift' || r.y < 140) { camera.position.set(pad.x + 70 + (Math.random() - 0.5) * sh, 16 + Math.max(0, r.y) * 0.5 + (Math.random() - 0.5) * sh, pad.z + 92); camera.lookAt(rx, ry + 40, pad.z); }
+    else { camera.position.set(rx + 40, ry - 30, pad.z + 55); camera.lookAt(rx, ry + 30, pad.z); }
+  } else if (V.phase === 'cruise' || V.phase === 'home') { const C = CRUISE, a = V.t * 0.12 + 0.6; camera.position.set(C.x + Math.sin(a) * 19, IY + 5 + Math.sin(V.t * 0.2) * 2, C.z + Math.cos(a) * 19); camera.lookAt(C.x - 2, IY, C.z); fov = baseFov + 6; }
+  else { const Cp = SC.capsule.position; camera.position.set(SC.lz.x + 38, Math.max(6, Cp.y * 0.55 + 6), SC.lz.z + 52); camera.lookAt(Cp.x, Cp.y + 6, Cp.z); }
+  cam.init = false; if (Math.abs(camera.fov - fov) > 0.05) { camera.fov = fov; camera.updateProjectionMatrix(); } return true;
+}
+const spaceLit = () => onMoon() || !!(voyage.ride && (voyage.ride.phase === 'cruise' || voyage.ride.phase === 'home'));
+function spaceLight() { sun.color.setRGB(1, 0.98, 0.94); sun.intensity = 3.4; lightDir.copy(SPACE_SUN); hemi.color.setRGB(0.4, 0.42, 0.48); hemi.groundColor.setRGB(0.22, 0.22, 0.22); hemi.intensity = 0.5; scene.environmentIntensity = 0.05; renderer.toneMappingExposure = 0.72; interiorLight.intensity = 0; scene.fog.density = 0; starMat.opacity = 0; moon.visible = false; }
+
 // ---- crash reports: when a driver hits you, a police car comes and arrests them
 const cc = { on: false, cd: 0 };
 function reportCrash(v, how) {
@@ -3583,7 +4283,7 @@ function buildShops() {
   const openMat = new THREE.MeshBasicMaterial({ map: openTex, transparent: true, color: new THREE.Color(2.2, 2.2, 2.2), depthWrite: false });
   for (const sp of shopsData) {
     if (sp.type === 'metro') { metroKiosk(sp); continue; }
-    if (sp.type === 'restaurant' || sp.type === 'police' || sp.type === 'hotel') continue;
+    if (sp.type === 'restaurant' || sp.type === 'police' || sp.type === 'hotel' || sp.type === 'hospital' || sp.type === 'fire' || sp.type === 'space') continue;
     if (sp.type === 'mart' || sp.type === 'grocery' || sp.type === 'threads') {
       const L0 = SHOP_LOOK[sp.type], ang = Math.atan2(sp.nx, sp.nz), place = (gg, x, y, z) => { gg.rotateY(ang); gg.translate(sp.dx + Math.cos(ang) * x + Math.sin(ang) * z, y, sp.dz - Math.sin(ang) * x + Math.cos(ang) * z); return gg; };
       const W = [], F = [];
@@ -3606,7 +4306,7 @@ function buildShops() {
     const ring = new THREE.Mesh(new THREE.CylinderGeometry(0.85, 0.85, 0.7, 24, 1, true), new THREE.MeshBasicMaterial({ color: new THREE.Color(0.6, 2.4, 2.2), map: beamTex, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, side: THREE.DoubleSide }));
     ring.position.set(0, CURB + 0.35, 1.3); g.add(ring); scene.add(g);
   }
-  buildMart(ROOMS.mart); buildThreads(ROOMS.threads); buildTerminal(ROOMS.terminal); buildAirstrip(ROOMS.airstrip); buildHome(ROOMS.home); buildGrocery(ROOMS.grocery); buildMetro(ROOMS.metro); buildRestaurant(ROOMS.restaurant); buildPoliceRoom(ROOMS.police); buildHotelLobby(ROOMS.hotel); buildSuite(ROOMS.suite);
+  buildMart(ROOMS.mart); buildThreads(ROOMS.threads); buildTerminal(ROOMS.terminal); buildAirstrip(ROOMS.airstrip); buildHome(ROOMS.home); buildGrocery(ROOMS.grocery); buildMetro(ROOMS.metro); buildRestaurant(ROOMS.restaurant); buildPoliceRoom(ROOMS.police); buildHotelLobby(ROOMS.hotel); buildSuite(ROOMS.suite); buildHospitalRoom(ROOMS.hospital); buildFireRoom(ROOMS.fire); buildMissionRoom(ROOMS.space);
   for (const k of SHIFT_TYPES) { ROOMS[k].hello = (ROOMS[k].hello || `${ROOMS[k].name} · walk up to the counter to buy`) + ' · stand on the green WORK spot by the door to earn money'; addWorkSpot(ROOMS[k]); }
   for (const k in ROOMS) markSeats(ROOMS[k]);
 }
@@ -4082,7 +4782,12 @@ const OUTFITS = [
   { id: 'midnight', name: 'Midnight suit', shirt: 0x1b1f2e, pants: 0x1b1f2e, price: 250 },
   { id: 'fatigues', name: 'Army fatigues', shirt: 0x4b5320, pants: 0x55603a, price: 0, mil: true },
   { id: 'police', name: 'Solano PD uniform', shirt: 0x1d2b4a, pants: 0x131a2a, price: 0, mil: true },
+  { id: 'fire', name: 'Solano Fire turnout gear', shirt: 0xc8a050, pants: 0xb8923e, price: 0, mil: true, top: 'jacket' },
+  { id: 'scrubs', name: 'Hospital scrubs', shirt: 0x4fb3bf, pants: 0x4fb3bf, price: 0, mil: true },
+  { id: 'astro', name: 'Space suit', shirt: 0xf4f4f0, pants: 0xe8e8e2, price: 0, mil: true, top: 'long' },
 ];
+function wearUni(id) { if (game.outfit !== id) { const cur = OUTFITS.find((o) => o.id === game.outfit); if (cur && !cur.mil) store.set('outfitPrev', game.outfit); } const o = OUTFITS.find((x) => x.id === id); if (o) setOutfit(o); }
+function unwearUni() { const id = store.get('outfitPrev', 'coral'), o = OUTFITS.find((x) => x.id === id && !x.mil) || OUTFITS[0]; setOutfit(o); }
 function buildGrocery(R) {
   buildRoom(R, checkerTex, 0xf6efd9); const { cx, cz, w, d } = R, P = R.parts, F = [];
   const FRUIT = [0xd62828, 0xffb703, 0x8ac926, 0xff7b00, 0x6a994e, 0xffd60a, 0x9d4edd, 0xe63946];
@@ -4445,6 +5150,7 @@ DIMS.taxi = DIMS.sedan; DIMS.police = DIMS.sedan;
 DIMS.hatch = { w: 1.8, l: 4.1, h: 0.62, ride: 0.32, ch: 0.62, cl: 2.2, cz: -0.3, wb: 2.55, r: 0.34 };
 DIMS.pickup = { w: 2.02, l: 5.3, h: 0.82, ride: 0.48, ch: 0.66, cl: 1.9, cz: 0.4, wb: 3.3, r: 0.44 };
 DIMS.bus = { w: 2.55, l: 11.2, h: 1.0, ride: 0.38, ch: 1.6, cl: 10.6, cz: 0, wb: 6.4, r: 0.52 };
+DIMS.fire = { w: 2.5, l: 8.6, h: 1.0, ride: 0.42, ch: 1.6, cl: 8.0, cz: 0, wb: 4.6, r: 0.52 };
 const SPECS = {
   sedan: { acc: 10, top: 44, rev: 11, grip: 9, steer: 0.62, wb: 2.75 },
   taxi: { acc: 10, top: 44, rev: 11, grip: 9, steer: 0.62, wb: 2.75 },
@@ -4453,7 +5159,8 @@ const SPECS = {
   police: { acc: 13.5, top: 56, rev: 12, grip: 10, steer: 0.62, wb: 2.75 },
   hatch: { acc: 10.5, top: 42, rev: 11, grip: 9.2, steer: 0.66, wb: 2.55 },
   pickup: { acc: 9, top: 42, rev: 10, grip: 8.2, steer: 0.55, wb: 3.3 },
-  bus: { acc: 5, top: 22, rev: 5, grip: 7, steer: 0.5, wb: 6.4 },
+  bus: { acc: 8, top: 26, rev: 7, grip: 12, steer: 0.82, wb: 5.2 },
+  fire: { acc: 8.5, top: 34, rev: 7, grip: 11.5, steer: 0.78, wb: 4.4 },
 };
 const PAINTS = [0xc81d25, 0x1b4f9c, 0xf2f2f2, 0x111317, 0x9aa3ab, 0x2a9d8f, 0xff5fa2, 0xffb703, 0x4b2e83, 0x3a5a40, 0xe76f51, 0x6d8fa8];
 const paintCache = new Map();
@@ -4469,6 +5176,7 @@ const headMat = new THREE.MeshBasicMaterial({ color: 0xffffff });
 const blinkOnMat = new THREE.MeshBasicMaterial({ color: new THREE.Color(3.4, 1.55, 0.12) });
 const blinkLit = (v) => !!v.blink && ((game.time + v.blinkPh) % 0.76) < 0.38;
 const copRedMat = new THREE.MeshBasicMaterial({ color: 0xff1030 }), copBlueMat = new THREE.MeshBasicMaterial({ color: 0x1050ff });
+const fireLightR = new THREE.MeshBasicMaterial({ color: new THREE.Color(0.5, 0.05, 0.05) }), fireLightW = new THREE.MeshBasicMaterial({ color: new THREE.Color(0.6, 0.6, 0.6) });
 const taxiSignMat = new THREE.MeshBasicMaterial({ color: 0xffe08a });
 const carGeoCache = {}, wheelCache = {};
 const chromeMat = new THREE.MeshStandardMaterial({ color: 0xffffff, vertexColors: true, metalness: 1, roughness: 0.14 });
@@ -4480,6 +5188,7 @@ const CAR_STYLE = {
   suv: { y0: 0.4, arch: 0.08, bump: 0.62, nose: 1.02, hood: [1.6, 1.15], cowl: [1.05, 1.2], deck: [-2.15, 1.22], trunk: [-2.3, 1.22], tail: 1.18, cab: { f: [1.1, 1.15], a: [0.35, 1.8], b: [-2.02, 1.8], q: [-2.3, 1.2] }, ra: 0.25, rb: 0.16, gw: 0.92, tap: 0.14, doors: 2, rim: 0xb5b9bf, bev: 0.1, rails: true },
   hatch: { y0: 0.22, arch: 0.06, bump: 0.42, nose: 0.68, hood: [1.45, 0.92], cowl: [0.85, 0.98], deck: [-1.7, 1.0], trunk: [-1.95, 1.0], tail: 0.98, cab: { f: [0.92, 0.94], a: [0.05, 1.5], b: [-1.5, 1.5], q: [-1.92, 1.02] }, ra: 0.26, rb: 0.14, gw: 0.9, tap: 0.16, doors: 2, rim: 0xc9ccd1, bev: 0.1 },
   pickup: { y0: 0.45, arch: 0.08, bump: 0.72, nose: 1.08, hood: [1.95, 1.2], cowl: [1.2, 1.24], deck: [-2.45, 1.24], trunk: [-2.6, 1.24], tail: 1.22, cab: { f: [1.25, 1.2], a: [0.6, 1.88], b: [-0.3, 1.9], q: [-0.45, 1.26] }, ra: 0.22, rb: 0.08, gw: 0.92, tap: 0.12, doors: 2, rim: 0x9aa0a8, bev: 0.1, bed: true },
+  fire: { y0: 0.4, arch: 0.08, bump: 0.75, nose: 1.2, hood: [4.2, 1.45], cowl: [4.15, 1.5], deck: [-4.1, 1.5], trunk: [-4.25, 1.5], tail: 1.45, cab: { f: [4.2, 1.5], a: [4.0, 2.85], b: [2.05, 2.9], q: [1.9, 1.5] }, ra: 0.25, rb: 0.12, gw: 0.97, tap: 0.04, doors: 1, rim: 0xb5b9bf, bev: 0.12 },
   bus: { y0: 0.38, arch: 0.08, bump: 0.75, nose: 1.15, hood: [5.5, 1.3], cowl: [5.45, 1.32], deck: [-5.4, 1.32], trunk: [-5.55, 1.32], tail: 1.3, cab: { f: [5.5, 1.3], a: [5.42, 3.05], b: [-5.45, 3.05], q: [-5.55, 1.3] }, ra: 0.3, rb: 0.3, gw: 0.985, tap: 0.03, doors: 0, rim: 0xb5b9bf, bev: 0.12, bus: true },
 };
 const carStyle = (type) => CAR_STYLE[type] || CAR_STYLE.sedan;
@@ -4577,6 +5286,15 @@ function carGeo(type) {
     for (const dz of [L2 - 1.2, 0.3]) TR(T(new THREE.BoxGeometry(0.03, 2.3, 1.1), -(W2 + 0.012), 1.55, dz), 0x16202a);
     head.push(T(new THREE.BoxGeometry(1.7, 0.24, 0.03), 0, 2.8, st.cab.f[0] + 0.03));
   }
+  if (type === 'fire') {
+    paint.push(T(new RoundedBoxGeometry(d.w - 0.04, 1.45, 6.0, 2, 0.06), 0, 2.2, -1.25));
+    for (const sd of [-1, 1]) { for (const z of [-3.7, -2.25, -0.8, 0.65]) CH(T(new THREE.BoxGeometry(0.02, 1.15, 0.03), sd * (W2 + 0.01), 2.15, z)); CH(T(new THREE.BoxGeometry(0.02, 0.03, 5.7), sd * (W2 + 0.01), 1.62, -1.25)); }
+    for (const sd of [-1, 1]) CH(T(new THREE.BoxGeometry(0.07, 0.1, 7.6), sd * 0.45, 3.25, -0.45));
+    for (let z = -4.1; z <= 3.3; z += 0.45) CH(T(new THREE.BoxGeometry(0.9, 0.04, 0.05), 0, 3.25, z));
+    for (const z of [-3.6, 1.2]) TR(T(new THREE.BoxGeometry(0.7, 0.32, 0.4), 0, 3.06, z), 0x2b2e33);
+    const reel = new THREE.CylinderGeometry(0.34, 0.34, 1.7, 14); reel.rotateZ(Math.PI / 2); TR(T(reel, 0, 1.05, -4.18), 0xd9d2c3);
+    TR(T(new THREE.BoxGeometry(0.24, 0.24, 0.9), 0, 3.05, -1.9), 0x9aa0a8);
+  }
   // turn signals: front corners under the headlights, side repeaters on the mirrors, rear corners under the tail lights (local +x is the car's left)
   const blink = { L: [], R: [] }, lens = (w, h, d0, x, y, z) => { TR(T(new THREE.BoxGeometry(w, h, d0), x, y, z), 0x6e3c06); return T(new THREE.BoxGeometry(w + 0.012, h + 0.012, d0 + 0.012), x, y, z); };
   for (const sd of [-1, 1]) {
@@ -4597,6 +5315,12 @@ function carGeo(type) {
     out.barB = T(new THREE.BoxGeometry(0.5, 0.12, 0.26), -0.29, roofY + 0.13, (st.cab.a[0] + st.cab.b[0]) / 2);
   }
   if (type === 'bus') out.livery = mergeAll([-1, 1].map((sd) => T(new THREE.BoxGeometry(0.012, 0.3, d.l - 0.6), sd * (W2 + 0.004), 0.95, 0)));
+  if (type === 'fire') {
+    out.livery = mergeAll([-1, 1].map((sd) => T(new THREE.BoxGeometry(0.012, 0.22, d.l - 0.5), sd * (W2 + 0.004), 1.25, 0)));
+    out.barBase = T(new THREE.BoxGeometry(1.7, 0.08, 0.32), 0, roofY + 0.04, 3.05);
+    out.barR = T(new THREE.BoxGeometry(0.75, 0.14, 0.28), 0.42, roofY + 0.15, 3.05);
+    out.barB = T(new THREE.BoxGeometry(0.75, 0.14, 0.28), -0.42, roofY + 0.15, 3.05);
+  }
   if (type === 'taxi') out.sign = T(new THREE.BoxGeometry(0.7, 0.2, 0.28), 0, roofY + 0.11, (st.cab.a[0] + st.cab.b[0]) / 2);
   return (carGeoCache[type] = out);
 }
@@ -4622,7 +5346,7 @@ class Vehicle {
     add(G.head, headMat, false);
     this.tailMat = new THREE.MeshBasicMaterial({ color: 0xff1a1a }); add(G.tail, this.tailMat, false);
     if (G.livery) add(G.livery, paintMat(type === 'bus' ? 0x18b3a6 : 0xf2f2f2), false);
-    if (G.barBase) { add(G.barBase, trimMat, false); add(G.barR, copRedMat, false); add(G.barB, copBlueMat, false); }
+    if (G.barBase) { add(G.barBase, trimMat, false); add(G.barR, type === 'fire' ? fireLightR : copRedMat, false); add(G.barB, type === 'fire' ? fireLightW : copBlueMat, false); }
     if (G.sign) add(G.sign, taxiSignMat, false);
     this.blkL = add(G.blinkL, blinkOnMat, false); this.blkR = add(G.blinkR, blinkOnMat, false); this.blkL.visible = this.blkR.visible = false; this.blink = 0; this.blinkPh = Math.random();
     this.wheels = [];
@@ -4962,6 +5686,9 @@ function enterShop(s) {
   {
     if (s.type === 'restaurant') restSetBrand(s);
     if (s.type === 'police') policeSetStation(s);
+    if (s.type === 'hospital') hospSet(s);
+    if (s.type === 'fire') fireSetStation(s);
+    if (s.type === 'space') missionSet(s);
     if (s.type === 'hotel') hotelSetCurrent(s);
     const Rm = ROOMS[s.type]; game.inside = { shop: s, room: Rm, out: new THREE.Vector3(s.dx + s.nx * 2.2, CURB, s.dz + s.nz * 2.2) };
     Rm.group.visible = true; player.pos.set(Rm.spawn.x, IY, Rm.spawn.z); player.vel.set(0, 0, 0); player.yaw = Math.PI;
@@ -5024,7 +5751,7 @@ function updatePlayerInside(dt, ax, ay, sprint) {
     if ((h = ok(mx, mz)) !== null) { p.pos.x = mx; p.pos.z = mz; } else if ((h = ok(mx, p.pos.z)) !== null) p.pos.x = mx; else if ((h = ok(p.pos.x, mz)) !== null) p.pos.z = mz; else h = roomFloor(Rm, p.pos.x, p.pos.z, yr) ?? yr;
     if (h >= Rm.FH - 0.05) for (const wv of Rm.walkways) if (p.pos.x > wv.x0 && p.pos.x < wv.x1 && p.pos.z > wv.z0 && p.pos.z < wv.z1) p.pos.z = clamp(p.pos.z + wv.v * dt, wv.z0, wv.z1);
     p.pos.y = IY + h;
-  } else { p.pos.x = clamp(p.pos.x + p.vel.x * dt, Rm.cx - Rm.w / 2 + 0.4, Rm.cx + Rm.w / 2 - 0.4); p.pos.z = clamp(p.pos.z + p.vel.z * dt, Rm.cz - Rm.d / 2 + 0.4, Rm.cz + Rm.d / 2 - 0.4); p.pos.y = IY; }
+  } else { p.pos.x = clamp(p.pos.x + p.vel.x * dt, Rm.cx - Rm.w / 2 + 0.4, Rm.cx + Rm.w / 2 - 0.4); p.pos.z = clamp(p.pos.z + p.vel.z * dt, Rm.cz - Rm.d / 2 + 0.4, Rm.cz + Rm.d / 2 - 0.4); p.pos.y = Rm.moon ? moonHop(Rm, p, dt) : IY; }
   const pyr = p.pos.y - IY; for (const o of Rm.obst) if (hitsY(o, pyr)) pushBox(p.pos, 0.35, o);
   game.nearTail = false;
   if (Q && !player.autoTo && Q.line.indexOf('player') < 0 && pyr < 1 && Q.line.length < Q.slots.length) {
@@ -5307,7 +6034,7 @@ function refreshDishes() {
 }
 function heal(n) { player.health = Math.min(100, player.health + n); }
 const SHOP_ITEMS = {
-  restaurant: () => restMenuItems(), police: () => policeDeskItems(), sky: () => skyTicketItems(), jobs: () => jobsItems(), gped: () => gpedItems(), hotel: () => hotelDeskItems(), elevator: () => elevatorItems(),
+  restaurant: () => restMenuItems(), police: () => policeDeskItems(), hospital: () => hospitalDeskItems(), fire: () => fireDeskItems(), space: () => spaceDeskItems(), lander: () => landerItems(), moonbase: () => moonBaseItems(), sky: () => skyTicketItems(), jobs: () => jobsItems(), gped: () => gpedItems(), hotel: () => hotelDeskItems(), elevator: () => elevatorItems(),
   mart: [
     { name: 'Café cubano', desc: 'Strong and sweet. Restores 25 health.', price: 4, buy: () => { heal(25); return 'Café cubano · +25 health'; } },
     { name: 'Mango smoothie', desc: 'Restores all your health.', price: 9, buy: () => { heal(100); return 'Fully refreshed'; } },
@@ -5370,7 +6097,7 @@ const SHOP_ITEMS = {
 };
 function setOutfit(o) {
   game.outfit = o.id; store.set('outfit', o.id); if (game.owned && !game.owned.includes(o.id)) { game.owned.push(o.id); store.set('owned', game.owned); }
-  const old = player.h, look = { ...PLAYER_LOOK, shirt: o.shirt, pants: o.pants, shorts: !!o.shorts };
+  const old = player.h, look = { ...PLAYER_LOOK, shirt: o.shirt, pants: o.pants, shorts: !!o.shorts, top: o.top || PLAYER_LOOK.top };
   player.h = makeHuman(look, false); player.h.root.visible = old.root.visible; player.h.root.position.copy(old.root.position); player.h.root.rotation.copy(old.root.rotation); scene.remove(old.root); scene.add(player.h.root); attachLuggage();
 }
 function renderShop() {
@@ -5652,7 +6379,7 @@ function drawBigmap() {
   const g = bmx, z = bm.zoom * dpr, X = (x) => W / 2 + (x - bm.cx) * z, Z = (v) => H / 2 + (v - bm.cz) * z;
   g.setTransform(1, 0, 0, 1, 0, 0); g.fillStyle = '#0f3a4b'; g.fillRect(0, 0, W, H);
   g.imageSmoothingEnabled = true; g.drawImage(mapImg, X(MAP.x0), Z(MAP.z0), MAP.w * z, MAP.h * z);
-  const jt = game.job || duty.tgt || cop.tgt || drv.tgt, f = focusPos(), tg = jt || game.waypoint, path = jt ? jt.path : game.route;
+  const jt = game.job || duty.tgt || cop.tgt || fire.tgt || sjob.tgt || drv.tgt, f = focusPos(), tg = jt || game.waypoint, path = jt ? jt.path : game.route;
   if (tg && path) { g.strokeStyle = game.job ? '#ffc857' : '#b18cff'; g.lineWidth = 4 * dpr; g.lineJoin = g.lineCap = 'round'; g.beginPath(); g.moveTo(X(f.x), Z(f.z)); for (const n of path) g.lineTo(X(nodeX(n)), Z(nodeZ(n))); g.lineTo(X(tg.x), Z(tg.z)); g.stroke(); }
   g.textAlign = 'center'; g.textBaseline = 'middle';
   for (const [t, x, zz, big] of MAP_LABELS) { g.font = `${big ? 800 : 700} ${Math.round((big ? 16 : 13) * dpr)}px 'Barlow Condensed', 'Arial Narrow', sans-serif`; g.lineWidth = 3.5 * dpr; g.strokeStyle = 'rgba(14,10,23,.8)'; g.strokeText(t.toUpperCase(), X(x), Z(zz)); g.fillStyle = big ? '#ffc857' : '#fff3e8'; g.fillText(t.toUpperCase(), X(x), Z(zz)); }
@@ -5660,7 +6387,7 @@ function drawBigmap() {
   for (const c of cashSpots) if (c.cd <= 0) dot(c.x, c.z, 3.5, '#86ffb0');
   for (const sp of shopsData) dot(sp.dx, sp.dz, 5, SHOP_COL[sp.type], true);
   { const bd = (x, zz, col, t) => { const r = 8.5 * dpr; g.fillStyle = col; g.strokeStyle = 'rgba(14,10,23,.9)'; g.lineWidth = 2 * dpr; g.beginPath(); g.arc(X(x), Z(zz), r, 0, Math.PI * 2); g.fill(); g.stroke(); g.fillStyle = '#fff'; g.font = `800 ${Math.round(11 * dpr)}px system-ui, sans-serif`; g.fillText(t, X(x), Z(zz) + 0.5 * dpr); };
-    for (const sp of shopsData) if (sp.type === 'restaurant') bd(sp.dx, sp.dz, '#ff8c42', 'R'); for (const ps of POLICE_ST) bd(ps.x, ps.z, '#8b5a2b', '★');
+    for (const sp of shopsData) if (sp.type === 'restaurant') bd(sp.dx, sp.dz, '#ff8c42', 'R'); for (const ps of POLICE_ST) bd(ps.x, ps.z, '#8b5a2b', '★'); for (const hs of HOSPITALS) bd(hs.x, hs.z, '#ff4d6d', '+'); for (const fs of FIRE_ST) bd(fs.x, fs.z, '#d62828', 'F'); if (SC.built) bd(SC.x, SC.z, '#3a86ff', '▲');
     if (SKY.built) { g.save(); g.strokeStyle = 'rgba(24,179,166,.9)'; g.lineWidth = 4 * dpr; g.beginPath(); SKY.pts.forEach(([x, zz], i) => (i ? g.lineTo(X(x), Z(zz)) : g.moveTo(X(x), Z(zz)))); g.closePath(); g.stroke(); g.restore(); for (const st of SKY.stations) bd(st.kx, st.kz, '#18b3a6', 'S'); }
     for (const sp of shopsData) if (sp.type === 'hotel') bd(sp.dx, sp.dz, '#9b5de5', 'H'); for (const gg of GARAGES) bd(gg.x, gg.z, '#1f6fb2', 'P'); if (DEPOT.x !== undefined) bd(DEPOT.x, DEPOT.z, '#f4b400', 'D'); }
   if (transit.built) {
@@ -5676,6 +6403,8 @@ function drawBigmap() {
   if (game.job) dot(game.job.x, game.job.z, 7.5, '#ffc857');
   if (duty.tgt) dot(duty.tgt.x, duty.tgt.z, 7.5, '#7dff9a');
   if (cop.tgt) dot(cop.tgt.x, cop.tgt.z, 7.5, '#7dd3ff');
+  if (fire.tgt) dot(fire.tgt.x, fire.tgt.z, 7.5, '#ff7b00');
+  if (sjob.tgt) dot(sjob.tgt.x, sjob.tgt.z, 7.5, '#9ad8f2');
   if (drv.tgt) dot(drv.tgt.x, drv.tgt.z, 7.5, '#ffc857');
   if (game.waypoint) dot(game.waypoint.x, game.waypoint.z, 7.5, '#b18cff');
   for (const c of police) dot(c.pos.x, c.pos.z, 5, '#ff3050');
@@ -5702,6 +6431,7 @@ function logTxn(n, note) { if (!n) return; (game.txns = game.txns || []).unshift
 function addCash(n, note) { const c0 = game.cash; game.cash = Math.max(0, game.cash + n); store.set('cash', game.cash); logTxn(game.cash - c0, note || txnNote); txnNote = ''; bankLast = game.cash; }
 function districtAt(x, z) {
   const de = destAt(x, z); if (de) return de.name;
+  if (rectD(SPACE, x, z) < 30) return 'Solano Space Center';
   if (terrainH(x, z) < 0) return x < -LAND + 20 ? 'Marisol Beach' : 'the Shoreline';
   const zn = zoneAt(x, z); if (zn === 'isla') return 'Isla Verde'; if (zn === 'airport') return 'Solano International'; if (zn === 'port') return 'Port of Solano';
   if (x < -400) return 'Ocean Row';
@@ -5869,7 +6599,7 @@ function axes() {
 function handleActions() {
   while (input.actions.length) {
     const a = input.actions.shift();
-    if (a === 'car') { if (shift.on) { shiftScan(); continue; } if (metro.ride && metro.ride.phase !== 'depart') continue; if (nearWorkSpot()) { startShift(); continue; } if (skyrail.ride && skyrail.ride.phase !== 'wait') continue; { const ks = nearSky(); if (ks) { openShopPanel({ type: 'sky', title: `Sky Train · ${ks.name}`, outdoor: true, st: ks }); continue; } } { const gp = nearGaragePed(); if (gp) { openShopPanel({ type: 'gped', title: `${GPED_NAME[gp.kind]} · ${gp.g.name} · you're on P${gp.L + 1}`, outdoor: true, gp }); continue; } } if (game.wheel) { endWheel(false); continue; } if (game.heli) { endHeli(true); continue; } if (transit.ride) { rideAction(); continue; } if (game.ride) { const k = game.ride.kind; endRide(); if (k !== 'loop') flight.trip = null; continue; } if (game.inside) { const hm = hugTarget(); if (player.sit) standUp(); else if (hm) hugFamily(hm); else if (game.nearSeat) sitDown(game.nearSeat); continue; } if (player.car) exitCar(); else if (player.knock <= 0) { if (nearFerris()) { startWheel(); continue; } if (nearEnlist()) { enlist(); continue; } if (nearHeliPad()) { startHeli(); continue; } { if (nearDutyBoard()) { openShopPanel({ type: 'duty', title: `Fort Halcón duty board · ${milRank().name}`, outdoor: true }); continue; } const bs = busAtStop(); if (bs) { boardBus(bs); continue; } const rk = nearRank(); if (rk) { openShopPanel({ type: 'taxi', title: 'Taxi stand · where to?', outdoor: true, rank: rk }); continue; } const dc = nearDealerCar(); if (dc) { buyCar(dc); continue; } if (nearDealerDesk()) { openShopPanel({ type: 'dealer', title: 'Coastline Motors · all 100 cars', outdoor: true }); continue; } } const c = nearestEnterable(3.8), hm = hugTarget(); if (hm && (!c || game.famD < 1.0)) { hugFamily(hm); continue; } if (c) enterCar(c); } }
+    if (a === 'car') { if (voyage.ride) { voyageSkip(); continue; } if (shift.on) { shiftScan(); continue; } if (metro.ride && metro.ride.phase !== 'depart') continue; if (nearWorkSpot()) { startShift(); continue; } if (skyrail.ride && skyrail.ride.phase !== 'wait') continue; { const ks = nearSky(); if (ks) { openShopPanel({ type: 'sky', title: `Sky Train · ${ks.name}`, outdoor: true, st: ks }); continue; } } { const gp = nearGaragePed(); if (gp) { openShopPanel({ type: 'gped', title: `${GPED_NAME[gp.kind]} · ${gp.g.name} · you're on P${gp.L + 1}`, outdoor: true, gp }); continue; } } if (game.wheel) { endWheel(false); continue; } if (game.heli) { endHeli(true); continue; } if (transit.ride) { rideAction(); continue; } if (game.ride) { const k = game.ride.kind; endRide(); if (k !== 'loop') flight.trip = null; continue; } if (game.inside) { const hm = hugTarget(); if (player.sit) standUp(); else if (hm) hugFamily(hm); else if (game.nearSeat) sitDown(game.nearSeat); continue; } if (player.car) exitCar(); else if (player.knock <= 0) { if (nearFerris()) { startWheel(); continue; } if (nearEnlist()) { enlist(); continue; } if (nearHeliPad()) { startHeli(); continue; } { if (nearDutyBoard()) { openShopPanel({ type: 'duty', title: `Fort Halcón duty board · ${milRank().name}`, outdoor: true }); continue; } const bs = busAtStop(); if (bs) { boardBus(bs); continue; } const rk = nearRank(); if (rk) { openShopPanel({ type: 'taxi', title: 'Taxi stand · where to?', outdoor: true, rank: rk }); continue; } const dc = nearDealerCar(); if (dc) { buyCar(dc); continue; } if (nearDealerDesk()) { openShopPanel({ type: 'dealer', title: 'Coastline Motors · all 100 cars', outdoor: true }); continue; } } const c = nearestEnterable(3.8), hm = hugTarget(); if (hm && (!c || game.famD < 1.0)) { hugFamily(hm); continue; } if (c) enterCar(c); } }
     else if (a === 'blinkL' || a === 'blinkR') { const c = player.car; if (!c) continue; const want = a === 'blinkL' ? 1 : 2; c.blink = c.blink === want ? 0 : want; game.blinkAcc = 0; game.blinkYaw = c.yaw; if (c.blink) sfxTick(true); }
     else if (a === 'horn') { if (player.car) { sfxHorn(1); for (const p of peds) if (p.pos.distanceTo(player.car.pos) < 14) p.scare(player.car.pos.x, player.car.pos.z, 3); } }
     else if (a === 'radio') { game.radio = !game.radio; store.set('radio', game.radio); radioOn(!!player.car); toast(game.radio ? 'Radio on · Solano 88.4' : 'Radio off'); }
@@ -5894,6 +6624,7 @@ function updateCamera(dt) {
     if (Math.abs(camera.fov - (baseFov + 8)) > 0.05) { camera.fov = baseFov + 8; camera.updateProjectionMatrix(); }
     return;
   }
+  if (voyage.ride && voyageCamera(dt)) return;
   if (skyrail.ride && skyrail.ride.phase !== 'wait' && skyCamera(dt)) return;
   if (game.inside && metro.ride && ['board', 'ride', 'arrive2', 'drive', 'stopin', 'dwell'].includes(metro.ride.phase)) {
     const Rm = ROOMS.metro, TX = Rm.cx + 5.6, z = metro.ride.z;
@@ -5910,7 +6641,7 @@ function updateCamera(dt) {
   if (game.inside) {
     const Rm = game.inside.room, p = player.pos; cam.manual -= dt;
     if (cam.manual <= 0 && Math.hypot(player.vel.x, player.vel.z) > 1) cam.yaw += angDiff(cam.yaw, player.yaw + Math.PI) * (1 - Math.exp(-1.5 * dt));
-    const cp = Math.cos(cam.pitch); let dd = 3.4;
+    const cp = Math.cos(cam.pitch); let dd = Rm.camD || 3.4;
     if (Rm.walls) for (let k = 1; k <= 8; k++) { const t = 3.4 * k / 8, qx = p.x + Math.sin(cam.yaw) * cp * t, qz = p.z + Math.cos(cam.yaw) * cp * t; if (Rm.walls.some((o) => hitsY(o, p.y - IY) && qx > o.minX - 0.25 && qx < o.maxX + 0.25 && qz > o.minZ - 0.25 && qz < o.maxZ + 0.25)) { dd = Math.max(0.8, t - 0.45); break; } }
     const B = Rm.bounds || { x0: Rm.cx - Rm.w / 2, x1: Rm.cx + Rm.w / 2, z0: Rm.cz - Rm.d / 2, z1: Rm.cz + Rm.d / 2, h: Rm.H }, fyr = p.y - IY;
     let bx0 = B.x0, bx1 = B.x1; if (Rm.concourse && fyr > Rm.FH - 1 && p.z < Rm.concourse.z1 - 1) { bx0 = Rm.concourse.x0; bx1 = Rm.concourse.x1; }
@@ -5948,14 +6679,14 @@ function updateCamera(dt) {
     if (Math.abs(camera.fov - baseFov) > 0.05) { camera.fov = damp(camera.fov, baseFov, 3, dt); camera.updateProjectionMatrix(); }
     return;
   }
-  const c = player.car, fp = c ? c.pos : player.pos, fy = c ? c.y + 1.55 : player.pos.y + 1.5;
+  const c = player.car, fp = c ? c.pos : player.pos, fy = c ? c.y + 1.55 + (c.d.l > 7 ? 1.7 : 0) : player.pos.y + 1.5;
   if (!cam.init) { cam.tgt.set(fp.x, fy, fp.z); cam.init = true; }
   cam.tgt.x = damp(cam.tgt.x, fp.x, c ? 16 : 18, dt); cam.tgt.z = damp(cam.tgt.z, fp.z, c ? 16 : 18, dt); cam.tgt.y = damp(cam.tgt.y, fy, 9, dt);
   cam.manual -= dt;
   if (c) {
     const sp = Math.abs(c.vf);
     if (cam.manual <= 0 && c.vf > 1.5) { cam.yaw += angDiff(cam.yaw, c.yaw + Math.PI) * (1 - Math.exp(-2.8 * dt)); cam.pitch = damp(cam.pitch, 0.18, 2, dt); }
-    cam.dist = damp(cam.dist, 7.4 + sp * 0.05, 3, dt);
+    cam.dist = damp(cam.dist, 7.4 + Math.max(0, c.d.l - 4.6) * 0.95 + sp * 0.05, 3, dt);
   } else {
     const sp = Math.hypot(player.vel.x, player.vel.z);
     if (cam.manual <= 0 && sp > 1.2) cam.yaw += angDiff(cam.yaw, player.yaw + Math.PI) * (1 - Math.exp(-0.9 * dt));
@@ -6009,7 +6740,7 @@ function drawMinimap() {
   mm.setTransform(1, 0, 0, 1, 0, 0);
   const W = (x, z) => { const rx = x - f.x, rz = z - f.z; return [R + (rx * cy - rz * sy) * scale, R + (rx * sy + rz * cy) * scale]; };
   const clampEdge = (p, m) => { const dx = p[0] - R, dy = p[1] - R, l = Math.hypot(dx, dy); if (l > R - m) return [R + dx / l * (R - m), R + dy / l * (R - m)]; return p; };
-  const j = game.job || duty.tgt || cop.tgt || drv.tgt, tg = j || game.waypoint, path = j ? j.path : game.route;
+  const j = game.job || duty.tgt || cop.tgt || fire.tgt || sjob.tgt || drv.tgt, tg = j || game.waypoint, path = j ? j.path : game.route;
   if (tg && path && path.length) {
     mm.strokeStyle = j ? 'rgba(255,200,87,.95)' : 'rgba(177,140,255,.95)'; mm.lineWidth = S * 0.028; mm.lineJoin = mm.lineCap = 'round'; mm.beginPath();
     let p = W(f.x, f.z); mm.moveTo(p[0], p[1]); for (const n of path) { p = W(nodeX(n), nodeZ(n)); mm.lineTo(p[0], p[1]); } p = W(tg.x, tg.z); mm.lineTo(p[0], p[1]); mm.stroke();
@@ -6019,6 +6750,8 @@ function drawMinimap() {
   if (transit.built) { for (const st of transit.stops) { const p = W(st.sx, st.sz); if (Math.hypot(p[0] - R, p[1] - R) < R - 4) dot(p, S * 0.026, '#3fa9f5'); } for (const rk of transit.ranks) { const p = W(rk.sx, rk.sz); if (Math.hypot(p[0] - R, p[1] - R) < R - 4) dot(p, S * 0.026, '#ffc21a'); } }
   for (const sp of shopsData) { const p = W(sp.dx, sp.dz); if (Math.hypot(p[0] - R, p[1] - R) < R - 4) { mm.fillStyle = SHOP_COL[sp.type]; mm.fillRect(p[0] - S * 0.022, p[1] - S * 0.022, S * 0.044, S * 0.044); } }
   for (const ps of POLICE_ST) { const p = W(ps.x, ps.z); if (Math.hypot(p[0] - R, p[1] - R) < R - 4) dot(p, S * 0.03, '#8b5a2b'); }
+  for (const hs of HOSPITALS) { const p = W(hs.x, hs.z); if (Math.hypot(p[0] - R, p[1] - R) < R - 4) dot(p, S * 0.03, '#ff4d6d'); }
+  for (const fs of FIRE_ST) { const p = W(fs.x, fs.z); if (Math.hypot(p[0] - R, p[1] - R) < R - 4) dot(p, S * 0.03, '#d62828'); }
   if (!j) for (const m of markers) if (m.m.visible) dot(clampEdge(W(m.x, m.z), S * 0.05), S * 0.032, '#ff3f8e');
   if (j) dot(clampEdge(W(j.x, j.z), S * 0.05), S * 0.04, '#ffc857');
   if (game.waypoint) dot(clampEdge(W(game.waypoint.x, game.waypoint.z), S * 0.05), S * 0.04, '#b18cff');
@@ -6042,14 +6775,14 @@ function updateHUD(dt) {
   const cs = Math.round(game.shownCash); if (cs !== lastCash) { lastCash = cs; ui.cash.textContent = '$' + cs.toLocaleString('en-US'); }
   const hh = Math.floor(game.tod), mn = Math.floor((game.tod - hh) * 60), ck = `${CAL_DAYS[gameDate().getDay()]} ${hh % 12 === 0 ? 12 : hh % 12}:${String(mn).padStart(2, '0')} ${hh < 12 ? 'AM' : 'PM'}`;
   if (ck !== lastClock) { lastClock = ck; ui.clock.textContent = ck; }
-  const f = focusPos(), dn = districtAt(f.x, f.z);
+  const f = focusPos(), dn = onMoon() ? 'The Moon' : voyage.ride && (voyage.ride.phase === 'cruise' || voyage.ride.phase === 'home') ? 'Outer space' : districtAt(f.x, f.z);
   if (dn !== game.seenDistrict) { game.seenDistrict = dn; ui.district.textContent = dn; ui.district.classList.add('show'); clearTimeout(districtT); districtT = setTimeout(() => ui.district.classList.remove('show'), 3500); }
   const c = player.car;
   ui.speedo.hidden = !c; if (c) { const mph = Math.round(Math.abs(c.vf) * 2.237); if (mph !== lastSpd) { lastSpd = mph; ui.spd.textContent = mph; } }
   const dboard = !c && nearDutyBoard(), tb = !c && busAtStop(), tk = !c && nearRank(), dcar = !c && nearDealerCar(), ddesk = !c && nearDealerDesk(), stop = !c && !tb && nearStop();
   const ne = !c && nearEnlist(), nh = !c && nearHeliPad(), fw = !c && nearFerris(), near = !c && !fw && !ne && !nh && !dboard && !tb && !tk && !dcar && !ddesk && !transit.ride && !game.inside && !game.ride && !game.wheel && !game.heli && nearestEnterable(3.8);
   const seat = game.inside ? game.nearSeat : null, hug0 = hugTarget(), hugM = hug0 && (game.inside || !near || game.famD < 1.0) ? hug0 : null;
-  ui.bCar.textContent = shift.on ? (shift.cust && shift.cust.state === 'wait' ? (SHIFT_VERB[shift.type] || 'SCAN') : 'WAIT') : metro.ride && metro.ride.phase !== 'depart' ? (metro.ride.drive ? 'DRIVING' : 'RIDING') : skyrail.ride && skyrail.ride.phase !== 'wait' ? 'RIDING' : game.pmove ? '…' : nearSky() ? 'TICKET' : nearGaragePed() ? GPED_LABEL[nearGaragePed().kind] : nearWorkSpot() ? 'WORK' : transit.ride ? (transit.ride.kind === 'bus' ? 'GET OFF' : 'SKIP') : dboard ? 'DUTY' : tb ? 'BOARD' : tk ? 'TAXI' : dcar ? 'BUY' : ddesk ? 'CARS' : game.wheel ? 'GET OFF' : game.heli ? 'LAND' : ne ? 'ENLIST' : nh ? 'FLY' : fw ? 'RIDE' : game.ride ? 'LAND' : c ? 'GET OUT' : hugM && !game.inside ? 'HUG' : player.sit ? (player.sit.bed ? 'GET UP' : 'STAND') : hugM ? 'HUG' : seat ? (seat.bed ? 'LIE DOWN' : seat.toilet ? 'USE' : 'SIT') : 'GET IN'; ui.bCar.classList.toggle('ready', nearWorkSpot() || !!nearSky() || !!nearGaragePed() || (shift.on && !!shift.cust && shift.cust.state === 'wait') || !!near || fw || ne || nh || dboard || !!tb || !!tk || !!dcar || ddesk || !!hugM || (!!seat && !player.sit));
+  ui.bCar.textContent = voyage.ride ? (voyage.ride.phase === 'cruise' || voyage.ride.phase === 'home' ? 'SKIP' : '🚀') : shift.on ? (shift.cust && shift.cust.state === 'wait' ? (SHIFT_VERB[shift.type] || 'SCAN') : 'WAIT') : metro.ride && metro.ride.phase !== 'depart' ? (metro.ride.drive ? 'DRIVING' : 'RIDING') : skyrail.ride && skyrail.ride.phase !== 'wait' ? 'RIDING' : game.pmove ? '…' : nearSky() ? 'TICKET' : nearGaragePed() ? GPED_LABEL[nearGaragePed().kind] : nearWorkSpot() ? 'WORK' : transit.ride ? (transit.ride.kind === 'bus' ? 'GET OFF' : 'SKIP') : dboard ? 'DUTY' : tb ? 'BOARD' : tk ? 'TAXI' : dcar ? 'BUY' : ddesk ? 'CARS' : game.wheel ? 'GET OFF' : game.heli ? 'LAND' : ne ? 'ENLIST' : nh ? 'FLY' : fw ? 'RIDE' : game.ride ? 'LAND' : c ? 'GET OUT' : hugM && !game.inside ? 'HUG' : player.sit ? (player.sit.bed ? 'GET UP' : 'STAND') : hugM ? 'HUG' : seat ? (seat.bed ? 'LIE DOWN' : seat.toilet ? 'USE' : 'SIT') : 'GET IN'; ui.bCar.classList.toggle('ready', nearWorkSpot() || !!nearSky() || !!nearGaragePed() || (shift.on && !!shift.cust && shift.cust.state === 'wait') || !!near || fw || ne || nh || dboard || !!tb || !!tk || !!dcar || ddesk || !!hugM || (!!seat && !player.sit));
   ui.bAction.textContent = shift.on ? 'END' : c ? 'DRIFT' : player.sit && player.sit.bed ? 'SLEEP' : player.sit && player.sit.tv ? (game.tvWatch ? 'CHANNEL' : 'TV') : 'JUMP'; ui.bHorn.hidden = !c; ui.bRadio.hidden = !c; ui.bBlinkL.hidden = ui.bBlinkR.hidden = !c; { const bl = c ? c.blink : 0, lit = c ? blinkLit(c) : false; ui.bBlinkL.classList.toggle('sel', (bl & 1) > 0); ui.bBlinkR.classList.toggle('sel', (bl & 2) > 0); ui.bBlinkL.classList.toggle('flash', lit && (bl & 1) > 0); ui.bBlinkR.classList.toggle('flash', lit && (bl & 2) > 0); ui.blkL.classList.toggle('on', lit && (bl & 1) > 0); ui.blkR.classList.toggle('on', lit && (bl & 2) > 0); } ui.bAction.style.visibility = game.wheel || game.ride || game.heli || transit.ride ? 'hidden' : '';
   let hint = '';
   if (near && !TOUCH) hint = near.driver === 'ai' ? 'Press F to carjack' : near.isCop && near.driver ? 'Press F to steal the cruiser' : 'Press F to get in';
@@ -6086,6 +6819,9 @@ function updateHUD(dt) {
   if (!hint && !game.inside && !player.car) { const ps = POLICE_ST.find((q) => Math.hypot(q.x - player.pos.x, q.z - player.pos.z) < 7); if (ps) hint = game.wanted > 0 ? `${ps.name} · safe zone · walk in and the chase stops` : `${ps.name} · walk in${game.copJoined ? ' to start a patrol shift' : ' to join the police'}`; }
   if (!hint && game.wanted > 0 && policeSafe()) hint = game.inside ? 'Safe inside the police station · nobody can arrest you here' : 'Police station grounds · safe zone · nobody can arrest you here';
   if (cc.on && !hint) hint = ccHint();
+  if (fire.on && !hint) hint = fireHint();
+  if (!hint || voyage.ride || onMoon()) hint = spaceHint() || hint;
+  if (!hint && !game.inside && !player.car) { const hs = HOSPITALS.find((q) => Math.hypot(q.x - player.pos.x, q.z - player.pos.z) < 7), fs = FIRE_ST.find((q) => Math.hypot(q.x - player.pos.x, q.z - player.pos.z) < 6); if (hs) hint = `${hs.name} · walk in to see a doctor for free, or to work as a nurse`; else if (fs) hint = `${fs.name} · walk in the door${game.fireJoined ? ' to start a fire shift' : ' to join Solano Fire'}`; }
   if (drv.on && !hint) hint = drvHint();
   if (skyrail.ride) hint = skyHint(); else if (!hint) { const ks = nearSky(); if (ks) hint = `Sky Train · ${ks.name} · ${TOUCH ? 'tap TICKET' : 'press F'} to buy a ticket`; else { const gp = nearGaragePed(); if (gp) hint = `${GPED_NAME[gp.kind]} · you're on P${gp.L + 1} · ${TOUCH ? 'tap ' + GPED_LABEL[gp.kind] : 'press F'} to ${gp.kind === 'lift' ? 'pick a floor' : 'go up or down'}`; } }
   if (!hint && game.inside && game.inside.room === ROOMS.suite && stayActive()) hint = `Room ${game.stay.room} · Floor ${game.stay.floor} · ${HOTELS[game.stay.h].name}`;
@@ -6096,7 +6832,7 @@ function updateHUD(dt) {
   if (!hint && !game.inside && !player.car) { const ms = nearestMetro(player.pos.x, player.pos.z, 7); if (ms) hint = `Metro · ${ms.name} · walk in to ride anywhere`; }
   if (!hint && mil.near) hint = 'Fort Halcón · restricted military area · keep out';
   if (hint !== lastHint) { lastHint = hint; ui.hint.textContent = hint; ui.hint.hidden = !hint; }
-  const j0 = game.job, j = j0 ? { m: `Deliver ${j0.cargo} to ${j0.where}`, t: j0.t } : duty.on ? { m: dutyTitle(), t: duty.t } : cop.on ? { m: copTitle(), t: cop.call ? cop.call.t : 0 } : drv.on ? { m: drvTitle(), t: Math.max(0, drv.until - game.time) } : shift.on ? { m: shiftTitle(), t: shift.t } : null;
+  const j0 = game.job, j = j0 ? { m: `Deliver ${j0.cargo} to ${j0.where}`, t: j0.t } : duty.on ? { m: dutyTitle(), t: duty.t } : cop.on ? { m: copTitle(), t: cop.call ? cop.call.t : 0 } : fire.on ? { m: fireTitle(), t: fire.call ? fire.call.t : 0 } : sjob.on ? { m: spaceTitle(), t: sjob.task ? sjob.task.t : 0 } : drv.on ? { m: drvTitle(), t: Math.max(0, drv.until - game.time) } : shift.on ? { m: shiftTitle(), t: shift.t } : null;
   if (j) { const m = j.m; if (m !== lastMission) { lastMission = m; ui.mTitle.textContent = m; } ui.mission.hidden = false; const s = Math.max(0, Math.ceil(j.t)); ui.mTimer.textContent = `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`; ui.mTimer.classList.toggle('low', s <= 10); }
   drawMinimap();
 }
@@ -6143,6 +6879,7 @@ function updateDaylight(dt) {
   if (c && night > 0.05) { const fx = Math.sin(c.yaw), fz = Math.cos(c.yaw); headSpot.position.set(c.pos.x + fx * 2.4, c.y + 0.75, c.pos.z + fz * 2.4); headSpot.target.position.set(c.pos.x + fx * 20, c.y - 0.4, c.pos.z + fz * 20); headSpot.target.updateMatrixWorld(); headSpot.intensity = 260 * night; }
   else headSpot.intensity = 0;
   if (game.inside) { hemiOut.c.copy(hemi.color); hemiOut.g.copy(hemi.groundColor); hemiOut.i = hemi.intensity; scene.environmentIntensity = 0.15; hemi.color.setRGB(1, 0.97, 0.92); hemi.groundColor.setRGB(0.5, 0.45, 0.4); hemi.intensity = 0.55; renderer.toneMappingExposure = 0.7; if (bloomPass) { bloomPass.threshold = 1.6; bloomPass.strength = 0.3; } } else scene.environmentIntensity = 1;
+  if (spaceLit()) spaceLight();
   refreshEnv(false);
 }
 function placeShadow() {
@@ -6201,7 +6938,7 @@ function perfTick(dt) {
 }
 
 // ---------------------------------------------------------------- game flow
-const RESPAWN = { hospital: { x: -40, z: 10.5, label: 'Mercy General, Midtown' }, station: { x: 40, z: -249.5, label: 'Solano PD, Coral Gardens' } };
+const RESPAWN = { hospital: { x: -40, z: 10.5, label: 'Mercy General Hospital' }, station: { x: 40, z: -249.5, label: 'Solano PD, Coral Gardens' } };
 function clearHeat() { game.wanted = 0; game.heat = 0; game.evadeT = 0; game.bustT = 0; renderStars(); }
 function respawnAt(spot) {
   if (player.car) { player.car.driver = null; player.car = null; radioOn(false); }
@@ -6264,7 +7001,7 @@ function frame(now) {
   const dt = Math.min(rawDt, 1 / 20);
   if (game.state === 'play' || game.state === 'down' || game.state === 'title') step(dt);
   perfTick(rawDt);
-  updateTV(rawDt);
+  updateTV(rawDt); updatePadScreen(rawDt);
   if (game.state === 'phone' && phone.drawn > 1) return; phone.drawn = game.state === 'phone' ? (phone.drawn || 0) + 1 : 0;
   composer.render();
 }
@@ -6283,7 +7020,7 @@ function step(dt) {
     player.pos.set(c.pos.x, c.y, c.pos.z);
     if (c.blink === 1 || c.blink === 2) { const dy = angDiff(game.blinkYaw ?? c.yaw, c.yaw); game.blinkAcc = (game.blinkAcc || 0) + (c.blink === 1 ? dy : -dy); if (game.blinkAcc > 0.75 && Math.abs(c.str) < 0.15) c.blink = 0; }
     game.blinkYaw = c.yaw; const lit = blinkLit(c); if (lit !== game.blinkLit) { game.blinkLit = lit; if (c.blink || !lit) { if (c.blink) sfxTick(lit); } }
-  } else if (game.wheel) updateWheel(dt); else if (game.heli) updateHeli(dt); else if (skyrail.ride && skyrail.ride.phase !== 'wait') updateSkyRide(dt); else if (game.pmove) updatePMove(dt); else if (transit.ride) updateRide(dt); else if (game.ride) { if (flight.st === 'parked') endRide(); } else if (game.inside) { if (shift.on) updateShift(dt); else if (metro.ride && metro.ride.phase !== 'depart') updateMetro(dt, ay); else updatePlayerInside(dt, ax, ay, sprint); if (game.inside && game.inside.room === ROOMS.metro) metroTrainTick(dt); if (game.inside && game.inside.room === ROOMS.home) famUpdate(dt); if (game.inside && game.inside.room === ROOMS.restaurant) restUpdate(dt); } else { updatePlayerFoot(dt, ax, ay, sprint); if (playing) checkShopDoors(dt); }
+  } else if (game.wheel) updateWheel(dt); else if (voyage.ride) updateVoyage(dt); else if (game.heli) updateHeli(dt); else if (skyrail.ride && skyrail.ride.phase !== 'wait') updateSkyRide(dt); else if (game.pmove) updatePMove(dt); else if (transit.ride) updateRide(dt); else if (game.ride) { if (flight.st === 'parked') endRide(); } else if (game.inside) { if (shift.on) updateShift(dt); else if (metro.ride && metro.ride.phase !== 'depart') updateMetro(dt, ay); else updatePlayerInside(dt, ax, ay, sprint); if (game.inside && game.inside.room === ROOMS.metro) metroTrainTick(dt); if (game.inside && game.inside.room === ROOMS.home) famUpdate(dt); if (game.inside && game.inside.room === ROOMS.restaurant) restUpdate(dt); } else { updatePlayerFoot(dt, ax, ay, sprint); if (playing) checkShopDoors(dt); }
   input.jumpQ = false; if (player.bag) player.bag.visible = !game.bagChecked && !player.sit;
   if (fam.out) followUpdate(dt); else if (!game.inside || game.inside.room !== ROOMS.home) game.nearFam = null;
   if (player.hurtT > 0) player.hurtT -= dt; else player.health = Math.min(100, player.health + dt * (game.fedT > 0 ? 12 : 4)); if (game.fedT > 0) game.fedT -= dt;
@@ -6307,7 +7044,7 @@ function step(dt) {
   let tc = 0; for (const v of vehicles) if (v.driver === 'ai' && !v.leaving && v.ai.kind !== 'hwy') tc++;
   if (tc < TRAFFIC_N && Math.random() < 0.05) { const type = mpick(TRAFFIC_TYPES), car = new Vehicle(type, type === 'taxi' ? 0xf4c20d : mpick(PAINTS)); if (!recycleCar(car)) car.dispose(); }
   collideVehicles();
-  updateFlight(dt); updatePort(dt, sunState.night); updateDests(dt); updateMilitary(dt); updateTransit(dt); updateDuty(dt); updateCop(dt); updateDrv(dt); updateGarage(dt); updateSky(dt); updateLineMap();
+  updateFlight(dt); updatePort(dt, sunState.night); updateDests(dt); updateMilitary(dt); updateTransit(dt); updateDuty(dt); updateCop(dt); updateFire(dt); updateSpace(dt); updateDrv(dt); updateGarage(dt); updateSky(dt); updateLineMap();
   // pedestrians
   for (const p of peds) {
     const d = p.pos.distanceTo(camera.position);
@@ -6410,7 +7147,8 @@ function snapshotWorld() {
   if (!['play', 'pause', 'phone', 'shop', 'map'].includes(game.state) || !player.alive) return null;
   const r2 = (n) => Math.round(n * 100) / 100, foot = (x, z, yaw) => ({ kind: 'foot', x: r2(x), y: 0, z: r2(z), yaw: r2(yaw) });
   const w = { tod: r2(game.tod), health: Math.round(player.health), fedT: Math.round(game.fedT || 0), lastDest: game.lastDest || null, busPassLeft: Math.max(0, Math.round((game.busPassUntil || 0) - game.time)), famTrip: !!fam.trip, txns: (game.txns || []).slice(0, 16), waypoint: game.waypoint ? { x: r2(game.waypoint.x), z: r2(game.waypoint.z) } : null };
-  if (game.ride && game.ride.back) { const sp = game.ride.back; w.at = foot(sp.dx + sp.nx * 2.6, sp.dz + sp.nz * 2.6, Math.atan2(sp.nx, sp.nz)); }
+  if (voyage.ride || onMoon()) w.at = foot(SC.x, SC.z, 0);
+  else if (game.ride && game.ride.back) { const sp = game.ride.back; w.at = foot(sp.dx + sp.nx * 2.6, sp.dz + sp.nz * 2.6, Math.atan2(sp.nx, sp.nz)); }
   else if (transit.ride) { const r = transit.ride; if (r.kind === 'taxi') w.at = foot(r.dest.p.x, r.dest.p.z, 0); else { const st = r.bus.at || nextStopAfter(r.bus.s)[0]; w.at = foot(st.px, st.pz, 0); } }
   else if (game.wheel) w.at = foot(ferris.x + 1.6, ferris.z + 7, Math.PI);
   else if (game.heli) w.at = foot(290, -1254, Math.PI);
@@ -6425,7 +7163,7 @@ function saveGame(force) {
   store.set('cash', game.cash); const w = snapshotWorld(); if (w) { store.set('world', w); store.set('garageCars', snapshotGarage()); } store.set('savedAt', Date.now());
   cloudSave(force);
 }
-function saveWhere(w) { const a = w && w.at; if (!a) return ''; if (a.kind === 'shop') { const sp = shopsData[a.i]; return sp ? (sp.type === 'home' ? 'At home' : sp.type === 'metro' ? 'Metro · ' + sp.name : sp.type === 'restaurant' ? RESTAURANTS[sp.brand].name : sp.type === 'police' ? sp.name : sp.type === 'hotel' ? HOTELS[sp.hotel].name : ROOMS[sp.type].name) : ''; } return (a.kind === 'car' ? 'Driving · ' : '') + districtAt(a.x, a.z); }
+function saveWhere(w) { const a = w && w.at; if (!a) return ''; if (a.kind === 'shop') { const sp = shopsData[a.i]; return sp ? (sp.type === 'home' ? 'At home' : sp.type === 'metro' ? 'Metro · ' + sp.name : sp.type === 'restaurant' ? RESTAURANTS[sp.brand].name : sp.type === 'police' || sp.type === 'hospital' || sp.type === 'fire' || sp.type === 'space' ? sp.name : sp.type === 'hotel' ? HOTELS[sp.hotel].name : ROOMS[sp.type].name) : ''; } return (a.kind === 'car' ? 'Driving · ' : '') + districtAt(a.x, a.z); }
 function restoreWorld() {
   const w = store.get('world', null); if (!w || !w.at) return false;
   if (Number.isFinite(w.tod)) { game.tod = w.tod; updateDaylight(0); refreshEnv(true); }
@@ -6438,7 +7176,7 @@ function restoreWorld() {
     let v = null;
     if (a.owned) { v = vehicles.find((x) => x.owned === a.owned && !x.driver) || null; if (!v) { const c = CATALOG.find((x) => x.id === a.owned); if (c) v = spawnOwned(c, a.x, a.z, a.yaw); } }
     else if (a.army && mil.trucks) v = mil.trucks.find((x) => x.driver !== 'player') || null;
-    if (!v) { const t = (a.type === 'police' && !a.issued) || !DIMS[a.type] || (a.type === 'bus' && a.own !== 'bus') ? 'sedan' : a.type; v = new Vehicle(t, a.type === 'police' ? 0x111317 : t === 'taxi' ? 0xf4c20d : a.color ?? mpick(PAINTS)); v.keep = true; if (a.issued && t === 'police') v.issued = true; if (a.own && t === a.own) v.own = a.own; }
+    if (!v) { const t = (a.type === 'police' && !a.issued) || !DIMS[a.type] || (a.type === 'bus' && a.own !== 'bus') ? 'sedan' : a.type; v = new Vehicle(t, a.type === 'police' ? 0x111317 : t === 'taxi' ? 0xf4c20d : a.color ?? mpick(PAINTS)); v.keep = true; if (a.issued && t === 'police') v.issued = true; if (a.own && t === a.own) v.own = a.own; if (t === 'fire') v.fireIssued = true; }
     v.place(a.x, a.z, a.yaw || 0, a.y || 0); player.pos.set(a.x, a.y || 0, a.z); enterCar(v);
   } else if (Number.isFinite(a.x)) { player.pos.set(a.x, surfaceH(a.x, a.z, (a.y || 0) + 0.5) + 0.05, a.z); player.vel.set(0, 0, 0); player.yaw = a.yaw || 0; player.onGround = false; }
   if (w.waypoint) setWaypoint(w.waypoint.x, w.waypoint.z);
@@ -6464,20 +7202,20 @@ async function start(data) {
     buildWorld();
     loadMsg.textContent = 'Loading your saved game…'; await hydrate;
     player.h = makeHuman(PLAYER_LOOK, false); scene.add(player.h.root);
-    const of = OUTFITS.find((o) => o.id === store.get('outfit', '')); if (of) setOutfit(of);
+    const of = OUTFITS.find((o) => o.id === store.get('outfit', '')); if (of) setOutfit(of); if (game.outfit === 'astro') unwearUni();
     game.luggage = store.get('luggage', null); attachLuggage();
     game.cash = game.shownCash = Number.isFinite(data.cash) ? data.cash : store.get('cash', 500);
     if (Number.isFinite(data.tod)) game.tod = data.tod;
     game.sound = store.get('sound', true); game.radio = store.get('radio', true); setSound(game.sound);
     player.pos.set(-494.6, 0, 16.5); player.yaw = -Math.PI / 2;
     starterCar = new Vehicle('sports', 0xff3f8e); starterCar.place(-492.4, 18.8, 0);
-    game.owned = store.get('owned', ['coral']); game.visited = store.get('visited', []); game.pantry = store.get('pantry', {}); game.dishes = store.get('dishes', []); refreshDishes(); game.family = store.get('family', []); game.enlisted = store.get('enlisted', false); game.date = store.get('gameDate', null) || calKey(new Date()); game.stay = store.get('stay', null); game.ownTaxi = store.get('ownTaxi', false); game.ownBus = store.get('ownBus', false); game.copJoined = store.get('copJoined', false); game.copCalls = store.get('copCalls', 0); game.phoneApps = store.get('phoneApps', ['shop', 'maps', 'bank', 'weather', 'settings']).filter((id) => APPS[id]); game.phoneOwned = store.get('phoneOwned', []); game.phoneWall = store.get('phoneWall', 0); game.busTickets = store.get('busTickets', 0); game.milDuties = store.get('milDuties', 0); game.garage = store.get('garage', []); buildTransit(); spawnGarage(); 
+    game.owned = store.get('owned', ['coral']); game.visited = store.get('visited', []); game.pantry = store.get('pantry', {}); game.dishes = store.get('dishes', []); refreshDishes(); game.family = store.get('family', []); game.enlisted = store.get('enlisted', false); game.date = store.get('gameDate', null) || calKey(new Date()); game.stay = store.get('stay', null); game.ownTaxi = store.get('ownTaxi', false); game.ownBus = store.get('ownBus', false); game.copJoined = store.get('copJoined', false); game.copCalls = store.get('copCalls', 0); game.fireJoined = store.get('fireJoined', false); game.fireCalls = store.get('fireCalls', 0); game.spaceTasks = store.get('spaceTasks', 0); game.spaceJoined = store.get('spaceJoined', false); game.launchT = store.get('launchT', null); game.launchCrew = store.get('launchCrew', false); game.moonTrips = store.get('moonTrips', 0); game.moonRocks = store.get('moonRocks', 0); game.phoneApps = store.get('phoneApps', ['shop', 'maps', 'bank', 'weather', 'settings']).filter((id) => APPS[id]); game.phoneOwned = store.get('phoneOwned', []); game.phoneWall = store.get('phoneWall', 0); game.busTickets = store.get('busTickets', 0); game.milDuties = store.get('milDuties', 0); game.garage = store.get('garage', []); buildTransit(); spawnGarage(); 
     setupMarkers(); setupCash(); spawnTraffic(); spawnPeds(); spawnLotCars(); spawnGarageCars(); restoreGarage();
     for (let i = 0; i < HWY_N; i++) { const c = new Vehicle(mpick(TRAFFIC_TYPES), mpick(PAINTS)); if (!placeHwy(c, false)) c.dispose(); }
     applyQuality(data.quality || store.get('quality', 'ultra'));
     updateDaylight(0); refreshEnv(true);
     renderer.compile(scene, camera);
-    game.state = 'title'; window.__solanoRunning = true; window.__solanoDebug = { boardBus, drv, DEPOT, drvStart, drvAct, drvEnd, transitStops: () => transit.stops, openJobs, jobsItems, isCaptain, endShift, nearGaragePed, garageMove, SKY, skyrail, startSkyRide, metroStops, HOTELS, GARAGES, hotelAvail, stayBook, stayActive, goToSuite, decks, gameDate, nextDay, sleepUntil, metroDriveHint, notesList, calHolidays, policeSafe, busted, police, cop, copStartShift, copCruiser, copNextCall, policeDeskItems, peds, walkers: () => walkers, phone, phoneTv, phoneRender, TY_SQ, cc, reportCrash, POLICE_ST, RESTAURANTS, lots, restDine, metro, BRIDGES, startMetroRide, nearestMetro, GARAGE, garage, openSearch, closeSearch, search, shift, startShift, transitRef: () => transit, saveGame, cloud, store, phone, APPS, openPhone, closePhone, duty, DUTIES, startDuty, transit, CATALOG, DEALER, makeHuman, randomLook, poseHuman, mil, Vehicle, PAINTS, ROOMS, ferris, famList: fam.list, renderer, game, camera, cam, player, officers, police, shopsData, vehicles, flight, RING_H, peek: () => ({ shopCD, t: +game.time.toFixed(2) }), crime: (n) => crime(n, 'Test heat') };
+    game.state = 'title'; window.__solanoRunning = true; window.__solanoDebug = { fireEndShift, surfaceH, pushOut, enterMoon, leaveMoon, voyageSkip, startCruise, landerItems, moonBaseItems, moonDay, CRUISE, SC, sjob, voyage, spaceBoard, setLaunch, absH, spaceDeskItems, rocketReset, spaceStartShift, updateRocket, openShopPanel, exitShop, HOSPITALS, FIRE_ST, fire, fireStartShift, fireNextCall, fireTruck, ROOMS, shift, startShift, enterShop, shopsData, boardBus, drv, DEPOT, drvStart, drvAct, drvEnd, transitStops: () => transit.stops, openJobs, jobsItems, isCaptain, endShift, nearGaragePed, garageMove, SKY, skyrail, startSkyRide, metroStops, HOTELS, GARAGES, hotelAvail, stayBook, stayActive, goToSuite, decks, gameDate, nextDay, sleepUntil, metroDriveHint, notesList, calHolidays, policeSafe, busted, police, cop, copStartShift, copCruiser, copNextCall, policeDeskItems, peds, walkers: () => walkers, phone, phoneTv, phoneRender, TY_SQ, cc, reportCrash, POLICE_ST, RESTAURANTS, lots, restDine, metro, BRIDGES, startMetroRide, nearestMetro, GARAGE, garage, openSearch, closeSearch, search, shift, startShift, transitRef: () => transit, saveGame, cloud, store, phone, APPS, openPhone, closePhone, duty, DUTIES, startDuty, transit, CATALOG, DEALER, makeHuman, randomLook, poseHuman, mil, Vehicle, PAINTS, ROOMS, ferris, famList: fam.list, renderer, game, camera, cam, player, officers, police, shopsData, vehicles, flight, RING_H, peek: () => ({ shopCD, t: +game.time.toFixed(2) }), crime: (n) => crime(n, 'Test heat') };
     { const sw = store.get('world', null); if (sw && sw.at) { $('playBtn').textContent = 'Continue'; const si = $('saveInfo'); si.textContent = `Saved game · ${saveWhere(sw)} · ${money(game.cash)}${cloud.restored ? ' · loaded from your account' : ''}`; si.hidden = false; $('newGameT').hidden = false; } }
     $('loading').hidden = true; $('title').hidden = false;
     renderer.setAnimationLoop(frame);
