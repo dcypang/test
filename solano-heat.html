@@ -1,3 +1,4 @@
+<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
 <title>Solano Heat</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -1574,11 +1575,8 @@ function busAtStop() { if (!transit.built || !onFootFree()) return null; for (co
 function nearStop() { if (!transit.built || !onFootFree()) return null; for (const st of transit.stops) if (Math.hypot(player.pos.x - st.sx, player.pos.z - st.sz) < 4.5) return st; return null; }
 function nearRank() { if (!transit.built || !onFootFree()) return null; for (const r of transit.ranks) if (Math.hypot(player.pos.x - r.sx, player.pos.z - r.sz) < 3.5) return r; return null; }
 function boardBus(b) {
-  const pass = game.time < (game.busPassUntil || 0), tix = game.busTickets > 0;
-  if (!pass && !tix && game.cash < 2) { toast('The bus fare is $2 · or buy tickets in the BusGo app'); return; }
-  if (pass) toast('Day pass scanned · enjoy the ride', 2500); else if (tix) { game.busTickets--; store.set('busTickets', game.busTickets); toast(`Ticket used · ${game.busTickets} left`, 2500); } else addCash(-2, 'Bus fare');
   transit.ride = { kind: 'bus', bus: b, off: false, offAt: game.busPlan || null }; if (game.busPlan) { toast(`Bus · you'll get off at ${game.busPlan.name}`, 3000); game.busPlan = null; } player.h.root.visible = false; player.vel.set(0, 0, 0); cam.yaw = b.v.yaw + Math.PI; cam.pitch = 0.3; cam.manual = 0;
-  if (!pass && !tix) toast('On the bus · $2 · tap GET OFF to step out at the next stop', 3500);
+  toast('On the bus · free · tap GET OFF to step out at the next stop', 3500);
 }
 function leaveRide(x, z, msg) {
   const r = transit.ride; transit.ride = null; player.h.root.visible = true; player.pos.set(x, surfaceH(x, z, 0.5) + 0.05, z); player.vel.set(0, 0, 0); player.onGround = false;
@@ -1599,7 +1597,7 @@ function taxiPlan(rk, dest) {
   const start = [rk.cx, rk.cz], cl = [start];
   if (nodes.length < 2) { cl.push([nodeX(rk.b) - rk.d[0] * 16, nodeZ(rk.b) - rk.d[1] * 16]); }
   else { for (let i = 0; i < nodes.length - 1; i++) cl.push([nodeX(nodes[i]), nodeZ(nodes[i])]); const pl = cl[cl.length - 1], last = [nodeX(nodes[nodes.length - 1]), nodeZ(nodes[nodes.length - 1])], dd = ndir(pl, last); cl.push([last[0] - dd[0] * 16, last[1] - dd[1] * 16]); }
-  const path = makePath(laneRoute(cl), false); return { path, fare: 5 + Math.round(path.len * 0.02) };
+  const path = makePath(laneRoute(cl), false); return { path, fare: 0 };
 }
 function taxiDests() {
   const pp = game.inside ? game.inside.out : player.pos, nearShop = (type) => { let best = null, bd = 1e9; for (const sp of shopsData) if (sp.type === type && Math.abs(sp.dx) < 520 && Math.abs(sp.dz) < 520) { const dd = Math.hypot(sp.dx - pp.x, sp.dz - pp.z); if (dd < bd) { bd = dd; best = sp; } } return best && { x: best.dx + best.nx * 3, z: best.dz + best.nz * 3 }; };
@@ -1646,7 +1644,7 @@ const APPS = {
   memory: { name: 'Memory Match', cat: 'Games', price: 2, bg: 'linear-gradient(160deg,#c77dff,#7b2cbf)', hint: 'Find the pairs', keys: 'memory match cards pairs concentration puzzle brain', desc: 'Flip two cards at a time and find all the matching pairs', svg: `<rect x="3.5" y="5" width="8" height="11" rx="1.5" fill="${W2}" transform="rotate(-8 7.5 10.5)"/><rect x="12.5" y="7" width="8" height="11" rx="1.5" fill="#ffd166" transform="rotate(8 16.5 12.5)"/>` },
   tv: { name: 'Solano TV', cat: 'Entertainment', price: 0, canvas: true, bg: 'linear-gradient(160deg,#ff6b6b,#9b1d4a)', hint: 'Tap a channel', keys: 'tv television watch shows news sports soccer cartoon movies channels video live stream', desc: 'Watch every Solano TV channel live: news, sports, cartoons and the sky cam', svg: `<rect x="3" y="6" width="18" height="12" rx="2" fill="${W2}"/><rect x="5" y="8" width="14" height="8" rx="1" fill="#9b1d4a"/><path d="M9 3.5l3 2.5 3-2.5" stroke="${W2}" stroke-width="1.6" fill="none"/><path d="M10.5 10v4l3.5-2z" fill="${W2}"/>` },
   calc: { name: 'Calculator', cat: 'Utilities', price: 0, bg: 'linear-gradient(160deg,#5c636b,#24282d)', keys: 'calculator math numbers add sums plus minus', desc: 'Add, subtract, multiply and divide', svg: `<rect x="5" y="2.5" width="14" height="19" rx="2.5" fill="${W2}"/><rect x="7.2" y="4.8" width="9.6" height="4" rx="1" fill="#24282d"/><circle cx="9" cy="12.5" r="1.1" fill="#24282d"/><circle cx="12" cy="12.5" r="1.1" fill="#24282d"/><circle cx="15" cy="12.5" r="1.1" fill="#ff9f1c"/><circle cx="9" cy="16.5" r="1.1" fill="#24282d"/><circle cx="12" cy="16.5" r="1.1" fill="#24282d"/><circle cx="15" cy="16.5" r="1.1" fill="#ff9f1c"/>` },
-  drive: { name: 'DriveWork', cat: 'Travel', price: 0, bg: 'linear-gradient(160deg,#ffd75a,#1f6fb2)', keys: 'taxi bus driver job work drive shift cab own buy depot parking money', desc: 'Work as a taxi or bus driver for as long as you like · buy your own taxi and bus', svg: `<rect x="2.5" y="9" width="11" height="7" rx="1.6" fill="#15161a"/><path d="M4 9l1.6-3h5l1.6 3" fill="#15161a"/><circle cx="5.2" cy="16.5" r="1.4" fill="${W2}"/><circle cx="10.8" cy="16.5" r="1.4" fill="${W2}"/><rect x="14" y="5" width="7.5" height="12" rx="1.6" fill="${W2}"/><rect x="15.2" y="6.5" width="5.1" height="3.6" rx=".6" fill="#1f6fb2"/><circle cx="16" cy="17.5" r="1.2" fill="#15161a"/><circle cx="19.6" cy="17.5" r="1.2" fill="#15161a"/>` },
+  drive: { name: 'DriveWork', cat: 'Travel', price: 0, bg: 'linear-gradient(160deg,#ffd75a,#1f6fb2)', keys: 'taxi bus driver job work drive shift cab own buy depot parking money', desc: 'Work as a taxi or bus driver for as long as you like · get your own taxi and bus free', svg: `<rect x="2.5" y="9" width="11" height="7" rx="1.6" fill="#15161a"/><path d="M4 9l1.6-3h5l1.6 3" fill="#15161a"/><circle cx="5.2" cy="16.5" r="1.4" fill="${W2}"/><circle cx="10.8" cy="16.5" r="1.4" fill="${W2}"/><rect x="14" y="5" width="7.5" height="12" rx="1.6" fill="${W2}"/><rect x="15.2" y="6.5" width="5.1" height="3.6" rx=".6" fill="#1f6fb2"/><circle cx="16" cy="17.5" r="1.2" fill="#15161a"/><circle cx="19.6" cy="17.5" r="1.2" fill="#15161a"/>` },
   stay: { name: 'StayNow', cat: 'Travel', price: 0, bg: 'linear-gradient(160deg,#c77dff,#5a189a)', keys: 'hotel hotels booking book room stay sleep suite floor travel', desc: 'Book a hotel room anywhere: which hotels are free, your room number and your floor', svg: `<path d="M3 18.5V7.5M3 14h18v4.5" stroke="${W2}" stroke-width="2" fill="none" stroke-linecap="round"/><rect x="9" y="9.5" width="11" height="4.5" rx="1.6" fill="${W2}"/><circle cx="6.1" cy="11.6" r="1.9" fill="${W2}"/>` },
   subway: { name: 'MetroGo', cat: 'Travel', price: 0, bg: 'linear-gradient(160deg,#ff6b6b,#c1121f)', keys: 'metro subway underground train transit tube station tickets', desc: 'The Solano Metro underground: a map of every station, the nearest one, and tickets to anywhere', svg: `<rect x="5" y="3" width="14" height="15" rx="4" fill="${W2}"/><rect x="7" y="6" width="10" height="5" rx="1.2" fill="#c1121f"/><circle cx="9" cy="14.3" r="1.3" fill="#c1121f"/><circle cx="15" cy="14.3" r="1.3" fill="#c1121f"/><path d="M8 18l-2 3M16 18l2 3" stroke="${W2}" stroke-width="1.8" stroke-linecap="round"/>` },
   cal: { name: 'Calendar', cat: 'Utilities', price: 0, bg: '#ffffff', keys: 'calendar date day month year events holidays schedule planner today', desc: "Today's date, month and year · holidays, Solano events and your own plans", get svg() { const d = gameDate(); return `<rect x="3" y="3.5" width="18" height="17.5" rx="3" fill="#fff" stroke="#e2e2e8" stroke-width=".6"/><path d="M3 6.5a3 3 0 0 1 3-3h12a3 3 0 0 1 3 3V9H3z" fill="#e63946"/><text x="12" y="7.9" font-size="3.6" font-weight="800" text-anchor="middle" fill="#fff" font-family="system-ui,sans-serif">${['SUN', 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT'][d.getDay()]}</text><text x="12" y="18.6" font-size="9" font-weight="700" text-anchor="middle" fill="#15161a" font-family="system-ui,sans-serif">${d.getDate()}</text>`; } },
@@ -1692,13 +1690,12 @@ function phoneRender() {
     const rk = cabbyRank();
     if (!rk) html = head() + '<div class="ph-scroll"><div class="ph-card"><b>No Cabby drivers out here</b><div class="ph-note">Cabby works in Solano city · take the bus, a taxi stand or FlyNow</div></div></div>';
     else { phone.cab = { rk, list: taxiDests().map((d) => ({ d, pl: taxiPlan(rk, d) })) }; const wanted = game.wanted > 0;
-      html = head() + `<div class="ph-scroll"><div class="ph-card"><b>Pickup: ${esc(districtAt(rk.cx, rk.cz))}</b><div class="ph-note">A driver arrives right away · fare includes a $3 booking fee</div></div>${wanted ? '<div class="ph-note" style="color:#c8372d">No driver will pick you up while the cops are after you</div>' : ''}<div class="ph-sec">Where to?</div>`
-        + phone.cab.list.map((o, i) => `<div class="ph-row">${icon('taxi')}<div class="ph-meta"><b>${esc(o.d.name)}</b><small>About ${Math.max(10, Math.round(o.pl.path.len / 16))} s ride</small></div><button class="ph-btn buy" data-cab="${i}" ${wanted || game.cash < o.pl.fare + 3 ? 'disabled' : ''}>${money(o.pl.fare + 3)}</button></div>`).join('') + '</div>'; }
+      html = head() + `<div class="ph-scroll"><div class="ph-card"><b>Pickup: ${esc(districtAt(rk.cx, rk.cz))}</b><div class="ph-note">A driver arrives right away · every ride is free</div></div>${wanted ? '<div class="ph-note" style="color:#c8372d">No driver will pick you up while the cops are after you</div>' : ''}<div class="ph-sec">Where to?</div>`
+        + phone.cab.list.map((o, i) => `<div class="ph-row">${icon('taxi')}<div class="ph-meta"><b>${esc(o.d.name)}</b><small>About ${Math.max(10, Math.round(o.pl.path.len / 16))} s ride</small></div><button class="ph-btn buy" data-cab="${i}" ${wanted ? 'disabled' : ''}>FREE</button></div>`).join('') + '</div>'; }
   } else if (a === 'bus') {
     const pass = game.time < (game.busPassUntil || 0), pp = phonePos();
     const stops = transit.stops.map((st, i) => ({ st, i, d: Math.hypot(st.sx - pp.x, st.sz - pp.z) })).sort((x, y) => x.d - y.d);
-    html = head() + `<div class="ph-scroll"><div class="ph-card"><b>${pass ? `Day pass active · ${Math.ceil((game.busPassUntil - game.time) / 60)} min left` : `Tickets: ${game.busTickets || 0}`}</b><div class="ph-note">${pass ? 'Ride as much as you like' : 'Tickets are used when you board · without one the fare is $2 cash'}</div></div><div class="ph-sec">Buy</div>`
-      + [['1', 'Single ticket', 'One bus ride', 2], ['5', '5 tickets', 'Save $2', 8], ['day', 'Day pass', 'Unlimited rides for one full day', 12]].map(([k, n, dsc, pr]) => `<div class="ph-row">${icon('bus')}<div class="ph-meta"><b>${n}</b><small>${dsc}</small></div><button class="ph-btn buy" data-bus="${k}" ${game.cash < pr ? 'disabled' : ''}>${money(pr)}</button></div>`).join('')
+    html = head() + `<div class="ph-scroll"><div class="ph-card"><b>All buses are free</b><div class="ph-note">No ticket needed · just get on and ride as much as you like</div></div>`
       + `<div class="ph-sec">Stops near you</div>` + stops.map((o) => `<button class="ph-row" data-stop="${o.i}">${icon('bus')}<div class="ph-meta"><b>${esc(o.st.name)}</b><small>${o.d < 1000 ? Math.round(o.d) + ' m' : (o.d / 1000).toFixed(1) + ' km'} away · next bus in ~${Math.max(5, Math.round(nextBusIn(o.st)))} s · tap for a route</small></div></button>`).join('') + '</div>';
   } else if (a === 'bank') {
     const tx = game.txns || [];
@@ -1731,7 +1728,7 @@ function phoneRender() {
     const on = drv.on, LEN = [[3, '3 hours'], [6, '6 hours'], [12, 'Half a day'], [24, 'A whole day']];
     const sec = (kind) => { const own = kind === 'taxi' ? game.ownTaxi : game.ownBus, price = DRV_PRICE[kind];
       return `<div class="ph-sec">${kind === 'taxi' ? '🚕 Taxi driver' : '🚌 Bus driver'}</div><div class="ph-note">${kind === 'taxi' ? 'Pick up people waving on the sidewalk and drive them where they want to go' : 'Drive the city bus route and stop at every bus stop'} · ${own ? `you drive your own ${kind} · riders pay you and you keep 100%` : `company ${kind} · riders pay you and you keep 70%`} · how long do you want to work?</div><div class="drv-len">${LEN.map(([h, t]) => `<button data-drv="start:${kind}:${h}" ${on ? 'disabled' : ''}>${t}<small>${h} h in Solano · ~${Math.round(h * DAY_LEN / 24 / 60)} min</small></button>`).join('')}</div>`
-        + (own ? `<div class="ph-row">${icon('drive')}<div class="ph-meta"><b>Your ${kind}</b><small>Parks in YOUR ${kind.toUpperCase()} bay at the Driver Depot</small></div><button class="ph-btn" data-drv="bring:${kind}">BRING</button></div>` : `<div class="ph-row">${icon('drive')}<div class="ph-meta"><b>Get your own ${kind} · free</b><small>Riders still pay you · keep 100% of every ${kind === 'taxi' ? 'fare' : 'ticket'} · it gets its own parking at the Driver Depot</small></div><button class="ph-btn buy" data-drv="buy:${kind}" ${game.cash < price ? 'disabled' : ''}>${price ? '$' + price.toLocaleString('en-US') : 'GET'}</button></div>`); };
+        + (own ? `<div class="ph-row">${icon('drive')}<div class="ph-meta"><b>Your ${kind}</b><small>Parks in YOUR ${kind.toUpperCase()} bay at the Driver Depot</small></div><button class="ph-btn" data-drv="bring:${kind}">BRING</button></div>` : `<div class="ph-row">${icon('drive')}<div class="ph-meta"><b>Get your own ${kind} · free</b><small>Riders still pay you · keep 100% of every ${kind === 'taxi' ? 'fare' : 'ticket'} · it gets its own parking at the Driver Depot</small></div><button class="ph-btn buy" data-drv="buy:${kind}">FREE</button></div>`); };
     html = head() + `<div class="ph-scroll">${on ? `<div class="ph-card"><b>${drv.kind === 'taxi' ? 'Taxi' : 'Bus'} shift · ${drvRemain()} left</b><div class="ph-note">$${drv.earned} earned · ${drv.count} ${drv.kind === 'taxi' ? 'fares' : 'stops'}</div><button class="ph-btn" data-drv="end">END SHIFT</button></div>` : '<div class="ph-note">Pick a job and how long you want to work · the clock runs in Solano time</div>'}${sec('taxi')}${sec('bus')}<div class="ph-sec">Your parking</div><button class="ph-row" data-drv="depot">${icon('drive')}<div class="ph-meta"><b>Driver Depot</b><small>Your taxi parking and your bus parking · tap for a route</small></div></button></div>`;
   } else if (a === 'stay') {
     const st = stayActive() ? game.stay : null, sel = phone.hotelSel;
@@ -1777,8 +1774,8 @@ function cabbyRank() {
   return best;
 }
 function phoneCab(i) {
-  const c = phone.cab && phone.cab.list[i]; if (!c || game.wanted > 0) return; const fare = c.pl.fare + 3; if (game.cash < fare) return;
-  addCash(-fare, 'Cabby · ' + c.d.name); closePhone(); if (game.inside) exitShop(); if (player.car) exitCar(); if (player.sit) standUp();
+  const c = phone.cab && phone.cab.list[i]; if (!c || game.wanted > 0) return; const fare = 0;
+ closePhone(); if (game.inside) exitShop(); if (player.car) exitCar(); if (player.sit) standUp();
   fadeFlash('Your Cabby driver pulls up…', 0.9); startTaxi(phone.cab.rk, c.d, c.pl);
 }
 function phoneGet(id) {
@@ -2286,8 +2283,8 @@ function renderSearch() {
       acts.push(`<button class="go" data-act="route" data-i="${i}">Route</button>`);
       if (onBus) { const st = pl.stop || stopNear(pl); if (st && inCity(pl.x, pl.z)) acts.push(`<button class="bs" data-act="busoff" data-i="${i}">Get off near</button>`); }
       else {
-        if (rk && !(pl.kind === 'taxi' && dist(pl) < 30)) { const fare = taxiPlan(rk, { name: pl.name, p: { x: pl.x, z: pl.z } }).fare + 3; acts.push(`<button class="tx" data-act="taxi" data-i="${i}" ${wanted || cash < fare ? 'disabled' : ''}>Taxi $${fare}</button>`); }
-        const st = pl.stop || stopNear(pl); if (st && inCity(pl.x, pl.z) && inCity(pp.x, pp.z) && dist(pl) > 120) acts.push(`<button class="bs" data-act="bus" data-i="${i}">Bus $2</button>`);
+        if (rk && !(pl.kind === 'taxi' && dist(pl) < 30)) { const fare = taxiPlan(rk, { name: pl.name, p: { x: pl.x, z: pl.z } }).fare + 3; acts.push(`<button class="tx" data-act="taxi" data-i="${i}" ${wanted ? 'disabled' : ''}>Taxi free</button>`); }
+        const st = pl.stop || stopNear(pl); if (st && inCity(pl.x, pl.z) && inCity(pp.x, pp.z) && dist(pl) > 120) acts.push(`<button class="bs" data-act="bus" data-i="${i}">Bus free</button>`);
         if (mBtn) acts.push(mBtn);
       }
     }
@@ -2304,8 +2301,8 @@ $('search').addEventListener('click', (e) => { if (e.target === $('search')) { c
   else if (b.dataset.act === 'taxi') {
     closeSearch(); if (game.wanted > 0) { toast('No driver will pick you up while the cops are after you'); return; }
     if (game.inside) exitShop(); if (player.car) exitCar(); if (player.sit) standUp();
-    const rk = cabbyRank(); if (!rk) { toast('No taxis out here'); return; } const d = { name: pl.name, p: { x: pl.x, z: pl.z } }, pln = taxiPlan(rk, d), fare = pln.fare + 3;
-    if (game.cash < fare) { toast(`The taxi is $${fare}`); return; } addCash(-fare, 'Taxi · ' + pl.name); fadeFlash('A taxi pulls up…', 0.9); startTaxi(rk, d, pln);
+    const rk = cabbyRank(); if (!rk) { toast('No taxis out here'); return; } const d = { name: pl.name, p: { x: pl.x, z: pl.z } }, pln = taxiPlan(rk, d), fare = 0;
+    fadeFlash('A taxi pulls up…', 0.9); startTaxi(rk, d, pln);
   }
   else if (b.dataset.act === 'bus') { const to = pl.stop || nearestStopTo(pl.x, pl.z), pp = phonePos(), from = nearestStopTo(pp.x, pp.z); game.busPlan = to; closeSearch(); setWaypoint(from.sx, from.sz); toast(from === to ? `You're already near ${to.name}` : `Walk to ${from.name} · board the bus and it will drop you at ${to.name}`, 4500); }
   else if (b.dataset.act === 'metrodrive') { const st = metroFor(pl); closeSearch(); if (st && game.inside && game.inside.shop.type === 'metro') startMetroRide(st, true); }
@@ -3220,7 +3217,7 @@ function drvAct(a) {
   const [cmd, kind, h] = a.split(':');
   if (cmd === 'start') { closePhone(); drvStart(kind, +h); }
   else if (cmd === 'end') { drvEnd(false, 'You ended your shift'); phoneRender(); }
-  else if (cmd === 'buy') { const price = DRV_PRICE[kind]; if (game.cash < price) return; addCash(-price, `DriveWork · your own ${kind}`); if (kind === 'taxi') { game.ownTaxi = true; store.set('ownTaxi', true); } else { game.ownBus = true; store.set('ownBus', true); } drvSpawn(kind, true); phoneRender(); phoneMsg(`Your ${kind} is parked in YOUR ${kind.toUpperCase()} bay at the Driver Depot`); }
+  else if (cmd === 'buy') { const price = DRV_PRICE[kind]; if (price) { if (game.cash < price) return; addCash(-price, `DriveWork · your own ${kind}`); } if (kind === 'taxi') { game.ownTaxi = true; store.set('ownTaxi', true); } else { game.ownBus = true; store.set('ownBus', true); } drvSpawn(kind, true); phoneRender(); phoneMsg(`Your ${kind} is parked in YOUR ${kind.toUpperCase()} bay at the Driver Depot`); }
   else if (cmd === 'bring') { const v = vehicles.find((q) => q.own === kind); if (v && v === player.car) { phoneMsg(`You're driving your ${kind}`); return; } if (v) v.dispose(); drvSpawn(kind, true); phoneMsg(`Your ${kind} is back in its bay at the Driver Depot`); }
   else if (cmd === 'depot') { closePhone(); setWaypoint(DEPOT.x, DEPOT.z); toast('Route set · Driver Depot · your taxi and bus parking', 3000); }
 }
@@ -6078,7 +6075,7 @@ function updateHUD(dt) {
   if (nh) hint = TOUCH ? 'Helicopter tour · tap FLY' : 'Press F to fly the helicopter tour';
   if (dboard) hint = `Duty board · paid army jobs · ${milRank().name} · ${TOUCH ? 'tap DUTY' : 'press F'}`;
   if (stop) hint = `Bus stop · ${stop.name} · next bus in about ${Math.max(5, Math.round(nextBusIn(stop)))} s`;
-  if (tb) hint = `Bus to ${transit.stops[(transit.stops.indexOf(tb.at) + 1) % transit.stops.length].name} and beyond · $2 · ${TOUCH ? 'tap BOARD' : 'press F to board'}`;
+  if (tb) hint = `Bus to ${transit.stops[(transit.stops.indexOf(tb.at) + 1) % transit.stops.length].name} and beyond · free · ${TOUCH ? 'tap BOARD' : 'press F to board'}`;
   if (tk) hint = TOUCH ? 'Taxi stand · tap TAXI to pick where to go' : 'Taxi stand · press F to pick where to go';
   if (dcar) hint = `${dcar.name} · ${CAR_TYPE_NAMES[dcar.type]} · $${dcar.price.toLocaleString('en-US')}${game.garage.includes(dcar.id) ? ' · already yours' : TOUCH ? ' · tap BUY' : ' · press F to buy'}`;
   if (ddesk) hint = TOUCH ? 'Coastline Motors sales desk · tap CARS for all 100' : 'Coastline Motors · press F to see all 100 cars';
@@ -6490,3 +6487,5 @@ window.claude?.hot?.snapshot?.(() => ({ cash: game.cash, tod: game.tod, quality:
 const boot = (d) => start(d || {});
 if (window.claude?.hot?.ready) window.claude.hot.ready(boot); else boot(window.claude?.hot?.data ?? {});
 </script>
+
+</body></html>
