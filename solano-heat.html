@@ -126,6 +126,7 @@ button:focus-visible{outline:3px solid var(--lagoon);outline-offset:3px}
 .cal-ic{flex:none;width:9cqw;height:9cqw;display:grid;place-items:center;font-size:5.6cqw}.cal-add{display:flex;gap:2cqw;margin-top:2.5cqw}.cal-add input{flex:1;min-width:0;border:0;border-radius:3cqw;background:#e2e2e8;padding:2.4cqw 3cqw;font:500 16px system-ui,sans-serif;color:#15161a;outline:none}
 .note-new{display:flex;gap:1.5cqw;margin-bottom:2.5cqw}.note-new button{flex:1;border:0;border-radius:3cqw;background:#fff3c4;padding:2.6cqw .6cqw;font:700 3.2cqw system-ui,sans-serif;color:#5b4a00}.ph-del{display:block;width:100%;margin-top:3cqw;border:0;border-radius:3cqw;background:#ffe3e0;color:#c8372d;padding:3cqw;font:700 4cqw system-ui,sans-serif}
 .sub-map{display:block;width:100%;height:46cqw;margin-bottom:2.5cqw;border-radius:3cqw;background:#bfe3ef}
+.drv-len{display:grid;grid-template-columns:1fr 1fr;gap:1.6cqw;margin:0 0 2cqw}.drv-len button{border:0;border-radius:3cqw;background:#fff3c4;color:#5b4a00;padding:2.2cqw 1cqw;font:800 3.6cqw system-ui,sans-serif}.drv-len button small{display:block;font-weight:600;font-size:2.8cqw;opacity:.75;margin-top:.4cqw}.drv-len button:disabled{opacity:.45}
 .stay-opts{display:grid;grid-template-columns:1fr 1fr;gap:1.6cqw;margin:-1cqw 0 2.5cqw}.stay-opts button{border:0;border-radius:3cqw;background:#efe3ff;color:#3c096c;padding:2.2cqw 1cqw;font:700 3.3cqw system-ui,sans-serif}.stay-opts button b{display:block;font-size:4cqw;margin-top:.5cqw}.stay-opts button:disabled{opacity:.45}.st-ok{color:#2d8f4e;font-weight:700}.st-bad{color:#c8372d;font-weight:700}
 #lineMap{position:fixed;top:calc(env(safe-area-inset-top,0px) + 58px);left:50%;transform:translateX(-50%);z-index:30;display:flex;align-items:flex-start;padding:22px 14px 8px;border-radius:14px;background:rgba(14,10,23,.82);color:#fff;font:700 11px/1.2 system-ui,sans-serif;pointer-events:none;max-width:94vw}#lineMap[hidden]{display:none}#lineMap .lm-h{position:absolute;top:6px;left:14px;right:14px;font-size:10.5px;color:#ffd166;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 #lineMap .lm-s{display:flex;flex-direction:column;align-items:center;width:64px;text-align:center}#lineMap .lm-d{width:10px;height:10px;border-radius:50%;background:#14101f;border:3px solid var(--lm);margin-bottom:4px}#lineMap .lm-s.done .lm-d{background:var(--lm)}#lineMap .lm-s.cur .lm-d{background:#ffd166;border-color:#ffd166;box-shadow:0 0 0 4px rgba(255,209,102,.35)}#lineMap .lm-s.end b{color:#7dff9a}#lineMap .lm-l{width:18px;height:4px;margin-top:6px;background:var(--lm);opacity:.55;flex:none}#lineMap b{font-size:10px;font-weight:700}
@@ -352,7 +353,7 @@ button:focus-visible{outline:3px solid var(--lagoon);outline-offset:3px}
       <div><div class="bm-title">Solano</div><div class="bm-hint">Drag to pan · pinch to zoom · tap to drop a waypoint</div></div>
       <div class="bm-actions"><button class="ghost" id="bmSearch">Search</button><button class="ghost" id="bmHome">Home</button><button class="ghost" id="bmClear" hidden>Clear waypoint</button><button class="bm-btn" id="bmIn" aria-label="Zoom in">+</button><button class="bm-btn" id="bmOut" aria-label="Zoom out">−</button><button class="bm-btn" id="bmClose" aria-label="Close map">✕</button></div>
     </div>
-    <div class="bm-legend"><span><i style="background:#fff3e8"></i>You</span><span><i style="background:#ff3f8e"></i>Jobs</span><span><i class="sq" style="background:#2be0cf"></i>24/7 Mart</span><span><i class="sq" style="background:#ff7aa8"></i>Threads</span><span><i class="sq" style="background:#9be15d"></i>Groceries</span><span><i class="sq" style="background:#9ad8f2"></i>Airport terminal</span><span><i class="sq" style="background:#ffd36e"></i>Home</span><span><i style="background:#86ffb0"></i>Cash</span><span><i style="background:#3fa9f5"></i>Bus stop · B</span><span><i style="background:#ffc21a"></i>Taxi stand · T</span><span><i style="background:#e63946"></i>Metro · M</span><span><i style="background:#ff8c42"></i>Restaurant · R</span><span><i style="background:#8b5a2b"></i>Police station · ★</span><span><i style="background:#9b5de5"></i>Hotel · H</span><span><i style="background:#18b3a6"></i>Sky Train · S</span><span><i style="background:#1f6fb2"></i>Parking garage · P</span><span><i class="sq" style="background:#3fa9f5;height:3px;width:14px"></i>Bus route</span><span><i style="background:#b18cff"></i>Waypoint</span><span><i style="background:#ff3050"></i>Police</span></div>
+    <div class="bm-legend"><span><i style="background:#fff3e8"></i>You</span><span><i style="background:#ff3f8e"></i>Jobs</span><span><i class="sq" style="background:#2be0cf"></i>24/7 Mart</span><span><i class="sq" style="background:#ff7aa8"></i>Threads</span><span><i class="sq" style="background:#9be15d"></i>Groceries</span><span><i class="sq" style="background:#9ad8f2"></i>Airport terminal</span><span><i class="sq" style="background:#ffd36e"></i>Home</span><span><i style="background:#86ffb0"></i>Cash</span><span><i style="background:#3fa9f5"></i>Bus stop · B</span><span><i style="background:#ffc21a"></i>Taxi stand · T</span><span><i style="background:#e63946"></i>Metro · M</span><span><i style="background:#ff8c42"></i>Restaurant · R</span><span><i style="background:#8b5a2b"></i>Police station · ★</span><span><i style="background:#9b5de5"></i>Hotel · H</span><span><i style="background:#18b3a6"></i>Sky Train · S</span><span><i style="background:#f4b400"></i>Driver Depot · D</span><span><i style="background:#1f6fb2"></i>Parking garage · P</span><span><i class="sq" style="background:#3fa9f5;height:3px;width:14px"></i>Bus route</span><span><i style="background:#b18cff"></i>Waypoint</span><span><i style="background:#ff3050"></i>Police</span></div>
   </div>
 
   <div id="shop" class="overlay" hidden>
@@ -946,7 +947,7 @@ function buildWorld() {
         const n = ri(1, 3); for (let k = 0; k < n; k++) roofBoxes.push({ x: lx + rr(-w / 2 + 2, w / 2 - 2), z: lz + rr(-d / 2 + 2, d / 2 - 2), y: top, sx: rr(1.4, 3), sy: rr(0.8, 1.8), sz: rr(1.4, 3) });
       }
     }
-    if (ghost) { B.length = nB; neon.length = nN; roofBoxes.length = nR; blink.length = nK; shopsData.length = nS; blk.kind = SP[0]; if (SP[0] === 'police') buildPoliceLot(blk, SP[1], SP[2]); else if (SP[0] === 'hotel') buildHotelLot(blk, SP[1], SP[2], SP[3], addB); else buildRestaurantLot(blk, SP[1], SP[2], SP[3]); }
+    if (ghost) { B.length = nB; neon.length = nN; roofBoxes.length = nR; blink.length = nK; shopsData.length = nS; blk.kind = SP[0]; if (SP[0] === 'police') buildPoliceLot(blk, SP[1], SP[2]); else if (SP[0] === 'hotel') buildHotelLot(blk, SP[1], SP[2], SP[3], addB); else if (SP[0] === 'depot') buildDepot(blk, SP[1], SP[2]); else buildRestaurantLot(blk, SP[1], SP[2], SP[3]); }
   }
   extraZones(addB, roofBoxes, blink);
   hotelTower('Isla Verde Grand', -2340, -600, 1, 0, addB, { color: 0x7fb8d6, price: 240, stars: 5 }); islandGarage(-2352, -645, 1, 0, 'Isla Verde Grand');
@@ -1645,6 +1646,7 @@ const APPS = {
   memory: { name: 'Memory Match', cat: 'Games', price: 2, bg: 'linear-gradient(160deg,#c77dff,#7b2cbf)', hint: 'Find the pairs', keys: 'memory match cards pairs concentration puzzle brain', desc: 'Flip two cards at a time and find all the matching pairs', svg: `<rect x="3.5" y="5" width="8" height="11" rx="1.5" fill="${W2}" transform="rotate(-8 7.5 10.5)"/><rect x="12.5" y="7" width="8" height="11" rx="1.5" fill="#ffd166" transform="rotate(8 16.5 12.5)"/>` },
   tv: { name: 'Solano TV', cat: 'Entertainment', price: 0, canvas: true, bg: 'linear-gradient(160deg,#ff6b6b,#9b1d4a)', hint: 'Tap a channel', keys: 'tv television watch shows news sports soccer cartoon movies channels video live stream', desc: 'Watch every Solano TV channel live: news, sports, cartoons and the sky cam', svg: `<rect x="3" y="6" width="18" height="12" rx="2" fill="${W2}"/><rect x="5" y="8" width="14" height="8" rx="1" fill="#9b1d4a"/><path d="M9 3.5l3 2.5 3-2.5" stroke="${W2}" stroke-width="1.6" fill="none"/><path d="M10.5 10v4l3.5-2z" fill="${W2}"/>` },
   calc: { name: 'Calculator', cat: 'Utilities', price: 0, bg: 'linear-gradient(160deg,#5c636b,#24282d)', keys: 'calculator math numbers add sums plus minus', desc: 'Add, subtract, multiply and divide', svg: `<rect x="5" y="2.5" width="14" height="19" rx="2.5" fill="${W2}"/><rect x="7.2" y="4.8" width="9.6" height="4" rx="1" fill="#24282d"/><circle cx="9" cy="12.5" r="1.1" fill="#24282d"/><circle cx="12" cy="12.5" r="1.1" fill="#24282d"/><circle cx="15" cy="12.5" r="1.1" fill="#ff9f1c"/><circle cx="9" cy="16.5" r="1.1" fill="#24282d"/><circle cx="12" cy="16.5" r="1.1" fill="#24282d"/><circle cx="15" cy="16.5" r="1.1" fill="#ff9f1c"/>` },
+  drive: { name: 'DriveWork', cat: 'Travel', price: 0, bg: 'linear-gradient(160deg,#ffd75a,#1f6fb2)', keys: 'taxi bus driver job work drive shift cab own buy depot parking money', desc: 'Work as a taxi or bus driver for as long as you like · buy your own taxi and bus', svg: `<rect x="2.5" y="9" width="11" height="7" rx="1.6" fill="#15161a"/><path d="M4 9l1.6-3h5l1.6 3" fill="#15161a"/><circle cx="5.2" cy="16.5" r="1.4" fill="${W2}"/><circle cx="10.8" cy="16.5" r="1.4" fill="${W2}"/><rect x="14" y="5" width="7.5" height="12" rx="1.6" fill="${W2}"/><rect x="15.2" y="6.5" width="5.1" height="3.6" rx=".6" fill="#1f6fb2"/><circle cx="16" cy="17.5" r="1.2" fill="#15161a"/><circle cx="19.6" cy="17.5" r="1.2" fill="#15161a"/>` },
   stay: { name: 'StayNow', cat: 'Travel', price: 0, bg: 'linear-gradient(160deg,#c77dff,#5a189a)', keys: 'hotel hotels booking book room stay sleep suite floor travel', desc: 'Book a hotel room anywhere: which hotels are free, your room number and your floor', svg: `<path d="M3 18.5V7.5M3 14h18v4.5" stroke="${W2}" stroke-width="2" fill="none" stroke-linecap="round"/><rect x="9" y="9.5" width="11" height="4.5" rx="1.6" fill="${W2}"/><circle cx="6.1" cy="11.6" r="1.9" fill="${W2}"/>` },
   subway: { name: 'MetroGo', cat: 'Travel', price: 0, bg: 'linear-gradient(160deg,#ff6b6b,#c1121f)', keys: 'metro subway underground train transit tube station tickets', desc: 'The Solano Metro underground: a map of every station, the nearest one, and tickets to anywhere', svg: `<rect x="5" y="3" width="14" height="15" rx="4" fill="${W2}"/><rect x="7" y="6" width="10" height="5" rx="1.2" fill="#c1121f"/><circle cx="9" cy="14.3" r="1.3" fill="#c1121f"/><circle cx="15" cy="14.3" r="1.3" fill="#c1121f"/><path d="M8 18l-2 3M16 18l2 3" stroke="${W2}" stroke-width="1.8" stroke-linecap="round"/>` },
   cal: { name: 'Calendar', cat: 'Utilities', price: 0, bg: '#ffffff', keys: 'calendar date day month year events holidays schedule planner today', desc: "Today's date, month and year · holidays, Solano events and your own plans", get svg() { const d = gameDate(); return `<rect x="3" y="3.5" width="18" height="17.5" rx="3" fill="#fff" stroke="#e2e2e8" stroke-width=".6"/><path d="M3 6.5a3 3 0 0 1 3-3h12a3 3 0 0 1 3 3V9H3z" fill="#e63946"/><text x="12" y="7.9" font-size="3.6" font-weight="800" text-anchor="middle" fill="#fff" font-family="system-ui,sans-serif">${['SUN', 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT'][d.getDay()]}</text><text x="12" y="18.6" font-size="9" font-weight="700" text-anchor="middle" fill="#15161a" font-family="system-ui,sans-serif">${d.getDate()}</text>`; } },
@@ -1725,6 +1727,12 @@ function phoneRender() {
     CAL_WEEKLY[sd.getDay()].forEach(([n, t, k]) => evs.push(`<div class="ph-row"><span class="cal-ic">📍</span><div class="ph-meta"><b>${esc(n)}</b><small>${t} · every ${CAL_DAYS_LONG[sd.getDay()]} in Solano</small></div><button class="ph-btn" data-cal="go:${k}">GO</button></div>`));
     (mine[C.sel] || []).forEach((n, i) => evs.push(`<div class="ph-row"><span class="cal-ic">⭐</span><div class="ph-meta"><b>${esc(n)}</b><small>Your event</small></div><button class="ph-link" data-cal="rm:${i}">Delete</button></div>`));
     html = head() + `<div class="ph-scroll"><div class="cal-today">${CAL_DAYS_LONG[now.getDay()]} · in Solano<b>${CAL_MONTHS[now.getMonth()]} ${now.getDate()}, ${now.getFullYear()}</b><small>The date moves to the next day at midnight and when you sleep through the night</small></div><div class="cal-bar"><button data-cal="prev" aria-label="Previous month">‹</button><b>${CAL_MONTHS[C.m]} ${C.y}</b><button data-cal="next" aria-label="Next month">›</button><button class="cal-t" data-cal="today">Today</button></div><div class="cal-grid">${grid}</div><div class="ph-sec">${CAL_DAYS_LONG[sd.getDay()]}, ${CAL_MONTHS[sd.getMonth()]} ${sd.getDate()}${C.sel === today ? ' · today' : ''}</div>${evs.join('')}<div class="cal-add"><input id="calInput" placeholder="Add your own event…" maxlength="80" enterkeyhint="done"><button class="ph-btn" data-cal="add">ADD</button></div></div>`;
+  } else if (a === 'drive') {
+    const on = drv.on, LEN = [[3, '3 hours'], [6, '6 hours'], [12, 'Half a day'], [24, 'A whole day']];
+    const sec = (kind) => { const own = kind === 'taxi' ? game.ownTaxi : game.ownBus, price = DRV_PRICE[kind];
+      return `<div class="ph-sec">${kind === 'taxi' ? '🚕 Taxi driver' : '🚌 Bus driver'}</div><div class="ph-note">${kind === 'taxi' ? 'Pick up people waving on the sidewalk and drive them where they want to go' : 'Drive the city bus route and stop at every bus stop'} · ${own ? `you drive your own ${kind} and keep 100%` : `company ${kind}: you keep 70%`} · how long do you want to work?</div><div class="drv-len">${LEN.map(([h, t]) => `<button data-drv="start:${kind}:${h}" ${on ? 'disabled' : ''}>${t}<small>${h} h in Solano · ~${Math.round(h * DAY_LEN / 24 / 60)} min</small></button>`).join('')}</div>`
+        + (own ? `<div class="ph-row">${icon('drive')}<div class="ph-meta"><b>Your ${kind}</b><small>Parks in YOUR ${kind.toUpperCase()} bay at the Driver Depot</small></div><button class="ph-btn" data-drv="bring:${kind}">BRING</button></div>` : `<div class="ph-row">${icon('drive')}<div class="ph-meta"><b>Buy your own ${kind}</b><small>Keep 100% of every ${kind === 'taxi' ? 'fare' : 'ticket'} · it gets its own parking at the Driver Depot</small></div><button class="ph-btn buy" data-drv="buy:${kind}" ${game.cash < price ? 'disabled' : ''}>$${price.toLocaleString('en-US')}</button></div>`); };
+    html = head() + `<div class="ph-scroll">${on ? `<div class="ph-card"><b>${drv.kind === 'taxi' ? 'Taxi' : 'Bus'} shift · ${drvRemain()} left</b><div class="ph-note">$${drv.earned} earned · ${drv.count} ${drv.kind === 'taxi' ? 'fares' : 'stops'}</div><button class="ph-btn" data-drv="end">END SHIFT</button></div>` : '<div class="ph-note">Pick a job and how long you want to work · the clock runs in Solano time</div>'}${sec('taxi')}${sec('bus')}<div class="ph-sec">Your parking</div><button class="ph-row" data-drv="depot">${icon('drive')}<div class="ph-meta"><b>Driver Depot</b><small>Your taxi parking and your bus parking · tap for a route</small></div></button></div>`;
   } else if (a === 'stay') {
     const st = stayActive() ? game.stay : null, sel = phone.hotelSel;
     html = head() + `<div class="ph-scroll">${st ? `<div class="ph-card"><b>Your room: ${st.room} · floor ${st.floor}</b><div class="ph-note">${esc(HOTELS[st.h].name)} · until ${fmtKey(st.until)} · ride the elevator up to your floor</div><button class="ph-btn" data-stay="route:${st.h}">ROUTE THERE</button> <button class="ph-btn buy" data-stay="extend" ${game.cash < HOTELS[st.h].price ? 'disabled' : ''}>+1 NIGHT $${HOTELS[st.h].price}</button></div>` : '<div class="ph-note">Book a room in any hotel · most nights you get the top floor</div>'}<div class="ph-sec">Hotels tonight · ${fmtGameDate(true)}</div>`
@@ -1786,8 +1794,9 @@ function phoneDelete(id) {
 $('phone').addEventListener('click', (e) => {
   if (e.target === $('phone')) { closePhone(); return; }
   if (e.target.closest('#phHome')) { if (phone.app) { phone.app = null; phoneRender(); } else if (phone.edit) { phone.edit = false; phoneRender(); } else closePhone(); return; }
-  const el = e.target.closest('[data-stay],[data-note],[data-cal],[data-sub],[data-calc],[data-del],[data-act],[data-open],[data-get],[data-fly],[data-cab],[data-bus],[data-stop],[data-wall],[data-map]'); if (!el) return;
+  const el = e.target.closest('[data-drv],[data-stay],[data-note],[data-cal],[data-sub],[data-calc],[data-del],[data-act],[data-open],[data-get],[data-fly],[data-cab],[data-bus],[data-stop],[data-wall],[data-map]'); if (!el) return;
   const d = el.dataset; sfxTick(true);
+  if (d.drv) { drvAct(d.drv); return; }
   if (d.stay) { stayAct(d.stay); return; }
   if (d.note) { noteAct(d.note); return; }
   if (d.cal) { calAct(d.cal); return; }
@@ -2228,6 +2237,7 @@ function buildPlaces() {
   const SK = { mart: 'store shop snacks convenience food drinks 24/7 mart', grocery: 'grocery groceries supermarket food market fresh ingredients cook mercado', threads: 'clothes clothing outfit fashion shop threads', restaurant: 'restaurant food eat dinner lunch breakfast meal hungry', hotel: 'hotel hotels stay room sleep suite inn book booking' };
   for (const sp of shopsData) if (SK[sp.type] && (!destAt(sp.dx, sp.dz) || sp.type === 'hotel')) { const rb = sp.type === 'restaurant' && RESTAURANTS[sp.brand]; add(`${rb ? rb.name : sp.type === 'hotel' ? HOTELS[sp.hotel].name : ROOMS[sp.type].name} · ${districtAt(sp.dx, sp.dz)}`, sp.dx + sp.nx * 3, sp.dz + sp.nz * 3, sp.type, SK[sp.type] + (rb ? ' ' + rb.key : '')); }
   for (const st of SKY.stations) add(`Sky Train · ${st.name}`, st.kx, st.kz, 'sky', 'sky train skytrain elevated monorail station rail');
+  if (DEPOT.x !== undefined) add('Driver Depot', DEPOT.x, DEPOT.z, 'place', 'depot taxi bus parking driver my taxi my bus drivework', { pop: 12 });
   for (const gg of GARAGES) add(gg.name, gg.x, gg.z, 'place', 'parking garage park car levels floors ' + gg.name);
   for (const ps of POLICE_ST) add(ps.name, ps.x, ps.z, 'police', 'police station cops pd jail officer sheriff 911');
   if (transit.built) { for (const st of transit.stops) add(`Bus ${st.name}`, st.px, st.pz, 'bus', 'bus stop station', { stop: st }); for (const rk of transit.ranks) add(`Taxi stand · ${districtAt(rk.cx, rk.cz)}`, rk.sx, rk.sz, 'taxi', 'taxi cab stand rank'); }
@@ -2904,7 +2914,7 @@ const RESTAURANTS = [
     { name: 'Lo mein noodles', price: 9, heal: 60, fed: 240, look: ['bowl', 0xc8372d, 0xe9c46a, 0x8b5a2b] }, { name: 'Pork dumplings', price: 7, heal: 45, fed: 180, look: ['slices', 0xf4efe4, 0xe9e2d0] },
     { name: 'Fried rice', price: 8, heal: 55, fed: 210, look: ['mound', 0xf2c14e, 0x8ac926, 0xd62828] }, { name: 'Bubble tea', price: 5, heal: 20, fed: 80, look: ['glass', 0xc68642, 0x2b2b30] }] },
 ];
-const SPECIAL_BLOCKS = { '5,4': ['hotel', 0, 1, 0], '9,4': ['hotel', 0, 1, 1], '3,9': ['hotel', 0, -1, 2], '6,2': ['police', 0, 1], '2,8': ['police', 1, 0], '10,6': ['police', -1, 0], '3,3': ['rest', 0, 1, 0], '8,2': ['rest', 0, 1, 1], '4,8': ['rest', 0, -1, 2], '9,7': ['rest', 1, 0, 3], '7,8': ['rest', 0, 1, 0] };
+const SPECIAL_BLOCKS = { '1,8': ['depot', 0, 1], '5,4': ['hotel', 0, 1, 0], '9,4': ['hotel', 0, 1, 1], '3,9': ['hotel', 0, -1, 2], '6,2': ['police', 0, 1], '2,8': ['police', 1, 0], '10,6': ['police', -1, 0], '3,3': ['rest', 0, 1, 0], '8,2': ['rest', 0, 1, 1], '4,8': ['rest', 0, -1, 2], '9,7': ['rest', 1, 0, 3], '7,8': ['rest', 0, 1, 0] };
 const POLICE_ST = [];
 const restAccentMat = new THREE.MeshStandardMaterial({ color: 0xff5d8f, roughness: 0.45 }), restGlowMat = new THREE.MeshBasicMaterial({ color: new THREE.Color(0.8, 0.66, 0.46) }), lampBlueMat = new THREE.MeshBasicMaterial({ color: new THREE.Color(0.4, 0.8, 4) });
 const parkSignMat = new THREE.MeshBasicMaterial({ color: new THREE.Color(1.3, 1.3, 1.3), map: canvasTex(256, 256, (g) => { g.fillStyle = '#1f5fbf'; g.fillRect(0, 0, 256, 256); g.strokeStyle = '#fff'; g.lineWidth = 10; g.strokeRect(12, 12, 232, 232); g.fillStyle = '#fff'; g.textAlign = 'center'; g.textBaseline = 'middle'; g.font = '900 150px system-ui, sans-serif'; g.fillText('P', 128, 110); g.font = '800 44px system-ui, sans-serif'; g.fillText('$3', 128, 212); }) });
@@ -3132,9 +3142,91 @@ function buildParkingGarage(F, x0, x1, z0, z1, name) {
     ped: { stairs: w2(xs, z0 + 1.1), lift: w2(fl, z0 + 1.1), esc: w2(xe, z0 + 1.1) },
     path: { stairs: { front: w2(xs, fz), back: w2(xs, bz) }, escUp: { front: w2(xe + 0.75, fz), back: w2(xe + 0.75, bz) }, escDn: { front: w2(xe - 0.75, fz), back: w2(xe - 0.75, bz) } } });
 }
+// ---- DriveWork: taxi and bus driver shifts of any length, your own taxi and bus, and their parking at the Driver Depot
+const DEPOT = {}, DRV_PRICE = { taxi: 6500, bus: 18000 };
+const drv = { on: false, kind: null, until: 0, earned: 0, count: 0, phase: '', tgt: null, pax: null, marker: null, veh: null, stopI: -1, t: 0, own: false };
+function buildDepot(blk, fx, fz) {
+  const F = lotFrame(blk, fx, fz), P = [], y0 = CURB, yaw = Math.atan2(fx, fz);
+  lots.push({ ...F.rect(-28, 28, -10, 28), y: CURB, max: 0 });
+  P.push(boxAt(56, 0.04, 18, 0, y0 + 0.02, -19, 0x3b3c44));
+  P.push(boxAt(12, 4.2, 8, -20, 2.1, -23, 0xe9e4d8), boxAt(12.4, 0.5, 8.4, -20, 4.45, -23, 0xf4b400), boxAt(2, 2.4, 0.1, -20, y0 + 1.2, -18.95, 0x22303a), boxAt(7, 1.4, 0.1, -20, y0 + 2.3, -18.96, 0x1d2c3f));
+  const bay = (x0, x1, z0, z1, col) => P.push(boxAt(x1 - x0, 0.03, 0.18, (x0 + x1) / 2, y0 + 0.05, z0, col), boxAt(x1 - x0, 0.03, 0.18, (x0 + x1) / 2, y0 + 0.05, z1, col), boxAt(0.18, 0.03, z1 - z0, x0, y0 + 0.05, (z0 + z1) / 2, col), boxAt(0.18, 0.03, z1 - z0, x1, y0 + 0.05, (z0 + z1) / 2, col));
+  bay(-10, -5, -26, -11, 0xffd166); bay(-3.5, 1.5, -26, -11, 0xf4f1ea); bay(5, 9, -26, -19, 0xffd166); bay(11, 15, -26, -19, 0xf4f1ea); bay(17, 21, -26, -19, 0xf4f1ea);
+  for (const [x, z] of [[-7.5, -27], [7, -27], [-1, -27], [16, -27]]) P.push(boxAt(0.12, 2.6, 0.12, x, y0 + 1.3, z, 0x9aa0a8));
+  F.mesh(P); F.box(-26, -14, -27, -19, 4.6);
+  const signMat = (txt, bg, fg) => new THREE.MeshBasicMaterial({ color: new THREE.Color(1.2, 1.2, 1.2), map: canvasTex(512, 128, (g) => { g.fillStyle = bg; g.fillRect(0, 0, 512, 128); g.fillStyle = fg; g.font = '900 62px system-ui, sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText(txt, 256, 68); }) });
+  F.plane(signMat('YOUR BUS', '#ffd166', '#15161a'), 2.4, 0.6, -7.5, y0 + 2.75, -26.94); F.plane(signMat('YOUR TAXI', '#ffd166', '#15161a'), 2.4, 0.6, 7, y0 + 2.75, -26.94); F.plane(signMat('COMPANY BUS', '#1f6fb2', '#fff'), 2.4, 0.6, -1, y0 + 2.75, -26.94); F.plane(signMat('COMPANY TAXIS', '#1f6fb2', '#fff'), 2.4, 0.6, 16, y0 + 2.75, -26.94);
+  F.plane(new THREE.MeshBasicMaterial({ map: textTex('SOLANO DRIVERS · DEPOT', 1024, 128, '#ffffff'), transparent: true, color: new THREE.Color(1.5, 1.5, 1.5) }), 10, 1.25, -20, 3.6, -18.9);
+  for (const [txt, x, z] of [['YOUR BUS', -7.5, -18.5], ['YOUR TAXI', 7, -22.5]]) { const m = new THREE.Mesh(new THREE.PlaneGeometry(4, 1), new THREE.MeshBasicMaterial({ map: textTex(txt, 512, 128, '#ffd166'), transparent: true, depthWrite: false })); const [wx, wz] = F.W(x, z); m.position.set(wx, y0 + 0.06, wz); m.rotation.set(-Math.PI / 2, 0, yaw + Math.PI, 'YXZ'); m.rotation.order = 'YXZ'; m.rotation.y = yaw + Math.PI; m.rotation.x = -Math.PI / 2; scene.add(m); }
+  for (const [x, z] of [[-7.5, -26], [7, -26], [-1, -26], [16, -26]]) { const [px, pz] = F.W(x, z); addPost(px, pz, 0.1, 3); }
+  const at = (x, z) => [...F.W(x, z), yaw];
+  Object.assign(DEPOT, { name: 'Driver Depot', x: F.W(0, 6)[0], z: F.W(0, 6)[1], busBay: at(-7.5, -18.5), coBus: at(-1, -18.5), taxiBay: at(7, -22.5), coTaxi: [at(13, -22.5), at(19, -22.5)] });
+  mapPaint.push({ ...F.rect(-26, -14, -27, -19), c: '#f4b400' });
+}
+function drvSpawn(kind, own) {
+  const spot = own ? (kind === 'taxi' ? DEPOT.taxiBay : DEPOT.busBay) : kind === 'taxi' ? DEPOT.coTaxi.find(([x, z]) => !vehicles.some((q) => Math.hypot(q.pos.x - x, q.pos.z - z) < 2.5)) || DEPOT.coTaxi[0] : DEPOT.coBus;
+  for (const q of [...vehicles]) if (q !== player.car && Math.hypot(q.pos.x - spot[0], q.pos.z - spot[1]) < (kind === 'bus' ? 6 : 2.5) && q.driver === null && !q.own) q.dispose();
+  const v = new Vehicle(kind, kind === 'taxi' ? 0xf4c20d : own ? 0xffb703 : 0x1f6fb2); v.place(spot[0], spot[1], spot[2]); v.keep = true; if (own) v.own = kind; else v.company = true; return v;
+}
+function drvEnsureOwned() { for (const kind of ['taxi', 'bus']) if ((kind === 'taxi' ? game.ownTaxi : game.ownBus) && !vehicles.some((q) => q.own === kind)) drvSpawn(kind, true); }
+function drvOpenApp() { if (game.state !== 'play') return; if (!game.phoneApps.includes('drive')) { game.phoneApps.push('drive'); phoneSave(); } openPhone(); phone.app = 'drive'; phoneRender(); }
+function drvRemain() { const h = Math.max(0, (drv.until - game.time) / (DAY_LEN / 24)); return h >= 1 ? `${Math.floor(h)}h ${String(Math.floor((h % 1) * 60)).padStart(2, '0')}m` : `${Math.ceil(h * 60)}m`; }
+function drvTitle() { return `${drv.kind === 'taxi' ? '🚕 Taxi' : '🚌 Bus'} shift · ${drvRemain()} left · $${drv.earned} · ${drv.count} ${drv.kind === 'taxi' ? 'fares' : 'stops'}`; }
+const drvInVeh = () => !!(player.car && player.car.type === drv.kind && !player.car.scripted);
+function drvHint() {
+  if (!drvInVeh()) return `Get in ${drv.own ? 'your' : 'the company'} ${drv.kind} at the Driver Depot · follow the yellow route`;
+  if (drv.kind === 'taxi') return !drv.pax ? 'Waiting for the next fare…' : drv.phase === 'pickup' ? `A rider is waving in ${districtAt(drv.pax.x, drv.pax.z)} · stop right next to them` : `Drive your passenger to ${districtAt(drv.pax.dx, drv.pax.dz)} · stop at the yellow beam`;
+  const st = transit.stops[drv.stopI]; return drv.phase === 'dwell' ? 'Riders getting on and off…' : st ? `Next bus stop: ${st.name} · stop next to the shelter` : '';
+}
+function drvStart(kind, hours) {
+  if (curJob()) quitCurJob('You changed jobs');
+  const own = kind === 'taxi' ? !!game.ownTaxi : !!game.ownBus; let v = own ? vehicles.find((q) => q.own === kind) : null; if (!v) v = drvSpawn(kind, own);
+  Object.assign(drv, { on: true, kind, hours, until: game.time + hours * DAY_LEN / 24, earned: 0, count: 0, phase: 'go', veh: v, pax: null, stopI: -1, t: 0, own, tgt: { x: v.pos.x, z: v.pos.z, path: [], pathT: 0 } });
+  if (!drv.marker) drv.marker = makeMarker(new THREE.Color(3.6, 2.6, 0.3), true);
+  toast(`${kind === 'taxi' ? '🚕 Taxi' : '🚌 Bus'} shift for ${hours === 24 ? 'a whole day' : hours + ' hours'} · ${own ? `your own ${kind} is` : `a company ${kind} is`} waiting at the Driver Depot`, 4500); sfxChime();
+}
+function drvEnd(done, why) {
+  if (!drv.on) return; drv.on = false; drv.tgt = null; if (drv.marker) drv.marker.visible = false; if (drv.pax && drv.pax.h) scene.remove(drv.pax.h.root); drv.pax = null; $('mission').hidden = true;
+  const v = drv.veh; if (v && v.company) { if (v === player.car) v.keep = false; else if (vehicles.includes(v)) v.dispose(); }
+  showBanner('SHIFT OVER', `+$${drv.earned} · ${drv.count} ${drv.kind === 'taxi' ? 'fares' : 'stops'}${why ? ' · ' + why : done ? ' · nice driving!' : ''}`, done ? 'var(--money)' : '#ffc857', 3200);
+}
+function drvPick(f, dmin, dmax) { let x = 0, z = 0; for (let k = 0; k < 80; k++) { const n = (Math.random() * NN * NN) | 0; x = nodeX(n); z = nodeZ(n); const d = Math.hypot(x - f.x, z - f.z); if (d > dmin && d < dmax) break; } return [x, z]; }
+function updateDrv(dt) {
+  if (!drv.on || game.state !== 'play') return;
+  if (game.time >= drv.until) { drvEnd(true); return; }
+  const f = focusPos(), mk = drv.marker, inV = drvInVeh(), car = player.car, slow = car && car.speed() < 1.5; let tx, tz;
+  if (!inV) { const v = drv.veh && vehicles.includes(drv.veh) ? drv.veh : null; if (!v) { drv.veh = drvSpawn(drv.kind, drv.own); return; } tx = v.pos.x; tz = v.pos.z; mk.visible = false; }
+  else if (drv.kind === 'taxi') {
+    if (!drv.pax) { drv.t -= dt; if (drv.t <= 0) { const [nx, nz] = drvPick(f, 90, 320), sx = nx + (Math.random() < 0.5 ? -10 : 10), sz = nz + (Math.random() < 0.5 ? -10 : 10), h = makeHuman(randomLook(), false); h.root.position.set(sx, CURB, sz); scene.add(h.root); drv.pax = { h, x: sx, z: sz, t0: 0 }; drv.phase = 'pickup'; toast(`📲 New fare · a rider is waiting in ${districtAt(sx, sz)}`, 3000); sfxTick(true); } else { mk.visible = false; drv.tgt = null; return; } }
+    const P = drv.pax;
+    if (drv.phase === 'pickup') {
+      tx = P.x; tz = P.z; P.h.root.rotation.y = Math.atan2(car.pos.x - P.x, car.pos.z - P.z); poseHuman(P.h, dt, 0, false, game.time); P.h.armR.rotation.x = -2.7 + Math.sin(game.time * 7) * 0.3;
+      if (slow && Math.hypot(car.pos.x - P.x, car.pos.z - P.z) < 9) { scene.remove(P.h.root); P.h = null; const [dx, dz] = drvPick({ x: P.x, z: P.z }, 250, 700); Object.assign(P, { dx, dz, t0: game.time, dist: Math.hypot(dx - P.x, dz - P.z) }); drv.phase = 'ride'; toast(`“Take me to ${districtAt(dx, dz)}, please!”`, 3000); sfxChime(); }
+    } else {
+      tx = P.dx; tz = P.dz;
+      if (slow && Math.hypot(car.pos.x - P.dx, car.pos.z - P.dz) < 11) { const tip = game.time - P.t0 < P.dist / 9 ? 6 : 2, pay = Math.round((8 + P.dist * 0.035 + tip) * (drv.own ? 1 : 0.7) * (isCaptain() ? 1.5 : 1)); addCash(pay, 'Taxi fare'); drv.earned += pay; drv.count++; toast(`+$${pay} fare${tip > 2 ? ' · fast ride tip!' : ''} · ${drv.count} fare${drv.count > 1 ? 's' : ''} today`, 2600); sfxChime(); drv.pax = null; drv.t = 2.5; drv.phase = 'wait'; }
+    }
+  } else {
+    const S = transit.stops; if (!S.length) return;
+    if (drv.stopI < 0) { let best = 0, bd = 1e9; S.forEach((st, i) => { const d = Math.hypot(st.px - f.x, st.pz - f.z); if (d < bd) { bd = d; best = i; } }); drv.stopI = best; drv.phase = 'stop'; }
+    const st = S[drv.stopI]; tx = st.px; tz = st.pz;
+    if (drv.phase === 'dwell') { drv.t += dt; if (drv.t > 2.5) { const riders = 1 + Math.floor(Math.random() * 6), pay = Math.round((riders * 2 + 4) * (drv.own ? 1 : 0.7) * (isCaptain() ? 1.5 : 1)); addCash(pay, 'Bus fares'); drv.earned += pay; drv.count++; toast(`${riders} rider${riders > 1 ? 's' : ''} got on at ${st.name} · +$${pay}`, 2400); drv.stopI = (drv.stopI + 1) % S.length; drv.phase = 'stop'; } }
+    else if (slow && Math.hypot(car.pos.x - st.px, car.pos.z - st.pz) < 13) { drv.phase = 'dwell'; drv.t = 0; sfxTick(true); }
+  }
+  if (inV) { mk.visible = true; mk.position.set(tx, surfaceH(tx, tz), tz); mk.userData.gem.rotation.y = game.time * 1.6; }
+  if (!drv.tgt) drv.tgt = { x: tx, z: tz, path: [], pathT: 0 }; const tg = drv.tgt; tg.x = tx; tg.z = tz; tg.pathT -= dt; if (tg.pathT <= 0) { tg.pathT = 0.6; tg.path = gridRoute(f, { x: tx, z: tz }); }
+}
+function drvAct(a) {
+  const [cmd, kind, h] = a.split(':');
+  if (cmd === 'start') { closePhone(); drvStart(kind, +h); }
+  else if (cmd === 'end') { drvEnd(false, 'You ended your shift'); phoneRender(); }
+  else if (cmd === 'buy') { const price = DRV_PRICE[kind]; if (game.cash < price) return; addCash(-price, `DriveWork · your own ${kind}`); if (kind === 'taxi') { game.ownTaxi = true; store.set('ownTaxi', true); } else { game.ownBus = true; store.set('ownBus', true); } drvSpawn(kind, true); phoneRender(); phoneMsg(`Your ${kind} is parked in YOUR ${kind.toUpperCase()} bay at the Driver Depot`); }
+  else if (cmd === 'bring') { const v = vehicles.find((q) => q.own === kind); if (v && v === player.car) { phoneMsg(`You're driving your ${kind}`); return; } if (v) v.dispose(); drvSpawn(kind, true); phoneMsg(`Your ${kind} is back in its bay at the Driver Depot`); }
+  else if (cmd === 'depot') { closePhone(); setWaypoint(DEPOT.x, DEPOT.z); toast('Route set · Driver Depot · your taxi and bus parking', 3000); }
+}
 // ---- JOBS: every job in one list · start here, go there, change jobs, or quit
-function curJob() { return shift.on ? `${shift.R.name} shift` : duty.on ? `Army · ${duty.name}` : cop.on ? 'Police patrol shift' : game.job ? 'Delivery' : null; }
-function quitCurJob(why) { if (shift.on) { const ct = shift.ct, Rm = shift.R; endShift(false); const dx = Rm.cx - ct.x, dz = Rm.cz - ct.z, l = Math.hypot(dx, dz) || 1; player.pos.x = ct.x + dx / l * 2.6; player.pos.z = ct.z + dz / l * 2.6; shopCD = 3; } if (duty.on) dutyEnd(false, why); if (cop.on) copEndShift(false, why); if (game.job) endJob(false); }
+function curJob() { return drv.on ? `${drv.kind === 'taxi' ? 'Taxi' : 'Bus'} driver shift` : shift.on ? `${shift.R.name} shift` : duty.on ? `Army · ${duty.name}` : cop.on ? 'Police patrol shift' : game.job ? 'Delivery' : null; }
+function quitCurJob(why) { if (drv.on) drvEnd(false, why); if (shift.on) { const ct = shift.ct, Rm = shift.R; endShift(false); const dx = Rm.cx - ct.x, dz = Rm.cz - ct.z, l = Math.hypot(dx, dz) || 1; player.pos.x = ct.x + dx / l * 2.6; player.pos.z = ct.z + dz / l * 2.6; shopCD = 3; } if (duty.on) dutyEnd(false, why); if (cop.on) copEndShift(false, why); if (game.job) endJob(false); }
 function openJobs() {
   if (game.state === 'shop' && game.counter && game.counter.type === 'jobs') { closeShopPanel(); return; }
   if (game.state !== 'play') return;
@@ -3159,6 +3251,7 @@ function jobsItems() {
   if (game.enlisted) items.push({ name: `Army duty · ${milRank().name}`, desc: 'Pick a duty at the board just inside the Fort Halcón gate', price: 0, label: 'GO', sw: 0x4b5320, buy: go(29.2, -788, 'Go to the duty board inside the Fort Halcón gate') });
   else items.push({ name: 'Soldier · Fort Halcón', desc: 'Enlist at the gate, then pick paid duties', price: 0, label: 'GO', sw: 0x4b5320, buy: go(31.5, -749, 'Go to the Fort Halcón gate and enlist') });
   const ms = nearestMetro(f.x, f.z); if (ms) items.push({ name: 'Metro driver', desc: `Drive a train and stop at the STOP sign for tips · nearest: ${ms.name}`, price: 0, label: 'GO', sw: 0xe63946, buy: go(ms.dx + ms.nx * 3, ms.dz + ms.nz * 3, `Go to ${ms.name} station · tap Drive at the ticket machine`) });
+  for (const kind of ['taxi', 'bus']) items.push({ name: `${kind === 'taxi' ? 'Taxi' : 'Bus'} driver${(kind === 'taxi' ? game.ownTaxi : game.ownBus) ? ' · your own ' + kind : ''}`, desc: drv.on && drv.kind === kind ? `On shift · ${drvRemain()} left · $${drv.earned} earned` : `Open DriveWork and choose how long you want to work · ${kind === 'taxi' ? 'riders wave from the sidewalk' : 'drive the bus route stop to stop'}`, price: 0, label: 'APP', sw: kind === 'taxi' ? 0xf4c20d : 0x1f6fb2, buy: () => { closeShopPanel(); drvOpenApp(); return null; } });
   const mk = near(markers.filter((m) => m.m.visible), (q) => q.x, (q) => q.z); if (mk) items.push({ name: 'Deliveries', desc: `Pick up a package at a pink marker and deliver it · ${srDist(dist(mk.x, mk.z))}`, price: 0, label: 'GO', sw: 0xff3f8e, buy: go(mk.x, mk.z, 'Go to the pink marker to start a delivery') });
   return items;
 }
@@ -5562,7 +5655,7 @@ function drawBigmap() {
   const g = bmx, z = bm.zoom * dpr, X = (x) => W / 2 + (x - bm.cx) * z, Z = (v) => H / 2 + (v - bm.cz) * z;
   g.setTransform(1, 0, 0, 1, 0, 0); g.fillStyle = '#0f3a4b'; g.fillRect(0, 0, W, H);
   g.imageSmoothingEnabled = true; g.drawImage(mapImg, X(MAP.x0), Z(MAP.z0), MAP.w * z, MAP.h * z);
-  const jt = game.job || duty.tgt || cop.tgt, f = focusPos(), tg = jt || game.waypoint, path = jt ? jt.path : game.route;
+  const jt = game.job || duty.tgt || cop.tgt || drv.tgt, f = focusPos(), tg = jt || game.waypoint, path = jt ? jt.path : game.route;
   if (tg && path) { g.strokeStyle = game.job ? '#ffc857' : '#b18cff'; g.lineWidth = 4 * dpr; g.lineJoin = g.lineCap = 'round'; g.beginPath(); g.moveTo(X(f.x), Z(f.z)); for (const n of path) g.lineTo(X(nodeX(n)), Z(nodeZ(n))); g.lineTo(X(tg.x), Z(tg.z)); g.stroke(); }
   g.textAlign = 'center'; g.textBaseline = 'middle';
   for (const [t, x, zz, big] of MAP_LABELS) { g.font = `${big ? 800 : 700} ${Math.round((big ? 16 : 13) * dpr)}px 'Barlow Condensed', 'Arial Narrow', sans-serif`; g.lineWidth = 3.5 * dpr; g.strokeStyle = 'rgba(14,10,23,.8)'; g.strokeText(t.toUpperCase(), X(x), Z(zz)); g.fillStyle = big ? '#ffc857' : '#fff3e8'; g.fillText(t.toUpperCase(), X(x), Z(zz)); }
@@ -5572,7 +5665,7 @@ function drawBigmap() {
   { const bd = (x, zz, col, t) => { const r = 8.5 * dpr; g.fillStyle = col; g.strokeStyle = 'rgba(14,10,23,.9)'; g.lineWidth = 2 * dpr; g.beginPath(); g.arc(X(x), Z(zz), r, 0, Math.PI * 2); g.fill(); g.stroke(); g.fillStyle = '#fff'; g.font = `800 ${Math.round(11 * dpr)}px system-ui, sans-serif`; g.fillText(t, X(x), Z(zz) + 0.5 * dpr); };
     for (const sp of shopsData) if (sp.type === 'restaurant') bd(sp.dx, sp.dz, '#ff8c42', 'R'); for (const ps of POLICE_ST) bd(ps.x, ps.z, '#8b5a2b', '★');
     if (SKY.built) { g.save(); g.strokeStyle = 'rgba(24,179,166,.9)'; g.lineWidth = 4 * dpr; g.beginPath(); SKY.pts.forEach(([x, zz], i) => (i ? g.lineTo(X(x), Z(zz)) : g.moveTo(X(x), Z(zz)))); g.closePath(); g.stroke(); g.restore(); for (const st of SKY.stations) bd(st.kx, st.kz, '#18b3a6', 'S'); }
-    for (const sp of shopsData) if (sp.type === 'hotel') bd(sp.dx, sp.dz, '#9b5de5', 'H'); for (const gg of GARAGES) bd(gg.x, gg.z, '#1f6fb2', 'P'); }
+    for (const sp of shopsData) if (sp.type === 'hotel') bd(sp.dx, sp.dz, '#9b5de5', 'H'); for (const gg of GARAGES) bd(gg.x, gg.z, '#1f6fb2', 'P'); if (DEPOT.x !== undefined) bd(DEPOT.x, DEPOT.z, '#f4b400', 'D'); }
   if (transit.built) {
     g.save(); g.strokeStyle = 'rgba(63,169,245,.8)'; g.lineWidth = 3 * dpr; g.setLineDash([9 * dpr, 6 * dpr]); g.beginPath(); transit.loop.pts.forEach(([x, zz], i) => (i ? g.lineTo(X(x), Z(zz)) : g.moveTo(X(x), Z(zz)))); g.closePath(); g.stroke(); g.restore();
     const badge = (x, zz, col, t, tc, hi) => { const r = (hi ? 10 : 7.5) * dpr; g.fillStyle = col; g.strokeStyle = hi ? '#fff' : 'rgba(14,10,23,.9)'; g.lineWidth = (hi ? 3 : 2) * dpr; g.beginPath(); g.arc(X(x), Z(zz), r, 0, Math.PI * 2); g.fill(); g.stroke(); g.fillStyle = tc; g.font = `800 ${Math.round((hi ? 12 : 10) * dpr)}px system-ui, sans-serif`; g.fillText(t, X(x), Z(zz) + 0.5 * dpr); };
@@ -5586,6 +5679,7 @@ function drawBigmap() {
   if (game.job) dot(game.job.x, game.job.z, 7.5, '#ffc857');
   if (duty.tgt) dot(duty.tgt.x, duty.tgt.z, 7.5, '#7dff9a');
   if (cop.tgt) dot(cop.tgt.x, cop.tgt.z, 7.5, '#7dd3ff');
+  if (drv.tgt) dot(drv.tgt.x, drv.tgt.z, 7.5, '#ffc857');
   if (game.waypoint) dot(game.waypoint.x, game.waypoint.z, 7.5, '#b18cff');
   for (const c of police) dot(c.pos.x, c.pos.z, 5, '#ff3050');
   if (flight.m && flight.y > 10) dot(flight.x, flight.z, 4, '#ffffff');
@@ -5918,7 +6012,7 @@ function drawMinimap() {
   mm.setTransform(1, 0, 0, 1, 0, 0);
   const W = (x, z) => { const rx = x - f.x, rz = z - f.z; return [R + (rx * cy - rz * sy) * scale, R + (rx * sy + rz * cy) * scale]; };
   const clampEdge = (p, m) => { const dx = p[0] - R, dy = p[1] - R, l = Math.hypot(dx, dy); if (l > R - m) return [R + dx / l * (R - m), R + dy / l * (R - m)]; return p; };
-  const j = game.job || duty.tgt || cop.tgt, tg = j || game.waypoint, path = j ? j.path : game.route;
+  const j = game.job || duty.tgt || cop.tgt || drv.tgt, tg = j || game.waypoint, path = j ? j.path : game.route;
   if (tg && path && path.length) {
     mm.strokeStyle = j ? 'rgba(255,200,87,.95)' : 'rgba(177,140,255,.95)'; mm.lineWidth = S * 0.028; mm.lineJoin = mm.lineCap = 'round'; mm.beginPath();
     let p = W(f.x, f.z); mm.moveTo(p[0], p[1]); for (const n of path) { p = W(nodeX(n), nodeZ(n)); mm.lineTo(p[0], p[1]); } p = W(tg.x, tg.z); mm.lineTo(p[0], p[1]); mm.stroke();
@@ -5995,6 +6089,7 @@ function updateHUD(dt) {
   if (!hint && !game.inside && !player.car) { const ps = POLICE_ST.find((q) => Math.hypot(q.x - player.pos.x, q.z - player.pos.z) < 7); if (ps) hint = game.wanted > 0 ? `${ps.name} · safe zone · walk in and the chase stops` : `${ps.name} · walk in${game.copJoined ? ' to start a patrol shift' : ' to join the police'}`; }
   if (!hint && game.wanted > 0 && policeSafe()) hint = game.inside ? 'Safe inside the police station · nobody can arrest you here' : 'Police station grounds · safe zone · nobody can arrest you here';
   if (cc.on && !hint) hint = ccHint();
+  if (drv.on && !hint) hint = drvHint();
   if (skyrail.ride) hint = skyHint(); else if (!hint) { const ks = nearSky(); if (ks) hint = `Sky Train · ${ks.name} · ${TOUCH ? 'tap TICKET' : 'press F'} to buy a ticket`; else { const gp = nearGaragePed(); if (gp) hint = `${GPED_NAME[gp.kind]} · you're on P${gp.L + 1} · ${TOUCH ? 'tap ' + GPED_LABEL[gp.kind] : 'press F'} to ${gp.kind === 'lift' ? 'pick a floor' : 'go up or down'}`; } }
   if (!hint && game.inside && game.inside.room === ROOMS.suite && stayActive()) hint = `Room ${game.stay.room} · Floor ${game.stay.floor} · ${HOTELS[game.stay.h].name}`;
   if (nearWorkSpot()) hint = TOUCH ? 'Work a shift at the register · tap WORK' : 'Press F to work a shift at the register';
@@ -6004,7 +6099,7 @@ function updateHUD(dt) {
   if (!hint && !game.inside && !player.car) { const ms = nearestMetro(player.pos.x, player.pos.z, 7); if (ms) hint = `Metro · ${ms.name} · walk in to ride anywhere`; }
   if (!hint && mil.near) hint = 'Fort Halcón · restricted military area · keep out';
   if (hint !== lastHint) { lastHint = hint; ui.hint.textContent = hint; ui.hint.hidden = !hint; }
-  const j0 = game.job, j = j0 ? { m: `Deliver ${j0.cargo} to ${j0.where}`, t: j0.t } : duty.on ? { m: dutyTitle(), t: duty.t } : cop.on ? { m: copTitle(), t: cop.call ? cop.call.t : 0 } : shift.on ? { m: shiftTitle(), t: shift.t } : null;
+  const j0 = game.job, j = j0 ? { m: `Deliver ${j0.cargo} to ${j0.where}`, t: j0.t } : duty.on ? { m: dutyTitle(), t: duty.t } : cop.on ? { m: copTitle(), t: cop.call ? cop.call.t : 0 } : drv.on ? { m: drvTitle(), t: Math.max(0, drv.until - game.time) } : shift.on ? { m: shiftTitle(), t: shift.t } : null;
   if (j) { const m = j.m; if (m !== lastMission) { lastMission = m; ui.mTitle.textContent = m; } ui.mission.hidden = false; const s = Math.max(0, Math.ceil(j.t)); ui.mTimer.textContent = `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`; ui.mTimer.classList.toggle('low', s <= 10); }
   drawMinimap();
 }
@@ -6159,7 +6254,7 @@ document.addEventListener('visibilitychange', () => { if (!document.hidden && ga
 $('playBtn').addEventListener('click', () => {
   initAudio(); keepAwake(); $('title').hidden = true; $('hud').hidden = false; $('touch').hidden = !TOUCH; game.state = 'play'; cam.init = false; cam.yaw = Math.PI / 2; cam.pitch = 0.2;
   renderStars(); game.seenDistrict = '';
-  const back = !game.restored && restoreWorld(); game.restored = true; if (game.copJoined && !vehicles.some((v) => v.issued)) copCruiser(null);
+  const back = !game.restored && restoreWorld(); game.restored = true; if (game.copJoined && !vehicles.some((v) => v.issued)) copCruiser(null); drvEnsureOwned();
   setTimeout(() => toast(back ? 'Welcome back · everything is right where you left it' : 'Your home is the white villa just down the promenade. Pink markers are delivery jobs.', 4800), 600);
   const sm = Math.min(window.devicePixelRatio || 1, 3); mmCanvas.width = mmCanvas.height = Math.round(116 * sm);
 });
@@ -6215,7 +6310,7 @@ function step(dt) {
   let tc = 0; for (const v of vehicles) if (v.driver === 'ai' && !v.leaving && v.ai.kind !== 'hwy') tc++;
   if (tc < TRAFFIC_N && Math.random() < 0.05) { const type = mpick(TRAFFIC_TYPES), car = new Vehicle(type, type === 'taxi' ? 0xf4c20d : mpick(PAINTS)); if (!recycleCar(car)) car.dispose(); }
   collideVehicles();
-  updateFlight(dt); updatePort(dt, sunState.night); updateDests(dt); updateMilitary(dt); updateTransit(dt); updateDuty(dt); updateCop(dt); updateGarage(dt); updateSky(dt); updateLineMap();
+  updateFlight(dt); updatePort(dt, sunState.night); updateDests(dt); updateMilitary(dt); updateTransit(dt); updateDuty(dt); updateCop(dt); updateDrv(dt); updateGarage(dt); updateSky(dt); updateLineMap();
   // pedestrians
   for (const p of peds) {
     const d = p.pos.distanceTo(camera.position);
@@ -6324,7 +6419,7 @@ function snapshotWorld() {
   else if (game.heli) w.at = foot(290, -1254, Math.PI);
   else if (game.inside && metro.ride) w.at = { kind: 'shop', i: shopsData.indexOf(metro.ride.dest) };
   else if (game.inside) w.at = { kind: 'shop', i: shopsData.indexOf(game.inside.shop) };
-  else if (player.car) { const c = player.car; w.at = { kind: 'car', x: r2(c.pos.x), y: r2(c.y), z: r2(c.pos.z), yaw: r2(c.yaw), type: c.type, color: c.color ?? null, owned: c.owned || null, army: !!c.army, issued: !!c.issued }; }
+  else if (player.car) { const c = player.car; w.at = { kind: 'car', x: r2(c.pos.x), y: r2(c.y), z: r2(c.pos.z), yaw: r2(c.yaw), type: c.type, color: c.color ?? null, owned: c.owned || null, army: !!c.army, issued: !!c.issued, own: c.own || null }; }
   else w.at = { kind: 'foot', x: r2(player.pos.x), y: r2(player.pos.y), z: r2(player.pos.z), yaw: r2(player.yaw) };
   return w;
 }
@@ -6346,7 +6441,7 @@ function restoreWorld() {
     let v = null;
     if (a.owned) { v = vehicles.find((x) => x.owned === a.owned && !x.driver) || null; if (!v) { const c = CATALOG.find((x) => x.id === a.owned); if (c) v = spawnOwned(c, a.x, a.z, a.yaw); } }
     else if (a.army && mil.trucks) v = mil.trucks.find((x) => x.driver !== 'player') || null;
-    if (!v) { const t = (a.type === 'police' && !a.issued) || !DIMS[a.type] || a.type === 'bus' ? 'sedan' : a.type; v = new Vehicle(t, a.type === 'police' ? 0x111317 : t === 'taxi' ? 0xf4c20d : a.color ?? mpick(PAINTS)); v.keep = true; if (a.issued && t === 'police') v.issued = true; }
+    if (!v) { const t = (a.type === 'police' && !a.issued) || !DIMS[a.type] || (a.type === 'bus' && a.own !== 'bus') ? 'sedan' : a.type; v = new Vehicle(t, a.type === 'police' ? 0x111317 : t === 'taxi' ? 0xf4c20d : a.color ?? mpick(PAINTS)); v.keep = true; if (a.issued && t === 'police') v.issued = true; if (a.own && t === a.own) v.own = a.own; }
     v.place(a.x, a.z, a.yaw || 0, a.y || 0); player.pos.set(a.x, a.y || 0, a.z); enterCar(v);
   } else if (Number.isFinite(a.x)) { player.pos.set(a.x, surfaceH(a.x, a.z, (a.y || 0) + 0.5) + 0.05, a.z); player.vel.set(0, 0, 0); player.yaw = a.yaw || 0; player.onGround = false; }
   if (w.waypoint) setWaypoint(w.waypoint.x, w.waypoint.z);
@@ -6379,13 +6474,13 @@ async function start(data) {
     game.sound = store.get('sound', true); game.radio = store.get('radio', true); setSound(game.sound);
     player.pos.set(-494.6, 0, 16.5); player.yaw = -Math.PI / 2;
     starterCar = new Vehicle('sports', 0xff3f8e); starterCar.place(-492.4, 18.8, 0);
-    game.owned = store.get('owned', ['coral']); game.visited = store.get('visited', []); game.pantry = store.get('pantry', {}); game.dishes = store.get('dishes', []); refreshDishes(); game.family = store.get('family', []); game.enlisted = store.get('enlisted', false); game.date = store.get('gameDate', null) || calKey(new Date()); game.stay = store.get('stay', null); game.copJoined = store.get('copJoined', false); game.copCalls = store.get('copCalls', 0); game.phoneApps = store.get('phoneApps', ['shop', 'maps', 'bank', 'weather', 'settings']).filter((id) => APPS[id]); game.phoneOwned = store.get('phoneOwned', []); game.phoneWall = store.get('phoneWall', 0); game.busTickets = store.get('busTickets', 0); game.milDuties = store.get('milDuties', 0); game.garage = store.get('garage', []); buildTransit(); spawnGarage(); 
+    game.owned = store.get('owned', ['coral']); game.visited = store.get('visited', []); game.pantry = store.get('pantry', {}); game.dishes = store.get('dishes', []); refreshDishes(); game.family = store.get('family', []); game.enlisted = store.get('enlisted', false); game.date = store.get('gameDate', null) || calKey(new Date()); game.stay = store.get('stay', null); game.ownTaxi = store.get('ownTaxi', false); game.ownBus = store.get('ownBus', false); game.copJoined = store.get('copJoined', false); game.copCalls = store.get('copCalls', 0); game.phoneApps = store.get('phoneApps', ['shop', 'maps', 'bank', 'weather', 'settings']).filter((id) => APPS[id]); game.phoneOwned = store.get('phoneOwned', []); game.phoneWall = store.get('phoneWall', 0); game.busTickets = store.get('busTickets', 0); game.milDuties = store.get('milDuties', 0); game.garage = store.get('garage', []); buildTransit(); spawnGarage(); 
     setupMarkers(); setupCash(); spawnTraffic(); spawnPeds(); spawnLotCars(); spawnGarageCars(); restoreGarage();
     for (let i = 0; i < HWY_N; i++) { const c = new Vehicle(mpick(TRAFFIC_TYPES), mpick(PAINTS)); if (!placeHwy(c, false)) c.dispose(); }
     applyQuality(data.quality || store.get('quality', 'ultra'));
     updateDaylight(0); refreshEnv(true);
     renderer.compile(scene, camera);
-    game.state = 'title'; window.__solanoRunning = true; window.__solanoDebug = { openJobs, jobsItems, isCaptain, endShift, nearGaragePed, garageMove, SKY, skyrail, startSkyRide, metroStops, HOTELS, GARAGES, hotelAvail, stayBook, stayActive, goToSuite, decks, gameDate, nextDay, sleepUntil, metroDriveHint, notesList, calHolidays, policeSafe, busted, police, cop, copStartShift, copCruiser, copNextCall, policeDeskItems, peds, walkers: () => walkers, phone, phoneTv, phoneRender, TY_SQ, cc, reportCrash, POLICE_ST, RESTAURANTS, lots, restDine, metro, BRIDGES, startMetroRide, nearestMetro, GARAGE, garage, openSearch, closeSearch, search, shift, startShift, transitRef: () => transit, saveGame, cloud, store, phone, APPS, openPhone, closePhone, duty, DUTIES, startDuty, transit, CATALOG, DEALER, makeHuman, randomLook, poseHuman, mil, Vehicle, PAINTS, ROOMS, ferris, famList: fam.list, renderer, game, camera, cam, player, officers, police, shopsData, vehicles, flight, RING_H, peek: () => ({ shopCD, t: +game.time.toFixed(2) }), crime: (n) => crime(n, 'Test heat') };
+    game.state = 'title'; window.__solanoRunning = true; window.__solanoDebug = { drv, DEPOT, drvStart, drvAct, drvEnd, transitStops: () => transit.stops, openJobs, jobsItems, isCaptain, endShift, nearGaragePed, garageMove, SKY, skyrail, startSkyRide, metroStops, HOTELS, GARAGES, hotelAvail, stayBook, stayActive, goToSuite, decks, gameDate, nextDay, sleepUntil, metroDriveHint, notesList, calHolidays, policeSafe, busted, police, cop, copStartShift, copCruiser, copNextCall, policeDeskItems, peds, walkers: () => walkers, phone, phoneTv, phoneRender, TY_SQ, cc, reportCrash, POLICE_ST, RESTAURANTS, lots, restDine, metro, BRIDGES, startMetroRide, nearestMetro, GARAGE, garage, openSearch, closeSearch, search, shift, startShift, transitRef: () => transit, saveGame, cloud, store, phone, APPS, openPhone, closePhone, duty, DUTIES, startDuty, transit, CATALOG, DEALER, makeHuman, randomLook, poseHuman, mil, Vehicle, PAINTS, ROOMS, ferris, famList: fam.list, renderer, game, camera, cam, player, officers, police, shopsData, vehicles, flight, RING_H, peek: () => ({ shopCD, t: +game.time.toFixed(2) }), crime: (n) => crime(n, 'Test heat') };
     { const sw = store.get('world', null); if (sw && sw.at) { $('playBtn').textContent = 'Continue'; const si = $('saveInfo'); si.textContent = `Saved game · ${saveWhere(sw)} · ${money(game.cash)}${cloud.restored ? ' · loaded from your account' : ''}`; si.hidden = false; $('newGameT').hidden = false; } }
     $('loading').hidden = true; $('title').hidden = false;
     renderer.setAnimationLoop(frame);
